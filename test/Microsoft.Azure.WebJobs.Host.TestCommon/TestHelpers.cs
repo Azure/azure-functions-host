@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
@@ -17,6 +18,12 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     throw new ApplicationException("Condition not reached within timeout.");
                 }
             }
+        }
+
+        public static void SetField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            field.SetValue(target, value);
         }
     }
 }

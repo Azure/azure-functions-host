@@ -147,6 +147,7 @@
     <Compile Include="Protocols\ProtocolSerializationTests.cs" />
     <Compile Include="Queues\QueueListenerTests.cs" />
     <Compile Include="Queues\QueueProcessorFactoryContextTests.cs" />
+    <Compile Include="Singleton\SingletonConfigurationTests.cs" />
     <Compile Include="Singleton\SingletonListenerTests.cs" />
     <Compile Include="Singleton\SingletonLockTests.cs" />
     <Compile Include="Singleton\SingletonManagerTests.cs" />

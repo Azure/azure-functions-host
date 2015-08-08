@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -42,9 +43,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _mockBlobDirectory.Setup(p => p.GetBlockBlobReference(TestLockId)).Returns(_mockStorageBlob.Object);
 
             _singletonConfig = new SingletonConfiguration();
-            _singletonConfig.LockAcquisitionPollingInterval = TimeSpan.FromMilliseconds(25);
+
+            // use reflection to bypass the normal validations (so tests can run fast)
+            TestHelpers.SetField(_singletonConfig, "_lockAcquisitionPollingInterval", TimeSpan.FromMilliseconds(25));
+            TestHelpers.SetField(_singletonConfig, "_lockPeriod", TimeSpan.FromMilliseconds(500));
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
-            _singletonConfig.LockPeriod = TimeSpan.FromMilliseconds(500);
+
             _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);

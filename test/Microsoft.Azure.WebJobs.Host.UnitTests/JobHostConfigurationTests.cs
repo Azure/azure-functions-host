@@ -18,9 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             JobHostConfiguration config = new JobHostConfiguration();
 
             Assert.NotNull(config.Singleton);
-            Assert.Equal(TimeSpan.FromSeconds(15), config.Singleton.LockPeriod);
-            Assert.Equal(TimeSpan.FromMinutes(1), config.Singleton.LockAcquisitionTimeout);
-            Assert.Equal(TimeSpan.FromSeconds(1), config.Singleton.LockAcquisitionPollingInterval);
 
             Assert.NotNull(config.Tracing);
             Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
