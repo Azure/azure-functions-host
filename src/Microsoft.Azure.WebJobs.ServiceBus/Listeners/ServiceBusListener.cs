@@ -19,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private readonly ServiceBusTriggerExecutor _triggerExecutor;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly MessageProcessor _messageProcessor;
-        private readonly TraceWriter _trace;
 
         private MessageReceiver _receiver;
         private bool _disposed;
@@ -30,8 +29,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _entityPath = entityPath;
             _triggerExecutor = triggerExecutor;
             _cancellationTokenSource = new CancellationTokenSource();
-            _trace = trace;
-            _messageProcessor = CreateMessageProcessor(config, entityPath);
+            _messageProcessor = config.MessagingProvider.CreateMessageProcessor(entityPath, config.MessageOptions, trace);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -119,12 +117,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             FunctionResult result = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
 
             await _messageProcessor.CompleteProcessingMessageAsync(message, result, cancellationToken);
-        }
-
-        private MessageProcessor CreateMessageProcessor(ServiceBusConfiguration config, string entityPath)
-        {
-            MessageProcessorFactoryContext context = new MessageProcessorFactoryContext(config.MessageOptions, entityPath, _trace);
-            return config.MessageProcessorFactory.Create(context);
         }
 
         private void ThrowIfDisposed()

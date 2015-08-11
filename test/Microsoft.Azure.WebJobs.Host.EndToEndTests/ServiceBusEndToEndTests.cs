@@ -100,10 +100,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             try
             {
-                _serviceBusConfig = new ServiceBusConfiguration
-                {
-                    MessageProcessorFactory = new CustomMessageProcessorFactory()
-                };
+                _serviceBusConfig = new ServiceBusConfiguration();
+                _serviceBusConfig.MessagingProvider = new CustomMessagingProvider(_serviceBusConfig.ConnectionString);
+
                 TestTraceWriter trace = new TestTraceWriter(TraceLevel.Info);
                 JobHostConfiguration config = new JobHostConfiguration()
                 {
@@ -372,28 +371,56 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
-        private class CustomMessageProcessorFactory : IMessageProcessorFactory
+        private class CustomMessagingProvider : MessagingProvider
         {
-            public MessageProcessor Create(MessageProcessorFactoryContext context)
+            private readonly string _connectionString;
+
+            public CustomMessagingProvider(string connectionString)
+                : base(connectionString)
             {
-                // demonstrate overriding the defalult messgae options
-                context.MessageOptions = new OnMessageOptions
+                _connectionString = connectionString;
+            }
+
+            public override MessageProcessor CreateMessageProcessor(string entity, OnMessageOptions messageOptions, TraceWriter trace)
+            {
+                // demonstrate overriding the defalult message options
+                messageOptions = new OnMessageOptions
                 {
                     MaxConcurrentCalls = 3,
                     AutoRenewTimeout = TimeSpan.FromMinutes(1)
                 };
 
-                return new CustomMessageProcessor(context);
+                return new CustomMessageProcessor(messageOptions, trace);
+            }
+
+            public async override Task<MessagingFactory> CreateMessagingFactoryAsync(string entity)
+            {
+                // demonstrate that the MessagingFactory can be customized
+                // per queue/topic
+                MessagingFactory factory = MessagingFactory.CreateFromConnectionString(_connectionString);
+                MessagingFactorySettings settings = factory.GetSettings();
+                settings.OperationTimeout = TimeSpan.FromSeconds(15);
+
+                factory = await MessagingFactory.CreateAsync(factory.Address, settings);
+
+                return factory;
+            }
+
+            public override NamespaceManager CreateNamespaceManager(string entity)
+            {
+                // demonstrate that the NamespaceManager can be customized
+                // per queue/topic
+                return base.CreateNamespaceManager(entity);
             }
 
             private class CustomMessageProcessor : MessageProcessor
             {
                 private readonly TraceWriter _trace;
 
-                public CustomMessageProcessor(MessageProcessorFactoryContext context)
-                    : base(context)
+                public CustomMessageProcessor(OnMessageOptions messageOptions, TraceWriter trace)
+                    : base(messageOptions)
                 {
-                    _trace = context.Trace;
+                    _trace = trace;
                 }
 
                 public override async Task<bool> BeginProcessingMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             _config = config;
         }
 
-        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             if (context == null)
             {
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             if (attribute == null)
             {
-                return Task.FromResult<IBinding>(null);
+                return null;
             }
 
             string queueOrTopicName = Resolve(attribute.QueueOrTopicName);
@@ -60,16 +60,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             ValidateContractCompatibility(path, context.BindingDataContract);
 
             IArgumentBinding<ServiceBusEntity> argumentBinding = InnerProvider.TryCreate(parameter);
-
             if (argumentBinding == null)
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBus to type '{0}'.", parameter.ParameterType));
             }
 
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(_config.ConnectionString);
+            ServiceBusAccount account = new ServiceBusAccount
+            {
+                MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(queueOrTopicName),
+                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(queueOrTopicName)
+            };
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute.Access);
-            return Task.FromResult(binding);
+            return binding;
         }
 
         private static void ValidateContractCompatibility(IBindableServiceBusPath path, IReadOnlyDictionary<string, Type> bindingDataContract)

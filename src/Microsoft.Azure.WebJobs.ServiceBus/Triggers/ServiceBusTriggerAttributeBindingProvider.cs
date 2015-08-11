@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _config = config;
         }
 
-        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
+        public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             if (context == null)
             {
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (attribute == null)
             {
-                return Task.FromResult<ITriggerBinding>(null);
+                return null;
             }
 
             string queueName = null;
@@ -84,20 +84,29 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBusTrigger to type '{0}'.", parameter.ParameterType));
             }
-
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(_config.ConnectionString);
+            
             ITriggerBinding binding;
-
             if (queueName != null)
             {
+                ServiceBusAccount account = new ServiceBusAccount
+                {
+                    MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(queueName),
+                    NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(queueName)
+                };
                 binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, queueName, attribute.Access, _trace, _config);
             }
             else
             {
+                string entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
+                ServiceBusAccount account = new ServiceBusAccount
+                {
+                    MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(entityPath),
+                    NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(entityPath)
+                };
                 binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access, _trace, _config);
             }
 
-            return Task.FromResult(binding);
+            return binding;
         }
 
         private string Resolve(string queueName)

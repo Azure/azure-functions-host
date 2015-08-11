@@ -158,12 +158,10 @@
     <Compile Include="Config\ServiceBusExtensionConfig.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ContentTypes.cs" />
-    <Compile Include="Listeners\DefaultMessageProcessorFactory.cs" />
-    <Compile Include="Listeners\IMessageProcessorFactory.cs" />
-    <Compile Include="Listeners\MessageProcessorFactoryContext.cs" />
+    <Compile Include="MessagingProvider.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />
-    <Compile Include="Listeners\MessageProcessor.cs" />
+    <Compile Include="MessageProcessor.cs" />
     <Compile Include="Listeners\ServiceBusSubscriptionListenerFactory.cs" />
     <Compile Include="Listeners\ServiceBusQueueListenerFactory.cs" />
     <Compile Include="ServiceBusAccount.cs" />

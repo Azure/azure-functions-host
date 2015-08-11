@@ -13,23 +13,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// This class defines a strategy used for processing ServiceBus messages.
     /// </summary>
     /// <remarks>
-    /// Custom <see cref="MessageProcessor"/> implementations can be registered by implementing
-    /// a custom <see cref="IMessageProcessorFactory"/> and setting it on the <see cref="ServiceBusConfiguration"/>.
+    /// Custom <see cref="MessageProcessor"/> implementations can be specified by implementing
+    /// a custom <see cref="MessagingProvider"/> and setting it on the <see cref="ServiceBusConfiguration"/>.
     /// </remarks>
     public class MessageProcessor
     {
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="context">The <see cref="MessageProcessorFactoryContext"/> to use.</param>
-        public MessageProcessor(MessageProcessorFactoryContext context)
+        /// <param name="messageOptions">The <see cref="OnMessageOptions"/> to use.</param>
+        public MessageProcessor(OnMessageOptions messageOptions)
         {
-            if (context == null)
+            if (messageOptions == null)
             {
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException("messageOptions");
             }
 
-            MessageOptions = context.MessageOptions;
+            MessageOptions = messageOptions;
         }
 
         /// <summary>

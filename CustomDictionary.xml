@@ -65,6 +65,8 @@
       <Word>PartitionKey</Word>
       <Word>RowKey</Word>
       <Word>BlobAttribute</Word>
+      <Word>ConnectionString</Word>
+      <Word>MessagingProvider</Word>
     </Recognized>
     <Deprecated/>
     <Compound>
@@ -79,6 +81,8 @@
 	<Term>PartitionKey</Term>
 	<Term>RowKey</Term>
 	<Term>BlobAttribute</Term>
+	<Term>ConnectionString</Term>
+	<Term>MessagingProvider</Term>
     </DiscreteExceptions>
   </Words>
   <Acronyms>

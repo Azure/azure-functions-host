@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
         private readonly Mock<ITriggeredFunctionExecutor> _mockExecutor;
         private readonly Mock<TraceWriter> _mockTraceWriter;
         private readonly Mock<MessageProcessor> _mockMessageProcessor;
-        private readonly string _entityPath = "test-entity-path";
+        private readonly string _entity = "test-entity-path";
 
         public ServiceBusListenerTests()
         {
@@ -28,24 +28,21 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
 
             string testConnection = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=";
             MessagingFactory messagingFactory = MessagingFactory.CreateFromConnectionString(testConnection);
-            MessageProcessorFactoryContext context = new MessageProcessorFactoryContext(new OnMessageOptions(), _entityPath, _mockTraceWriter.Object);
-            _mockMessageProcessor = new Mock<MessageProcessor>(MockBehavior.Strict, context);
-            Mock<IMessageProcessorFactory> mockMessageProcessorFactory = new Mock<IMessageProcessorFactory>(MockBehavior.Strict);
+            OnMessageOptions messageOptions = new OnMessageOptions();
+            _mockMessageProcessor = new Mock<MessageProcessor>(MockBehavior.Strict, messageOptions);
+            Mock<MessagingProvider> mockMessagingProvider = new Mock<MessagingProvider>(MockBehavior.Strict, testConnection);
 
             ServiceBusConfiguration config = new ServiceBusConfiguration
             {
-                MessageProcessorFactory = mockMessageProcessorFactory.Object
+                MessagingProvider = mockMessagingProvider.Object,
+                MessageOptions = messageOptions
             };
 
-            mockMessageProcessorFactory.Setup(p => p.Create(
-                It.Is<MessageProcessorFactoryContext>(q => 
-                    q.MessageOptions == config.MessageOptions && 
-                    q.Trace == _mockTraceWriter.Object && 
-                    q.EntityPath == _entityPath)))
+            mockMessagingProvider.Setup(p => p.CreateMessageProcessor(_entity, messageOptions, _mockTraceWriter.Object))
                 .Returns(_mockMessageProcessor.Object);
 
             ServiceBusTriggerExecutor triggerExecutor = new ServiceBusTriggerExecutor(_mockExecutor.Object);
-            _listener = new ServiceBusListener(messagingFactory, _entityPath, triggerExecutor, _mockTraceWriter.Object, config);
+            _listener = new ServiceBusListener(messagingFactory, _entity, triggerExecutor, _mockTraceWriter.Object, config);
         }
 
         [Fact]
