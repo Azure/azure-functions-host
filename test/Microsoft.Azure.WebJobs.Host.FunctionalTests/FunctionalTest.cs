@@ -248,7 +248,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Task<IStorageAccount> storageAccountTask = storageAccountProvider.GetStorageAccountAsync(CancellationToken.None);
             storageAccountTask.Wait();
             SingletonConfiguration singletonConfig = new SingletonConfiguration();
-            SingletonManager singletonManager = new SingletonManager(storageAccountTask.Result.CreateBlobClient(), backgroundExceptionDispatcher, singletonConfig);
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            SingletonManager singletonManager = new SingletonManager(storageAccountTask.Result.CreateBlobClient(), backgroundExceptionDispatcher, singletonConfig, trace);
 
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(

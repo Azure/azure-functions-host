@@ -42,6 +42,16 @@ namespace Microsoft.Azure.WebJobs.Host
         public abstract void Trace(TraceLevel level, string source, string message, Exception ex);
 
         /// <summary>
+        /// Writes a <see cref="TraceLevel.Verbose"/> level trace entry.
+        /// </summary>
+        /// <param name="message">The trace message.</param>
+        /// <param name="source">The source of the message.</param>
+        public void Verbose(string message, string source = null)
+        {
+            Trace(TraceLevel.Verbose, source, message, null);
+        }
+
+        /// <summary>
         /// Writes a <see cref="TraceLevel.Info"/> level trace entry.
         /// </summary>
         /// <param name="message">The trace message.</param>

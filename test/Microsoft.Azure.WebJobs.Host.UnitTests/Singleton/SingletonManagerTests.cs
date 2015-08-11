@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private Mock<IStorageBlobDirectory> _mockBlobDirectory;
         private Mock<IBackgroundExceptionDispatcher> _mockExceptionDispatcher;
         private Mock<IStorageBlockBlob> _mockStorageBlob;
+        private TestTraceWriter _trace = new TestTraceWriter(TraceLevel.Verbose);
         private Dictionary<string, string> _mockBlobMetadata;
 
         public SingletonManagerTests()
@@ -49,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             TestHelpers.SetField(_singletonConfig, "_lockPeriod", TimeSpan.FromMilliseconds(500));
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
-            _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig);
+            _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
         }
@@ -89,6 +92,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             // now release the lock and verify no more renewals
             await _singletonManager.ReleaseLockAsync(lockHandle, cancellationToken);
+
+            // verify the traces
+            Assert.Equal(1, _trace.Traces.Count(p => p.Contains("Verbose WebJobs.Execution Waiting for Singleton lock (testid)")));
+            Assert.Equal(1, _trace.Traces.Count(p => p.Contains("Verbose WebJobs.Execution Singleton lock acquired (testid)")));
+            Assert.Equal(renewCount, _trace.Traces.Count(p => p.Contains("Renewing Singleton lock (testid)")));
+            Assert.Equal(1, _trace.Traces.Count(p => p.Contains("Verbose WebJobs.Execution Singleton lock released (testid)")));
+
             renewCount = 0;
             await Task.Delay(1000);
 
