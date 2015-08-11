@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Config
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
 
             // register our trigger binding provider
-            ServiceBusTriggerAttributeBindingProvider triggerBindingProvider = new ServiceBusTriggerAttributeBindingProvider(nameResolver, context.Trace, _serviceBusConfig);
+            ServiceBusTriggerAttributeBindingProvider triggerBindingProvider = new ServiceBusTriggerAttributeBindingProvider(nameResolver, _serviceBusConfig);
             extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
 
             // register our binding provider

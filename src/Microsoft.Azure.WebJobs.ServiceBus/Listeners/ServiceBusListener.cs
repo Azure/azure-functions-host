@@ -23,13 +23,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private MessageReceiver _receiver;
         private bool _disposed;
 
-        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor, TraceWriter trace, ServiceBusConfiguration config)
+        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor, ServiceBusConfiguration config)
         {
             _messagingFactory = messagingFactory;
             _entityPath = entityPath;
             _triggerExecutor = triggerExecutor;
             _cancellationTokenSource = new CancellationTokenSource();
-            _messageProcessor = config.MessagingProvider.CreateMessageProcessor(entityPath, config.MessageOptions, trace);
+            _messageProcessor = config.MessagingProvider.CreateMessageProcessor(entityPath);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

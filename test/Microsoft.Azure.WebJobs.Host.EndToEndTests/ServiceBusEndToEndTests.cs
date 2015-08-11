@@ -100,10 +100,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             try
             {
-                _serviceBusConfig = new ServiceBusConfiguration();
-                _serviceBusConfig.MessagingProvider = new CustomMessagingProvider(_serviceBusConfig.ConnectionString);
-
                 TestTraceWriter trace = new TestTraceWriter(TraceLevel.Info);
+                _serviceBusConfig = new ServiceBusConfiguration();
+                _serviceBusConfig.MessagingProvider = new CustomMessagingProvider(_serviceBusConfig, trace);
+
                 JobHostConfiguration config = new JobHostConfiguration()
                 {
                     NameResolver = _nameResolver,
@@ -373,31 +373,33 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private class CustomMessagingProvider : MessagingProvider
         {
-            private readonly string _connectionString;
+            private readonly ServiceBusConfiguration _config;
+            private readonly TraceWriter _trace;
 
-            public CustomMessagingProvider(string connectionString)
-                : base(connectionString)
+            public CustomMessagingProvider(ServiceBusConfiguration config, TraceWriter trace)
+                : base(config)
             {
-                _connectionString = connectionString;
+                _config = config;
+                _trace = trace;
             }
 
-            public override MessageProcessor CreateMessageProcessor(string entity, OnMessageOptions messageOptions, TraceWriter trace)
+            public override MessageProcessor CreateMessageProcessor(string entityPath)
             {
-                // demonstrate overriding the defalult message options
-                messageOptions = new OnMessageOptions
+                // demonstrate overriding the default message options
+                OnMessageOptions messageOptions = new OnMessageOptions
                 {
                     MaxConcurrentCalls = 3,
                     AutoRenewTimeout = TimeSpan.FromMinutes(1)
                 };
 
-                return new CustomMessageProcessor(messageOptions, trace);
+                return new CustomMessageProcessor(messageOptions, _trace);
             }
 
-            public async override Task<MessagingFactory> CreateMessagingFactoryAsync(string entity)
+            public async override Task<MessagingFactory> CreateMessagingFactoryAsync(string entityPath)
             {
                 // demonstrate that the MessagingFactory can be customized
                 // per queue/topic
-                MessagingFactory factory = MessagingFactory.CreateFromConnectionString(_connectionString);
+                MessagingFactory factory = MessagingFactory.CreateFromConnectionString(_config.ConnectionString);
                 MessagingFactorySettings settings = factory.GetSettings();
                 settings.OperationTimeout = TimeSpan.FromSeconds(15);
 
@@ -406,11 +408,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 return factory;
             }
 
-            public override NamespaceManager CreateNamespaceManager(string entity)
+            public override NamespaceManager NamespaceManager
             {
-                // demonstrate that the NamespaceManager can be customized
-                // per queue/topic
-                return base.CreateNamespaceManager(entity);
+                get
+                {
+                    // demonstrate that the NamespaceManager can be customized
+                    return base.NamespaceManager;
+                }
             }
 
             private class CustomMessageProcessor : MessageProcessor

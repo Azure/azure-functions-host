@@ -5,10 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -30,11 +28,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         private readonly string _subscriptionName;
         private readonly string _entityPath;
         private readonly AccessRights _accessRights;
-        private readonly TraceWriter _trace;
         private readonly ServiceBusConfiguration _config;
 
         public ServiceBusTriggerBinding(string parameterName, Type parameterType, 
-            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName, AccessRights accessRights, TraceWriter trace, ServiceBusConfiguration config)
+            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName, AccessRights accessRights, ServiceBusConfiguration config)
         {
             _parameterName = parameterName;
             _converter = CreateConverter(parameterType);
@@ -44,12 +41,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _queueName = queueName;
             _entityPath = queueName;
             _accessRights = accessRights;
-            _trace = trace;
             _config = config;
         }
 
         public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding,
-            ServiceBusAccount account, string topicName, string subscriptionName, AccessRights accessRights, TraceWriter trace, ServiceBusConfiguration config)
+            ServiceBusAccount account, string topicName, string subscriptionName, AccessRights accessRights, ServiceBusConfiguration config)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -59,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _subscriptionName = subscriptionName;
             _entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
             _accessRights = accessRights;
-            _trace = trace;
             _config = config;
         }
 
@@ -117,11 +112,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             IListenerFactory factory = null;
             if (_queueName != null)
             {
-                factory = new ServiceBusQueueListenerFactory(_account, _queueName, context.Executor, _accessRights, _trace, _config);
+                factory = new ServiceBusQueueListenerFactory(_account, _queueName, context.Executor, _accessRights, _config);
             }
             else
             {
-                factory = new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, context.Executor, _accessRights, _trace, _config);
+                factory = new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, context.Executor, _accessRights, _config);
             }
             return factory.CreateAsync(context.CancellationToken);
         }

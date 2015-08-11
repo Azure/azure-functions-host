@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
         {
             ServiceBusAccount account = new ServiceBusAccount();
             Mock<ITriggeredFunctionExecutor> mockExecutor = new Mock<ITriggeredFunctionExecutor>(MockBehavior.Strict);
-            ServiceBusQueueListenerFactory factory = new ServiceBusQueueListenerFactory(account, "testqueue", mockExecutor.Object, accessRights, new TestTraceWriter(TraceLevel.Verbose), new ServiceBusConfiguration());
+            ServiceBusQueueListenerFactory factory = new ServiceBusQueueListenerFactory(account, "testqueue", mockExecutor.Object, accessRights, new ServiceBusConfiguration());
 
             IListener listener = await factory.CreateAsync(CancellationToken.None);
             Assert.NotNull(listener);

@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
@@ -15,75 +14,67 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// </summary>
     public class MessagingProvider
     {
-        private readonly string _connectionString;
+        private readonly ServiceBusConfiguration _config;
+        private NamespaceManager _namespaceManager;
 
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="connectionString">The ServiceBus connection string.</param>
-        public MessagingProvider(string connectionString)
+        /// <param name="config">The <see cref="ServiceBusConfiguration"/>.</param>
+        public MessagingProvider(ServiceBusConfiguration config)
         {
-            if (string.IsNullOrEmpty(connectionString))
+            if (config == null)
             {
-                throw new ArgumentNullException("connectionString");
+                throw new ArgumentNullException("config");
             }
-            _connectionString = connectionString;
+            _config = config;
+        }
+
+        /// <summary>
+        /// Gets the <see cref="NamespaceManager"/> to use.
+        /// </summary>
+        public virtual NamespaceManager NamespaceManager
+        {
+            get
+            {
+                if (_namespaceManager == null)
+                {
+                    _namespaceManager = NamespaceManager.CreateFromConnectionString(_config.ConnectionString);
+                }
+                return _namespaceManager;
+            }
         }
 
         /// <summary>
         /// Creates a <see cref="MessagingFactory"/> for the specified ServiceBus entity.
         /// </summary>
-        /// <param name="entity">The ServiceBus entity to create a <see cref="MessagingFactory"/> for.</param>
+        /// <param name="entityPath">The ServiceBus entity to create a <see cref="MessagingFactory"/> for.</param>
         /// <remarks>
         /// This method is async because many of the interesting <see cref="MessagingFactory"/>
         /// create methods that overrides might want to call are async.
         /// </remarks>
         /// <returns>A Task that returns the <see cref="MessagingFactory"/>.</returns>
-        public virtual Task<MessagingFactory> CreateMessagingFactoryAsync(string entity)
+        public virtual Task<MessagingFactory> CreateMessagingFactoryAsync(string entityPath)
         {
-            if (string.IsNullOrEmpty(entity))
+            if (string.IsNullOrEmpty(entityPath))
             {
-                throw new ArgumentNullException("entity");
+                throw new ArgumentNullException("entityPath");
             }
-            return Task.FromResult(MessagingFactory.CreateFromConnectionString(_connectionString));
-        }
-
-        /// <summary>
-        /// Creates a <see cref="NamespaceManager"/> for the specified ServiceBus entity.
-        /// </summary>
-        /// <param name="entity">The ServiceBus entity to create a <see cref="NamespaceManager"/> for.</param>
-        /// <returns>The <see cref="NamespaceManager"/>.</returns>
-        public virtual NamespaceManager CreateNamespaceManager(string entity)
-        {
-            if (string.IsNullOrEmpty(entity))
-            {
-                throw new ArgumentNullException("entity");
-            }
-            return NamespaceManager.CreateFromConnectionString(_connectionString);
+            return Task.FromResult(MessagingFactory.CreateFromConnectionString(_config.ConnectionString));
         }
 
         /// <summary>
         /// Creates a <see cref="MessageProcessor"/> using the specified context.
         /// </summary>
-        /// <param name="entity">The ServiceBus entity.</param>
-        /// <param name="messageOptions">The <see cref="OnMessageOptions"/> to use.</param>
-        /// <param name="trace">The <see cref="TraceWriter"/> to use.</param>
+        /// <param name="entityPath">The ServiceBus entity to create a <see cref="MessageProcessor"/> for.</param>
         /// <returns>The <see cref="MessageProcessor"/>.</returns>
-        public virtual MessageProcessor CreateMessageProcessor(string entity, OnMessageOptions messageOptions, TraceWriter trace)
+        public virtual MessageProcessor CreateMessageProcessor(string entityPath)
         {
-            if (string.IsNullOrEmpty(entity))
+            if (string.IsNullOrEmpty(entityPath))
             {
-                throw new ArgumentNullException("entity");
+                throw new ArgumentNullException("entityPath");
             }
-            if (messageOptions == null)
-            {
-                throw new ArgumentNullException("messageOptions");
-            }
-            if (trace == null)
-            {
-                throw new ArgumentNullException("trace");
-            }
-            return new MessageProcessor(messageOptions);
+            return new MessageProcessor(_config.MessageOptions);
         }
     }
 }

@@ -44,10 +44,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             }
             set
             {
-                if (_messagingProvider != null)
-                {
-                    throw new InvalidOperationException("ConnectionString cannot be modified after the MessagingProvider has been initialized.");
-                }
                 _connectionString = value;
                 _connectionStringSet = true;
             }
@@ -69,9 +65,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 if (_messagingProvider == null)
                 {
-                    // Lazy creation, to allow ConnectionString to be configured before the
-                    // provider is created.
-                    _messagingProvider = new MessagingProvider(ConnectionString);
+                    _messagingProvider = new MessagingProvider(this);
                 }
                 return _messagingProvider;
             }
