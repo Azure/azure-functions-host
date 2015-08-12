@@ -16,6 +16,8 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
     public sealed class SingletonAttribute : Attribute
     {
+        private int? _lockAcquisitionTimeout;
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
@@ -44,11 +46,25 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets or sets the timeout value for lock acquisition. If the lock is not
-        /// obtained within this interval, the invocation will fail.
+        /// Gets or sets the timeout value in seconds for lock acquisition.
+        /// If the lock is not obtained within this interval, the invocation will fail.
         /// When set, this value will override the corresponding global configuration
         /// value set in JobHostConfiguration.Singleton.
         /// </summary>
-        public TimeSpan? LockAcquisitionTimeout { get; set; } 
+        public int? LockAcquisitionTimeout 
+        { 
+            get
+            {
+                return _lockAcquisitionTimeout;
+            }
+            set
+            {
+                if (value != null && value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+                _lockAcquisitionTimeout = value;
+            }
+        } 
     }
 }

@@ -62,7 +62,9 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (lockHandle == null)
             {
-                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout ?? _config.LockAcquisitionTimeout;
+                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout != null 
+                    ? TimeSpan.FromSeconds(attribute.LockAcquisitionTimeout.Value) : 
+                    _config.LockAcquisitionTimeout;
                 throw new TimeoutException(string.Format("Unable to acquire singleton lock blob lease for blob '{0}' (timeout of {1} exceeded).", lockId, acquisitionTimeout.ToString("g")));
             }
 
@@ -81,7 +83,9 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 // Someone else has the lease. Continue trying to periodically get the lease for
                 // a period of time
-                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout ?? _config.LockAcquisitionTimeout;
+                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout != null
+                    ? TimeSpan.FromSeconds(attribute.LockAcquisitionTimeout.Value) :
+                    _config.LockAcquisitionTimeout;
                 double remainingWaitTime = acquisitionTimeout.TotalMilliseconds;
                 while (string.IsNullOrEmpty(leaseId) && remainingWaitTime > 0)
                 {
@@ -93,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (string.IsNullOrEmpty(leaseId))
             {
+                _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Unable to acquire Singleton lock ({0}).", lockId), source: TraceSource.Execution);
                 return null;
             }
 

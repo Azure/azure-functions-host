@@ -54,6 +54,28 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
+        public async Task StartAsync_DefaultsAcquisitionTimeout()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            SingletonManager.SingletonLockHandle lockHandle = new SingletonManager.SingletonLockHandle();
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken))
+                .Callback<string, string, SingletonAttribute, CancellationToken>(
+                    (mockLockId, mockInstanceId, mockAttribute, mockCancellationToken) => 
+                    {
+                        Assert.Equal(15, mockAttribute.LockAcquisitionTimeout);
+                    }) 
+                .ReturnsAsync(lockHandle);
+            _mockInnerListener.Setup(p => p.StartAsync(cancellationToken)).Returns(Task.FromResult(true));
+
+            Assert.Null(_attribute.LockAcquisitionTimeout);
+            await _listener.StartAsync(cancellationToken);
+            Assert.Equal(15, _attribute.LockAcquisitionTimeout);
+
+            _mockSingletonManager.VerifyAll();
+            _mockInnerListener.VerifyAll();
+        }
+
+        [Fact]
         public async Task StopAsync_Noops_WhenLockNotAquired()
         {
             CancellationToken cancellationToken = new CancellationToken();
