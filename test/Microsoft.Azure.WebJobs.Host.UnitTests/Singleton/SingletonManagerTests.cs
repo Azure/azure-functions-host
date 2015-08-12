@@ -183,11 +183,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
-        public async Task GetLockOwnerAsync_QueriesLeaseMetadata_ReturnsExpectedResult()
+        public async Task GetLockOwnerAsync_LeaseLocked_ReturnsOwner()
         {
             CancellationToken cancellationToken = new CancellationToken();
             _mockStorageBlob.SetupGet(p => p.Metadata).Returns(_mockBlobMetadata);
             _mockStorageBlob.Setup(p => p.FetchAttributesAsync(cancellationToken)).Returns(Task.FromResult(true));
+
+            Mock<IStorageBlobProperties> mockBlobProperties = new Mock<IStorageBlobProperties>(MockBehavior.Strict);
+            mockBlobProperties.Setup(p => p.LeaseState).Returns(LeaseState.Leased);
+            _mockStorageBlob.SetupGet(p => p.Properties).Returns(mockBlobProperties.Object);
 
             string lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
             Assert.Equal(null, lockOwner);
@@ -196,6 +200,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
             Assert.Equal(TestLockId, lockOwner);
 
+            mockBlobProperties.VerifyAll();
+            _mockStorageBlob.VerifyAll();
+        }
+
+        [Fact]
+        public async Task GetLockOwnerAsync_LeaseAvailable_ReturnsNull()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            _mockStorageBlob.Setup(p => p.FetchAttributesAsync(cancellationToken)).Returns(Task.FromResult(true));
+
+            Mock<IStorageBlobProperties> mockBlobProperties = new Mock<IStorageBlobProperties>(MockBehavior.Strict);
+            mockBlobProperties.Setup(p => p.LeaseState).Returns(LeaseState.Available);
+            mockBlobProperties.Setup(p => p.LeaseStatus).Returns(LeaseStatus.Unlocked);
+            _mockStorageBlob.SetupGet(p => p.Properties).Returns(mockBlobProperties.Object);
+
+            string lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
+            Assert.Equal(null, lockOwner);
+
+            mockBlobProperties.VerifyAll();
             _mockStorageBlob.VerifyAll();
         }
 

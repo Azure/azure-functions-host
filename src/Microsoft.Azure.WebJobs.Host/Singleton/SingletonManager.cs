@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -38,9 +39,17 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _directory = blobClient.GetContainerReference(HostContainerNames.Hosts)
-                                            .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
+                                   .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
             _config = config;
             _trace = trace;
+        }
+
+        internal virtual SingletonConfiguration Config
+        {
+            get
+            {
+                return _config;
+            }
         }
 
         // for testing
@@ -159,6 +168,14 @@ namespace Microsoft.Azure.WebJobs.Host
             IStorageBlockBlob lockBlob = _directory.GetBlockBlobReference(lockId);
 
             await ReadLeaseBlobMetadata(lockBlob, cancellationToken);
+
+            // if the lease is Available, then there is no current owner
+            // (any existing owner value is the last owner that held the lease)
+            if (lockBlob.Properties.LeaseState == LeaseState.Available &&
+                lockBlob.Properties.LeaseStatus == LeaseStatus.Unlocked)
+            {
+                return null;
+            }
 
             string owner = string.Empty;
             lockBlob.Metadata.TryGetValue(FunctionInstanceMetadataKey, out owner);

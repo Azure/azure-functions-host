@@ -29,18 +29,21 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             string lockId = SingletonManager.FormatLockId(_method, _attribute.Scope);
             lockId += ".Listener";
 
-            // for listener locks, if the user hasn't explicitly set an override,
-            // we want to default the timeout to something lower than the global default,
-            // since we want startup to be relatively fast.
+            // for listener locks, if the user hasn't explicitly set an override on the
+            // attribute, we want to default the timeout to the lock period. We want to
+            // stop as soon as possible (since we want startup to be relatively fast)
+            // however we can't give up before waiting for a natural lease expiry.
             if (_attribute.LockAcquisitionTimeout == null)
             {
-                _attribute.LockAcquisitionTimeout = 15;
+                _attribute.LockAcquisitionTimeout = (int)_singletonManager.Config.LockPeriod.TotalSeconds;
             }
  
             _lockHandle = await _singletonManager.TryLockAsync(lockId, null, _attribute, cancellationToken);
 
             if (_lockHandle == null)
             {
+                // if we're unable to acquire the lock, it means another listener
+                // has it so we return w/o starting our listener
                 return;
             }
 

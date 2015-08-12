@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
     public class SingletonListenerTests
     {
+        private readonly SingletonConfiguration _config;
         private readonly Mock<SingletonManager> _mockSingletonManager;
         private readonly Mock<IListener> _mockInnerListener;
         private readonly SingletonListener _listener;
@@ -22,7 +24,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             MethodInfo methodInfo = this.GetType().GetMethod("TestJob", BindingFlags.Static|BindingFlags.NonPublic);
             _attribute = new SingletonAttribute();
+            _config = new SingletonConfiguration
+            {
+                LockPeriod = TimeSpan.FromSeconds(20)
+            };
             _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
+            _mockSingletonManager.SetupGet(p => p.Config).Returns(_config);
             _mockInnerListener = new Mock<IListener>(MockBehavior.Strict);
             _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object);
             _lockId = SingletonManager.FormatLockId(methodInfo, _attribute.Scope) + ".Listener";
@@ -56,20 +63,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [Fact]
         public async Task StartAsync_DefaultsAcquisitionTimeout()
         {
+            int expectedTimeoutSeconds = (int)_config.LockPeriod.TotalSeconds;
             CancellationToken cancellationToken = new CancellationToken();
             SingletonManager.SingletonLockHandle lockHandle = new SingletonManager.SingletonLockHandle();
             _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken))
                 .Callback<string, string, SingletonAttribute, CancellationToken>(
                     (mockLockId, mockInstanceId, mockAttribute, mockCancellationToken) => 
                     {
-                        Assert.Equal(15, mockAttribute.LockAcquisitionTimeout);
+                        Assert.Equal(expectedTimeoutSeconds, mockAttribute.LockAcquisitionTimeout);
                     }) 
                 .ReturnsAsync(lockHandle);
             _mockInnerListener.Setup(p => p.StartAsync(cancellationToken)).Returns(Task.FromResult(true));
 
             Assert.Null(_attribute.LockAcquisitionTimeout);
             await _listener.StartAsync(cancellationToken);
-            Assert.Equal(15, _attribute.LockAcquisitionTimeout);
+            Assert.Equal(expectedTimeoutSeconds, _attribute.LockAcquisitionTimeout);
 
             _mockSingletonManager.VerifyAll();
             _mockInnerListener.VerifyAll();

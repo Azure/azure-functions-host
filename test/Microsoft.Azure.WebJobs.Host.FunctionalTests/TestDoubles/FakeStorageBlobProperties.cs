@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
@@ -11,5 +12,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public string ETag { get; set; }
 
         public DateTimeOffset? LastModified { get; set; }
+
+        public LeaseState LeaseState { get; set; }
+
+        public LeaseStatus LeaseStatus { get; set; }
     }
 }
