@@ -406,17 +406,13 @@ namespace Microsoft.Azure.WebJobs.Host
                 {
                     if (exception.IsServerSideError())
                     {
-                        // The next execution should occur more quickly (try to update the visibility before it expires).
+                        // The next execution should occur more quickly (try to renew the lease before expires).
                         delay = _speedupStrategy.GetNextDelay(executionSucceeded: false);
-                    }
-                    else if (exception.IsNotFound())
-                    {
-                        // There's no point to executing again. If the blob lease is deleted, we've permanently lost
-                        // ownership.
-                        delay = Timeout.InfiniteTimeSpan;
                     }
                     else
                     {
+                        // If we've lost the lease or cannot restablish it, we want to fail any
+                        // in progress function execution
                         throw;
                     }
                 }
