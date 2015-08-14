@@ -182,6 +182,7 @@ namespace Dashboard.Indexers
             return snapshots;
         }
 
+        [SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         internal static ParameterSnapshot CreateParameterSnapshot(ParameterDescriptor parameter)
         {
             // If display hints have already been provided by the descriptor

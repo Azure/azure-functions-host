@@ -29,6 +29,7 @@ namespace Dashboard.Data
             return account;
         }
 
+        [CLSCompliant(false)]
         public static IReadOnlyDictionary<string, CloudStorageAccount> GetAccounts()
         {
             Dictionary<string, CloudStorageAccount> accounts = new Dictionary<string, CloudStorageAccount>();
