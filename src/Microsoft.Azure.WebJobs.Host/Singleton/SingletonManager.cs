@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 {
                     if (exception.IsServerSideError())
                     {
-                        // The next execution should occur more quickly (try to renew the lease before expires).
+                        // The next execution should occur more quickly (try to renew the lease before it expires).
                         delay = _speedupStrategy.GetNextDelay(executionSucceeded: false);
                     }
                     else

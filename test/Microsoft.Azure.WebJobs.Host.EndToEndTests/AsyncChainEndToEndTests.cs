@@ -62,7 +62,47 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
+                TextWriter hold = Console.Out;
+                StringWriter consoleOutput = new StringWriter();
+                Console.SetOut(consoleOutput);
+
                 await AsyncChainEndToEndInternal();
+
+                string firstQueueName = _resolver.ResolveInString(Queue1Name);
+                string secondQueueName = _resolver.ResolveInString(Queue2Name);
+                string blobContainerName = _resolver.ResolveInString(ContainerName);
+                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None).OrderBy(p => p).ToArray();
+                string[] expectedOutputLines = new string[]
+                {
+                    "Found the following functions:",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.WriteStartDataMessageToQueue",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToQueueAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToBlobAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
+                    "Job host started",
+                    "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
+                    "Executed: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded)",
+                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
+                    "Executed: 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded)",
+                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
+                    "Executed: 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded)",
+                    string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
+                    "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
+                    "Job host stopped",
+                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
+                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
+                }.OrderBy(p => p).ToArray();
+
+                string error = consoleOutputLines.SingleOrDefault(p => p.Contains("Function had errors"));
+                Assert.Equal(null, error);
+
+                Assert.Equal(
+                    string.Join(Environment.NewLine, expectedOutputLines),
+                    string.Join(Environment.NewLine, consoleOutputLines)
+                    );
+
+                Console.SetOut(hold);
             }
         }
 
@@ -199,10 +239,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private async Task AsyncChainEndToEndInternal()
         {
-            TextWriter hold = Console.Out;
-            StringWriter consoleOutput = new StringWriter();
-            Console.SetOut(consoleOutput);
-
             JobHost host = new JobHost(_hostConfig);
 
             await host.StartAsync();
@@ -218,42 +254,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await host.CallAsync(typeof(AsyncChainEndToEndTests).GetMethod("ReadResultBlob"));
             Assert.Equal("async works", _finalBlobContent);
-
-            string firstQueueName = _resolver.ResolveInString(Queue1Name);
-            string secondQueueName = _resolver.ResolveInString(Queue2Name);
-            string blobContainerName = _resolver.ResolveInString(ContainerName);
-            string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None).OrderBy(p => p).ToArray();
-            string[] expectedOutputLines = new string[]
-                {
-                    "Found the following functions:",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.WriteStartDataMessageToQueue",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToQueueAsync",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToBlobAsync",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
-                    "Job host started",
-                    "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
-                    "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
-                    "Job host stopped",
-                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
-                }.OrderBy(p => p).ToArray();
-
-            string error = consoleOutputLines.SingleOrDefault(p => p.Contains("Function had errors"));
-            Assert.Equal(null, error);
-
-            Assert.Equal(
-                string.Join(Environment.NewLine, expectedOutputLines), 
-                string.Join(Environment.NewLine, consoleOutputLines)
-                );
-
-            Console.SetOut(hold);
         }
 
         private class CustomQueueProcessorFactory : IQueueProcessorFactory
