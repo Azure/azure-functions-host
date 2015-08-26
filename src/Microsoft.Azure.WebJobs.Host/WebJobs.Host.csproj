@@ -858,13 +858,13 @@
     <Compile Include="INameResolver.cs" />
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
-    <Compile Include="Executors\AmbientConnectionStringProvider.cs" />
+    <Compile Include="AmbientConnectionStringProvider.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Loggers\PersistentQueueLogger.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Executors\DefaultStorageAccountProvider.cs" />
     <Compile Include="Indexers\FunctionIndexer.cs" />
-    <Compile Include="Executors\IConnectionStringProvider.cs" />
+    <Compile Include="IConnectionStringProvider.cs" />
     <Compile Include="Timers\LinearSpeedupStrategy.cs" />
     <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />

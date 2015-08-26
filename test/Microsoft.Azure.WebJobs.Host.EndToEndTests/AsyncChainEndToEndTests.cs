@@ -55,11 +55,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _hostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(2);
 
             _storageAccount = fixture.StorageAccount;
-
-            CustomQueueProcessor.BeginProcessingCount = 0;
-            CustomQueueProcessor.CompleteProcessingCount = 0;
-            CustomQueueProcessorFactory.CustomQueueProcessorCount = 0;
-            CustomQueueProcessorFactory.CustomQueues = new List<string>();
         }
 
         [Fact]
@@ -117,15 +112,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
-                _hostConfig.Queues.QueueProcessorFactory = new CustomQueueProcessorFactory();
+                CustomQueueProcessorFactory factory = new CustomQueueProcessorFactory();
+                _hostConfig.Queues.QueueProcessorFactory = factory;
 
                 await AsyncChainEndToEndInternal();
 
-                Assert.Equal(2, CustomQueueProcessorFactory.CustomQueueProcessorCount);
-                Assert.Equal(2, CustomQueueProcessorFactory.CustomQueues.Count);
-                Assert.True(CustomQueueProcessorFactory.CustomQueues.All(p => p.StartsWith("asynce2eq")));
-                Assert.Equal(2, CustomQueueProcessor.BeginProcessingCount);
-                Assert.Equal(2, CustomQueueProcessor.CompleteProcessingCount);
+                Assert.Equal(2, factory.CustomQueueProcessors.Count);
+                Assert.True(factory.CustomQueueProcessors.All(p => p.Context.Queue.Name.StartsWith("asynce2eq")));
+                Assert.Equal(2, factory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount));
+                Assert.Equal(2, factory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount));
             }
         }
 
@@ -264,14 +259,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private class CustomQueueProcessorFactory : IQueueProcessorFactory
         {
-            public static int CustomQueueProcessorCount = 0;
-            public static List<string> CustomQueues = new List<string>();
+            public List<CustomQueueProcessor> CustomQueueProcessors = new List<CustomQueueProcessor>();
 
             public QueueProcessor Create(QueueProcessorFactoryContext context)
             {
-                CustomQueueProcessorCount++;
-                CustomQueues.Add(context.Queue.Name);
-
                 // demonstrates how the Queue.ServiceClient options can be configured
                 context.Queue.ServiceClient.DefaultRequestOptions.ServerTimeout = TimeSpan.FromSeconds(30);
 
@@ -282,18 +273,23 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 context.BatchSize = 30;
                 context.NewBatchThreshold = 100;
 
-                return new CustomQueueProcessor(context);
+                CustomQueueProcessor processor = new CustomQueueProcessor(context);
+                CustomQueueProcessors.Add(processor);
+                return processor;
             }
         }
 
         public class CustomQueueProcessor : QueueProcessor
         {
-            public static int BeginProcessingCount = 0;
-            public static int CompleteProcessingCount = 0;
+            public int BeginProcessingCount = 0;
+            public int CompleteProcessingCount = 0;
 
             public CustomQueueProcessor(QueueProcessorFactoryContext context) : base (context)
             {
+                Context = context;
             }
+
+            public QueueProcessorFactoryContext Context { get; private set; }
 
             public override Task<bool> BeginProcessingMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
             {

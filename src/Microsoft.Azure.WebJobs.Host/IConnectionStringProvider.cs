@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Defines an interface for providing connection strings.

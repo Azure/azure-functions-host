@@ -4,7 +4,7 @@
 using System;
 using System.Configuration;
 
-namespace Microsoft.Azure.WebJobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Connection string provider that reads from configuration first, and if a connection
@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         /// <summary>
-        /// Reads a connection string from the connectionStrings configuration section, or from an environment variable
-        /// if it is missing from the configuration file, or is an empty string.
+        /// Attempts to first read a connection string from the connectionStrings configuration section.
+        /// If not found there, it will attempt to read from environment variables.
         /// </summary>
         /// <param name="connectionStringName">The name of the connection string to look up.</param>
         /// <returns>The connection string, or <see langword="null"/> if no connection string was found.</returns>
