@@ -15,8 +15,8 @@
     <tags>Microsoft Azure WebJobs Jobs Storage Table Blob Queue windowsazureofficial Web</tags>
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs.Core" version="[$WebJobsPackageVersion$]" />
-      <dependency id="Newtonsoft.Json" version="6.0.4"/>
-      <dependency id="WindowsAzure.Storage" version="4.0.1"/>
+      <dependency id="Newtonsoft.Json" version="6.0.8"/>
+      <dependency id="WindowsAzure.Storage" version="4.3.0"/>
     </dependencies>
   </metadata>
 </package>
