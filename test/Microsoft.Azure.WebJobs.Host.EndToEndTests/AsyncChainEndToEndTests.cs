@@ -55,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _hostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(2);
 
             _storageAccount = fixture.StorageAccount;
+
+            CustomQueueProcessor.BeginProcessingCount = 0;
+            CustomQueueProcessor.CompleteProcessingCount = 0;
+            CustomQueueProcessorFactory.CustomQueueProcessorCount = 0;
+            CustomQueueProcessorFactory.CustomQueues = new List<string>();
         }
 
         [Fact]
@@ -94,13 +99,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
                 }.OrderBy(p => p).ToArray();
 
-                string error = consoleOutputLines.SingleOrDefault(p => p.Contains("Function had errors"));
-                Assert.Equal(null, error);
-
-                Assert.Equal(
+                bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
+                if (!hasError)
+                {
+                    Assert.Equal(
                     string.Join(Environment.NewLine, expectedOutputLines),
                     string.Join(Environment.NewLine, consoleOutputLines)
                     );
+                }
 
                 Console.SetOut(hold);
             }
@@ -146,19 +152,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 await host.StopAsync();
 
-                string error = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Contains("Error")));
-                Assert.Equal(string.Empty, error);
+                bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Contains("Error"))).Any();
+                if (!hasError)
+                {
+                    Assert.Equal(14, trace.Traces.Count);
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TraceWriter log")));
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
 
-                Assert.Equal(14, trace.Traces.Count);
-                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TraceWriter log")));
-                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
-                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
-
-                consoleOutput.Flush();
-                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                Assert.Equal(16, consoleOutputLines.Length);
-                Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
-                Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                    string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                    Assert.Equal(16, consoleOutputLines.Length);
+                    Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
+                    Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                }
             }
 
             Console.SetOut(hold);
