@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,7 +15,6 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Newtonsoft.Json.Serialization;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -119,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 Assert.Equal(2, factory.CustomQueueProcessors.Count);
                 Assert.True(factory.CustomQueueProcessors.All(p => p.Context.Queue.Name.StartsWith("asynce2eq")));
-                Assert.Equal(2, factory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount));
-                Assert.Equal(2, factory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount));
+                Assert.True(factory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
+                Assert.True(factory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
             }
         }
 
@@ -293,13 +291,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             public override Task<bool> BeginProcessingMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
             {
-                Interlocked.Increment(ref BeginProcessingCount);
+                BeginProcessingCount++;
                 return base.BeginProcessingMessageAsync(message, cancellationToken);
             }
 
             public override Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
             {
-                Interlocked.Increment(ref CompleteProcessingCount);
+                CompleteProcessingCount++;
                 return base.CompleteProcessingMessageAsync(message, result, cancellationToken);
             }
 

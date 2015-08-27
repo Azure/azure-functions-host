@@ -219,13 +219,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Job host stopped"
                 }.OrderBy(p => p).ToArray();
 
-                string error = consoleOutputLines.SingleOrDefault(p => p.Contains("Function had errors"));
-                Assert.Equal(null, error);
-
-                Assert.Equal(
-                    string.Join(Environment.NewLine, expectedOutputLines),
-                    string.Join(Environment.NewLine, consoleOutputLines)
-                );
+                bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
+                if (!hasError)
+                {
+                    Assert.Equal(
+                        string.Join(Environment.NewLine, expectedOutputLines),
+                        string.Join(Environment.NewLine, consoleOutputLines)
+                    );
+                } 
             }
         }
 
