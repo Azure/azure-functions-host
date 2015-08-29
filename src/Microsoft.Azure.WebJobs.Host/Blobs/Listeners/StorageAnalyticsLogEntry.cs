@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             BlobPath blobPath;
-            if (!BlobPath.TryParse(path, out blobPath))
+            if (!BlobPath.TryParse(path, false, out blobPath))
             {
                 throw new FormatException("Failed to parse RequestedObjectKey property of the log entry. " +
                     "Blob identifiers must be in the format container/blob.");

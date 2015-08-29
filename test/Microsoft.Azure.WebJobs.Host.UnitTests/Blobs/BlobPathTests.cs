@@ -41,5 +41,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 
             Assert.NotNull(blobPath);
         }
+
+        [Fact]
+        public void ToString_BlobPath_ReturnsExpectedResult()
+        {
+            BlobPath path = BlobPath.Parse("container/blob", false);
+            Assert.Equal("container/blob", path.ToString());
+
+            path = BlobPath.Parse("container", true);
+            Assert.Equal("container", path.ToString());
+
+            path = new BlobPath("container", null);
+            Assert.Equal("container", path.ToString());
+        }
     }
 }

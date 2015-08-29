@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                     t => CloudBlobStreamObjectBinder.CreateReadBindingProvider(t)));
             }
 
-            return new CompositeArgumentBindingProvider(innerProviders);
+            return new CompositeBlobArgumentBindingProvider(innerProviders);
         }
 
         private static IBlobArgumentBindingProvider CreateConverterProvider<TValue, TConverter>()

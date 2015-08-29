@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         private static IDictionary<string, string> Match(string a, string b)
         {
             var pathA = BlobPathSource.Create(a);
-            var pathB = BlobPath.Parse(b);
+            var pathB = BlobPath.Parse(b, false);
 
             IReadOnlyDictionary<string, object> bindingData = pathA.CreateBindingData(pathB);
 

@@ -67,6 +67,7 @@
       <Word>BlobAttribute</Word>
       <Word>ConnectionString</Word>
       <Word>MessagingProvider</Word>
+      <Word>CloudBlobContainer</Word>
     </Recognized>
     <Deprecated/>
     <Compound>

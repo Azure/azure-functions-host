@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -9,7 +10,11 @@ using System.IO;
 
 namespace Microsoft.Azure.WebJobs
 {
-    /// <summary>Represents an attribute that binds a parameter to an Azure Blob.</summary>
+    /// <summary>
+    /// Represents an attribute for binding parameters to Azure Blobs.
+    /// The attribute supports binding to single blobs, blob containers,
+    /// or collections of blobs.
+    /// </summary>
     /// <remarks>
     /// The method parameter type can be one of the following:
     /// <list type="bullet">
@@ -27,6 +32,17 @@ namespace Microsoft.Azure.WebJobs
     /// A custom type implementing <see cref="ICloudBlobStreamBinder{T}"/> (normally for reading, or as an out parameter for
     /// writing)
     /// </description></item>
+    /// </list>
+    /// In addition to single blob bindings,  parameters can be bound to multiple blobs.
+    /// The parameter type can be CloudBlobContainer, or <see cref="IEnumerable{T}"/>
+    /// of one of the following element types: 
+    /// <list type = "bullet" >
+    /// <item><description>ICloudBlob</description></item>
+    /// <item><description>CloudBlockBlob</description></item>
+    /// <item><description>CloudPageBlob</description></item>
+    /// <item><description>Stream</description></item>
+    /// <item><description>string</description></item>
+    /// <item><description>TextReader</description></item>
     /// </list>
     /// </remarks>
     [SuppressMessage("Microsoft.Design", "CA1019:DefineAccessorsForAttributeArguments", Justification = "There is an accessor for FileAccess")]

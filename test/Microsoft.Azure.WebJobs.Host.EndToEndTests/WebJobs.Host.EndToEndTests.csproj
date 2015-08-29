@@ -94,6 +94,7 @@
     </Compile>
     <Compile Include="AsyncCancellationEndToEndTests.cs" />
     <Compile Include="AsyncChainEndToEndTests.cs" />
+    <Compile Include="BlobBindingEndToEndTests.cs" />
     <Compile Include="BlobToCustomObjectBinder.cs" />
     <Compile Include="CustomObject.cs" />
     <Compile Include="AzureStorageEndToEndTests.cs" />

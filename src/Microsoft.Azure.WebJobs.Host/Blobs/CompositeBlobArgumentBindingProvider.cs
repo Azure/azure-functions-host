@@ -7,11 +7,11 @@ using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    internal class CompositeArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class CompositeBlobArgumentBindingProvider : IBlobArgumentBindingProvider
     {
         private readonly IEnumerable<IBlobArgumentBindingProvider> _providers;
 
-        public CompositeArgumentBindingProvider(IEnumerable<IBlobArgumentBindingProvider> providers)
+        public CompositeBlobArgumentBindingProvider(IEnumerable<IBlobArgumentBindingProvider> providers)
         {
             _providers = providers;
         }

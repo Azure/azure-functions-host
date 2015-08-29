@@ -61,11 +61,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             IBindableBlobPath path, Type argumentType)
         {
             return new CompositeAsyncObjectToTypeConverter<IStorageBlob>(
-                new OutputConverter<IStorageBlob>(new AsyncConverter<IStorageBlob, IStorageBlob>(
+                new BlobOutputConverter<IStorageBlob>(new AsyncConverter<IStorageBlob, IStorageBlob>(
                     new IdentityConverter<IStorageBlob>())),
-                new OutputConverter<ICloudBlob>(new AsyncConverter<ICloudBlob, IStorageBlob>(
+                new BlobOutputConverter<ICloudBlob>(new AsyncConverter<ICloudBlob, IStorageBlob>(
                     new CloudBlobToStorageBlobConverter())),
-                new OutputConverter<string>(new StringToStorageBlobConverter(client, path, argumentType)));
+                new BlobOutputConverter<string>(new StringToStorageBlobConverter(client, path, argumentType)));
         }
 
         private Task<IValueProvider> BindBlobAsync(IStorageBlob value, ValueBindingContext context)

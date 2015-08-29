@@ -365,6 +365,12 @@
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBindingProvider.cs" />
+    <Compile Include="Blobs\Bindings\BlobContainerBinding.cs" />
+    <Compile Include="Blobs\Bindings\CloudBlobContainerArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\Bindings\CloudBlobEnumerableArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\BlobContainerOutputConverter.cs" />
+    <Compile Include="Blobs\CompositeBlobContainerArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\IBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="CompositeTraceWriter.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
@@ -385,6 +391,7 @@
     <Compile Include="Executors\TriggeredFunctionData.cs" />
     <Compile Include="Executors\TriggeredFunctionExecutor.cs" />
     <Compile Include="Extensions\IExtensionRegistryExtensions.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IContextSetter.cs" />
     <Compile Include="IContextGetter.cs" />
     <Compile Include="Bindings\ObjectToTypeConverterFactory.cs" />
@@ -765,7 +772,7 @@
     <Compile Include="Blobs\BlobWatchableValueProvider.cs" />
     <Compile Include="Blobs\BlobWatchableDisposableValueProvider.cs" />
     <Compile Include="Blobs\CloudBlobStreamObjectBinder.cs" />
-    <Compile Include="Blobs\CompositeArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\CompositeBlobArgumentBindingProvider.cs" />
     <Compile Include="Blobs\ConverterArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\OutObjectArgumentBindingProvider.cs" />
     <Compile Include="Blobs\ObjectArgumentBindingProvider.cs" />
@@ -778,7 +785,7 @@
     <Compile Include="Blobs\TextReaderArgumentBindingProvider.cs" />
     <Compile Include="Blobs\StreamArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Triggers\BlobTriggerBinding.cs" />
-    <Compile Include="Blobs\OutputConverter.cs" />
+    <Compile Include="Blobs\BlobOutputConverter.cs" />
     <Compile Include="Blobs\Bindings\StringToStorageBlobConverter.cs" />
     <Compile Include="Blobs\WatchableReadStream.cs" />
     <Compile Include="Blobs\Triggers\StringToStorageBlobConverter.cs" />

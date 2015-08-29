@@ -17,11 +17,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 throw new ArgumentNullException("containerName");
             }
 
-            if (blobName == null)
-            {
-                throw new ArgumentNullException("blobName");
-            }
-
             _containerName = containerName;
             _blobName = blobName;
         }
@@ -38,7 +33,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public override string ToString()
         {
-            return _containerName + "/" + _blobName;
+            string result = _containerName;
+            if (!string.IsNullOrEmpty(_blobName))
+            {
+                result += "/" + _blobName;
+            }
+
+            return result;
         }
 
         public static BlobPath ParseAndValidate(string value)
@@ -54,11 +55,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return path;
         }
 
-        public static BlobPath Parse(string value)
+        public static BlobPath Parse(string value, bool isContainerBinding)
         {
             BlobPath path;
 
-            if (!TryParse(value, out path))
+            if (!TryParse(value, isContainerBinding, out path))
             {
                 throw new FormatException("Blob identifiers must be in the format 'container/blob'.");
             }
@@ -66,25 +67,30 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return path;
         }
 
-        public static bool TryParse(string value, out BlobPath path)
+        public static bool TryParse(string value, bool isContainerBinding, out BlobPath path)
         {
+            path = null;
+
             if (value == null)
             {
-                path = null;
                 return false;
             }
 
             int slashIndex = value.IndexOf('/');
-
-            // There must be at least one character before the slash and one character after the slash.
-            if (slashIndex <= 0 || slashIndex == value.Length - 1)
+            if (!isContainerBinding && slashIndex <= 0)
             {
-                path = null;
                 return false;
             }
 
-            string containerName = value.Substring(0, slashIndex);
-            string blobName = value.Substring(slashIndex + 1);
+            if (slashIndex > 0 && slashIndex == value.Length - 1)
+            {
+                // if there is a slash present, there must be at least one character before
+                // the slash and one character after the slash.
+                return false;
+            }
+
+            string containerName = slashIndex > 0 ? value.Substring(0, slashIndex) : value;
+            string blobName = slashIndex > 0 ? value.Substring(slashIndex + 1) : string.Empty;
 
             path = new BlobPath(containerName, blobName);
             return true;
@@ -94,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         {
             BlobPath possiblePath;
 
-            if (!TryParse(value, out possiblePath))
+            if (!TryParse(value, false, out possiblePath))
             {
                 errorMessage = "Blob identifiers must be in the format 'container/blob'.";
                 path = null;

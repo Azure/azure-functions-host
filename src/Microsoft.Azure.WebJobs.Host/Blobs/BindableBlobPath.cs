@@ -8,9 +8,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class BindableBlobPath
     {
-        public static IBindableBlobPath Create(string pattern)
+        public static IBindableBlobPath Create(string pattern, bool isContainerBinding = false)
         {
-            BlobPath parsedPattern = BlobPath.Parse(pattern);
+            BlobPath parsedPattern = BlobPath.Parse(pattern, isContainerBinding);
             BindingTemplate containerNameTemplate = BindingTemplate.FromString(parsedPattern.ContainerName);
             BindingTemplate blobNameTemplate = BindingTemplate.FromString(parsedPattern.BlobName);
 
@@ -20,7 +20,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             }
 
             BlobClient.ValidateContainerName(parsedPattern.ContainerName);
-            BlobClient.ValidateBlobName(parsedPattern.BlobName);
+            if (!string.IsNullOrEmpty(parsedPattern.BlobName))
+            {
+                BlobClient.ValidateBlobName(parsedPattern.BlobName);
+            }
             return new BoundBlobPath(parsedPattern);
         }
     }

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                     })
                 .Returns(() => { return Task.FromResult(resultSegment); });
 
-            IEnumerable<IStorageListBlobItem> results = await mockContainer.Object.ListBlobsAsync(true, CancellationToken.None);
+            IEnumerable<IStorageListBlobItem> results = await mockContainer.Object.ListBlobsAsync(null, true, CancellationToken.None);
 
             Assert.Equal(blobCount, results.Count());
         }

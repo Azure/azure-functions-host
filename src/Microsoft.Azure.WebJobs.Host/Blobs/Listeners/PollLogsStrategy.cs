@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 {
                     // Non-async is correct here. ScanContainers occurs on a background thread. Unless it blocks, no one
                     // else is around to observe the results.
-                    items = container.ListBlobsAsync(useFlatBlobListing: true,
+                    items = container.ListBlobsAsync(prefix: null, useFlatBlobListing: true,
                         cancellationToken: CancellationToken.None).GetAwaiter().GetResult().ToList();
                 }
                 catch (StorageException exception)

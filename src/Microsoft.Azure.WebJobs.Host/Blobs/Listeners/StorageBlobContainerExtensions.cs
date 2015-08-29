@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal static class StorageBlobContainerExtensions
     {
-        public static async Task<IEnumerable<IStorageListBlobItem>> ListBlobsAsync(this IStorageBlobContainer container, 
+        public static async Task<IEnumerable<IStorageListBlobItem>> ListBlobsAsync(this IStorageBlobContainer container, string prefix, 
             bool useFlatBlobListing, CancellationToken cancellationToken)
         {
             if (container == null)
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             do
             {
-                result = await container.ListBlobsSegmentedAsync(prefix: null, useFlatBlobListing: useFlatBlobListing,
+                result = await container.ListBlobsSegmentedAsync(prefix: prefix, useFlatBlobListing: useFlatBlobListing,
                     blobListingDetails: BlobListingDetails.None, maxResults: null, currentToken: continuationToken,
                     options: null, operationContext: null, cancellationToken: cancellationToken);
 

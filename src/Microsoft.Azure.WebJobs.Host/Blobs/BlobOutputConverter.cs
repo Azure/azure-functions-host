@@ -8,12 +8,12 @@ using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    internal class OutputConverter<TInput> : IAsyncObjectToTypeConverter<IStorageBlob>
+    internal class BlobOutputConverter<TInput> : IAsyncObjectToTypeConverter<IStorageBlob>
         where TInput : class
     {
         private readonly IAsyncConverter<TInput, IStorageBlob> _innerConverter;
 
-        public OutputConverter(IAsyncConverter<TInput, IStorageBlob> innerConverter)
+        public BlobOutputConverter(IAsyncConverter<TInput, IStorageBlob> innerConverter)
         {
             _innerConverter = innerConverter;
         }

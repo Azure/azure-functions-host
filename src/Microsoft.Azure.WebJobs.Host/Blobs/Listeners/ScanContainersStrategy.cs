@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             try
             {
-                currentBlobs = (await container.ListBlobsAsync(useFlatBlobListing: true,
+                currentBlobs = (await container.ListBlobsAsync(prefix: null, useFlatBlobListing: true,
                     cancellationToken: cancellationToken)).ToList();
             }
             catch (StorageException exception)

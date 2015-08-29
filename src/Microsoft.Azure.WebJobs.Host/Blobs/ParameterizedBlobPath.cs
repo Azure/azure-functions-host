@@ -50,8 +50,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             string blobName = _blobNameTemplate.Bind(parameters);
 
             BlobClient.ValidateContainerName(containerName);
-            BlobClient.ValidateBlobName(blobName);
-
+            if (!string.IsNullOrEmpty(_blobNameTemplate.Pattern))
+            {
+                BlobClient.ValidateBlobName(blobName);
+            }
+            
             return new BlobPath(containerName, blobName);
         }
 

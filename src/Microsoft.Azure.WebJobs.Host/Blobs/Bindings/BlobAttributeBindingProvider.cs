@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -20,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
     {
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
-        private readonly IBlobArgumentBindingProvider _provider;
+        private readonly IBlobArgumentBindingProvider _blobArgumentProvider;
+        private readonly IBlobContainerArgumentBindingProvider _blobContainerArgumentProvider;
 
         public BlobAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
             IExtensionTypeLocator extensionTypeLocator, IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
@@ -42,10 +44,60 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
-            _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes(), blobWrittenWatcherGetter);
+            _blobArgumentProvider = CreateBlobArgumentProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes(), blobWrittenWatcherGetter);
+            _blobContainerArgumentProvider = CreateBlobContainerArgumentProvider();
         }
 
-        private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes,
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        {
+            ParameterInfo parameter = context.Parameter;
+            BlobAttribute blobAttribute = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
+
+            if (blobAttribute == null)
+            {
+                return null;
+            }
+
+            string resolvedPath = Resolve(blobAttribute.BlobPath);
+            IBindableBlobPath path = null;
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageBlobClient client = account.CreateBlobClient();
+
+            // first try to bind to the Container
+            IArgumentBinding<IStorageBlobContainer> containerArgumentBinding = _blobContainerArgumentProvider.TryCreate(parameter);
+            if (containerArgumentBinding == null)
+            {
+                // if this isn't a Container binding, try a Blob binding
+                IBlobArgumentBinding blobArgumentBinding = _blobArgumentProvider.TryCreate(parameter, blobAttribute.Access);
+                if (blobArgumentBinding == null)
+                {
+                    throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
+                }
+
+                path = BindableBlobPath.Create(resolvedPath);
+                path.ValidateContractCompatibility(context.BindingDataContract);
+
+                return new BlobBinding(parameter.Name, blobArgumentBinding, client, path);
+            }
+
+            path = BindableBlobPath.Create(resolvedPath, isContainerBinding: true);
+            path.ValidateContractCompatibility(context.BindingDataContract);
+            BlobContainerBinding.ValidateContainerBinding(blobAttribute, parameter.ParameterType, path);
+
+            return new BlobContainerBinding(parameter.Name, containerArgumentBinding, client, path);    
+        }
+
+        private string Resolve(string blobName)
+        {
+            if (_nameResolver == null)
+            {
+                return blobName;
+            }
+
+            return _nameResolver.ResolveWholeString(blobName);
+        }
+
+        private static IBlobArgumentBindingProvider CreateBlobArgumentProvider(IEnumerable<Type> cloudBlobStreamBinderTypes,
             IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
         {
             List<IBlobArgumentBindingProvider> innerProviders = new List<IBlobArgumentBindingProvider>();
@@ -69,50 +121,23 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     t => CloudBlobStreamObjectBinder.CreateWriteBindingProvider(t, blobWrittenWatcherGetter)));
             }
 
-            return new CompositeArgumentBindingProvider(innerProviders);
+            return new CompositeBlobArgumentBindingProvider(innerProviders);
+        }
+
+        private static IBlobContainerArgumentBindingProvider CreateBlobContainerArgumentProvider()
+        {
+            List<IBlobContainerArgumentBindingProvider> innerProviders = new List<IBlobContainerArgumentBindingProvider>();
+
+            innerProviders.Add(new CloudBlobContainerArgumentBindingProvider());
+            innerProviders.Add(new CloudBlobEnumerableArgumentBindingProvider());
+
+            return new CompositeBlobContainerArgumentBindingProvider(innerProviders);
         }
 
         private static IBlobArgumentBindingProvider CreateConverterProvider<TValue, TConverter>()
             where TConverter : IConverter<IStorageBlob, TValue>, new()
         {
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
-        }
-
-        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
-        {
-            ParameterInfo parameter = context.Parameter;
-            BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
-
-            if (blob == null)
-            {
-                return null;
-            }
-
-            string resolvedCombinedPath = Resolve(blob.BlobPath);
-            IBindableBlobPath path = BindableBlobPath.Create(resolvedCombinedPath);
-            path.ValidateContractCompatibility(context.BindingDataContract);
-
-            IBlobArgumentBinding argumentBinding = _provider.TryCreate(parameter, blob.Access);
-
-            if (argumentBinding == null)
-            {
-                throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
-            }
-
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            IStorageBlobClient client = account.CreateBlobClient();
-            IBinding binding = new BlobBinding(parameter.Name, argumentBinding, client, path);
-            return binding;
-        }
-
-        private string Resolve(string queueName)
-        {
-            if (_nameResolver == null)
-            {
-                return queueName;
-            }
-
-            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }
