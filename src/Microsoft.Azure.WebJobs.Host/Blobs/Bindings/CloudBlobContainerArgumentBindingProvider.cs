@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
                 public string ToInvokeString()
                 {
-                    return _container.Uri.ToString();
+                    return _container.Uri.AbsolutePath;
                 }
             }
         }

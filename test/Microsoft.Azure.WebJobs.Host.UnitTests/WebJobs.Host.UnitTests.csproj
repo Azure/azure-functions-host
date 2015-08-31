@@ -111,6 +111,7 @@
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapterTests.cs" />
     <Compile Include="Blobs\AsyncCompletionSource.cs" />
     <Compile Include="Blobs\AsyncResultExtensions.cs" />
+    <Compile Include="Blobs\Bindings\BlobContainerBindingTests.cs" />
     <Compile Include="Blobs\Bindings\CompletedCancellationSpy.cs" />
     <Compile Include="Blobs\Bindings\CancellableAsyncCompletionSource.cs" />
     <Compile Include="Blobs\Bindings\CompletedCancellableAsyncResult.cs" />

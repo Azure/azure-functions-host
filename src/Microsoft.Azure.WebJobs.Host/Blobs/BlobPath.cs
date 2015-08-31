@@ -42,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return result;
         }
 
-        public static BlobPath ParseAndValidate(string value)
+        public static BlobPath ParseAndValidate(string value, bool isContainerBinding = false)
         {
             string errorMessage;
             BlobPath path;
 
-            if (!TryParseAndValidate(value, out errorMessage, out path))
+            if (!TryParseAndValidate(value, out errorMessage, out path, isContainerBinding))
             {
                 throw new FormatException(errorMessage);
             }
@@ -96,11 +96,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return true;
         }
 
-        private static bool TryParseAndValidate(string value, out string errorMessage, out BlobPath path)
+        private static bool TryParseAndValidate(string value, out string errorMessage, out BlobPath path, bool isContainerBinding = false)
         {
             BlobPath possiblePath;
 
-            if (!TryParse(value, false, out possiblePath))
+            if (!TryParse(value, isContainerBinding, out possiblePath))
             {
                 errorMessage = "Blob identifiers must be in the format 'container/blob'.";
                 path = null;
@@ -114,9 +114,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return false;
             }
 
+            // for container bindings, we allow an empty blob name/path
             string possibleErrorMessage;
-
-            if (!BlobClient.IsValidBlobName(possiblePath.BlobName, out possibleErrorMessage))
+            if (!(isContainerBinding && string.IsNullOrEmpty(possiblePath.BlobName)) &&
+                !BlobClient.IsValidBlobName(possiblePath.BlobName, out possibleErrorMessage))
             {
                 errorMessage = possibleErrorMessage;
                 path = null;

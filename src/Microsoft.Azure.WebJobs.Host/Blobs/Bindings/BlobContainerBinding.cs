@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -19,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private readonly IStorageBlobClient _client;
         private readonly string _accountName;
         private readonly IBindableBlobPath _path;
-        private readonly IAsyncObjectToTypeConverter<IStorageBlobContainer> _converter;
 
         public BlobContainerBinding(string parameterName, IArgumentBinding<IStorageBlobContainer> argumentBinding, IStorageBlobClient client,
             IBindableBlobPath path)
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             _client = client;
             _accountName = BlobClient.GetAccountName(client);
             _path = path;
-            _converter = CreateConverter(_client, path, argumentBinding.ValueType);
         }
 
         public bool FromAttribute
@@ -68,15 +65,31 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
         public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            ConversionResult<IStorageBlobContainer> conversionResult =
-                await _converter.TryConvertAsync(value, context.CancellationToken);
+            BlobPath path = null;
+            IStorageBlobContainer container = null;
 
-            if (!conversionResult.Succeeded)
+            if (TryConvert(value, _client, out container, out path))
             {
-                throw new InvalidOperationException("Unable to convert value to CloudBlobContainer.");
+                return await BindBlobContainerAsync(container, new BlobContainerValueBindingContext(path, context));
+            }
+            
+            throw new InvalidOperationException("Unable to convert value to CloudBlobContainer.");
+        }
+
+        internal static bool TryConvert(object value, IStorageBlobClient client, out IStorageBlobContainer container, out BlobPath path)
+        {
+            container = null;
+            path = null;
+
+            string fullPath = value as string;
+            if (fullPath != null)
+            {
+                path = BlobPath.ParseAndValidate(fullPath, isContainerBinding: true);
+                container = client.GetContainerReference(path.ContainerName);
+                return true;
             }
 
-            return await BindBlobContainerAsync(conversionResult.Result, context);
+            return false;
         }
 
         public ParameterDescriptor ToParameterDescriptor()
@@ -102,14 +115,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             {
                 throw new InvalidOperationException("Only a container name can be specified when binding to CloudBlobContainer.");
             }
-        }
-
-        private static IAsyncObjectToTypeConverter<IStorageBlobContainer> CreateConverter(IStorageBlobClient client,
-            IBindableBlobPath path, Type argumentType)
-        {
-            return new CompositeAsyncObjectToTypeConverter<IStorageBlobContainer>(
-                new BlobContainerOutputConverter<IStorageBlobContainer>(
-                    new AsyncConverter<IStorageBlobContainer, IStorageBlobContainer>(new IdentityConverter<IStorageBlobContainer>())));
         }
 
         private Task<IValueProvider> BindBlobContainerAsync(IStorageBlobContainer value, ValueBindingContext context)

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 Type elementType = _parameter.ParameterType.GenericTypeArguments[0];
                 IList list = await ConvertBlobs(elementType, blobItems);
 
-                string invokeString = string.Format("{0}/{1}", container.Uri.ToString(), prefix);
+                string invokeString = containerBindingContext.Path.ToString();
                 return new ValueProvider(list, _parameter.ParameterType, invokeString);
             }
 
