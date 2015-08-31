@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Xunit;
 
@@ -44,6 +49,39 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             {
                 BlobContainerBinding.TryConvert(value, mockStorageClient.Object, out container, out path);
             });
+        }
+
+        [Fact]
+        public void ToParameterDescriptor_ReturnsExpectedDescriptor()
+        {
+            Mock<IArgumentBinding<IStorageBlobContainer>> mockArgumentBinding = new Mock<IArgumentBinding<IStorageBlobContainer>>(MockBehavior.Strict);
+            Mock<IStorageBlobClient> mockStorageClient = new Mock<IStorageBlobClient>(MockBehavior.Strict);
+            Mock<IBindableBlobPath> mockBlobPath = new Mock<IBindableBlobPath>(MockBehavior.Strict);
+            BlobContainerBinding binding = new BlobContainerBinding("testparam", mockArgumentBinding.Object, mockStorageClient.Object, mockBlobPath.Object);
+            ParameterDescriptor descriptor = binding.ToParameterDescriptor();
+            Assert.Equal(typeof(ParameterDescriptor), descriptor.GetType());
+            Assert.Equal("testparam", descriptor.Name);
+            Assert.Equal("Enter the blob container name or blob path prefix", descriptor.DisplayHints.Prompt);
+        }
+
+        [Fact]
+        public void ValidateContainerBinding_PerformsExpectedValidations()
+        {
+            BlobAttribute attribute = new BlobAttribute("test/blob", FileAccess.Write);
+            Mock<IBindableBlobPath> mockPath = new Mock<IBindableBlobPath>(MockBehavior.Strict);
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                BlobContainerBinding.ValidateContainerBinding(attribute, typeof(IEnumerable<CloudBlockBlob>), mockPath.Object);
+            });
+            Assert.Equal("Only the 'Read' FileAccess mode is supported for blob container bindings.", ex.Message);
+
+            attribute = new BlobAttribute("test/blob", FileAccess.Read);
+            mockPath.Setup(p => p.BlobNamePattern).Returns("prefix");
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                BlobContainerBinding.ValidateContainerBinding(attribute, typeof(CloudBlobContainer), mockPath.Object);
+            });
+            Assert.Equal("Only a container name can be specified when binding to CloudBlobContainer.", ex.Message);
         }
     }
 }

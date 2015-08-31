@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private readonly string _parameterName;
         private readonly IArgumentBinding<IStorageBlobContainer> _argumentBinding;
         private readonly IStorageBlobClient _client;
-        private readonly string _accountName;
+
         private readonly IBindableBlobPath _path;
 
         public BlobContainerBinding(string parameterName, IArgumentBinding<IStorageBlobContainer> argumentBinding, IStorageBlobClient client,
@@ -25,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
-            _accountName = BlobClient.GetAccountName(client);
             _path = path;
         }
 
@@ -94,13 +93,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new BlobParameterDescriptor
+            // We're using the base ParameterDescriptor here rather than
+            // BlobParameterDescriptor to avoid the special Dashboard handling
+            // that is done for single blob bindings (e.g. blob link generation).
+            return new ParameterDescriptor
             {
                 Name = _parameterName,
-                AccountName = _accountName,
-                ContainerName = _path.ContainerNamePattern,
-                BlobName = _path.BlobNamePattern,
-                Access = Access
+                DisplayHints = new ParameterDisplayHints
+                {
+                    Prompt = "Enter the blob container name or blob path prefix"
+                }
             };
         }
 

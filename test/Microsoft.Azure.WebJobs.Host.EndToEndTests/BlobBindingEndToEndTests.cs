@@ -64,6 +64,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
+        public async Task BindToIEnumerableCloudBlockBlob_WithPrefixFilter_NoMatchingBlobs()
+        {
+            await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter_NoMatchingBlobs"));
+
+            Assert.Equal(0, (int)NumBlobsRead);
+        }
+
+        [Fact]
         public async Task BindToIEnumerableCloudBlockBlob_WithPrefixFilter_HierarchicalBlobs()
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter_HierarchicalBlobs"));
@@ -157,6 +165,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 string content = blob.DownloadText();
                 Assert.Equal(TestData, content);
             }
+            NumBlobsRead = blobs.Count();
+        }
+
+        [NoAutomaticTrigger]
+        public static void IEnumerableCloudBlockBlobBinding_WithPrefixFilter_NoMatchingBlobs(
+            [Blob(ContainerName + "/dne")] IEnumerable<CloudBlockBlob> blobs)
+        {
             NumBlobsRead = blobs.Count();
         }
 

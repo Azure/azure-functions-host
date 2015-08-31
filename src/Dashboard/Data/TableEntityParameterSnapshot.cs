@@ -59,7 +59,7 @@ namespace Dashboard.Data
 
         private static bool HasRouteParameter(string value)
         {
-            return BlobParameterSnapshot.HasRouteParameter(value);
+            return TableEntityParameterSnapshot.HasRouteParameter(value);
         }
     }
 }
