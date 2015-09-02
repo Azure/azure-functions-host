@@ -1,5 +1,7 @@
 * text
 
+*.cs diff merge text
+
 *.eot binary
 *.otf binary
 *.png binary

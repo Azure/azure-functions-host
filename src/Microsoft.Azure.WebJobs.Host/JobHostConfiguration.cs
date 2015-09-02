@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using the
-        /// specified connnection string for both reading and writing data as well as Dashboard logging.
+        /// specified connection string for both reading and writing data as well as Dashboard logging.
         /// </summary>
         /// <param name="dashboardAndStorageConnectionString">The Azure Storage connection string to use.
         /// </param>
