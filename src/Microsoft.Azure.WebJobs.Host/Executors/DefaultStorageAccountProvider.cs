@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -14,14 +13,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IConnectionStringProvider _ambientConnectionStringProvider;
         private readonly IStorageCredentialsValidator _storageCredentialsValidator;
         private readonly IStorageAccountParser _storageAccountParser;
+        private readonly IServiceProvider _services;
 
         private IStorageAccount _dashboardAccount;
         private bool _dashboardAccountSet;
         private IStorageAccount _storageAccount;
         private bool _storageAccountSet;
 
-        public DefaultStorageAccountProvider()
-            : this(AmbientConnectionStringProvider.Instance, new StorageAccountParser(), new DefaultStorageCredentialsValidator())
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="services">The <see cref="IServiceProvider"/> to use.</param>
+        public DefaultStorageAccountProvider(IServiceProvider services)
+            : this(services, AmbientConnectionStringProvider.Instance, new StorageAccountParser(), new DefaultStorageCredentialsValidator())
         {
         }
 
@@ -29,19 +33,25 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// Initializes a new instance of the class, using a single Microsoft Azure
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
+        /// <param name="services">The <see cref="IServiceProvider"/> to use.</param>
         /// <param name="dashboardAndStorageConnectionString">
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
-        public DefaultStorageAccountProvider(string dashboardAndStorageConnectionString)
-            : this()
+        public DefaultStorageAccountProvider(IServiceProvider services, string dashboardAndStorageConnectionString)
+            : this(services)
         {
             StorageConnectionString = dashboardAndStorageConnectionString;
             DashboardAccount = StorageAccount;
         }
 
-        internal DefaultStorageAccountProvider(IConnectionStringProvider ambientConnectionStringProvider, 
+        internal DefaultStorageAccountProvider(IServiceProvider services, IConnectionStringProvider ambientConnectionStringProvider, 
             IStorageAccountParser storageAccountParser, IStorageCredentialsValidator storageCredentialsValidator)
         {
+            if (services == null)
+            {
+                throw new ArgumentNullException("services");
+            }
+
             if (ambientConnectionStringProvider == null)
             {
                 throw new ArgumentNullException("ambientConnectionStringProvider");
@@ -57,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("storageCredentialsValidator");
             }
 
+            _services = services;
             _ambientConnectionStringProvider = ambientConnectionStringProvider;
             _storageCredentialsValidator = storageCredentialsValidator;
             _storageAccountParser = storageAccountParser;
@@ -138,8 +149,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public async Task<IStorageAccount> GetAccountAsync(string connectionStringName,
-            CancellationToken cancellationToken)
+        public async Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
             IStorageAccount account;
 
@@ -174,13 +184,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private IStorageAccount ParseAccount(string connectionStringName)
         {
-            return ParseAccount(connectionStringName, _ambientConnectionStringProvider.GetConnectionString(
-                connectionStringName));
+            string connectionString = _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
+            return ParseAccount(connectionStringName, connectionString);
         }
 
         private IStorageAccount ParseAccount(string connectionStringName, string connectionString)
         {
-            return _storageAccountParser.ParseAccount(connectionString, connectionStringName);
+            return _storageAccountParser.ParseAccount(connectionString, connectionStringName, _services);
         }
     }
 }

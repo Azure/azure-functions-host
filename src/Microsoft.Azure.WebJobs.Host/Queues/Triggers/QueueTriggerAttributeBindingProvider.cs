@@ -101,7 +101,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            IStorageQueueClient client = account.CreateQueueClient();
+            StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
+            {
+                Parameter = parameter
+            };
+            IStorageQueueClient client = account.CreateQueueClient(clientFactoryContext);
             IStorageQueue queue = client.GetQueueReference(queueName);
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,

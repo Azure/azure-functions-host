@@ -303,9 +303,6 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StoragePageBlob.cs">
       <Link>Storage\Blob\StoragePageBlob.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\IStorageAccount.cs">
-      <Link>Storage\IStorageAccount.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueue.cs">
       <Link>Storage\Queue\IStorageQueue.cs</Link>
     </Compile>
@@ -323,9 +320,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueMessage.cs">
       <Link>Storage\Queue\StorageQueueMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageAccount.cs">
-      <Link>Storage\StorageAccount.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
       <Link>Storage\StorageExceptionExtensions.cs</Link>
@@ -488,6 +482,10 @@
     <Compile Include="Singleton\SingletonLock.cs" />
     <Compile Include="Singleton\SingletonManager.cs" />
     <Compile Include="Singleton\SingletonValueProvider.cs" />
+    <Compile Include="StorageClientFactory.cs" />
+    <Compile Include="StorageClientFactoryContext.cs" />
+    <Compile Include="Storage\IStorageAccount.cs" />
+    <Compile Include="Storage\StorageAccount.cs" />
     <Compile Include="StructPropertySetter.cs" />
     <Compile Include="StructPropertyAccessorFactory.cs" />
     <Compile Include="ClassPropertyAccessorFactory.cs" />

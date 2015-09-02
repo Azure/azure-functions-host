@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void ValueHasNotChanged()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             StubTableEntityWriter<DynamicTableEntity> writer = new StubTableEntityWriter<DynamicTableEntity>();
             Type valueType = typeof(TableEntityWriter<DynamicTableEntity>);
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void PropertyHasBeenAdded()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             StubTableEntityWriter<DynamicTableEntity> writer = new StubTableEntityWriter<DynamicTableEntity>();
             Type valueType = typeof(TableEntityWriter<DynamicTableEntity>);
@@ -94,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void MaximumBatchSizeFlushes()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             StubTableEntityWriter<DynamicTableEntity> writer = new StubTableEntityWriter<DynamicTableEntity>();
             Type valueType = typeof(TableEntityWriter<DynamicTableEntity>);
@@ -125,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void MaximumPartitionWidthFlushes()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             StubTableEntityWriter<DynamicTableEntity> writer = new StubTableEntityWriter<DynamicTableEntity>();
             Type valueType = typeof(TableEntityWriter<DynamicTableEntity>);
@@ -157,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void PropertyHasBeenReplaced()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             StubTableEntityWriter<DynamicTableEntity> writer = new StubTableEntityWriter<DynamicTableEntity>();
             Type valueType = typeof(TableEntityWriter<DynamicTableEntity>);
@@ -194,6 +195,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             // Assert
             Assert.Equal(2, parameterLog.EntitiesWritten);
             Assert.Equal(1, writer.TimesPartitionFlushed);
+        }
+
+        private IStorageTableClient CreateTableClient()
+        {
+            Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount, services.Object).CreateTableClient();
+            return client;
         }
     }
 }

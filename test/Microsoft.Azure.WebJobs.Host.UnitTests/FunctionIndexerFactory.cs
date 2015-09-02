@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -25,8 +26,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     {
         public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null)
         {
-            IStorageAccount storageAccount = account != null ? new StorageAccount(account) : null;
-            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
+            Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+            IStorageAccount storageAccount = account != null ? new StorageAccount(account, services.Object) : null;
+            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider(services.Object)
             {
                 StorageAccount = account
             };

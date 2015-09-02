@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -116,7 +117,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             public TestFixture()
             {
-                DefaultStorageAccountProvider accountProvider = new DefaultStorageAccountProvider();
+                Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+                StorageClientFactory clientFactory = new StorageClientFactory();
+                services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+
+                DefaultStorageAccountProvider accountProvider = new DefaultStorageAccountProvider(services.Object);
                 var task = accountProvider.GetStorageAccountAsync(CancellationToken.None);
                 task.Wait();
                 IStorageQueueClient client = task.Result.CreateQueueClient();

@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
             Assert.Null(config.Tracing.Trace);
 
+            StorageClientFactory clientFactory = config.GetService<StorageClientFactory>();
+            Assert.NotNull(clientFactory);
         }
 
         [Fact]
@@ -228,6 +230,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal("serviceInstance", exception.ParamName);
         }
 
+        [Fact]
+        public void StorageClientFactory_GetterSetter()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            StorageClientFactory clientFactory = configuration.StorageClientFactory;
+            Assert.NotNull(clientFactory);
+            Assert.Same(clientFactory, configuration.GetService<StorageClientFactory>());
+
+            CustomStorageClientFactory customFactory = new CustomStorageClientFactory();
+            configuration.StorageClientFactory = customFactory;
+            Assert.Same(customFactory, configuration.StorageClientFactory);
+            Assert.Same(customFactory, configuration.GetService<StorageClientFactory>());
+        }
+
         private static void TestHostIdThrows(string hostId)
         {
             // Arrange
@@ -237,6 +254,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             ExceptionAssert.ThrowsArgument(() => { configuration.HostId = hostId; }, "value",
                 "A host ID must be between 1 and 32 characters, contain only lowercase letters, numbers, and " +
                 "dashes, not start or end with a dash, and not contain consecutive dashes.");
+        }
+
+        private class CustomStorageClientFactory : StorageClientFactory
+        {
         }
     }
 }

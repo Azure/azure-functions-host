@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
@@ -47,8 +47,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.ServiceBus.UnitTest
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Host.FunctionalTests", "test\Microsoft.Azure.WebJobs.Host.FunctionalTests\WebJobs.Host.FunctionalTests.csproj", "{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Storage.IntegrationTests", "test\Microsoft.Azure.WebJobs.Storage.IntegrationTests\WebJobs.Storage.IntegrationTests.csproj", "{31BAB10E-B319-4F4E-9898-EA7A2740AA19}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -112,10 +110,6 @@ Global
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -128,6 +122,5 @@ Global
 		{34D23554-5482-4B3D-B65F-46DFF5AF1684} = {FA608267-1272-4BD5-B230-0F41A48D18C8}
 		{28BC5EE0-9227-4124-AA8F-1C0CAA218D12} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF} = {639967B0-0544-4C52-94AC-9A3D25E33256}
-		{31BAB10E-B319-4F4E-9898-EA7A2740AA19} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal

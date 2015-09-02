@@ -8,13 +8,24 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     internal class TestJobHostConfiguration : IServiceProvider
     {
+        public TestJobHostConfiguration()
+        {
+            StorageClientFactory = new StorageClientFactory();
+        }
+
         public IJobHostContextFactory ContextFactory { get; set; }
+
+        private StorageClientFactory StorageClientFactory { get; set; }
 
         public object GetService(Type serviceType)
         {
             if (serviceType == typeof(IJobHostContextFactory))
             {
                 return ContextFactory;
+            }
+            else if (serviceType == typeof(StorageClientFactory))
+            {
+                return StorageClientFactory;
             }
             else
             {

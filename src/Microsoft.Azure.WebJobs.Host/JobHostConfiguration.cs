@@ -7,11 +7,12 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs
 {
-    /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
+    /// <summary>
+    /// Represents the configuration settings for a <see cref="JobHost"/>.
+    /// </summary>
     public sealed class JobHostConfiguration : IServiceProvider
     {
         private static readonly IConsoleProvider ConsoleProvider = new DefaultConsoleProvider();
@@ -32,36 +33,37 @@ namespace Microsoft.Azure.WebJobs
         private IJobActivator _activator = DefaultJobActivator.Instance;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
-        /// Storage connection string for both reading and writing data as well as logging.
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
         /// </summary>
         public JobHostConfiguration()
-            : this(new DefaultStorageAccountProvider())
+            : this(null)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
-        /// Storage connection string for both reading and writing data as well as logging.
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using the
+        /// specified connnection string for both reading and writing data as well as Dashboard logging.
         /// </summary>
-        /// <param name="dashboardAndStorageConnectionString">
-        /// The Azure Storage connection string for accessing data and logging.
+        /// <param name="dashboardAndStorageConnectionString">The Azure Storage connection string to use.
         /// </param>
         public JobHostConfiguration(string dashboardAndStorageConnectionString)
-            : this(new DefaultStorageAccountProvider(dashboardAndStorageConnectionString))
         {
-        }
-
-        private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
-        {
-            _storageAccountProvider = storageAccountProvider;
-
+            if (!string.IsNullOrEmpty(dashboardAndStorageConnectionString))
+            {
+                _storageAccountProvider = new DefaultStorageAccountProvider(this, dashboardAndStorageConnectionString);
+            }
+            else
+            {
+                _storageAccountProvider = new DefaultStorageAccountProvider(this);
+            }
+ 
             IExtensionRegistry extensions = new DefaultExtensionRegistry();
             _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             Singleton = new SingletonConfiguration();
 
             // add our built in services here
             AddService<IExtensionRegistry>(extensions);
+            AddService<StorageClientFactory>(new StorageClientFactory());
         }
 
         /// <summary>Gets or sets the host ID.</summary>
@@ -118,21 +120,27 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
+        /// <summary>
+        /// Gets or sets the Azure Storage connection string used for logging and diagnostics.
+        /// </summary>
         public string DashboardConnectionString
         {
             get { return _storageAccountProvider.DashboardConnectionString; }
             set { _storageAccountProvider.DashboardConnectionString = value; }
         }
 
-        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
+        /// <summary>
+        /// Gets or sets the Azure Storage connection string used for reading and writing data.
+        /// </summary>
         public string StorageConnectionString
         {
             get { return _storageAccountProvider.StorageConnectionString; }
             set { _storageAccountProvider.StorageConnectionString = value; }
         }
 
-        /// <summary>Gets or sets the Azure Service bus connection string.</summary>
+        /// <summary>
+        /// Gets or sets the Azure ServiceBus connection string.
+        /// </summary>
         [Obsolete("Use ServiceBusConfiguration, and pass in via JobHostConfiguration.UseServiceBus.")]
         public string ServiceBusConnectionString
         {
@@ -223,6 +231,27 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 return _contextFactory;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="Host.StorageClientFactory"/> that will be used to create
+        /// Azure Storage clients.
+        /// </summary>
+        [CLSCompliant(false)]
+        public StorageClientFactory StorageClientFactory
+        {
+            get
+            {
+                return GetService<StorageClientFactory>();
+            }
+            set
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException("value");
+                }
+                AddService<StorageClientFactory>(value);
             }
         }
 

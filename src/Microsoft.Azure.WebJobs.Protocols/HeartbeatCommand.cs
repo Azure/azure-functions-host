@@ -30,17 +30,17 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     {
         private readonly IStorageBlockBlob _blob;
 
-        /// <summary>Initializes a new instance of the <see cref="HeartbeatCommand"/> class.</summary>
-        /// <param name="account">The storage account in which to write the heartbeat.</param>
-        /// <param name="containerName">The name of the container in which to write the heartbeat.</param>
-        /// <param name="blobName">The name of the heartbeat blob (including the directory name, if any).</param>
-        public HeartbeatCommand(IStorageAccount account, string containerName, string blobName)
-            : this(account.CreateBlobClient().GetContainerReference(containerName).GetBlockBlobReference(blobName))
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HeartbeatCommand"/> class.
+        /// </summary>
+        /// <param name="blob">The heartbeat blob.</param>
+        public HeartbeatCommand(IStorageBlockBlob blob)
         {
-        }
+            if (blob == null)
+            {
+                throw new ArgumentNullException("blob");
+            }
 
-        private HeartbeatCommand(IStorageBlockBlob blob)
-        {
             _blob = blob;
         }
 

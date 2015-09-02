@@ -372,7 +372,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
         private static IStorageAccount CreateAccount()
         {
-            return new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount);
+            Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+
+            return new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount, services.Object);
         }
 
         private static IStorageBlob CreateBlobReference()

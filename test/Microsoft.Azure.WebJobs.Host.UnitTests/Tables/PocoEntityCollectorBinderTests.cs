@@ -12,6 +12,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void ValueHasNotChanged()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
@@ -57,11 +58,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Assert.Null(parameterLog);
         }
 
+
         [Fact]
         public void PropertyHasBeenAdded()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
@@ -87,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void PropertyHasBeenReplaced()
         {
             // Arrange
-            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTableClient client = CreateTableClient();
             IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
@@ -123,6 +125,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 
             // Assert
             Assert.Equal(2, parameterLog.EntitiesWritten);
+        }
+
+        private IStorageTableClient CreateTableClient()
+        {
+            Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount, services.Object).CreateTableClient();
+            return client;
         }
     }
 }

@@ -469,7 +469,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private static TestJobHostConfiguration CreateConfiguration()
         {
-            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
+            Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+
+            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider(services.Object)
             {
                 // Use null connection strings since unit tests shouldn't make wire requests.
                 StorageAccount = null,

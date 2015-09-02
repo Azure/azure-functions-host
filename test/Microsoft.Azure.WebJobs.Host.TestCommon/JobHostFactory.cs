@@ -38,12 +38,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount, int maxDequeueCount)
         {
-            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
+            TestJobHostConfiguration config = new TestJobHostConfiguration();
+
+            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider(config)
             {
                 StorageAccount = storageAccount,
                 // use null logging string since unit tests don't need logs.
                 DashboardAccount = null
             };
+
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
             INameResolver nameResolver = null;
@@ -81,12 +84,9 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 SingletonManager = singletonManager
             };
 
-            IServiceProvider serviceProvider = new TestJobHostConfiguration
-            {
-                ContextFactory = contextFactory
-            };
+            config.ContextFactory = contextFactory;
 
-            return new TestJobHost<TProgram>(serviceProvider);
+            return new TestJobHost<TProgram>(config);
         }
     }
 }

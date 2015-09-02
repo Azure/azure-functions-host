@@ -27,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             {
                 Environment.SetEnvironmentVariable(DashboardConnectionEnvironmentVariable, null);
 
-                IStorageAccountProvider product = new DefaultStorageAccountProvider
+                Mock<IServiceProvider> mockServices = new Mock<IServiceProvider>(MockBehavior.Strict);
+                IStorageAccountProvider product = new DefaultStorageAccountProvider(mockServices.Object)
                 {
                     StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", new byte[0], "key"), true).ToString(exportSecrets: true)
                 };
@@ -55,15 +56,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             string connectionString = "valid-ignore";
             IStorageAccount parsedAccount = Mock.Of<IStorageAccount>();
             
-            Mock<IConnectionStringProvider> connectionStringProviderMock = new Mock<IConnectionStringProvider>(
-                MockBehavior.Strict);
+            Mock<IConnectionStringProvider> connectionStringProviderMock = new Mock<IConnectionStringProvider>(MockBehavior.Strict);
             connectionStringProviderMock.Setup(p => p.GetConnectionString(connectionStringName))
                                         .Returns(connectionString)
                                         .Verifiable();
             IConnectionStringProvider connectionStringProvider = connectionStringProviderMock.Object;
 
             Mock<IStorageAccountParser> parserMock = new Mock<IStorageAccountParser>(MockBehavior.Strict);
-            parserMock.Setup(p => p.ParseAccount(connectionString, connectionStringName))
+            IServiceProvider services = CreateServices();
+            parserMock.Setup(p => p.ParseAccount(connectionString, connectionStringName, services))
                       .Returns(parsedAccount)
                       .Verifiable();
             IStorageAccountParser parser = parserMock.Object;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                          .Verifiable();
             IStorageCredentialsValidator validator = validatorMock.Object;
 
-            IStorageAccountProvider provider = CreateProductUnderTest(connectionStringProvider, parser, validator);
+            IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
 
             IStorageAccount actualAccount = provider.GetAccountAsync(
                 connectionStringName, CancellationToken.None).GetAwaiter().GetResult();
@@ -96,10 +97,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IConnectionStringProvider connectionStringProvider = CreateConnectionStringProvider(connectionStringName,
                 connectionString);
             Mock<IStorageAccountParser> parserMock = new Mock<IStorageAccountParser>(MockBehavior.Strict);
-            parserMock.Setup(p => p.ParseAccount(connectionString, connectionStringName))
+            IServiceProvider services = CreateServices();
+            parserMock.Setup(p => p.ParseAccount(connectionString, connectionStringName, services))
                 .Throws(expectedException);
             IStorageAccountParser parser = parserMock.Object;
-            IStorageAccountProvider provider = CreateProductUnderTest(connectionStringProvider, parser);
+            
+            IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser);
 
             Exception actualException = Assert.Throws<InvalidOperationException>(
                 () => provider.GetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
@@ -115,15 +118,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             string connectionString = "invalid-ignore";
             IStorageAccount parsedAccount = Mock.Of<IStorageAccount>();
             Exception expectedException = new InvalidOperationException();
-            IConnectionStringProvider connectionStringProvider = CreateConnectionStringProvider(connectionStringName,
-                connectionString);
-            IStorageAccountParser parser = CreateParser(connectionStringName, connectionString, parsedAccount);
+            IConnectionStringProvider connectionStringProvider = CreateConnectionStringProvider(connectionStringName, connectionString);
+            IServiceProvider services = CreateServices();
+            IStorageAccountParser parser = CreateParser(services, connectionStringName, connectionString, parsedAccount);
             Mock<IStorageCredentialsValidator> validatorMock = new Mock<IStorageCredentialsValidator>(
                 MockBehavior.Strict);
             validatorMock.Setup(v => v.ValidateCredentialsAsync(parsedAccount, It.IsAny<CancellationToken>()))
                 .Throws(expectedException);
             IStorageCredentialsValidator validator = validatorMock.Object;
-            IStorageAccountProvider provider = CreateProductUnderTest(connectionStringProvider, parser, validator);
+            IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
 
             Exception actualException = Assert.Throws<InvalidOperationException>(
                 () => provider.GetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
@@ -137,11 +140,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IConnectionStringProvider connectionStringProvider = CreateDummyConnectionStringProvider();
             string connectionString = "valid-ignore";
             IStorageAccount parsedAccount = Mock.Of<IStorageAccount>();
-            IStorageAccountParser parser = CreateParser(ConnectionStringNames.Dashboard, connectionString,
-                parsedAccount);
+            IServiceProvider services = CreateServices();
+            IStorageAccountParser parser = CreateParser(services, ConnectionStringNames.Dashboard, connectionString, parsedAccount);
             IStorageCredentialsValidator validator = CreateValidator(parsedAccount);
-            DefaultStorageAccountProvider provider = CreateProductUnderTest(connectionStringProvider, parser,
-                validator);
+            DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             provider.DashboardConnectionString = connectionString;
             IStorageAccount actualAccount = provider.GetAccountAsync(
                 ConnectionStringNames.Dashboard, CancellationToken.None).GetAwaiter().GetResult();
@@ -155,10 +157,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IConnectionStringProvider connectionStringProvider = CreateDummyConnectionStringProvider();
             string connectionString = "valid-ignore";
             IStorageAccount parsedAccount = Mock.Of<IStorageAccount>();
-            IStorageAccountParser parser = CreateParser(ConnectionStringNames.Storage, connectionString, parsedAccount);
+            IServiceProvider services = CreateServices();
+            IStorageAccountParser parser = CreateParser(services, ConnectionStringNames.Storage, connectionString, parsedAccount);
             IStorageCredentialsValidator validator = CreateValidator(parsedAccount);
-            DefaultStorageAccountProvider provider = CreateProductUnderTest(connectionStringProvider, parser,
-                validator);
+            DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             provider.StorageConnectionString = connectionString;
 
             IStorageAccount actualAccount = provider.GetAccountAsync(
@@ -220,33 +222,38 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             return new Mock<IStorageCredentialsValidator>(MockBehavior.Strict).Object;
         }
 
-        private static IStorageAccountParser CreateParser(string connectionStringName, string connectionString,
-            IStorageAccount parsedAccount)
+        private static IServiceProvider CreateServices()
+        {
+            Mock<IServiceProvider> servicesMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            servicesMock.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+
+            return servicesMock.Object;
+        }
+
+        private static IStorageAccountParser CreateParser(IServiceProvider services, string connectionStringName, string connectionString, IStorageAccount parsedAccount)
         {
             Mock<IStorageAccountParser> mock = new Mock<IStorageAccountParser>(MockBehavior.Strict);
-            mock.Setup(p => p.ParseAccount(connectionString, connectionStringName))
-                .Returns(parsedAccount);
+            mock.Setup(p => p.ParseAccount(connectionString, connectionStringName, services)).Returns(parsedAccount);
             return mock.Object;
         }
 
         private static DefaultStorageAccountProvider CreateProductUnderTest()
         {
-            return CreateProductUnderTest(CreateDummyConnectionStringProvider(), CreateDummyParser());
+            return CreateProductUnderTest(CreateServices(), CreateDummyConnectionStringProvider(), CreateDummyParser());
         }
 
-        private static DefaultStorageAccountProvider CreateProductUnderTest(
+        private static DefaultStorageAccountProvider CreateProductUnderTest(IServiceProvider services,
             IConnectionStringProvider ambientConnectionStringProvider, IStorageAccountParser storageAccountParser)
         {
-            return CreateProductUnderTest(ambientConnectionStringProvider, storageAccountParser,
-                CreateDummyValidator());
+            return CreateProductUnderTest(services, ambientConnectionStringProvider, storageAccountParser, CreateDummyValidator());
         }
 
-        private static DefaultStorageAccountProvider CreateProductUnderTest(
+        private static DefaultStorageAccountProvider CreateProductUnderTest(IServiceProvider services,
             IConnectionStringProvider ambientConnectionStringProvider, IStorageAccountParser storageAccountParser,
             IStorageCredentialsValidator storageCredentialsValidator)
         {
-            return new DefaultStorageAccountProvider(ambientConnectionStringProvider, storageAccountParser,
-                storageCredentialsValidator);
+            return new DefaultStorageAccountProvider(services, ambientConnectionStringProvider, storageAccountParser, storageCredentialsValidator);
         }
 
         private static IStorageCredentialsValidator CreateValidator(IStorageAccount account)

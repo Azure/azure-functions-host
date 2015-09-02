@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -198,10 +199,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         InstanceBlobName = hostInstanceId.ToString("N"),
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
-                    IRecurrentCommand heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(
-                        dashboardAccount,
-                        heartbeatDescriptor.SharedContainerName,
-                        heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
+
+                    IStorageBlockBlob blob = dashboardAccount.CreateBlobClient()
+                        .GetContainerReference(heartbeatDescriptor.SharedContainerName)
+                        .GetBlockBlobReference(heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
+                    IRecurrentCommand heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(blob));
 
                     IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
                     Assembly hostAssembly = GetHostAssembly(indexedMethods);

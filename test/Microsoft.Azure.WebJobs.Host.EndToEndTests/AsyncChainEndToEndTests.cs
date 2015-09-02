@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -106,19 +107,30 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
-        public async Task AsyncChainEndToEnd_CustomQueueProcessor()
+        public async Task AsyncChainEndToEnd_CustomFactories()
         {
             using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
-                CustomQueueProcessorFactory factory = new CustomQueueProcessorFactory();
-                _hostConfig.Queues.QueueProcessorFactory = factory;
+                CustomQueueProcessorFactory queueProcessorFactory = new CustomQueueProcessorFactory();
+                _hostConfig.Queues.QueueProcessorFactory = queueProcessorFactory;
+
+                CustomStorageClientFactory storageClientFactory = new CustomStorageClientFactory();
+                _hostConfig.StorageClientFactory = storageClientFactory;
 
                 await AsyncChainEndToEndInternal();
 
-                Assert.Equal(2, factory.CustomQueueProcessors.Count);
-                Assert.True(factory.CustomQueueProcessors.All(p => p.Context.Queue.Name.StartsWith("asynce2eq")));
-                Assert.True(factory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
-                Assert.True(factory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
+                Assert.Equal(2, queueProcessorFactory.CustomQueueProcessors.Count);
+                Assert.True(queueProcessorFactory.CustomQueueProcessors.All(p => p.Context.Queue.Name.StartsWith("asynce2eq")));
+                Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
+                Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
+
+                Assert.Equal(13, storageClientFactory.TotalBlobClientCount);
+                Assert.Equal(6, storageClientFactory.TotalQueueClientCount);
+                Assert.Equal(0, storageClientFactory.TotalTableClientCount);
+
+                Assert.Equal(5, storageClientFactory.ParameterBlobClientCount);
+                Assert.Equal(4, storageClientFactory.ParameterQueueClientCount);
+                Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
         }
 
@@ -308,6 +320,63 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 visibilityTimeout = TimeSpan.FromSeconds(message.DequeueCount);
 
                 await base.ReleaseMessageAsync(message, result, visibilityTimeout, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// This custom <see cref="StorageClientFactory"/> demonstrates how clients can be customized.
+        /// For example, users can configure global retry policies, DefaultRequestOptions, etc.
+        /// </summary>
+        public class CustomStorageClientFactory : StorageClientFactory
+        {
+            public int TotalBlobClientCount;
+            public int TotalQueueClientCount;
+            public int TotalTableClientCount;
+
+            public int ParameterBlobClientCount;
+            public int ParameterQueueClientCount;
+            public int ParameterTableClientCount;
+
+            public override CloudBlobClient CreateCloudBlobClient(StorageClientFactoryContext context)
+            {
+                TotalBlobClientCount++;
+
+                if (context.Parameter != null)
+                {
+                    ParameterBlobClientCount++;
+                }
+
+                return base.CreateCloudBlobClient(context);
+            }
+
+            public override CloudQueueClient CreateCloudQueueClient(StorageClientFactoryContext context)
+            {
+                TotalQueueClientCount++;
+
+                if (context.Parameter != null)
+                {
+                    ParameterQueueClientCount++;
+
+                    if (context.Parameter.Member.Name == "QueueToQueueAsync")
+                    {
+                        // demonstrates how context can be used to create a custom client
+                        // for a particular method or parameter binding
+                    }
+                }
+
+                return base.CreateCloudQueueClient(context);
+            }
+
+            public override CloudTableClient CreateCloudTableClient(StorageClientFactoryContext context)
+            {
+                TotalTableClientCount++;
+
+                if (context.Parameter != null)
+                {
+                    ParameterTableClientCount++;
+                }
+
+                return base.CreateCloudTableClient(context);
             }
         }
 

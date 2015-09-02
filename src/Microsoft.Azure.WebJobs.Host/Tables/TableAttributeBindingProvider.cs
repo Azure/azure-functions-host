@@ -61,7 +61,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             string tableName = Resolve(tableAttribute.TableName);
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            IStorageTableClient client = account.CreateTableClient();
+            StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
+            {
+                Parameter = context.Parameter
+            };
+            IStorageTableClient client = account.CreateTableClient(clientFactoryContext);
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;
             IBinding binding;

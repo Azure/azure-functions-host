@@ -21,8 +21,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </summary>
         /// <param name="connectionString">A Storage account connection string as retrieved from the config</param>
         /// <param name="connectionStringName">Friendly connection string name used to format error message</param>
+        /// <param name="services">The <see cref="IServiceProvider"/> to use.</param>
         /// <returns>An instance of <see cref="StorageAccount"/> associated with the given connection string</returns>
-        public IStorageAccount ParseAccount(string connectionString, string connectionStringName)
+        public IStorageAccount ParseAccount(string connectionString, string connectionStringName, IServiceProvider services)
         {
             CloudStorageAccount account;
             StorageAccountParseResult result = TryParseAccount(connectionString, out account);
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new InvalidOperationException(message);
             }
 
-            return new StorageAccount(account);
+            return new StorageAccount(account, services);
         }
 
         /// <summary>

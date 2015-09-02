@@ -42,17 +42,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { return _sdkObject; }
         }
 
-        public IStorageBlobClient CreateBlobClient()
+        public IStorageBlobClient CreateBlobClient(StorageClientFactoryContext context = null)
         {
             return new FakeStorageBlobClient(_blobStore, _credentials);
         }
 
-        public IStorageQueueClient CreateQueueClient()
+        public IStorageQueueClient CreateQueueClient(StorageClientFactoryContext context = null)
         {
             return new FakeStorageQueueClient(_queueStore, _credentials);
         }
 
-        public IStorageTableClient CreateTableClient()
+        public IStorageTableClient CreateTableClient(StorageClientFactoryContext context = null)
         {
             return new FakeStorageTableClient(_tableStore, _credentials);
         }

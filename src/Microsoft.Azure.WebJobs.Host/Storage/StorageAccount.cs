@@ -2,48 +2,40 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-
-#if PUBLICSTORAGE
-using Microsoft.Azure.WebJobs.Storage.Blob;
-using Microsoft.Azure.WebJobs.Storage.Queue;
-using Microsoft.Azure.WebJobs.Storage.Table;
-#else
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
-#endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 
-#if PUBLICSTORAGE
-namespace Microsoft.Azure.WebJobs.Storage
-#else
 namespace Microsoft.Azure.WebJobs.Host.Storage
-#endif
 {
-    /// <summary>Represents a storage account.</summary>
-#if PUBLICSTORAGE
-    [CLSCompliant(false)]
-    public class StorageAccount : IStorageAccount
-#else
     internal class StorageAccount : IStorageAccount
-#endif
     {
         private readonly CloudStorageAccount _sdkAccount;
+        private readonly IServiceProvider _services;
 
-        /// <summary>Initializes a new instance of the <see cref="StorageAccount"/> class.</summary>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StorageAccount"/> class.
+        /// </summary>
         /// <param name="sdkAccount">The underlying SDK cloud storage account.</param>
-        public StorageAccount(CloudStorageAccount sdkAccount)
+        /// <param name="services">The <see cref="IServiceProvider"/> to use.</param>
+        public StorageAccount(CloudStorageAccount sdkAccount, IServiceProvider services)
         {
             if (sdkAccount == null)
             {
                 throw new ArgumentNullException("sdkAccount");
             }
+            if (services == null)
+            {
+                throw new ArgumentNullException("services");
+            }
 
             _sdkAccount = sdkAccount;
+            _services = services;
         }
 
         /// <inheritdoc />
@@ -64,24 +56,38 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
             get { return _sdkAccount; }
         }
 
-        /// <inheritdoc />
-        public IStorageBlobClient CreateBlobClient()
+        private StorageClientFactory ClientFactory
         {
-            CloudBlobClient sdkClient = _sdkAccount.CreateCloudBlobClient();
+            get
+            {
+                return (StorageClientFactory)_services.GetService(typeof(StorageClientFactory));
+            }
+        }
+
+        /// <inheritdoc />
+        public IStorageBlobClient CreateBlobClient(StorageClientFactoryContext context = null)
+        {
+            context = DefaultContext(context);
+
+            CloudBlobClient sdkClient = ClientFactory.CreateCloudBlobClient(context);
             return new StorageBlobClient(sdkClient);
         }
 
         /// <inheritdoc />
-        public IStorageQueueClient CreateQueueClient()
+        public IStorageQueueClient CreateQueueClient(StorageClientFactoryContext context = null)
         {
-            CloudQueueClient sdkClient = _sdkAccount.CreateCloudQueueClient();
+            context = DefaultContext(context);
+
+            CloudQueueClient sdkClient = ClientFactory.CreateCloudQueueClient(context);
             return new StorageQueueClient(sdkClient);
         }
 
         /// <inheritdoc />
-        public IStorageTableClient CreateTableClient()
+        public IStorageTableClient CreateTableClient(StorageClientFactoryContext context = null)
         {
-            CloudTableClient sdkClient = _sdkAccount.CreateCloudTableClient();
+            context = DefaultContext(context);
+
+            CloudTableClient sdkClient = ClientFactory.CreateCloudTableClient(context);
             return new StorageTableClient(sdkClient);
         }
 
@@ -89,6 +95,20 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         public string ToString(bool exportSecrets)
         {
             return _sdkAccount.ToString(exportSecrets: exportSecrets);
+        }
+
+        private StorageClientFactoryContext DefaultContext(StorageClientFactoryContext context)
+        {
+            if (context == null)
+            {
+                // if no context provided, provide the default
+                context = new StorageClientFactoryContext();
+            }
+
+            // always set the account
+            context.Account = _sdkAccount;
+
+            return context;
         }
     }
 }

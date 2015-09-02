@@ -2,31 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-#if PUBLICSTORAGE
-using Microsoft.Azure.WebJobs.Storage.Blob;
-using Microsoft.Azure.WebJobs.Storage.Queue;
-using Microsoft.Azure.WebJobs.Storage.Table;
-#else
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
-#endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 
-#if PUBLICSTORAGE
-namespace Microsoft.Azure.WebJobs.Storage
-#else
 namespace Microsoft.Azure.WebJobs.Host.Storage
-#endif
 {
-#if PUBLICSTORAGE
-    /// <summary>Defines a storage account.</summary>
-    [CLSCompliant(false)]
-    public interface IStorageAccount
-#else
+    /// <summary>
+    /// Defines a storage account.
+    /// </summary>
     internal interface IStorageAccount
-#endif
     {
         /// <summary>Gets the primary endpoint for the blob service.</summary>
         Uri BlobEndpoint { get; }
@@ -39,15 +26,15 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 
         /// <summary>Creates a blob client.</summary>
         /// <returns>A blob client.</returns>
-        IStorageBlobClient CreateBlobClient();
+        IStorageBlobClient CreateBlobClient(StorageClientFactoryContext context = null);
 
         /// <summary>Creates a queue client.</summary>
         /// <returns>A queue client.</returns>
-        IStorageQueueClient CreateQueueClient();
+        IStorageQueueClient CreateQueueClient(StorageClientFactoryContext context = null);
 
         /// <summary>Creates a table client.</summary>
         /// <returns>A table client.</returns>
-        IStorageTableClient CreateTableClient();
+        IStorageTableClient CreateTableClient(StorageClientFactoryContext context = null);
 
         /// <summary>Gets the connection string for the storage account.</summary>
         /// <param name="exportSecrets">

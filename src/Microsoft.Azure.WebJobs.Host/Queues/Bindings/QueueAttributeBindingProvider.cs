@@ -70,7 +70,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            IStorageQueueClient client = account.CreateQueueClient();
+            StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
+            {
+                Parameter = parameter
+            };
+            IStorageQueueClient client = account.CreateQueueClient(clientFactoryContext);
             IBinding binding = new QueueBinding(parameter.Name, argumentBinding, client, path);
             return binding;
         }

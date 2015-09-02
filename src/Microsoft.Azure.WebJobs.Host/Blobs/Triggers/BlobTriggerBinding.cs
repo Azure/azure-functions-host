@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
     internal class BlobTriggerBinding : ITriggerBinding
     {
-        private readonly string _parameterName;
+        private readonly ParameterInfo _parameter;
         private readonly IArgumentBinding<IStorageBlob> _argumentBinding;
         private readonly IStorageAccount _account;
         private readonly IStorageBlobClient _client;
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
-        public BlobTriggerBinding(string parameterName,
+        public BlobTriggerBinding(ParameterInfo parameter,
             IArgumentBinding<IStorageBlob> argumentBinding,
             IStorageAccount account,
             IBlobPathSource path,
@@ -50,6 +51,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             ISharedContextProvider sharedContextProvider,
             TraceWriter trace)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException("parameter");
+            }
+
             if (argumentBinding == null)
             {
                 throw new ArgumentNullException("argumentBinding");
@@ -100,10 +106,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("trace");
             }
 
-            _parameterName = parameterName;
+            _parameter = parameter;
             _argumentBinding = argumentBinding;
             _account = account;
-            _client = account.CreateBlobClient();
+            StorageClientFactoryContext context = new StorageClientFactoryContext
+            {
+                Parameter = parameter
+            };
+            _client = account.CreateBlobClient(context);
             _accountName = BlobClient.GetAccountName(_client);
             _path = path;
             _hostIdProvider = hostIdProvider;
@@ -218,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         {
             return new BlobTriggerParameterDescriptor
             {
-                Name = _parameterName,
+                Name = _parameter.Name,
                 AccountName = _accountName,
                 ContainerName = _path.ContainerNamePattern,
                 BlobName = _path.BlobNamePattern,
