@@ -105,7 +105,7 @@ namespace Dashboard
 
             var blobParam = new BlobBoundParameterModel();
             blobParam.IsOutput = argument.IsBlobOutput;
-            blobParam.ConnectionStringKey = ConnectionStringProvider.GetPrefixedConnectionStringName(argument.AccountName);
+            blobParam.AccountName = argument.AccountName;
 
             CloudStorageAccount account = argument.GetStorageAccount();
             if (account == null)

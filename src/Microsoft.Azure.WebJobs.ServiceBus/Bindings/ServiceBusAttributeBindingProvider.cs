@@ -65,10 +65,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBus to type '{0}'.", parameter.ParameterType));
             }
 
+            string accountName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
             ServiceBusAccount account = new ServiceBusAccount
             {
                 MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(queueOrTopicName),
-                NamespaceManager = _config.MessagingProvider.NamespaceManager
+                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(accountName)
             };
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute.Access);

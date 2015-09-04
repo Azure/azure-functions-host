@@ -25,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
         private readonly string _functionId;
-        private readonly IStorageAccount _account;
+        private readonly IStorageAccount _hostAccount;
+        private readonly IStorageAccount _dataAccount;
         private readonly IStorageBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionExecutor _executor;
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             ISharedContextProvider sharedContextProvider,
             TraceWriter trace,
             string functionId,
-            IStorageAccount account,
+            IStorageAccount hostAccount,
+            IStorageAccount dataAccount,
             IStorageBlobContainer container,
             IBlobPathSource input,
             ITriggeredFunctionExecutor executor)
@@ -78,9 +80,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("trace");
             }
 
-            if (account == null)
+            if (hostAccount == null)
             {
-                throw new ArgumentNullException("account");
+                throw new ArgumentNullException("hostAccount");
+            }
+
+            if (dataAccount == null)
+            {
+                throw new ArgumentNullException("dataAccount");
             }
 
             if (container == null)
@@ -106,7 +113,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
             _functionId = functionId;
-            _account = account;
+            _hostAccount = hostAccount;
+            _dataAccount = dataAccount;
             _container = container;
             _input = input;
             _executor = executor;
@@ -117,12 +125,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             SharedQueueWatcher sharedQueueWatcher = _sharedContextProvider.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
             SharedBlobListener sharedBlobListener = _sharedContextProvider.GetOrCreate<SharedBlobListener>(
-                new SharedBlobListenerFactory(_account, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter));
+                new SharedBlobListenerFactory(_hostAccount, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter));
 
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
-            IStorageQueueClient queueClient = _account.CreateQueueClient();
-            IStorageBlobClient blobClient = _account.CreateBlobClient();
+            IStorageQueueClient queueClient = _hostAccount.CreateQueueClient();
+            IStorageBlobClient blobClient = _hostAccount.CreateBlobClient();
 
             string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(hostId);
@@ -130,9 +138,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             IListener blobDiscoveryToQueueMessageListener = await CreateBlobDiscoveryToQueueMessageListenerAsync(
                 hostId, sharedBlobListener, blobClient, hostBlobTriggerQueue, sharedQueueWatcher, cancellationToken);
+
+            // Important: We're using the "data account" here, which is the account that the
+            // function the listener is for is targeting. This is the account that will be used
+            // to read the trigger blob.
+            IStorageBlobClient userBlobClient = _dataAccount.CreateBlobClient();
             IListener queueMessageToTriggerExecutionListener = CreateQueueMessageToTriggerExecutionListener(
-                _sharedContextProvider, sharedQueueWatcher, queueClient, hostBlobTriggerQueue, blobClient,
+                _sharedContextProvider, sharedQueueWatcher, queueClient, hostBlobTriggerQueue, userBlobClient,
                 sharedBlobListener.BlobWritterWatcher);
+
             IListener compositeListener = new CompositeListener(
                 blobDiscoveryToQueueMessageListener,
                 queueMessageToTriggerExecutionListener);
@@ -164,9 +178,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             SharedBlobQueueListener sharedListener = sharedContextProvider.GetOrCreate<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
-                    blobClient, _queueConfiguration, _backgroundExceptionDispatcher, _trace, blobWrittenWatcher));
+                    _queueConfiguration, _backgroundExceptionDispatcher, _trace, blobWrittenWatcher));
 
-            sharedListener.Register(_functionId, _executor);
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                Executor = _executor,
+                BlobClient = blobClient
+            };
+
+            sharedListener.Register(_functionId, registration);
 
             return new BlobListener(sharedListener);
         }

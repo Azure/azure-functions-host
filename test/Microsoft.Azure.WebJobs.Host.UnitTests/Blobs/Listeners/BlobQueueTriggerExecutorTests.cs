@@ -99,7 +99,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = mock.Object;
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader);
 
-            product.Register(functionId, CreateDummyTriggeredFunctionExecutor());
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = CreateDummyTriggeredFunctionExecutor()
+            };
+            product.Register(functionId, registration);
 
             BlobTriggerMessage triggerMessage = new BlobTriggerMessage
             {
@@ -128,7 +133,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader(null);
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader);
 
-            product.Register(functionId, CreateDummyTriggeredFunctionExecutor());
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = CreateDummyTriggeredFunctionExecutor()
+            };
+            product.Register(functionId, registration);
 
             IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
@@ -151,7 +161,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobWrittenWatcher blobWrittenWatcher = mock.Object;
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, blobWrittenWatcher);
 
-            product.Register(functionId, CreateDummyTriggeredFunctionExecutor());
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = CreateDummyTriggeredFunctionExecutor()
+            };
+            product.Register(functionId, registration);
 
             IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
@@ -192,7 +207,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggeredFunctionExecutor innerExecutor = mock.Object;
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
 
-            product.Register(functionId, innerExecutor);
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = innerExecutor
+            };
+            product.Register(functionId, registration);
 
             // Act
             FunctionResult result = await product.ExecuteAsync(message, CancellationToken.None);
@@ -221,7 +241,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
 
             ITriggeredFunctionExecutor innerExecutor = mock.Object;
-            product.Register(functionId, innerExecutor);
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = innerExecutor
+            };
+            product.Register(functionId, registration);
 
             IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
@@ -251,7 +276,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
 
             ITriggeredFunctionExecutor innerExecutor = mock.Object;
-            product.Register(functionId, innerExecutor);
+            BlobQueueRegistration registration = new BlobQueueRegistration
+            {
+                BlobClient = CreateClient(),
+                Executor = innerExecutor
+            };
+            product.Register(functionId, registration);
 
             IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
@@ -348,8 +378,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         private static BlobQueueTriggerExecutor CreateProductUnderTest(IBlobETagReader eTagReader,
              IBlobCausalityReader causalityReader, IBlobWrittenWatcher blobWrittenWatcher)
         {
-            IStorageBlobClient client = CreateClient();
-            return new BlobQueueTriggerExecutor(client, eTagReader, causalityReader, blobWrittenWatcher);
+            return new BlobQueueTriggerExecutor(eTagReader, causalityReader, blobWrittenWatcher);
         }
 
         private static IBlobCausalityReader CreateStubCausalityReader()

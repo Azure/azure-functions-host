@@ -59,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "QueueAttribute",
                 "QueueTriggerAttribute",
                 "TableAttribute",
-                "SingletonAttribute"
+                "SingletonAttribute",
+                "StorageAccountAttribute"
             };
 
             AssertPublicTypes(expected, assembly);

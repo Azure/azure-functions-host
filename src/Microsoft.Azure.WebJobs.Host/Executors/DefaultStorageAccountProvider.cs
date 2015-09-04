@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -151,8 +152,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public async Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
-            IStorageAccount account;
-
+            IStorageAccount account = null;
             if (connectionStringName == ConnectionStringNames.Dashboard)
             {
                 account = DashboardAccount;
@@ -163,7 +163,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             else
             {
-                account = null;
+                // see if this is a user connnection string (i.e. for multi-account scenarios)
+                string connectionString = _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    account = ParseAccount(connectionStringName, connectionString);
+                }
             }
 
             // Only dashboard may be null when requested.

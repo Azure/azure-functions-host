@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs
             _queueName = queueName;
         }
 
-        /// <summary>Gets the name of the queue to which to bind.</summary>
+        /// <summary>
+        /// Gets the name of the queue to which to bind.
+        /// </summary>
         public string QueueName
         {
             get { return _queueName; }

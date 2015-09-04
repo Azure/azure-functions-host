@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
         }
 
         // A non-reflection based implementation
-        private class FakeParameterInfo : ParameterInfo
+        internal class FakeParameterInfo : ParameterInfo
         {
             private readonly Attribute _attribute;
 

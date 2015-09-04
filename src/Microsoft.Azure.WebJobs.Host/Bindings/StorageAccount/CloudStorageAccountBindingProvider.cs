@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
                 return null;
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
             IBinding binding = new CloudStorageAccountBinding(parameter.Name, account.SdkObject);
             return binding;
         }

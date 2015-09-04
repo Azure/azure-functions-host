@@ -25,8 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
     {
         private readonly ParameterInfo _parameter;
         private readonly IArgumentBinding<IStorageBlob> _argumentBinding;
-        private readonly IStorageAccount _account;
-        private readonly IStorageBlobClient _client;
+        private readonly IStorageAccount _hostAccount;
+        private readonly IStorageAccount _dataAccount;
+        private readonly IStorageBlobClient _blobClient;
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
         private readonly IHostIdProvider _hostIdProvider;
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         public BlobTriggerBinding(ParameterInfo parameter,
             IArgumentBinding<IStorageBlob> argumentBinding,
-            IStorageAccount account,
+            IStorageAccount hostAccount,
+            IStorageAccount dataAccount,
             IBlobPathSource path,
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
@@ -61,9 +63,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("argumentBinding");
             }
 
-            if (account == null)
+            if (hostAccount == null)
             {
-                throw new ArgumentNullException("account");
+                throw new ArgumentNullException("hostAccount");
+            }
+
+            if (dataAccount == null)
+            {
+                throw new ArgumentNullException("dataAccount");
             }
 
             if (path == null)
@@ -108,13 +115,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             _parameter = parameter;
             _argumentBinding = argumentBinding;
-            _account = account;
+            _hostAccount = hostAccount;
+            _dataAccount = dataAccount;
             StorageClientFactoryContext context = new StorageClientFactoryContext
             {
                 Parameter = parameter
             };
-            _client = account.CreateBlobClient(context);
-            _accountName = BlobClient.GetAccountName(_client);
+            _blobClient = dataAccount.CreateBlobClient(context);
+            _accountName = BlobClient.GetAccountName(_blobClient);
             _path = path;
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
@@ -123,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
-            _converter = CreateConverter(_client);
+            _converter = CreateConverter(_blobClient);
             _bindingDataContract = CreateBindingDataContract(path);
         }
 
@@ -215,11 +223,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("context");
             }
 
-            IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
+            IStorageBlobContainer container = _blobClient.GetContainerReference(_path.ContainerNamePattern);
 
             var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _trace, context.Descriptor.Id, _account, container, _path, context.Executor);
+                _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor);
 
             return factory.CreateAsync(context.CancellationToken);
         }

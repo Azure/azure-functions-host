@@ -16,30 +16,28 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobQueueTriggerExecutor : ITriggerExecutor<IStorageQueueMessage>
     {
-        private readonly IStorageBlobClient _client;
         private readonly IBlobETagReader _eTagReader;
         private readonly IBlobCausalityReader _causalityReader;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
-        private readonly ConcurrentDictionary<string, ITriggeredFunctionExecutor> _registrations;
+        private readonly ConcurrentDictionary<string, BlobQueueRegistration> _registrations;
 
-        public BlobQueueTriggerExecutor(IStorageBlobClient client, IBlobWrittenWatcher blobWrittenWatcher)
-            : this(client, BlobETagReader.Instance, BlobCausalityReader.Instance, blobWrittenWatcher)
+        public BlobQueueTriggerExecutor(IBlobWrittenWatcher blobWrittenWatcher)
+            : this(BlobETagReader.Instance, BlobCausalityReader.Instance, blobWrittenWatcher)
         {
         }
 
-        public BlobQueueTriggerExecutor(IStorageBlobClient client, IBlobETagReader eTagReader,
+        public BlobQueueTriggerExecutor(IBlobETagReader eTagReader,
             IBlobCausalityReader causalityReader, IBlobWrittenWatcher blobWrittenWatcher)
         {
-            _client = client;
             _eTagReader = eTagReader;
             _causalityReader = causalityReader;
             _blobWrittenWatcher = blobWrittenWatcher;
-            _registrations = new ConcurrentDictionary<string, ITriggeredFunctionExecutor>();
+            _registrations = new ConcurrentDictionary<string, BlobQueueRegistration>();
         }
 
-        public void Register(string functionId, ITriggeredFunctionExecutor executor)
+        public void Register(string functionId, BlobQueueRegistration registration)
         {
-            _registrations.AddOrUpdate(functionId, executor, (i1, i2) => executor);
+            _registrations.AddOrUpdate(functionId, registration, (i1, i2) => registration);
         }
 
         public async Task<FunctionResult> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
@@ -60,13 +58,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             // Ensure that the function ID is still valid. Otherwise, ignore this message.
             FunctionResult successResult = new FunctionResult(true);
-            ITriggeredFunctionExecutor executor;
-            if (!_registrations.TryGetValue(functionId, out executor))
+            BlobQueueRegistration registration;
+            if (!_registrations.TryGetValue(functionId, out registration))
             {
                 return successResult;
             }
 
-            IStorageBlobContainer container = _client.GetContainerReference(message.ContainerName);
+            IStorageBlobContainer container = registration.BlobClient.GetContainerReference(message.ContainerName);
             string blobName = message.BlobName;
 
             IStorageBlob blob;
@@ -107,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 TriggerValue = blob
             };
 
-            return await executor.TryExecuteAsync(input, cancellationToken);
+            return await registration.Executor.TryExecuteAsync(input, cancellationToken);
         }
     }
 }

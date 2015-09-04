@@ -44,7 +44,6 @@ namespace Dashboard.ApiControllers
             }
 
             LocalBlobDescriptor outputBlobDescriptor = instance.OutputBlob;
-
             if (outputBlobDescriptor == null)
             {
                 return NotFound();
@@ -82,14 +81,18 @@ namespace Dashboard.ApiControllers
         }
 
         [HttpGet]
-        public IHttpActionResult Blob(string path)
+        public IHttpActionResult Blob(string path, string accountName)
         {
-            if (String.IsNullOrEmpty(path))
+            if (String.IsNullOrEmpty(path) ||
+                String.IsNullOrEmpty(accountName))
             {
                 return Unauthorized();
             }
 
-            if (_account == null)
+            // When linking to a blob, we must resolve the account name to handle cases
+            // where multiple storage accounts are being used.
+            CloudStorageAccount account = AccountProvider.GetAccountByName(accountName);
+            if (account == null)
             {
                 return Unauthorized();
             }
@@ -100,7 +103,7 @@ namespace Dashboard.ApiControllers
                 ContainerName = parsed.ContainerName,
                 BlobName = parsed.BlobName
             };
-            var blob = descriptor.GetBlockBlob(_account);
+            var blob = descriptor.GetBlockBlob(account);
 
             // Get a SAS for the next 10 mins
             string sas = blob.GetSharedAccessSignature(new SharedAccessBlobPolicy

@@ -36,9 +36,9 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <returns>The connection string, or <see langword="null"/> if no connection string was found.</returns>
         public string GetConnectionString(string connectionStringName)
         {
-            string prefixedConnectionStringName = GetPrefixedConnectionStringName(connectionStringName);
+            connectionStringName = GetPrefixedConnectionStringName(connectionStringName);
             string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[prefixedConnectionStringName];
+            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
             if (connectionStringEntry != null)
             {
                 connectionStringInConfig = connectionStringEntry.ConnectionString;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 return connectionStringInConfig;
             }
 
-            return Environment.GetEnvironmentVariable(prefixedConnectionStringName) ?? connectionStringInConfig;
+            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
         }
 
         internal static string GetPrefixedConnectionStringName(string connectionStringName)

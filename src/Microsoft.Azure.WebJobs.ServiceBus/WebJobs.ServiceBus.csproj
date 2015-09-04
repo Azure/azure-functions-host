@@ -175,6 +175,7 @@
     <Compile Include="Bindings\ServiceBusEntity.cs" />
     <Compile Include="Bindings\StringToServiceBusEntityConverter.cs" />
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
+    <Compile Include="ServiceBusAccountAttribute.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />

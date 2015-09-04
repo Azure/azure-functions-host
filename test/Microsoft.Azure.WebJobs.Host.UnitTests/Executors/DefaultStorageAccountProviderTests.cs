@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -198,6 +200,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 @"3. Set corresponding property of JobHostConfiguration.");
         }
 
+        [Fact]
+        public void StorageAccountOverrides_MultipleLevels()
+        {
+            // param level
+            MethodInfo method = typeof(AccountOverrides).GetMethod("ParamOverride", BindingFlags.NonPublic | BindingFlags.Instance);
+            ParameterInfo parameter = method.GetParameters().Single(p => p.Name == "s");
+            string account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("param", account);
+
+            // method level
+            method = typeof(AccountOverrides).GetMethod("MethodOverride", BindingFlags.NonPublic | BindingFlags.Instance);
+            parameter = method.GetParameters().Single(p => p.Name == "s");
+            account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("method", account);
+
+            method = typeof(AccountOverrides).GetMethod("ClassOverride", BindingFlags.NonPublic | BindingFlags.Instance);
+            parameter = method.GetParameters().Single(p => p.Name == "s");
+            account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("class", account);
+        }
+
         private static IConnectionStringProvider CreateConnectionStringProvider(string connectionStringName,
             string connectionString)
         {
@@ -262,6 +285,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mock.Setup(v => v.ValidateCredentialsAsync(account, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0));
             return mock.Object;
+        }
+
+        [StorageAccount("class")]
+        private class AccountOverrides
+        {
+            [StorageAccount("method")]
+            private void ParamOverride([StorageAccount("param")] string s)
+            {
+            }
+
+            [StorageAccount("method")]
+            private void MethodOverride(string s)
+            {
+            }
+
+            private void ClassOverride(string s)
+            {
+            }
         }
     }
 }

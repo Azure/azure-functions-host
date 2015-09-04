@@ -131,27 +131,29 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
+            BlobTriggerAttribute blobTriggerAttribute = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
 
-            if (blobTrigger == null)
+            if (blobTriggerAttribute == null)
             {
                 return null;
             }
 
-            string resolvedCombinedPath = Resolve(blobTrigger.BlobPath);
+            string resolvedCombinedPath = Resolve(blobTriggerAttribute.BlobPath);
             IBlobPathSource path = BlobPathSource.Create(resolvedCombinedPath);
 
             IArgumentBinding<IStorageBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
-
             if (argumentBinding == null)
             {
                 throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            ITriggerBinding binding = new BlobTriggerBinding(parameter, argumentBinding, account, path,
+            IStorageAccount hostAccount = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageAccount dataAccount = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
+
+            ITriggerBinding binding = new BlobTriggerBinding(parameter, argumentBinding, hostAccount, dataAccount, path,
                 _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter,
                 _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace);
+
             return binding;
         }
 

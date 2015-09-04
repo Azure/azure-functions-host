@@ -4,9 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -24,14 +22,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _executor = executor;
         }
 
-        public void Register(string functionId, ITriggeredFunctionExecutor executor)
+        public void Register(string functionId, BlobQueueRegistration registration)
         {
             if (_started)
             {
                 throw new InvalidOperationException("Registrations may not be added while the shared listener is running.");
             }
 
-            _executor.Register(functionId, executor);
+            _executor.Register(functionId, registration);
         }
 
         public async Task EnsureAllStartedAsync(CancellationToken cancellationToken)

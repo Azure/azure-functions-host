@@ -365,6 +365,7 @@
     <Compile Include="Blobs\BlobContainerOutputConverter.cs" />
     <Compile Include="Blobs\CompositeBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="Blobs\IBlobContainerArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />
     <Compile Include="CompositeTraceWriter.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />

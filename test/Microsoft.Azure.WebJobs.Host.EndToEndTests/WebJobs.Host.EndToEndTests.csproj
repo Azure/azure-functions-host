@@ -99,6 +99,7 @@
     <Compile Include="CustomObject.cs" />
     <Compile Include="AzureStorageEndToEndTests.cs" />
     <Compile Include="LeaseExpirationTests.cs" />
+    <Compile Include="MultipleStorageAccountsEndToEndTests.cs" />
     <Compile Include="ParallelExecutionTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServiceBusEndToEndTests.cs" />

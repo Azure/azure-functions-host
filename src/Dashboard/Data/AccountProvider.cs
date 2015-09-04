@@ -9,18 +9,18 @@ namespace Dashboard.Data
 {
     public static class AccountProvider
     {
+        private static Dictionary<string, CloudStorageAccount> _accounts;
+
         [CLSCompliant(false)]
         public static CloudStorageAccount GetAccount(string connectionStringName)
         {
             string connectionString = ConnectionStringProvider.GetConnectionString(connectionStringName);
-
             if (connectionString == null)
             {
                 return null;
             }
 
             CloudStorageAccount account;
-
             if (!CloudStorageAccount.TryParse(connectionString, out account))
             {
                 return null;
@@ -30,23 +30,52 @@ namespace Dashboard.Data
         }
 
         [CLSCompliant(false)]
-        public static IReadOnlyDictionary<string, CloudStorageAccount> GetAccounts()
+        public static CloudStorageAccount GetAccountByName(string accountName)
         {
-            Dictionary<string, CloudStorageAccount> accounts = new Dictionary<string, CloudStorageAccount>();
-
-            IReadOnlyDictionary<string, string> connectionStrings = ConnectionStringProvider.GetConnectionStrings();
-
-            foreach (KeyValuePair<string, string> item in connectionStrings)
+            var accountMap = AccountProvider.GetAccounts();
+            foreach (var currAccount in accountMap.Values)
             {
-                CloudStorageAccount account;
-
-                if (CloudStorageAccount.TryParse(item.Value, out account))
+                if (AccountNameMatches(accountName, currAccount))
                 {
-                    accounts.Add(item.Key, account);
+                    return currAccount;
                 }
             }
 
-            return accounts;
+            return null;
+        }
+
+        [CLSCompliant(false)]
+        public static IReadOnlyDictionary<string, CloudStorageAccount> GetAccounts()
+        {
+            if (_accounts == null)
+            {
+                Dictionary<string, CloudStorageAccount> accounts = new Dictionary<string, CloudStorageAccount>();
+                IReadOnlyDictionary<string, string> connectionStrings = ConnectionStringProvider.GetConnectionStrings();
+
+                foreach (KeyValuePair<string, string> item in connectionStrings)
+                {
+                    CloudStorageAccount account;
+                    if (CloudStorageAccount.TryParse(item.Value, out account))
+                    {
+                        accounts.Add(item.Key, account);
+                    }
+                }
+
+                _accounts = accounts;
+            }
+
+            return _accounts;
+        }
+
+        [CLSCompliant(false)]
+        public static bool AccountNameMatches(string accountName, CloudStorageAccount account)
+        {
+            if (account == null || account.Credentials == null)
+            {
+                return false;
+            }
+
+            return String.Equals(accountName, account.Credentials.AccountName, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

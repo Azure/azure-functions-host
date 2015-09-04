@@ -21,8 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private readonly IBindableBlobPath _path;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
 
-        public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, IStorageBlobClient client,
-            IBindableBlobPath path)
+        public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, IStorageBlobClient client, IBindableBlobPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -85,8 +84,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             Type argumentType = _argumentBinding.ValueType;
             string blobName = boundPath.BlobName;
-            IStorageBlob blob = await container.GetBlobReferenceForArgumentTypeAsync(blobName, argumentType,
-                context.CancellationToken);
+            IStorageBlob blob = await container.GetBlobReferenceForArgumentTypeAsync(blobName, argumentType, context.CancellationToken);
 
             return await BindBlobAsync(blob, context.ValueContext);
         }

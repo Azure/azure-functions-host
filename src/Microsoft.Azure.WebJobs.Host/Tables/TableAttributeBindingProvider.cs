@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
 
             string tableName = Resolve(tableAttribute.TableName);
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = context.Parameter

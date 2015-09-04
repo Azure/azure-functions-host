@@ -219,8 +219,7 @@ namespace Dashboard.Indexers
             return arguments;
         }
 
-        internal static FunctionInstanceArgument CreateFunctionInstanceArgument(string value,
-            ParameterDescriptor descriptor)
+        internal static FunctionInstanceArgument CreateFunctionInstanceArgument(string value, ParameterDescriptor descriptor)
         {
             BlobParameterDescriptor blobDescriptor = descriptor as BlobParameterDescriptor;
             BlobTriggerParameterDescriptor blobTriggerDescriptor = null;

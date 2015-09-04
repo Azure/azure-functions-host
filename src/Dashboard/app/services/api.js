@@ -52,8 +52,8 @@
             functionConsoleLog: function (invocationId) {
                 return "api/log/output/" + encodeURIComponent(invocationId);
             },
-            downloadBlob: function (blobPath) {
-                return "api/log/blob?path=" + encodeURIComponent(blobPath);
+            downloadBlob: function (blobPath, accountName) {
+                return "api/log/blob?path=" + encodeURIComponent(blobPath) + "&accountName=" + encodeURIComponent(accountName);
             },
             functionsInJob: function (jobType, jobName, runId) {
                 if (jobType !== 'triggered' && jobType !== 'continuous') {
