@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBusTrigger to type '{0}'.", parameter.ParameterType));
             }
 
-            string accountName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
+            string connectionName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
             ServiceBusAccount account = new ServiceBusAccount
             {
-                MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(entityPath),
-                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(accountName)
+                MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(entityPath, connectionName),
+                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(connectionName)
             };
 
             ITriggerBinding binding;

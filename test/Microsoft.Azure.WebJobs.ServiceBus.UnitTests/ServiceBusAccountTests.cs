@@ -15,19 +15,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             // param level
             MethodInfo method = typeof(AccountOverrides).GetMethod("ParamOverride", BindingFlags.NonPublic | BindingFlags.Instance);
             ParameterInfo parameter = method.GetParameters().Single(p => p.Name == "s");
-            string account = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("param", account);
+            string connectionName = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("param", connectionName);
 
             // method level
             method = typeof(AccountOverrides).GetMethod("MethodOverride", BindingFlags.NonPublic | BindingFlags.Instance);
             parameter = method.GetParameters().Single(p => p.Name == "s");
-            account = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("method", account);
+            connectionName = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("method", connectionName);
 
             method = typeof(AccountOverrides).GetMethod("ClassOverride", BindingFlags.NonPublic | BindingFlags.Instance);
             parameter = method.GetParameters().Single(p => p.Name == "s");
-            account = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("class", account);
+            connectionName = ServiceBusAccount.GetAccountOverrideOrNull(parameter);
+            Assert.Equal("class", connectionName);
         }
 
         [ServiceBusAccount("class")]

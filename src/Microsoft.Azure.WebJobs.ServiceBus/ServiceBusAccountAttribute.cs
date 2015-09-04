@@ -18,9 +18,10 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="account">The name of the ServiceBus account connection
+        /// <param name="account">The name of the ServiceBus connection
         /// string to use. This should be the name of one of the connection strings present
-        /// in the application settings (or environment variables).</param>
+        /// in the application settings (or environment variables), without the "AzureWebJobs"
+        /// prefix.</param>
         public ServiceBusAccountAttribute(string account)
         {
             Account = account;
