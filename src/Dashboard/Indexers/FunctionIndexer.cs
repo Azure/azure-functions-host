@@ -243,7 +243,8 @@ namespace Dashboard.Indexers
                 Value = value,
                 IsBlob = blobDescriptor != null || blobTriggerDescriptor != null,
                 IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write,
-                AccountName = accountName
+                AccountName = accountName,
+                IsVirtualParameter = descriptor == null
             };
         }
 

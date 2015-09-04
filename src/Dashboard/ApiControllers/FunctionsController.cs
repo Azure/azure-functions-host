@@ -359,7 +359,9 @@ namespace Dashboard.ApiControllers
         {
             List<ParameterModel> models = new List<ParameterModel>();
 
-            IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
+            // It's important that we order any virtual parameters (e.g. Singleton parameters) to the end
+            // so they don't interfere with actual function parameter ordering
+            var parameters = snapshot.Arguments.OrderBy(p => p.Value.IsVirtualParameter);
             IDictionary<string, ParameterLog> parameterLogs = LogAnalysis.GetParameterLogs(account, snapshot);
 
             foreach (KeyValuePair<string, FunctionInstanceArgument> parameter in parameters)

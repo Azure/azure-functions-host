@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host
     /// </summary>
     internal class SingletonValueProvider : IWatchable, IValueProvider
     {
-        public const string SingletonParameterName = "{singleton}";
+        public const string SingletonParameterName = "(singleton)";
         private readonly SingletonLock _singletonLock;
         private readonly SingletonWatcher _watcher;
         private readonly string _scope;
