@@ -3,17 +3,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     /// <summary>
-    /// Used to create binding data for a particular type.
+    /// This class is used to generate binding contracts as well as binding data
+    /// based on those contracts.
     /// </summary>
-    internal class BindingDataProvider : IBindingDataProvider
+    public class BindingDataProvider : IBindingDataProvider
     {
         private readonly Type _type;
         private readonly IReadOnlyDictionary<string, Type> _contract;
         private readonly IEnumerable<PropertyHelper> _propertyHelpers;
+        private readonly BindingTemplateSource _bindingTemplateSource;
 
         internal BindingDataProvider(Type type, IReadOnlyDictionary<string, Type> contract, IEnumerable<PropertyHelper> propertyHelpers)
         {
@@ -22,9 +26,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _propertyHelpers = propertyHelpers;
         }
 
-        internal Type ValueType
+        internal BindingDataProvider(string template)
         {
-            get { return _type; }
+            _bindingTemplateSource = BindingTemplateSource.FromString(template);
+
+            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            foreach (string parameterName in _bindingTemplateSource.ParameterNames)
+            {
+                contract.Add(parameterName, typeof(string));
+            }
+            _contract = contract;
+            _type = typeof(string);
         }
 
         /// <inheritdoc/>
@@ -33,17 +45,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _contract; }
         }
 
-        /// <summary>
-        /// Populate binding data with property values retrieved from given value object matching the provided 
-        /// data binding contract.
-        /// </summary>
-        /// <param name="value">A value object</param>
-        /// <returns>Read-only dictionary of property name to value mappings or null if either contract entries or value object are null.</returns>
+        /// <inheritdoc/>
         public IReadOnlyDictionary<string, object> GetBindingData(object value)
         {
-            if (value != null && value.GetType() != ValueType)
+            if (value != null && value.GetType() != _type)
             {
-                throw new ArgumentException("Provided value is not of the given type", "value");
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "The supplied value was not of type '{0}'.", _type), "value");
             }
 
             if (Contract == null || value == null)
@@ -51,22 +58,27 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return null;
             }
 
-            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            foreach (var propertyHelper in _propertyHelpers)
+            if (_bindingTemplateSource != null && value.GetType() == typeof(string))
             {
-                object propertyValue = propertyHelper.GetValue(value);
-                bindingData.Add(propertyHelper.Name, propertyValue);
+               return _bindingTemplateSource.CreateBindingData((string)value);
             }
-
-            return bindingData;
+            else
+            {
+                Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                foreach (var propertyHelper in _propertyHelpers)
+                {
+                    object propertyValue = propertyHelper.GetValue(value);
+                    bindingData.Add(propertyHelper.Name, propertyValue);
+                }
+                return bindingData;
+            }
         }
 
         /// <summary>
-        /// Create a data binding provider instance out of a custom data type in form of a contract mapping 
-        /// root level public property names to their types using reflection API.
+        /// Creates a <see cref="BindingDataProvider"/> instance for the specified Type.
         /// </summary>
-        /// <param name="type">Custom data type</param>
-        /// <returns>Instance of a binding data contract or null for unsupported types.</returns>
+        /// <param name="type">The Type to return a <see cref="BindingDataProvider"/> for.</param>
+        /// <returns>A <see cref="BindingDataProvider"/> instance or null for unsupported types.</returns>
         public static BindingDataProvider FromType(Type type)
         {
             if ((type == typeof(object)) ||
@@ -79,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             // The properties on user-defined types are valid binding data.
             IReadOnlyList<PropertyHelper> bindingDataProperties = PropertyHelper.GetProperties(type);
-
             if (bindingDataProperties.Count == 0)
             {
                 return null;
@@ -92,6 +103,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return new BindingDataProvider(type, contract, bindingDataProperties);
+        }
+
+        /// <summary>
+        /// Create a <see cref="BindingDataProvider"/> instance for the specified binding template.
+        /// </summary>
+        /// <param name="template">The binding template.</param>
+        /// <returns>A <see cref="BindingDataProvider"/> instance.</returns>
+        public static BindingDataProvider FromTemplate(string template)
+        {
+            return new BindingDataProvider(template);
         }
     }
 }

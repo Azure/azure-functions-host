@@ -124,7 +124,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "TraceWriter",
                 "JobHostTraceConfiguration",
                 "StorageClientFactory",
-                "StorageClientFactoryContext"
+                "StorageClientFactoryContext",
+                "BindingDataProvider",
+                "IBindingDataProvider"
             };
 
             AssertPublicTypes(expected, assembly);

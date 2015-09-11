@@ -95,12 +95,6 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\BindingDataProvider.cs">
-      <Link>Bindings\BindingDataProvider.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\IBindingDataProvider.cs">
-      <Link>Bindings\IBindingDataProvider.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\AsyncConverter.cs">
       <Link>Converters\AsyncConverter.cs</Link>
     </Compile>
@@ -127,9 +121,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Listeners\IListenerFactory.cs">
       <Link>Listeners\IListenerFactory.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\PropertyHelper.cs">
-      <Link>Bindings\PropertyHelper.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Triggers\ITriggerDataArgumentBinding.cs">
       <Link>Triggers\ITriggerDataArgumentBinding.cs</Link>

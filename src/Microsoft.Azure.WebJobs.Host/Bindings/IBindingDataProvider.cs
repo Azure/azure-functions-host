@@ -7,9 +7,10 @@ using System.Collections.Generic;
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     /// <summary>
-    /// Interface defining methods used to create binding data.
+    /// Interface defining methods used to generate binding contracts as well as binding data
+    /// based on those contracts.
     /// </summary>
-    internal interface IBindingDataProvider
+    public interface IBindingDataProvider
     {
         /// <summary>
         /// Gets the binding contract.
@@ -17,10 +18,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         IReadOnlyDictionary<string, Type> Contract { get; }
 
         /// <summary>
-        /// Gets the binding data.
+        /// Returns the binding data for the specified value.
         /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
+        /// <param name="value">The value to return binding data for.</param>
+        /// <returns>The collection of binding data or null.</returns>
         IReadOnlyDictionary<string, object> GetBindingData(object value);
     }
 }

@@ -11,6 +11,9 @@ using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
+    /// <summary>
+    /// Class used to facilitate reflection operations.
+    /// </summary>
     internal class PropertyHelper
     {
         private static readonly MethodInfo CallPropertyGetterOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertyGetter", BindingFlags.NonPublic | BindingFlags.Static);
@@ -29,7 +32,10 @@ namespace Microsoft.Azure.WebJobs.Host
         [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors", Justification = "This is intended the Name is auto set differently per type and the type is internal")]
         public PropertyHelper(PropertyInfo property)
         {
-            Contract.Assert(property != null);
+            if (property == null)
+            {
+                throw new ArgumentNullException("property");
+            }
 
             Name = property.Name;
             _propertyType = property.PropertyType;
@@ -39,35 +45,84 @@ namespace Microsoft.Azure.WebJobs.Host
         // Implementation of the fast getter.
         private delegate TValue ByRefFunc<TDeclaringType, TValue>(ref TDeclaringType arg);
 
-        public virtual string Name { get; protected set; }
+        /// <summary>
+        /// Gets or sets the name of the property.
+        /// </summary>
+        public virtual string Name { get; private set; }
 
+        /// <summary>
+        /// Gets the <see cref="Type"/> of the property.
+        /// </summary>
         public Type PropertyType
         {
             get { return _propertyType; }
         }
 
         /// <summary>
+        /// Gets the value of the property for the specified instance.
+        /// </summary>
+        /// <param name="instance">The instance to return the property value for.</param>
+        /// <returns>The property value.</returns>
+        public object GetValue(object instance)
+        {
+            if (instance == null)
+            {
+                throw new ArgumentNullException("instance");
+            }
+
+            return _valueGetter(instance);
+        }
+
+        /// <summary>
+        /// Creates and caches fast property helpers that expose getters for every public get property on the underlying type.
+        /// </summary>
+        /// <param name="instance">the instance to extract property accessors for.</param>
+        /// <returns>a cached array of all public property getters from the underlying type of this instance.</returns>
+        public static PropertyHelper[] GetProperties(object instance)
+        {
+            if (instance == null)
+            {
+                throw new ArgumentNullException("instance");
+            }
+
+            return GetProperties(instance.GetType());
+        }
+
+        /// <summary>
+        /// Returns a collection of <see cref="PropertyHelper"/>s for the specified <see cref="Type"/>.
+        /// </summary>
+        /// <param name="type">The type to return <see cref="PropertyHelper"/>s for.</param>
+        /// <returns>A collection of <see cref="PropertyHelper"/>s.</returns>
+        public static PropertyHelper[] GetProperties(Type type)
+        {
+            return GetProperties(type, CreateInstance, _reflectionCache);
+        }
+
+        /// <summary>
         /// Creates a single fast property setter. The result is not cached.
         /// </summary>
-        /// <param name="propertyInfo">propertyInfo to extract the getter for.</param>
+        /// <param name="property">The property to extract the getter for.</param>
         /// <returns>a fast setter.</returns>
         /// <remarks>This method is more memory efficient than a dynamically compiled lambda, and about the same speed.</remarks>
-        public static Action<TDeclaringType, object> MakeFastPropertySetter<TDeclaringType>(PropertyInfo propertyInfo)
+        private static Action<TDeclaringType, object> MakeFastPropertySetter<TDeclaringType>(PropertyInfo property)
             where TDeclaringType : class
         {
-            Contract.Assert(propertyInfo != null);
+            if (property == null)
+            {
+                throw new ArgumentNullException("property");
+            }
 
-            MethodInfo setMethod = propertyInfo.GetSetMethod();
+            MethodInfo setMethod = property.GetSetMethod();
 
             Contract.Assert(setMethod != null);
             Contract.Assert(!setMethod.IsStatic);
             Contract.Assert(setMethod.GetParameters().Length == 1);
-            Contract.Assert(!propertyInfo.ReflectedType.IsValueType);
+            Contract.Assert(!property.ReflectedType.IsValueType);
 
             // Instance methods in the CLR can be turned into static methods where the first parameter
             // is open over "this". This parameter is always passed by reference, so we have a code
             // path for value types and a code path for reference types.
-            Type typeInput = propertyInfo.ReflectedType;
+            Type typeInput = property.ReflectedType;
             Type typeValue = setMethod.GetParameters()[0].ParameterType;
 
             Delegate callPropertySetterDelegate;
@@ -80,35 +135,13 @@ namespace Microsoft.Azure.WebJobs.Host
             return (Action<TDeclaringType, object>)callPropertySetterDelegate;
         }
 
-        public object GetValue(object instance)
-        {
-            Contract.Assert(_valueGetter != null, "Must call Initialize before using this object");
-
-            return _valueGetter(instance);
-        }
-
-        /// <summary>
-        /// Creates and caches fast property helpers that expose getters for every public get property on the underlying type.
-        /// </summary>
-        /// <param name="instance">the instance to extract property accessors for.</param>
-        /// <returns>a cached array of all public property getters from the underlying type of this instance.</returns>
-        public static PropertyHelper[] GetProperties(object instance)
-        {
-            return GetProperties(instance.GetType());
-        }
-
-        public static PropertyHelper[] GetProperties(Type type)
-        {
-            return GetProperties(type, CreateInstance, _reflectionCache);
-        }
-
         /// <summary>
         /// Creates a single fast property getter. The result is not cached.
         /// </summary>
         /// <param name="propertyInfo">propertyInfo to extract the getter for.</param>
         /// <returns>a fast getter.</returns>
         /// <remarks>This method is more memory efficient than a dynamically compiled lambda, and about the same speed.</remarks>
-        public static Func<object, object> MakeFastPropertyGetter(PropertyInfo propertyInfo)
+        private static Func<object, object> MakeFastPropertyGetter(PropertyInfo propertyInfo)
         {
             Contract.Assert(propertyInfo != null);
 
@@ -163,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host
             setter((TDeclaringType)@this, (TValue)value);
         }
 
-        protected static PropertyHelper[] GetProperties(Type type,
+        private static PropertyHelper[] GetProperties(Type type,
                                                         Func<PropertyInfo, PropertyHelper> createPropertyHelper,
                                                         ConcurrentDictionary<Type, PropertyHelper[]> cache)
         {
