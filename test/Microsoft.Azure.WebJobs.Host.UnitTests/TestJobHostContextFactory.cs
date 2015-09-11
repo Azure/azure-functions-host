@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         public SingletonManager SingletonManager { get; set; }
 
-        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
+        public Task<JobHostContext> CreateAndLogHostStartedAsync(JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
             ITypeLocator typeLocator = new DefaultTypeLocator(new StringWriter(), new DefaultExtensionRegistry());
             INameResolver nameResolver = new RandomNameResolver();
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                StorageAccountProvider, config.Queues, typeLocator, DefaultJobActivator.Instance, nameResolver,
+                host, StorageAccountProvider, config.Queues, typeLocator, DefaultJobActivator.Instance, nameResolver,
                 new NullConsoleProvider(), new JobHostConfiguration(), shutdownToken, cancellationToken,
                 new FixedHostIdProvider(Guid.NewGuid().ToString("N")),
                 null, new EmptyFunctionIndexProvider(),

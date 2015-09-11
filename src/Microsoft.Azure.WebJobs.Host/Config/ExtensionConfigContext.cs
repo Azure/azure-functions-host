@@ -18,5 +18,10 @@ namespace Microsoft.Azure.WebJobs.Host.Config
         /// Gets or sets the <see cref="TraceWriter"/>.
         /// </summary>
         public TraceWriter Trace { get; set; }
+
+        /// <summary>
+        /// The <see cref="JobHost"/> being configured.
+        /// </summary>
+        public JobHost Host { get; set; }
     }
 }

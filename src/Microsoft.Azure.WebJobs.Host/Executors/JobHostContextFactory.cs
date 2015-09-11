@@ -42,18 +42,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _config = config;
         }
 
-        public async Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
+        public async Task<JobHostContext> CreateAndLogHostStartedAsync(JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
             IHostIdProvider hostIdProvider = null;
             if (_config.HostId != null)
             {
                 hostIdProvider = new FixedHostIdProvider(_config.HostId);
             }
-            return await CreateAndLogHostStartedAsync(_storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
+            return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
                 _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider);
         }
 
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
+            JobHost host,
             IStorageAccountProvider storageAccountProvider,
             IQueueConfiguration queueConfiguration,
             ITypeLocator typeLocator,
@@ -97,7 +98,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ExtensionConfigContext context = new ExtensionConfigContext
             {
                 Config = config,
-                Trace = trace
+                Trace = trace,
+                Host = host
             };
             InvokeExtensionConfigProviders(context);
 

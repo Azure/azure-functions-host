@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IJobHostContextFactory
     {
-        Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken,
-            CancellationToken cancellationToken);
+        Task<JobHostContext> CreateAndLogHostStartedAsync(JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken);
     }
 }

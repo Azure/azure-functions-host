@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public FunctionExecutor FunctionExecutor { get; set; }
 
-        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
+        public Task<JobHostContext> CreateAndLogHostStartedAsync(JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
             INameResolver nameResolver = new RandomNameResolver();
             JobHostConfiguration config = new JobHostConfiguration
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver, 
+                host, StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver, 
                 ConsoleProvider, new JobHostConfiguration(), shutdownToken, cancellationToken, HostIdProvider, FunctionExecutor,
                 FunctionIndexProvider, BindingProvider, HostInstanceLoggerProvider, FunctionInstanceLoggerProvider,
                 FunctionOutputLoggerProvider, BackgroundExceptionDispatcher);

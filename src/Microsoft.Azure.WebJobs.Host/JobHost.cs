@@ -329,7 +329,7 @@ namespace Microsoft.Azure.WebJobs
 
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(_shutdownTokenSource.Token, cancellationToken);
+            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
 
             lock (_contextLock)
             {
