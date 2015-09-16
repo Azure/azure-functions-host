@@ -29,3 +29,4 @@ And here's the corresponding manifest.json file that instructs the runtime to in
     ]
   }
 ```
+That's all that is required from the user! The runtime will be initialized automatically with these inputs and live monitoring of the Azure Queue will begin, and the function will be invoked when queue messages are added.
