@@ -6,13 +6,16 @@ This opens the door for UI driven scenarios, where the user simply chooses some 
 
 As an example, here's a simple Node.js job function that processes a work item:
 
+```javascript
     function processWorkItem(workItem, callback) {
         console.log('Work Item processed: ' + workItem.ID);
         callback();
     }
+```
 
 And here is the corresponding manifest.json file that directs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue:
 
+```javascript
     {
       "functions": [
         {
@@ -25,3 +28,4 @@ And here is the corresponding manifest.json file that directs the runtime to inv
       }
     ]
   }
+```
