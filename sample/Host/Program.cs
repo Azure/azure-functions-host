@@ -11,6 +11,9 @@ using Microsoft.Framework.Runtime;
 
 namespace Host
 {
+    /// <summary>
+    /// Sample CSharp script host. 
+    /// </summary>
     public class Program
     {
         private readonly ILibraryManager _libraryManager;

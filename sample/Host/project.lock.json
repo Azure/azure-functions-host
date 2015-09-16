@@ -1,6 +1,6 @@
 {
   "locked": false,
-  "version": -9996,
+  "version": 1,
   "targets": {
     "DNX,Version=v4.5.1": {
       "EntityFramework/6.1.3": {
@@ -74,8 +74,8 @@
       "Microsoft.Azure.WebJobs.Extensions/1.0.0-alpha2": {
         "dependencies": {
           "Microsoft.Azure.WebJobs": "1.1.0-alpha2",
-          "ncrontab": "2.0.0",
-          "Microsoft.Tpl.Dataflow": "4.5.24"
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "ncrontab": "2.0.0"
         },
         "compile": {
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
@@ -99,7 +99,13 @@
       "Microsoft.CSharp/4.0.0-beta-23019": {
         "frameworkAssemblies": [
           "Microsoft.CSharp"
-        ]
+        ],
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
       },
       "Microsoft.Data.Edm/5.6.2": {
         "compile": {
@@ -140,8 +146,8 @@
       },
       "Microsoft.Data.OData/5.6.2": {
         "dependencies": {
-          "System.Spatial": "[5.6.2]",
-          "Microsoft.Data.Edm": "[5.6.2]"
+          "Microsoft.Data.Edm": "[5.6.2]",
+          "System.Spatial": "[5.6.2]"
         },
         "compile": {
           "lib/net40/Microsoft.Data.OData.dll": {}
@@ -221,10 +227,10 @@
       },
       "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
         "frameworkAssemblies": [
+          "Microsoft.CSharp",
           "mscorlib",
           "System",
-          "System.Core",
-          "Microsoft.CSharp"
+          "System.Core"
         ],
         "compile": {
           "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll": {}
@@ -296,8 +302,22 @@
           "ref/dotnet/System.Collections.dll": {}
         }
       },
-      "System.Linq/4.0.0-beta-23019": {},
-      "System.Runtime/4.0.0-beta-23019": {},
+      "System.Linq/4.0.0-beta-23019": {
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "System.Runtime/4.0.0-beta-23019": {
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
       "System.Spatial/5.6.2": {
         "compile": {
           "lib/net40/System.Spatial.dll": {}
@@ -344,13 +364,20 @@
           "ref/dotnet/System.Threading.dll": {}
         }
       },
-      "System.Threading.Tasks/4.0.0-beta-23019": {},
+      "System.Threading.Tasks/4.0.0-beta-23019": {
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
       "WindowsAzure.Storage/4.3.0": {
         "dependencies": {
           "Microsoft.Data.OData": "5.6.2",
-          "Newtonsoft.Json": "5.0.8",
           "Microsoft.Data.Services.Client": "5.6.2",
-          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0"
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+          "Newtonsoft.Json": "5.0.8"
         },
         "frameworkAssemblies": [
           "System.Data",
@@ -371,11 +398,11 @@
       "serviceable": true,
       "sha512": "2xzFHAF3VVdmTR3//MygtQpwfbDjeaq+nQwCcokLzen7MKHOojPaxNPQPa4diHY1QtcR7zlHAJHNRqPB7W2Syw==",
       "files": [
+        "content/App.config.transform",
+        "content/Web.config.transform",
         "EntityFramework.6.1.3.nupkg",
         "EntityFramework.6.1.3.nupkg.sha512",
         "EntityFramework.nuspec",
-        "content/App.config.transform",
-        "content/Web.config.transform",
         "lib/net40/EntityFramework.dll",
         "lib/net40/EntityFramework.SqlServer.dll",
         "lib/net40/EntityFramework.SqlServer.xml",
@@ -448,67 +475,67 @@
       "serviceable": true,
       "sha512": "3kiI8peSXbXHDDrRuo+QaX0iCEVRe0nvn2dBDRw656uPX32UalbBlSIDUDlJxu05eau4tnuhsikiUuugvvoUoQ==",
       "files": [
-        "Microsoft.AspNet.WebApi.Client.5.2.3.nupkg",
-        "Microsoft.AspNet.WebApi.Client.5.2.3.nupkg.sha512",
-        "Microsoft.AspNet.WebApi.Client.nuspec",
         "lib/net45/System.Net.Http.Formatting.dll",
         "lib/net45/System.Net.Http.Formatting.xml",
         "lib/portable-wp8+netcore45+net45+wp81+wpa81/System.Net.Http.Formatting.dll",
-        "lib/portable-wp8+netcore45+net45+wp81+wpa81/System.Net.Http.Formatting.xml"
+        "lib/portable-wp8+netcore45+net45+wp81+wpa81/System.Net.Http.Formatting.xml",
+        "Microsoft.AspNet.WebApi.Client.5.2.3.nupkg",
+        "Microsoft.AspNet.WebApi.Client.5.2.3.nupkg.sha512",
+        "Microsoft.AspNet.WebApi.Client.nuspec"
       ]
     },
     "Microsoft.Azure.WebJobs/1.1.0-alpha2-10109": {
       "serviceable": true,
       "sha512": "0+64ljfSr++4US+e6YDy/BRHICFMuuwikBxFH0vgBD41Rl4EcIIcGPFpgpr2sBYd2JXINulBX13nlAiYF3taFg==",
       "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.Host.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.Host.xml",
         "Microsoft.Azure.WebJobs.1.1.0-alpha2-10109.nupkg",
         "Microsoft.Azure.WebJobs.1.1.0-alpha2-10109.nupkg.sha512",
-        "Microsoft.Azure.WebJobs.nuspec",
-        "lib/net45/Microsoft.Azure.WebJobs.Host.dll",
-        "lib/net45/Microsoft.Azure.WebJobs.Host.xml"
+        "Microsoft.Azure.WebJobs.nuspec"
       ]
     },
     "Microsoft.Azure.WebJobs.Core/1.1.0-alpha2-10109": {
       "serviceable": true,
       "sha512": "LGVRC8Wzp6eg0VTWm4crpVeGkBz7QsW9MzBPE9S66YLeYsiK4d9qth5VcG78d0LoR6Mful4lLpgmD9tVuRA8XQ==",
       "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.xml",
         "Microsoft.Azure.WebJobs.Core.1.1.0-alpha2-10109.nupkg",
         "Microsoft.Azure.WebJobs.Core.1.1.0-alpha2-10109.nupkg.sha512",
-        "Microsoft.Azure.WebJobs.Core.nuspec",
-        "lib/net45/Microsoft.Azure.WebJobs.dll",
-        "lib/net45/Microsoft.Azure.WebJobs.xml"
+        "Microsoft.Azure.WebJobs.Core.nuspec"
       ]
     },
     "Microsoft.Azure.WebJobs.Extensions/1.0.0-alpha2": {
       "sha512": "cnfoFNCPKIwvspyrEfVBzI7GILAqlr1eLxVRtiyN6+GpYq43ACjx++ceHSKbIg/OilSvtMqBBuPg0oeHGhBciA==",
       "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.xml",
         "Microsoft.Azure.WebJobs.Extensions.1.0.0-alpha2.nupkg",
         "Microsoft.Azure.WebJobs.Extensions.1.0.0-alpha2.nupkg.sha512",
-        "Microsoft.Azure.WebJobs.Extensions.nuspec",
-        "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll",
-        "lib/net45/Microsoft.Azure.WebJobs.Extensions.xml"
+        "Microsoft.Azure.WebJobs.Extensions.nuspec"
       ]
     },
     "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-alpha2-10112": {
       "sha512": "ikeqcnVT0BkSHnRnYhEHrzj0ea17HMvtlz7/cL2Og+4QwPl20ATeY/0nGnTe0PTh9FsUwtadkRcF0CwdvlsLRg==",
       "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.xml",
         "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-alpha2-10112.nupkg",
         "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-alpha2-10112.nupkg.sha512",
-        "Microsoft.Azure.WebJobs.Extensions.WebHooks.nuspec",
-        "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll",
-        "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.xml"
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks.nuspec"
       ]
     },
     "Microsoft.CSharp/4.0.0-beta-23019": {
-      "sha512": "TsYR8ylpBw89cxCTzA9eD8wqLR5u4TnNvUCLU7Qt9TlbxmNM0jPaz80L4N+W81kEoOpchlckGGCTA4JVemmEVA==",
+      "sha512": "wp5SlNCIXAFqPbWMOAD8eedaPA1vPyBSh6P/OZUaSab4ogrFdElpHVoW+wTicbXLVJcvQwp1Jtk9xP5Slmq4EA==",
       "files": [
-        "Microsoft.CSharp.4.0.0-beta-23019.nupkg",
-        "Microsoft.CSharp.4.0.0-beta-23019.nupkg.sha512",
-        "Microsoft.CSharp.nuspec",
         "lib/dotnet/Microsoft.CSharp.dll",
         "lib/net45/_._",
         "lib/netcore50/Microsoft.CSharp.dll",
         "lib/win8/_._",
+        "Microsoft.CSharp.4.0.0-beta-23019.nupkg",
+        "Microsoft.CSharp.4.0.0-beta-23019.nupkg.sha512",
+        "Microsoft.CSharp.nuspec",
         "ref/dotnet/Microsoft.CSharp.dll",
         "ref/net45/_._",
         "ref/netcore50/Microsoft.CSharp.dll",
@@ -518,178 +545,175 @@
     "Microsoft.Data.Edm/5.6.2": {
       "sha512": "jWP4yPWTgMS1I0J73iIvPXRo4wzsqKKKGOyeh3xOEu6m4/t/hWLgd3UsmQmB0ycvHF6ru6J2mDlv+C41xaw0lw==",
       "files": [
-        "Microsoft.Data.Edm.5.6.2.nupkg",
-        "Microsoft.Data.Edm.5.6.2.nupkg.sha512",
-        "Microsoft.Data.Edm.nuspec",
-        "lib/net40/Microsoft.Data.Edm.dll",
-        "lib/net40/Microsoft.Data.Edm.xml",
         "lib/net40/de/Microsoft.Data.Edm.resources.dll",
         "lib/net40/es/Microsoft.Data.Edm.resources.dll",
         "lib/net40/fr/Microsoft.Data.Edm.resources.dll",
         "lib/net40/it/Microsoft.Data.Edm.resources.dll",
         "lib/net40/ja/Microsoft.Data.Edm.resources.dll",
         "lib/net40/ko/Microsoft.Data.Edm.resources.dll",
+        "lib/net40/Microsoft.Data.Edm.dll",
+        "lib/net40/Microsoft.Data.Edm.xml",
         "lib/net40/ru/Microsoft.Data.Edm.resources.dll",
         "lib/net40/zh-Hans/Microsoft.Data.Edm.resources.dll",
         "lib/net40/zh-Hant/Microsoft.Data.Edm.resources.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.Edm.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.Edm.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/de/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/es/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/fr/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/it/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ja/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ko/Microsoft.Data.Edm.resources.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.Edm.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.Edm.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/ru/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hans/Microsoft.Data.Edm.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hant/Microsoft.Data.Edm.resources.dll",
-        "lib/sl4/Microsoft.Data.Edm.dll",
-        "lib/sl4/Microsoft.Data.Edm.xml",
         "lib/sl4/de/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/es/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/fr/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/it/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/ja/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/ko/Microsoft.Data.Edm.resources.dll",
+        "lib/sl4/Microsoft.Data.Edm.dll",
+        "lib/sl4/Microsoft.Data.Edm.xml",
         "lib/sl4/ru/Microsoft.Data.Edm.resources.dll",
         "lib/sl4/zh-Hans/Microsoft.Data.Edm.resources.dll",
-        "lib/sl4/zh-Hant/Microsoft.Data.Edm.resources.dll"
+        "lib/sl4/zh-Hant/Microsoft.Data.Edm.resources.dll",
+        "Microsoft.Data.Edm.5.6.2.nupkg",
+        "Microsoft.Data.Edm.5.6.2.nupkg.sha512",
+        "Microsoft.Data.Edm.nuspec"
       ]
     },
     "Microsoft.Data.OData/5.6.2": {
       "sha512": "Sa+lHW0AOE5GqJJJc1GiGYFLupBXc0WwOcnCHccS8PQl6xuMCfNMdM08opzG97zuihPVNkx8aznS/X2xGieMUA==",
       "files": [
-        "Microsoft.Data.OData.5.6.2.nupkg",
-        "Microsoft.Data.OData.5.6.2.nupkg.sha512",
-        "Microsoft.Data.OData.nuspec",
-        "lib/net40/Microsoft.Data.OData.dll",
-        "lib/net40/Microsoft.Data.OData.xml",
         "lib/net40/de/Microsoft.Data.OData.resources.dll",
         "lib/net40/es/Microsoft.Data.OData.resources.dll",
         "lib/net40/fr/Microsoft.Data.OData.resources.dll",
         "lib/net40/it/Microsoft.Data.OData.resources.dll",
         "lib/net40/ja/Microsoft.Data.OData.resources.dll",
         "lib/net40/ko/Microsoft.Data.OData.resources.dll",
+        "lib/net40/Microsoft.Data.OData.dll",
+        "lib/net40/Microsoft.Data.OData.xml",
         "lib/net40/ru/Microsoft.Data.OData.resources.dll",
         "lib/net40/zh-Hans/Microsoft.Data.OData.resources.dll",
         "lib/net40/zh-Hant/Microsoft.Data.OData.resources.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.OData.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.OData.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/de/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/es/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/fr/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/it/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ja/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ko/Microsoft.Data.OData.resources.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.OData.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/Microsoft.Data.OData.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/ru/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hans/Microsoft.Data.OData.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hant/Microsoft.Data.OData.resources.dll",
-        "lib/sl4/Microsoft.Data.OData.dll",
-        "lib/sl4/Microsoft.Data.OData.xml",
         "lib/sl4/de/Microsoft.Data.OData.resources.dll",
         "lib/sl4/es/Microsoft.Data.OData.resources.dll",
         "lib/sl4/fr/Microsoft.Data.OData.resources.dll",
         "lib/sl4/it/Microsoft.Data.OData.resources.dll",
         "lib/sl4/ja/Microsoft.Data.OData.resources.dll",
         "lib/sl4/ko/Microsoft.Data.OData.resources.dll",
+        "lib/sl4/Microsoft.Data.OData.dll",
+        "lib/sl4/Microsoft.Data.OData.xml",
         "lib/sl4/ru/Microsoft.Data.OData.resources.dll",
         "lib/sl4/zh-Hans/Microsoft.Data.OData.resources.dll",
-        "lib/sl4/zh-Hant/Microsoft.Data.OData.resources.dll"
+        "lib/sl4/zh-Hant/Microsoft.Data.OData.resources.dll",
+        "Microsoft.Data.OData.5.6.2.nupkg",
+        "Microsoft.Data.OData.5.6.2.nupkg.sha512",
+        "Microsoft.Data.OData.nuspec"
       ]
     },
     "Microsoft.Data.Services.Client/5.6.2": {
       "sha512": "IUofwHAdPGP/NauOaZUcnNGtg9GXWUOEVhlHHIwKWA1wSQmcmUbvCLZ83+ocQqSiK9IOyJrFhOclU3PoKwg0Ew==",
       "files": [
-        "Microsoft.Data.Services.Client.5.6.2.nupkg",
-        "Microsoft.Data.Services.Client.5.6.2.nupkg.sha512",
-        "Microsoft.Data.Services.Client.nuspec",
-        "lib/net40/Microsoft.Data.Services.Client.dll",
-        "lib/net40/Microsoft.Data.Services.Client.xml",
         "lib/net40/de/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/es/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/fr/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/it/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/ja/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/ko/Microsoft.Data.Services.Client.resources.dll",
+        "lib/net40/Microsoft.Data.Services.Client.dll",
+        "lib/net40/Microsoft.Data.Services.Client.xml",
         "lib/net40/ru/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/zh-Hans/Microsoft.Data.Services.Client.resources.dll",
         "lib/net40/zh-Hant/Microsoft.Data.Services.Client.resources.dll",
-        "lib/portable-net45+wp8+win8+wpa/Microsoft.Data.Services.Client.dll",
-        "lib/portable-net45+wp8+win8+wpa/Microsoft.Data.Services.Client.xml",
         "lib/portable-net45+wp8+win8+wpa/de/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/es/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/fr/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/it/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/ja/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/ko/Microsoft.Data.Services.Client.resources.dll",
+        "lib/portable-net45+wp8+win8+wpa/Microsoft.Data.Services.Client.dll",
+        "lib/portable-net45+wp8+win8+wpa/Microsoft.Data.Services.Client.xml",
         "lib/portable-net45+wp8+win8+wpa/ru/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/zh-Hans/Microsoft.Data.Services.Client.resources.dll",
         "lib/portable-net45+wp8+win8+wpa/zh-Hant/Microsoft.Data.Services.Client.resources.dll",
-        "lib/sl4/Microsoft.Data.Services.Client.dll",
-        "lib/sl4/Microsoft.Data.Services.Client.xml",
         "lib/sl4/de/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/es/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/fr/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/it/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/ja/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/ko/Microsoft.Data.Services.Client.resources.dll",
+        "lib/sl4/Microsoft.Data.Services.Client.dll",
+        "lib/sl4/Microsoft.Data.Services.Client.xml",
         "lib/sl4/ru/Microsoft.Data.Services.Client.resources.dll",
         "lib/sl4/zh-Hans/Microsoft.Data.Services.Client.resources.dll",
-        "lib/sl4/zh-Hant/Microsoft.Data.Services.Client.resources.dll"
+        "lib/sl4/zh-Hant/Microsoft.Data.Services.Client.resources.dll",
+        "Microsoft.Data.Services.Client.5.6.2.nupkg",
+        "Microsoft.Data.Services.Client.5.6.2.nupkg.sha512",
+        "Microsoft.Data.Services.Client.nuspec"
       ]
     },
     "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
       "serviceable": true,
       "sha512": "w4Cwg6jgPd3XFGOgBGU3GVGVAwUcMglSDTlI23M8uI7yhDRSDbxZ2HPbjTEBMoj+IYdkfunZWFdA67tdk8L8Tg==",
       "files": [
-        "Microsoft.Framework.Runtime.Abstractions.1.0.0-beta6.nupkg",
-        "Microsoft.Framework.Runtime.Abstractions.1.0.0-beta6.nupkg.sha512",
-        "Microsoft.Framework.Runtime.Abstractions.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.xml",
         "lib/dnxcore50/Microsoft.Framework.Runtime.Abstractions.dll",
-        "lib/dnxcore50/Microsoft.Framework.Runtime.Abstractions.xml"
+        "lib/dnxcore50/Microsoft.Framework.Runtime.Abstractions.xml",
+        "Microsoft.Framework.Runtime.Abstractions.1.0.0-beta6.nupkg",
+        "Microsoft.Framework.Runtime.Abstractions.1.0.0-beta6.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Abstractions.nuspec"
       ]
     },
     "Microsoft.Tpl.Dataflow/4.5.24": {
       "serviceable": true,
       "sha512": "6BE4Vu74+dkv5AkJd+UxW1sFMepMZOVlUoMZDUKqhc4Bf7pe7yySzCj6QrowUZbCqcDPwOiQsAgz3nXiLQSyMw==",
       "files": [
-        "License-Stable.rtf",
-        "Microsoft.Tpl.Dataflow.4.5.24.nupkg",
-        "Microsoft.Tpl.Dataflow.4.5.24.nupkg.sha512",
-        "Microsoft.Tpl.Dataflow.nuspec",
         "lib/portable-net45+win8+wp8+wpa81/System.Threading.Tasks.Dataflow.dll",
         "lib/portable-net45+win8+wp8+wpa81/system.threading.tasks.dataflow.xml",
         "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll",
-        "lib/portable-net45+win8+wpa81/system.threading.tasks.dataflow.xml"
+        "lib/portable-net45+win8+wpa81/system.threading.tasks.dataflow.xml",
+        "License-Stable.rtf",
+        "Microsoft.Tpl.Dataflow.4.5.24.nupkg",
+        "Microsoft.Tpl.Dataflow.4.5.24.nupkg.sha512",
+        "Microsoft.Tpl.Dataflow.nuspec"
       ]
     },
     "Microsoft.WindowsAzure.ConfigurationManager/1.8.0.0": {
       "sha512": "a6b+9C3kZ3YtyqlxDfMSEYnqARFpr/BQcCqZFCgqBAEHDUZNr2/GOL9gC2gialM0SMOSJ5PXic4NirF19HtMwQ==",
       "files": [
+        "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll",
         "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0.nupkg",
         "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0.nupkg.sha512",
-        "Microsoft.WindowsAzure.ConfigurationManager.nuspec",
-        "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll"
+        "Microsoft.WindowsAzure.ConfigurationManager.nuspec"
       ]
     },
     "ncrontab/2.0.0": {
       "sha512": "vM5me4GCgQ9kXA4EBP7QfEl2vJ5VSyjYf7IesbjWWLz2UmXSNuxxXnUWWDRYACIbkEHrdGxleB47iPz38Evw0g==",
       "files": [
         "COPYING.txt",
+        "lib/net20/NCrontab.dll",
         "ncrontab.2.0.0.nupkg",
         "ncrontab.2.0.0.nupkg.sha512",
-        "ncrontab.nuspec",
-        "lib/net20/NCrontab.dll"
+        "ncrontab.nuspec"
       ]
     },
     "Newtonsoft.Json/6.0.8": {
       "sha512": "7ut47NDedTW19EbL0JpFDYUP62fcuz27hJrehCDNajdCS5NtqL+E39+7Um3OkNc2wl2ym7K8Ln5eNuLus6mVGQ==",
       "files": [
-        "Newtonsoft.Json.6.0.8.nupkg",
-        "Newtonsoft.Json.6.0.8.nupkg.sha512",
-        "Newtonsoft.Json.nuspec",
         "lib/net20/Newtonsoft.Json.dll",
         "lib/net20/Newtonsoft.Json.xml",
         "lib/net35/Newtonsoft.Json.dll",
@@ -704,49 +728,49 @@
         "lib/portable-net40+sl5+wp80+win8+wpa81/Newtonsoft.Json.xml",
         "lib/portable-net45+wp80+win8+wpa81+aspnetcore50/Newtonsoft.Json.dll",
         "lib/portable-net45+wp80+win8+wpa81+aspnetcore50/Newtonsoft.Json.xml",
+        "Newtonsoft.Json.6.0.8.nupkg",
+        "Newtonsoft.Json.6.0.8.nupkg.sha512",
+        "Newtonsoft.Json.nuspec",
         "tools/install.ps1"
       ]
     },
     "Suave/0.31.2": {
       "sha512": "UoG9Ys+wrh0tHzsP5bdh6TPAaiNildfWXLoa4KNTXJIYkOAns3mCPKIfPTeu4aNRWLxFIu0CmbCZ0BR83LbIVg==",
       "files": [
-        "Suave.0.31.2.nupkg",
-        "Suave.0.31.2.nupkg.sha512",
-        "Suave.nuspec",
         "lib/net40/Suave.dll",
         "lib/net40/Suave.dll.mdb",
-        "lib/net40/Suave.xml"
+        "lib/net40/Suave.xml",
+        "Suave.0.31.2.nupkg",
+        "Suave.0.31.2.nupkg.sha512",
+        "Suave.nuspec"
       ]
     },
     "SuaveServerWrapper/0.0.2": {
       "sha512": "RoPbmWzVTD43U+p8KT8VE/B/WQp/UivDCA8UMkpyexZ9sEhJ/jsjWuuPxlHhn8HiPvQIf8ymu7XD0xgqILDKqQ==",
       "files": [
+        "lib/net45/SuaveServerWrapper.dll",
         "SuaveServerWrapper.0.0.2.nupkg",
         "SuaveServerWrapper.0.0.2.nupkg.sha512",
-        "SuaveServerWrapper.nuspec",
-        "lib/net45/SuaveServerWrapper.dll"
+        "SuaveServerWrapper.nuspec"
       ]
     },
     "System.Collections/4.0.10-beta-23019": {
-      "sha512": "76/FZ9wYhhU6wdNwrB3NiVJ5lpLZnLhS3dbLCOXOSf8NN3KXPrlcm5f2PUeHSJxgu5nP2H8lGLfshIaWq2qSNQ==",
+      "sha512": "MHZUp2LFl6sc22mBNHgM1vN5cQcxdcqPuQ3xRThg1UOH+eZ3rJIk5Ja+mkMFOdAiMB626u0fQMNEdNfItRyWuw==",
       "files": [
-        "System.Collections.4.0.10-beta-23019.nupkg",
-        "System.Collections.4.0.10-beta-23019.nupkg.sha512",
-        "System.Collections.nuspec",
         "lib/DNXCore50/System.Collections.dll",
         "lib/net46/_._",
         "lib/netcore50/System.Collections.dll",
         "ref/dotnet/System.Collections.dll",
         "ref/net46/_._",
-        "runtimes/win8-aot/lib/netcore50/System.Collections.dll"
+        "runtimes/win8-aot/lib/netcore50/System.Collections.dll",
+        "System.Collections.4.0.10-beta-23019.nupkg",
+        "System.Collections.4.0.10-beta-23019.nupkg.sha512",
+        "System.Collections.nuspec"
       ]
     },
     "System.Linq/4.0.0-beta-23019": {
-      "sha512": "kw6QeVsZWOKdonnArSWFerSyXCsr2LmGqT9Z2W7HFf7yN09o6O8YLfIALlFnhD4CXgJZYC8ebgMPC6uK9IZfOQ==",
+      "sha512": "jBHOkMRLTew/lr+awaPzEt5+rif4S7L9h/tY17unLaILq9P5muWVtsP2Tg/9YAJmHYoJDoCBKMpdGJ0hA5kqow==",
       "files": [
-        "System.Linq.4.0.0-beta-23019.nupkg",
-        "System.Linq.4.0.0-beta-23019.nupkg.sha512",
-        "System.Linq.nuspec",
         "lib/dotnet/System.Linq.dll",
         "lib/net45/_._",
         "lib/netcore50/System.Linq.dll",
@@ -754,32 +778,30 @@
         "ref/dotnet/System.Linq.dll",
         "ref/net45/_._",
         "ref/netcore50/System.Linq.dll",
-        "ref/win8/_._"
+        "ref/win8/_._",
+        "System.Linq.4.0.0-beta-23019.nupkg",
+        "System.Linq.4.0.0-beta-23019.nupkg.sha512",
+        "System.Linq.nuspec"
       ]
     },
     "System.Runtime/4.0.0-beta-23019": {
       "sha512": "BUB/5CSzjDRQlifthFztT1eWmnnb2QCK2WKd0kxAt8ytB+2oXiVqpSvcbtzRsidp8wGdG51fyolfiznodSIX9A==",
       "files": [
-        "License.rtf",
-        "System.Runtime.4.0.0-beta-23019.nupkg",
-        "System.Runtime.4.0.0-beta-23019.nupkg.sha512",
-        "System.Runtime.nuspec",
         "lib/net45/_._",
         "lib/win8/_._",
+        "License.rtf",
         "ref/dotnet/System.Runtime.dll",
         "ref/net45/_._",
         "ref/netcore50/System.Runtime.dll",
-        "ref/win8/_._"
+        "ref/win8/_._",
+        "System.Runtime.4.0.0-beta-23019.nupkg",
+        "System.Runtime.4.0.0-beta-23019.nupkg.sha512",
+        "System.Runtime.nuspec"
       ]
     },
     "System.Spatial/5.6.2": {
       "sha512": "1uQgiOxpRXWZnPt0uRjAaQ71J5oVz/v88wBcDLlJGZh7QPAnmGQxOe8Fc6WYVWprOXipTTdpMAaPjGTfrRFQ8g==",
       "files": [
-        "System.Spatial.5.6.2.nupkg",
-        "System.Spatial.5.6.2.nupkg.sha512",
-        "System.Spatial.nuspec",
-        "lib/net40/System.Spatial.dll",
-        "lib/net40/System.Spatial.xml",
         "lib/net40/de/System.Spatial.resources.dll",
         "lib/net40/es/System.Spatial.resources.dll",
         "lib/net40/fr/System.Spatial.resources.dll",
@@ -787,10 +809,10 @@
         "lib/net40/ja/System.Spatial.resources.dll",
         "lib/net40/ko/System.Spatial.resources.dll",
         "lib/net40/ru/System.Spatial.resources.dll",
+        "lib/net40/System.Spatial.dll",
+        "lib/net40/System.Spatial.xml",
         "lib/net40/zh-Hans/System.Spatial.resources.dll",
         "lib/net40/zh-Hant/System.Spatial.resources.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/System.Spatial.dll",
-        "lib/portable-net40+sl5+wp8+win8+wpa/System.Spatial.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/de/System.Spatial.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/es/System.Spatial.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/fr/System.Spatial.resources.dll",
@@ -798,10 +820,10 @@
         "lib/portable-net40+sl5+wp8+win8+wpa/ja/System.Spatial.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ko/System.Spatial.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/ru/System.Spatial.resources.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/System.Spatial.dll",
+        "lib/portable-net40+sl5+wp8+win8+wpa/System.Spatial.xml",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hans/System.Spatial.resources.dll",
         "lib/portable-net40+sl5+wp8+win8+wpa/zh-Hant/System.Spatial.resources.dll",
-        "lib/sl4/System.Spatial.dll",
-        "lib/sl4/System.Spatial.xml",
         "lib/sl4/de/System.Spatial.resources.dll",
         "lib/sl4/es/System.Spatial.resources.dll",
         "lib/sl4/fr/System.Spatial.resources.dll",
@@ -809,50 +831,55 @@
         "lib/sl4/ja/System.Spatial.resources.dll",
         "lib/sl4/ko/System.Spatial.resources.dll",
         "lib/sl4/ru/System.Spatial.resources.dll",
+        "lib/sl4/System.Spatial.dll",
+        "lib/sl4/System.Spatial.xml",
         "lib/sl4/zh-Hans/System.Spatial.resources.dll",
-        "lib/sl4/zh-Hant/System.Spatial.resources.dll"
+        "lib/sl4/zh-Hant/System.Spatial.resources.dll",
+        "System.Spatial.5.6.2.nupkg",
+        "System.Spatial.5.6.2.nupkg.sha512",
+        "System.Spatial.nuspec"
       ]
     },
     "System.Threading/4.0.10-beta-23019": {
-      "sha512": "xJYu7J22Fc4G7pfUlPBYuRj4Rla0VkaqU77SW2DyT/oMq1KQmmR7oQnQ7yq/yig0St17I7rYZYBbSrNbe1l5+g==",
+      "sha512": "ss8p5o4C+f+rjpq0hxrcFsRXGUF+ojzjsW9MKfLrAqTuXhQywwDAPiTEvvEmDG8ptpwfQHWR09jlhcBNFhkG6w==",
       "files": [
-        "System.Threading.4.0.10-beta-23019.nupkg",
-        "System.Threading.4.0.10-beta-23019.nupkg.sha512",
-        "System.Threading.nuspec",
         "lib/DNXCore50/System.Threading.dll",
         "lib/net46/_._",
         "lib/netcore50/System.Threading.dll",
         "ref/dotnet/System.Threading.dll",
         "ref/net46/_._",
-        "runtimes/win8-aot/lib/netcore50/System.Threading.dll"
+        "runtimes/win8-aot/lib/netcore50/System.Threading.dll",
+        "System.Threading.4.0.10-beta-23019.nupkg",
+        "System.Threading.4.0.10-beta-23019.nupkg.sha512",
+        "System.Threading.nuspec"
       ]
     },
     "System.Threading.Tasks/4.0.0-beta-23019": {
-      "sha512": "frcOMzzaVN9AHhlJRLKOqm9WHws2byLa+CDFUZIQzUWqrpubH0CDtNj1je5lJpD1QDwJBmnXepKUXCwt/wt9Ew==",
+      "sha512": "y3+puoROfucGrjJkHwvSu0BsoBvFFzFWnJvTbQnM20qgKZsH8NMPTUBEOHa/gNilkc8fTGsM7sX3Iug/QiM0Xg==",
       "files": [
-        "License.rtf",
-        "System.Threading.Tasks.4.0.0-beta-23019.nupkg",
-        "System.Threading.Tasks.4.0.0-beta-23019.nupkg.sha512",
-        "System.Threading.Tasks.nuspec",
         "lib/net45/_._",
         "lib/win8/_._",
+        "License.rtf",
         "ref/dotnet/System.Threading.Tasks.dll",
         "ref/net45/_._",
         "ref/netcore50/System.Threading.Tasks.dll",
-        "ref/win8/_._"
+        "ref/win8/_._",
+        "System.Threading.Tasks.4.0.0-beta-23019.nupkg",
+        "System.Threading.Tasks.4.0.0-beta-23019.nupkg.sha512",
+        "System.Threading.Tasks.nuspec"
       ]
     },
     "WindowsAzure.Storage/4.3.0": {
       "sha512": "7IQiKZKSNHK+cZzEZohOsFDezxrhyBrNoDl8ZQJPdPnitEbjJaq2LXv01iVe6PRBTZE23bKNUWLtH+dXQfbbuQ==",
       "files": [
-        "WindowsAzure.Storage.4.3.0.nupkg",
-        "WindowsAzure.Storage.4.3.0.nupkg.sha512",
-        "WindowsAzure.Storage.nuspec",
         "lib/net40/Microsoft.WindowsAzure.Storage.dll",
         "lib/net40/Microsoft.WindowsAzure.Storage.xml",
         "lib/win8/Microsoft.WindowsAzure.Storage.dll",
         "lib/wp8/Microsoft.WindowsAzure.Storage.dll",
-        "lib/wpa/Microsoft.WindowsAzure.Storage.dll"
+        "lib/wpa/Microsoft.WindowsAzure.Storage.dll",
+        "WindowsAzure.Storage.4.3.0.nupkg",
+        "WindowsAzure.Storage.4.3.0.nupkg.sha512",
+        "WindowsAzure.Storage.nuspec"
       ]
     }
   },
