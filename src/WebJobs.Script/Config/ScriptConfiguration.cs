@@ -7,8 +7,15 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptConfiguration
     {
+        /// <summary>
+        /// Gets or sets the full path to the application root directory.
+        /// </summary>
         public string ApplicationRootPath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the <see cref="Assembly"/> of the host
+        /// application.
+        /// </summary>
         public Assembly HostAssembly { get; set; }
     }
 }

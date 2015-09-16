@@ -110,17 +110,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CSharpFunctionDescriptionProvider.cs" />
-    <Compile Include="IFunctionInvoker.cs" />
-    <Compile Include="FunctionDescriptionProvider.cs" />
-    <Compile Include="FunctionDescriptor.cs" />
-    <Compile Include="FunctionGenerator.cs" />
-    <Compile Include="ParameterDescriptor.cs" />
-    <Compile Include="ScriptJobHostConfigurationExtensions.cs" />
-    <Compile Include="Manifest.cs" />
+    <Compile Include="Description\CSharpFunctionDescriptionProvider.cs" />
+    <Compile Include="Description\IFunctionInvoker.cs" />
+    <Compile Include="Description\FunctionDescriptionProvider.cs" />
+    <Compile Include="Description\FunctionDescriptor.cs" />
+    <Compile Include="CodeGen\FunctionGenerator.cs" />
+    <Compile Include="Description\ParameterDescriptor.cs" />
+    <Compile Include="Config\ScriptJobHostConfigurationExtensions.cs" />
+    <Compile Include="Config\Manifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ScriptConfiguration.cs" />
-    <Compile Include="TypeLocator.cs" />
+    <Compile Include="Config\ScriptConfiguration.cs" />
+    <Compile Include="Config\TypeLocator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
