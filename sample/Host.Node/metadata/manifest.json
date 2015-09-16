@@ -1,0 +1,24 @@
+{
+  "functions": [
+    {
+      "name": "ScheduledJob",
+      "type": "node",
+      "source": "scheduledJob.js",
+      "trigger": {
+        "type": "timer",
+        "name": "timerInfo",
+        "schedule": "*/15 * * * * *"
+      }
+    },
+    {
+      "name": "ProcessWorkItem",
+      "type": "node",
+      "source": "processWorkItem.js",
+      "trigger": {
+        "type": "queue",
+        "name": "workItem",
+        "queueName": "samples-workitems"
+      }
+    }
+  ]
+}
