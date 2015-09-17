@@ -117,6 +117,7 @@
     <Compile Include="NodeScriptJobHostConfigurationExtensions.cs" />
     <Compile Include="NodeFunctionDescriptorProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScriptInvoker.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

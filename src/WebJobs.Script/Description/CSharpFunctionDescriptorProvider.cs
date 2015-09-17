@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
@@ -22,26 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             functionDescriptor = null;
 
-            string scriptType = (string)function["type"];
-            if (scriptType.ToLowerInvariant() != "csharp")
-            {
-                return false;
-            }
-
             string name = (string)function["name"];
-
-            MethodInfo method = null;
-            foreach (Type type in _types)
-            {
-                foreach (MethodInfo currMethod in type.GetMethods())
-                {
-                    if (currMethod.Name == name)
-                    {
-                        method = currMethod;
-                        break;
-                    }
-                }
-            }
+            MethodInfo method = FindMethod(name);
             if (method == null)
             {
                 throw new InvalidOperationException(string.Format("Unable to bind to method '{0}'", name));
@@ -53,7 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
             string triggerType = (string)trigger["type"];
 
             // TODO: match based on name? Or is positional convention OK?
-            ParameterInfo targetTriggerParameter = invoker.Target.GetParameters()[0];
+            ParameterInfo[] sourceParameters = invoker.Target.GetParameters();
+            ParameterInfo targetTriggerParameter = sourceParameters[0];
             Type triggerParameterType = targetTriggerParameter.ParameterType;
 
             ParameterDescriptor triggerParameter = null;
@@ -73,6 +57,18 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
             parameters.Add(triggerParameter);
 
+            // now add any additional parameters found on the source method
+            // TODO: restrict to certain types only?
+            foreach (ParameterInfo sourceParameter in sourceParameters.Skip(1))
+            {
+                ParameterDescriptor parameter = new ParameterDescriptor
+                {
+                    Name = sourceParameter.Name,
+                    Type = sourceParameter.ParameterType
+                };
+                parameters.Add(parameter);
+            }
+
             functionDescriptor = new FunctionDescriptor
             {
                 Name = name,
@@ -84,27 +80,19 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        public class MethodInvoker : IFunctionInvoker
+        private MethodInfo FindMethod(string methodName)
         {
-            private MethodInfo _method;
-
-            public MethodInvoker(MethodInfo method)
+            foreach (Type type in _types)
             {
-                _method = method;
-            }
-
-            public MethodInfo Target
-            {
-                get
+                foreach (MethodInfo currMethod in type.GetMethods())
                 {
-                    return _method;
+                    if (string.Compare(currMethod.Name, methodName, true) == 0)
+                    {
+                        return currMethod;
+                    }
                 }
             }
-
-            public object Invoke(object[] parameters)
-            {
-                return _method.Invoke(null, parameters);
-            }
+            return null;
         }
     }
 }
