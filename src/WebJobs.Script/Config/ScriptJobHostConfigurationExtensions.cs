@@ -11,9 +11,9 @@ namespace Microsoft.Azure.WebJobs
     {
         public static void UseScripts(this JobHostConfiguration config, ScriptConfiguration scriptConfig)
         {
-            FunctionDescriptionProvider[] descriptionProviders = new FunctionDescriptionProvider[]
+            FunctionDescriptorProvider[] descriptionProviders = new FunctionDescriptorProvider[]
             {
-                new CSharpFunctionDescriptionProvider(scriptConfig.HostAssembly)
+                new CSharpFunctionDescriptorProvider(scriptConfig.HostAssembly)
             };
 
             Collection<FunctionDescriptor> functions = Manifest.Read(scriptConfig, descriptionProviders);

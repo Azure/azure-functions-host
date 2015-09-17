@@ -12,9 +12,9 @@ namespace Microsoft.Azure.WebJobs
     {
         public static void UseNodeScripts(this JobHostConfiguration config, ScriptConfiguration scriptConfig)
         {
-            FunctionDescriptionProvider[] descriptionProviders = new FunctionDescriptionProvider[]
+            FunctionDescriptorProvider[] descriptionProviders = new FunctionDescriptorProvider[]
             {
-                new NodeFunctionDescriptionProvider(scriptConfig.ApplicationRootPath)
+                new NodeFunctionDescriptorProvider(scriptConfig.ApplicationRootPath)
             };
 
             Collection<FunctionDescriptor> functions = Manifest.Read(scriptConfig, descriptionProviders);

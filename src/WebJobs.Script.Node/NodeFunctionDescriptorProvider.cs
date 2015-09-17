@@ -13,11 +13,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Node
 {
-    public class NodeFunctionDescriptionProvider : FunctionDescriptionProvider
+    public class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly string _applicationRoot;
 
-        public NodeFunctionDescriptionProvider(string applicationRoot)
+        public NodeFunctionDescriptorProvider(string applicationRoot)
         {
             _applicationRoot = applicationRoot;
         }
