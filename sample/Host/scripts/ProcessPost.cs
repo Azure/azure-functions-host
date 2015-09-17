@@ -4,15 +4,8 @@
 using System;
 using System.Data.Entity;
 
-namespace Functions
+namespace Host
 {
-    // { "Title": "Welcome!", "Text": "I'd like to welcome everybody!" }
-    public class Post
-    {
-        public string Title { get; set; }
-        public string Text { get; set; }
-    }
-
     public static partial class Functions
     {
         public static void ProcessPost(Post post)

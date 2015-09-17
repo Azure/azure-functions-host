@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -22,9 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public object Invoke(object[] parameters)
+        public Task Invoke(object[] parameters)
         {
-            return _method.Invoke(null, parameters);
+            Task task = _method.Invoke(null, parameters) as Task;
+            if (task == null)
+            {
+                task = Task.FromResult(0);
+            }
+
+            return task;
         }
     }
 }

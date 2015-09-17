@@ -57,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             functionDescriptor = new FunctionDescriptor
             {
                 Name = name,
-                ReturnType = typeof(void),
                 Invoker = invoker,
                 Parameters = parameters
             };

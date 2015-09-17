@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             _scriptFunc = Edge.Func(script);
         }
 
-        public object Invoke(object[] parameters)
+        public async Task Invoke(object[] parameters)
         {
             // TODO: Decide how to handle this
             Type triggerParameterType = parameters[0].GetType();
@@ -47,10 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 log = logFunc
             };
 
-            Task<object> task = _scriptFunc(context);
-            task.Wait();
-
-            return null;
+            await _scriptFunc(context);
         }
     }
 }

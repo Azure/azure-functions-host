@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -38,13 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (FunctionDescriptor descriptor in functions)
             {
-                // Define a method that accepts an integer argument and returns 
-                // the product of that integer and the private field m_number. This 
-                // time, the array of parameter types is created on the fly.
                 MethodBuilder methodBuilder = tb.DefineMethod(descriptor.Name, MethodAttributes.Public | MethodAttributes.Static);
                 Type[] types = descriptor.Parameters.Select(p => p.Type).ToArray();
                 methodBuilder.SetParameters(types);
-                methodBuilder.SetReturnType(descriptor.ReturnType);
+                methodBuilder.SetReturnType(typeof(Task));
 
                 for (int i = 0; i < descriptor.Parameters.Count; i++)
                 {
@@ -94,7 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 il.Emit(OpCodes.Ldloc_1);
                 il.Emit(OpCodes.Ldloc_0);
                 il.Emit(OpCodes.Callvirt, invokeMethod);
-                il.Emit(OpCodes.Pop);
                 il.Emit(OpCodes.Ret);
             }
 
