@@ -26,7 +26,7 @@ namespace Host.Node
 
             ScriptConfiguration scriptConfig = new ScriptConfiguration()
             {
-                ApplicationRootPath = Path.Combine(Environment.CurrentDirectory, @"..\.."),
+                ApplicationRootPath = Environment.CurrentDirectory,
                 HostAssembly = Assembly.GetExecutingAssembly()
             };
             config.UseNodeScripts(scriptConfig);
