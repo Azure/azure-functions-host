@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public abstract class FunctionDescriptionProvider
+    public abstract class FunctionDescriptorProvider
     {
         public abstract bool TryCreate(JObject function, out FunctionDescriptor functionDescriptor);
 

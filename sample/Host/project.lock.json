@@ -50,9 +50,9 @@
           "lib/net45/System.Net.Http.Formatting.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs/1.1.0-alpha2-10109": {
+      "Microsoft.Azure.WebJobs/1.1.0-beta1": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Core": "[1.1.0-alpha2-10109]",
+          "Microsoft.Azure.WebJobs.Core": "[1.1.0-beta1]",
           "Newtonsoft.Json": "6.0.8",
           "WindowsAzure.Storage": "4.3.0"
         },
@@ -63,7 +63,7 @@
           "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Core/1.1.0-alpha2-10109": {
+      "Microsoft.Azure.WebJobs.Core/1.1.0-beta1": {
         "compile": {
           "lib/net45/Microsoft.Azure.WebJobs.dll": {}
         },
@@ -71,9 +71,9 @@
           "lib/net45/Microsoft.Azure.WebJobs.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions/1.0.0-alpha2": {
+      "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "1.1.0-alpha2",
+          "Microsoft.Azure.WebJobs": "1.1.0-beta1",
           "Microsoft.Tpl.Dataflow": "4.5.24",
           "ncrontab": "2.0.0"
         },
@@ -484,35 +484,35 @@
         "Microsoft.AspNet.WebApi.Client.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs/1.1.0-alpha2-10109": {
+    "Microsoft.Azure.WebJobs/1.1.0-beta1": {
       "serviceable": true,
-      "sha512": "0+64ljfSr++4US+e6YDy/BRHICFMuuwikBxFH0vgBD41Rl4EcIIcGPFpgpr2sBYd2JXINulBX13nlAiYF3taFg==",
+      "sha512": "P3BGyMM2uMKttajlWJZGvk2SVnknXTAZ8MjsB/8u1JAUO/lfT3DS/fbjvD4bema/vP8al+v6r1YHVh5Lt8SgmQ==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Host.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Host.xml",
-        "Microsoft.Azure.WebJobs.1.1.0-alpha2-10109.nupkg",
-        "Microsoft.Azure.WebJobs.1.1.0-alpha2-10109.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.1.1.0-beta1.nupkg",
+        "Microsoft.Azure.WebJobs.1.1.0-beta1.nupkg.sha512",
         "Microsoft.Azure.WebJobs.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Core/1.1.0-alpha2-10109": {
+    "Microsoft.Azure.WebJobs.Core/1.1.0-beta1": {
       "serviceable": true,
-      "sha512": "LGVRC8Wzp6eg0VTWm4crpVeGkBz7QsW9MzBPE9S66YLeYsiK4d9qth5VcG78d0LoR6Mful4lLpgmD9tVuRA8XQ==",
+      "sha512": "w3Ivc18lLWk/dRu49a1fBef6h9CxE36Tq18yuSIEloSffgkrtrmmsNwjjz4xPpYUGmEGzHhM8sMM7IcIbstxUg==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.dll",
         "lib/net45/Microsoft.Azure.WebJobs.xml",
-        "Microsoft.Azure.WebJobs.Core.1.1.0-alpha2-10109.nupkg",
-        "Microsoft.Azure.WebJobs.Core.1.1.0-alpha2-10109.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1.nupkg",
+        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Core.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Extensions/1.0.0-alpha2": {
-      "sha512": "cnfoFNCPKIwvspyrEfVBzI7GILAqlr1eLxVRtiyN6+GpYq43ACjx++ceHSKbIg/OilSvtMqBBuPg0oeHGhBciA==",
+    "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1": {
+      "sha512": "rHn/2Q6Y5GL3z4cO+OB8Hg9fgs/Yj2iaPtHMN5/lY3aj2uem1+sMZOnuyBUp5vsRh1HD6S/BIva6AfuZTHYGsg==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.xml",
-        "Microsoft.Azure.WebJobs.Extensions.1.0.0-alpha2.nupkg",
-        "Microsoft.Azure.WebJobs.Extensions.1.0.0-alpha2.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1.nupkg",
+        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Extensions.nuspec"
       ]
     },
@@ -527,7 +527,7 @@
       ]
     },
     "Microsoft.CSharp/4.0.0-beta-23019": {
-      "sha512": "wp5SlNCIXAFqPbWMOAD8eedaPA1vPyBSh6P/OZUaSab4ogrFdElpHVoW+wTicbXLVJcvQwp1Jtk9xP5Slmq4EA==",
+      "sha512": "TsYR8ylpBw89cxCTzA9eD8wqLR5u4TnNvUCLU7Qt9TlbxmNM0jPaz80L4N+W81kEoOpchlckGGCTA4JVemmEVA==",
       "files": [
         "lib/dotnet/Microsoft.CSharp.dll",
         "lib/net45/_._",
@@ -696,8 +696,8 @@
       "sha512": "a6b+9C3kZ3YtyqlxDfMSEYnqARFpr/BQcCqZFCgqBAEHDUZNr2/GOL9gC2gialM0SMOSJ5PXic4NirF19HtMwQ==",
       "files": [
         "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll",
-        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0.nupkg",
-        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0.nupkg.sha512",
+        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.nupkg",
+        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.nupkg.sha512",
         "Microsoft.WindowsAzure.ConfigurationManager.nuspec"
       ]
     },
@@ -755,7 +755,7 @@
       ]
     },
     "System.Collections/4.0.10-beta-23019": {
-      "sha512": "MHZUp2LFl6sc22mBNHgM1vN5cQcxdcqPuQ3xRThg1UOH+eZ3rJIk5Ja+mkMFOdAiMB626u0fQMNEdNfItRyWuw==",
+      "sha512": "76/FZ9wYhhU6wdNwrB3NiVJ5lpLZnLhS3dbLCOXOSf8NN3KXPrlcm5f2PUeHSJxgu5nP2H8lGLfshIaWq2qSNQ==",
       "files": [
         "lib/DNXCore50/System.Collections.dll",
         "lib/net46/_._",
@@ -769,7 +769,7 @@
       ]
     },
     "System.Linq/4.0.0-beta-23019": {
-      "sha512": "jBHOkMRLTew/lr+awaPzEt5+rif4S7L9h/tY17unLaILq9P5muWVtsP2Tg/9YAJmHYoJDoCBKMpdGJ0hA5kqow==",
+      "sha512": "kw6QeVsZWOKdonnArSWFerSyXCsr2LmGqT9Z2W7HFf7yN09o6O8YLfIALlFnhD4CXgJZYC8ebgMPC6uK9IZfOQ==",
       "files": [
         "lib/dotnet/System.Linq.dll",
         "lib/net45/_._",
@@ -841,7 +841,7 @@
       ]
     },
     "System.Threading/4.0.10-beta-23019": {
-      "sha512": "ss8p5o4C+f+rjpq0hxrcFsRXGUF+ojzjsW9MKfLrAqTuXhQywwDAPiTEvvEmDG8ptpwfQHWR09jlhcBNFhkG6w==",
+      "sha512": "xJYu7J22Fc4G7pfUlPBYuRj4Rla0VkaqU77SW2DyT/oMq1KQmmR7oQnQ7yq/yig0St17I7rYZYBbSrNbe1l5+g==",
       "files": [
         "lib/DNXCore50/System.Threading.dll",
         "lib/net46/_._",
@@ -855,7 +855,7 @@
       ]
     },
     "System.Threading.Tasks/4.0.0-beta-23019": {
-      "sha512": "y3+puoROfucGrjJkHwvSu0BsoBvFFzFWnJvTbQnM20qgKZsH8NMPTUBEOHa/gNilkc8fTGsM7sX3Iug/QiM0Xg==",
+      "sha512": "frcOMzzaVN9AHhlJRLKOqm9WHws2byLa+CDFUZIQzUWqrpubH0CDtNj1je5lJpD1QDwJBmnXepKUXCwt/wt9Ew==",
       "files": [
         "lib/net45/_._",
         "lib/win8/_._",
@@ -887,8 +887,8 @@
     "": [
       "EntityFramework >= 6.1.3",
       "Microsoft.AspNet.WebApi.Client >= 5.2.3",
-      "Microsoft.Azure.WebJobs >= 1.1.0-alpha2-10109",
-      "Microsoft.Framework.Runtime.Abstractions >= 1.0.0-beta6"
+      "Microsoft.Framework.Runtime.Abstractions >= 1.0.0-beta6",
+      "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-beta1"
     ],
     "DNX,Version=v4.5.1": [
       "System.Collections >= 4.0.10-beta-23019",

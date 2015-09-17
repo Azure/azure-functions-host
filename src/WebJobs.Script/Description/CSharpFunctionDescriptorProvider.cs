@@ -9,11 +9,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class CSharpFunctionDescriptionProvider : FunctionDescriptionProvider
+    public class CSharpFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly Type[] _types;
 
-        public CSharpFunctionDescriptionProvider(Assembly sourceAssembly)
+        public CSharpFunctionDescriptorProvider(Assembly sourceAssembly)
         {
             _types = sourceAssembly.GetTypes();
         }
