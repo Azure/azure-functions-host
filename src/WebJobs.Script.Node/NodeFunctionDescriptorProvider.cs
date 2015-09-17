@@ -1,14 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Threading.Tasks;
-using EdgeJs;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Node
@@ -26,12 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
         {
             functionDescriptor = null;
 
-            string scriptType = (string)function["type"];
-            if (scriptType.ToLowerInvariant() != "node")
-            {
-                return false;
-            }
-
             string sourceFileName = (string)function["source"];
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", sourceFileName);
             ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
@@ -46,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                     triggerParameter = ParseQueueTrigger(trigger);
                     break;
                 case "timer":
-                    // TODO: Timer doesn't currently support string binding
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
                 case "webhook":
@@ -67,36 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             };
 
             return true;
-        }
-
-        public class ScriptInvoker : IFunctionInvoker
-        {
-            private readonly Func<object, Task<object>> _scriptFunc;
-
-            public ScriptInvoker(string scriptFilePath)
-            {
-                scriptFilePath = scriptFilePath.Replace('\\', '/');
-                string script = string.Format("return require('{0}');", scriptFilePath);
-
-                _scriptFunc = Edge.Func(script);
-            }
-
-            public object Invoke(object[] parameters)
-            {
-                // TODO: Decide how to handle this
-                Type triggerParameterType = parameters[0].GetType();
-                if (triggerParameterType == typeof(string))
-                {
-                    // convert string into Dictionary which Edge will convert into an object
-                    // before invoking the function
-                    parameters[0] = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)parameters[0]);
-                }
-
-                Task<object> task = _scriptFunc(parameters[0]);
-                task.Wait();
-
-                return null;
-            }
         }
     }
 }

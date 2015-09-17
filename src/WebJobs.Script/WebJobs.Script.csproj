@@ -115,6 +115,7 @@
     <Compile Include="Description\FunctionDescriptorProvider.cs" />
     <Compile Include="Description\FunctionDescriptor.cs" />
     <Compile Include="CodeGen\FunctionGenerator.cs" />
+    <Compile Include="Description\MethodInvoker.cs" />
     <Compile Include="Description\ParameterDescriptor.cs" />
     <Compile Include="Config\ScriptJobHostConfigurationExtensions.cs" />
     <Compile Include="Config\Manifest.cs" />

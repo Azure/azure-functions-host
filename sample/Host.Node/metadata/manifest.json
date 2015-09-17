@@ -2,7 +2,6 @@
   "functions": [
     {
       "name": "ScheduledJob",
-      "type": "node",
       "source": "scheduledJob.js",
       "trigger": {
         "type": "timer",
@@ -12,7 +11,6 @@
     },
     {
       "name": "ProcessWorkItem",
-      "type": "node",
       "source": "processWorkItem.js",
       "trigger": {
         "type": "queue",
