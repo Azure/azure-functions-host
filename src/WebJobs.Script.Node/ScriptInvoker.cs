@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using EdgeJs;
 using Newtonsoft.Json;
@@ -32,7 +33,21 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 parameters[0] = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)parameters[0]);
             }
 
-            Task<object> task = _scriptFunc(parameters[0]);
+            // create a TextWriter wrapper that can be exposed to Node.js
+            TextWriter textWriter = (TextWriter)parameters[1];
+            var logFunc = (Func<object, Task<object>>)((text) =>
+            {
+                textWriter.WriteLine(text);
+                return Task.FromResult<object>(null);
+            });
+
+            var context = new
+            {
+                input = parameters[0],
+                log = logFunc
+            };
+
+            Task<object> task = _scriptFunc(context);
             task.Wait();
 
             return null;
