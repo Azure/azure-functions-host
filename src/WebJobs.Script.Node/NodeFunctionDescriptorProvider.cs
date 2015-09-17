@@ -34,8 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
 
             string sourceFileName = (string)function["source"];
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", sourceFileName);
-            string script = File.ReadAllText(scriptFilePath);
-            ScriptInvoker invoker = new ScriptInvoker(script);
+            ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
 
             JObject trigger = (JObject)function["trigger"];
             string triggerType = (string)trigger["type"];
@@ -74,9 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.Node
         {
             private readonly Func<object, Task<object>> _scriptFunc;
 
-            public ScriptInvoker(string script)
+            public ScriptInvoker(string scriptFilePath)
             {
-                script = "return " + script;
+                scriptFilePath = scriptFilePath.Replace('\\', '/');
+                string script = string.Format("return require('{0}');", scriptFilePath);
+
                 _scriptFunc = Edge.Func(script);
             }
 

@@ -7,7 +7,7 @@
       "trigger": {
         "type": "timer",
         "name": "timerInfo",
-        "schedule": "*/15 * * * * *"
+        "schedule": "*/10 * * * * *"
       }
     },
     {
