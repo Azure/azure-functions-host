@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 
-namespace Functions
+namespace Host
 {
     public static partial class Functions
     {

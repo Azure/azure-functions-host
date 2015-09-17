@@ -9,7 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionDescriptor
     {
         public string Name { get; set; }
-        public Type ReturnType { get; set; }
         public Collection<ParameterDescriptor> Parameters { get; set; }
         public IFunctionInvoker Invoker { get; set; }
     }
