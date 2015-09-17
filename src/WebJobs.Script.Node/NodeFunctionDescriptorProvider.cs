@@ -45,6 +45,14 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
             parameters.Add(triggerParameter);
 
+            // Add a TraceWriter for logging
+            ParameterDescriptor textWriter = new ParameterDescriptor
+            {
+                Name = "log",
+                Type = typeof(TextWriter)
+            };
+            parameters.Add(textWriter);
+
             string name = (string)function["name"];
             functionDescriptor = new FunctionDescriptor
             {
