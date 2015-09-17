@@ -17,6 +17,14 @@
         "name": "workItem",
         "queueName": "samples-workitems"
       }
+    },
+    {
+      "name": "WebHook",
+      "source": "webHook.js",
+      "trigger": {
+        "type": "webhook",
+        "name": "request"
+      }
     }
   ]
 }
