@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class CSharpFunctionDescriptorProvider : FunctionDescriptorProvider
+    internal class CSharpFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly Type[] _types;
 

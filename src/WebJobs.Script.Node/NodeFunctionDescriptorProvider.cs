@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Node
 {
-    public class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
+    internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly string _applicationRoot;
 
