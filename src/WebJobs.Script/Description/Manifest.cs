@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public static Collection<FunctionDescriptor> Read(ScriptConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
-            string manifestFilePath = Path.Combine(config.ApplicationRootPath, @"metadata\manifest.json");
+            string manifestFilePath = Path.Combine(config.ApplicationRootPath, @"scripts\manifest.json");
             Console.WriteLine(string.Format("Reading job manifest file '{0}'", manifestFilePath));
             string json = File.ReadAllText(manifestFilePath);
 

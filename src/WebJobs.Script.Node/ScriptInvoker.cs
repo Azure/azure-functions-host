@@ -17,7 +17,13 @@ namespace Microsoft.Azure.WebJobs.Script.Node
         public ScriptInvoker(string scriptFilePath)
         {
             scriptFilePath = scriptFilePath.Replace('\\', '/');
-            string script = string.Format("return require('{0}');", scriptFilePath);
+
+            string script = string.Format(
+                "var f = require('{0}');\r\n" +
+                "return function (context, callback) {{\r\n" +
+                "    context.done = callback;\r\n" +
+                "    f(context);\r\n" +
+                "}};", scriptFilePath);
 
             _scriptFunc = Edge.Func(script);
         }

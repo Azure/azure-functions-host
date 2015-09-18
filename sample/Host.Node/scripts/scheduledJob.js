@@ -1,6 +1,6 @@
 ﻿var fs = require('fs');
 
-module.exports = function (context, callback) {
+module.exports = function (context) {
     var timeStamp = new Date().toISOString();
     context.log('Node.js scheduled job function ran at ' + timeStamp);
 
@@ -8,6 +8,6 @@ module.exports = function (context, callback) {
         if (err) {
             throw err;
         }
-        callback();
+        context.done();
     });
 }

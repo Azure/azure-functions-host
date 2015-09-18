@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
@@ -24,6 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script
             functionDescriptor = null;
 
             string name = (string)function["name"];
+            if (string.IsNullOrEmpty(name))
+            {
+                // if a method name isn't explicitly provided, derive it
+                // from the script file name
+                string source = (string)function["source"];
+                name = Path.GetFileNameWithoutExtension(source);
+            }
             MethodInfo method = FindMethod(name);
             if (method == null)
             {
@@ -39,6 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script
             ParameterInfo[] sourceParameters = invoker.Target.GetParameters();
             ParameterInfo targetTriggerParameter = sourceParameters[0];
             Type triggerParameterType = targetTriggerParameter.ParameterType;
+
+            string parameterName = (string)trigger["name"];
+            if (string.IsNullOrEmpty(parameterName))
+            {
+                // default the name to the actual source parameter name
+                trigger["name"] = targetTriggerParameter.Name;
+            }
 
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
