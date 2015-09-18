@@ -7,27 +7,27 @@ This opens the door for interesting **UI driven scenarios**, where the user simp
 As an example, here's a simple Node.js job function in a processWorkItem.js file:
 
 ```javascript
-    function processWorkItem(workItem, callback) {
-        console.log('Work Item processed: ' + workItem.ID);
-        callback();
-    }
+module.exports = function (context) {
+    var workItem = context.input;
+    console.log('Node.js job function processed work item ' + workItem.ID);
+    context.done();
+}
 ```
 
 And here's the corresponding manifest.json file that instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue:
 
 ```javascript
+{
+  "functions": [
     {
-      "functions": [
-        {
-          "name": "ProcessWorkItem",
-          "source": "processWorkItem.js",
-          "trigger": {
-              "type": "queue",
-              "queueName": "samples-workitems"
-            }
+      "source": "processWorkItem.js",
+      "trigger": {
+          "type": "queue",
+          "queueName": "samples-workitems"
         }
-      ]
     }
+  ]
+}
 ```
 That's all that is required from the user! The runtime will be initialized automatically with these inputs, live monitoring of the Azure Queue will begin, and the function will be invoked when queue messages are added.
 
