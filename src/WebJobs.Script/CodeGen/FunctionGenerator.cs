@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
+    // TODO: Make this type internal
     public static class FunctionGenerator
     {
         private static Dictionary<string, IFunctionInvoker> _invokerMap = new Dictionary<string, IFunctionInvoker>();

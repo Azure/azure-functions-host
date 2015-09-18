@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Node
 {
+    // TODO: make this internal
     public class ScriptInvoker : IFunctionInvoker
     {
         private readonly Func<object, Task<object>> _scriptFunc;

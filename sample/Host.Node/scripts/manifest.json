@@ -1,4 +1,12 @@
 {
+  "config": {
+    "queues": {
+      "maxPollingInterval": 2000
+    },
+    "tracing": {
+      "consoleLevel": "Verbose"
+    }
+  },
   "functions": [
     {
       "source": "scheduledJob.js",

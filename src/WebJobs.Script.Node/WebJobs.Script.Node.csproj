@@ -114,7 +114,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="NodeScriptJobHostConfigurationExtensions.cs" />
+    <Compile Include="NodeScriptHost.cs" />
     <Compile Include="NodeFunctionDescriptorProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScriptInvoker.cs" />

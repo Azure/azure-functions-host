@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
+    // TODO: make this internal
     public class MethodInvoker : IFunctionInvoker
     {
         private MethodInfo _method;
