@@ -1,29 +1,23 @@
 {
   "functions": [
     {
-      "name": "ScheduledJob",
       "source": "scheduledJob.js",
       "trigger": {
         "type": "timer",
-        "name": "timerInfo",
         "schedule": "*/10 * * * * *"
       }
     },
     {
-      "name": "ProcessWorkItem",
       "source": "processWorkItem.js",
       "trigger": {
         "type": "queue",
-        "name": "workItem",
         "queueName": "samples-workitems"
       }
     },
     {
-      "name": "WebHook",
       "source": "webHook.js",
       "trigger": {
-        "type": "webhook",
-        "name": "request"
+        "type": "webhook"
       }
     }
   ]

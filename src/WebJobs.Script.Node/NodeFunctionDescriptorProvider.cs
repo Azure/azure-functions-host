@@ -28,6 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             JObject trigger = (JObject)function["trigger"];
             string triggerType = (string)trigger["type"];
 
+            string parameterName = (string)trigger["name"];
+            if (string.IsNullOrEmpty(parameterName))
+            {
+                // default the name to simply 'input'
+                trigger["name"] = "input";
+            }
+
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
             {
@@ -54,6 +61,14 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             parameters.Add(textWriter);
 
             string name = (string)function["name"];
+            if (string.IsNullOrEmpty(name))
+            {
+                // if a method name isn't explicitly provided, derive it
+                // from the script file name
+                name = Path.GetFileNameWithoutExtension(sourceFileName);
+                name = name.Substring(0, 1).ToUpper() + name.Substring(1);
+            }
+
             functionDescriptor = new FunctionDescriptor
             {
                 Name = name,
