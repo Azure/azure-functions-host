@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
 using Newtonsoft.Json;
@@ -14,18 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Node
     public class ScriptInvoker : IFunctionInvoker
     {
         private readonly Func<object, Task<object>> _scriptFunc;
+        private static string FunctionTemplate;
+
+        static ScriptInvoker()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.Node.functionTemplate.js")))
+            {
+                FunctionTemplate = reader.ReadToEnd();
+            }
+        }
 
         public ScriptInvoker(string scriptFilePath)
         {
             scriptFilePath = scriptFilePath.Replace('\\', '/');
-
-            string script = string.Format(
-                "var f = require('{0}');\r\n" +
-                "return function (context, callback) {{\r\n" +
-                "    context.done = callback;\r\n" +
-                "    f(context);\r\n" +
-                "}};", scriptFilePath);
-
+            string script = string.Format(FunctionTemplate, scriptFilePath);
             _scriptFunc = Edge.Func(script);
         }
 
