@@ -25,9 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             Manifest manifest = Manifest.Read(_scriptConfig, descriptionProviders);
             manifest.Apply(_config);
-
-            _config.UseWebHooks();
-            _config.UseTimers();
         }
     }
 }

@@ -1,0 +1,28 @@
+﻿{
+  "config": {
+    "queues": {
+      "maxPollingInterval": 2000
+    },
+    "tracing": {
+      "consoleLevel": "Verbose"
+    },
+    "webhooks": {
+      "port": 46000
+    }
+  },
+  "functions": [
+    {
+      "source": "scheduledJob.js",
+      "trigger": {
+        "type": "timer",
+        "schedule": "* * * * * *"
+      }
+    },
+    {
+      "source": "webHook.js",
+      "trigger": {
+        "type": "webhook"
+      }
+    }
+  ]
+}

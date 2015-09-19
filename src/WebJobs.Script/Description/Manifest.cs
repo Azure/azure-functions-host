@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Azure.WebJobs.Extensions.WebHooks;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -70,27 +71,29 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ApplyConfiguration(JobHostConfiguration config)
         {
-            JObject queuesConfig = (JObject)Configuration["queues"];
+            // Apply Queues configuration
+            JObject configSection = (JObject)Configuration["queues"];
             JToken value = null;
-            if (queuesConfig.TryGetValue("maxPollingInterval", out value))
+            if (configSection.TryGetValue("maxPollingInterval", out value))
             {
                 config.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
             }
-            if (queuesConfig.TryGetValue("batchSize", out value))
+            if (configSection.TryGetValue("batchSize", out value))
             {
                 config.Queues.BatchSize = (int)value;
             }
-            if (queuesConfig.TryGetValue("maxDequeueCount", out value))
+            if (configSection.TryGetValue("maxDequeueCount", out value))
             {
                 config.Queues.MaxDequeueCount = (int)value;
             }
-            if (queuesConfig.TryGetValue("newBatchThreshold", out value))
+            if (configSection.TryGetValue("newBatchThreshold", out value))
             {
                 config.Queues.NewBatchThreshold = (int)value;
             }
 
-            JObject tracingConfig = (JObject)Configuration["tracing"];
-            if (tracingConfig.TryGetValue("consoleLevel", out value))
+            // Apply Tracing configuration
+            configSection = (JObject)Configuration["tracing"];
+            if (configSection.TryGetValue("consoleLevel", out value))
             {
                 TraceLevel consoleLevel;
                 if (Enum.TryParse<TraceLevel>((string)value, out consoleLevel))
@@ -98,6 +101,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     config.Tracing.ConsoleLevel = consoleLevel;
                 }
             }
+
+            // Apply WebHooks configuration
+            WebHooksConfiguration webHooksConfig = new WebHooksConfiguration();
+            configSection = (JObject)Configuration["webhooks"];
+            if (configSection.TryGetValue("port", out value))
+            {
+                webHooksConfig = new WebHooksConfiguration((int)value);
+            }
+            config.UseWebHooks(webHooksConfig);
+
+            config.UseTimers();
         }
     }
 }
