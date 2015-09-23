@@ -23,6 +23,13 @@
       }
     },
     {
+      "source": "blobTrigger.js",
+      "trigger": {
+        "type": "blob",
+        "blobPath": "samples-workitems"
+      }
+    },
+    {
       "source": "webHookTrigger.js",
       "trigger": {
         "type": "webHook"
