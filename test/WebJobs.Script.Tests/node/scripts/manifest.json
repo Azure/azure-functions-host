@@ -12,14 +12,14 @@
   },
   "functions": [
     {
-      "source": "scheduledJob.js",
+      "source": "timerTrigger.js",
       "trigger": {
         "type": "timer",
         "schedule": "* * * * * *"
       }
     },
     {
-      "source": "webHook.js",
+      "source": "webHookTrigger.js",
       "trigger": {
         "type": "webHook"
       }

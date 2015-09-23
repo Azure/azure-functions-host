@@ -12,14 +12,14 @@
   },
   "functions": [
     {
-      "source": "ScheduledJob.cs",
+      "source": "TimerTrigger.cs",
       "trigger": {
         "type": "timer",
         "schedule": "* * * * * *"
       }
     },
     {
-      "source": "WebHook.cs",
+      "source": "WebHookTrigger.cs",
       "trigger": {
         "type": "webHook"
       }

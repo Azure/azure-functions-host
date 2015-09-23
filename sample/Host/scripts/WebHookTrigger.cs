@@ -5,19 +5,15 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 
-namespace WebJobs.Script.Tests
+namespace Host
 {
     public static partial class Functions
     {
-        public static object InvokeData { get; set; }
-
-        public static async Task WebHook(HttpRequestMessage request, TraceWriter traceWriter)
+        public static async Task WebHookTrigger(HttpRequestMessage request, TraceWriter traceWriter)
         {
             string body = await request.Content.ReadAsStringAsync();
 
-            InvokeData = body;
-
-            traceWriter.Info(string.Format("C# WebHook function received message '{0}'", body));
+            traceWriter.Info(string.Format("C# WebHookTrigger function received message '{0}'", body));
         }
     }
 }

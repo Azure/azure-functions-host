@@ -2,16 +2,19 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
-using Microsoft.Azure.WebJobs.Host;
 
-namespace Host
+namespace WebJobs.Script.Tests.csharp.scripts
 {
     public static partial class Functions
     {
-        public static void ScheduledJob(TimerInfo timerInfo, TraceWriter traceWriter)
+        public static int InvokeCount { get; set; }
+
+        public static void TimerTrigger(TimerInfo timerInfo)
         {
-            traceWriter.Info(string.Format("C# ScheduledJob invoked at ", DateTime.Now));
+            File.AppendAllText("joblog.txt", DateTime.Now.ToString() + "\r\n");
+            InvokeCount++;
         }
     }
 }

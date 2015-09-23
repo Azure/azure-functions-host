@@ -29,7 +29,7 @@ namespace WebJobs.Script.Tests
         {
             string expectedValue = Guid.NewGuid().ToString();
             string testData = string.Format("{{ \"test\": \"{0}\" }}", expectedValue);
-            HttpResponseMessage response = await _fixture.Client.PostAsync("Functions/WebHook", new StringContent(testData));
+            HttpResponseMessage response = await _fixture.Client.PostAsync("Functions/WebHookTrigger", new StringContent(testData));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string json = File.ReadAllText("test.txt");
