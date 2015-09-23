@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Extensions.WebHooks;
+using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -51,6 +52,59 @@ namespace Microsoft.Azure.WebJobs.Script
             ConstructorInfo ctorInfo = typeof(BlobTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
             string blobPath = (string)trigger["blobPath"];
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { blobPath });
+
+            string parameterName = (string)trigger["name"];
+            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            {
+                Name = parameterName,
+                Type = triggerParameterType,
+                Attributes = ParameterAttributes.None,
+                CustomAttributes = new Collection<CustomAttributeBuilder>
+                {
+                    attributeBuilder
+                }
+            };
+
+            return triggerParameter;
+        }
+
+        protected ParameterDescriptor ParseServiceBusTrigger(JObject trigger, Type triggerParameterType = null)
+        {
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            string queueName = (string)trigger["queueName"];
+            string topicName = (string)trigger["topicName"];
+            string subscriptionName = (string)trigger["subscriptionName"];
+
+            string accessRightsValue = (string)trigger["accessRights"];
+            AccessRights accessRights = AccessRights.Manage;
+            if (!string.IsNullOrEmpty(accessRightsValue))
+            {
+                AccessRights parsed;
+                if (Enum.TryParse<AccessRights>(accessRightsValue, true, out parsed))
+                {
+                    accessRights = parsed;
+                }
+            }
+
+            CustomAttributeBuilder attributeBuilder = null;
+            if (!string.IsNullOrEmpty(topicName) && !string.IsNullOrEmpty(subscriptionName))
+            {
+                ConstructorInfo ctorInfo = typeof(ServiceBusTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(AccessRights) });
+                attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { topicName, subscriptionName, accessRights });
+            }
+            else if (!string.IsNullOrEmpty(queueName))
+            {
+                ConstructorInfo ctorInfo = typeof(ServiceBusTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(AccessRights) });
+                attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName, accessRights });
+            }
+            else
+            {
+                throw new InvalidOperationException("Invalid servicebus trigger configuration.");
+            }
 
             string parameterName = (string)trigger["name"];
             ParameterDescriptor triggerParameter = new ParameterDescriptor

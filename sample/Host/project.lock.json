@@ -84,9 +84,9 @@
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-alpha2-10112": {
+      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-alpha2",
+          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-beta1",
           "SuaveServerWrapper": "0.0.2"
         },
         "compile": {
@@ -94,6 +94,19 @@
         },
         "runtime": {
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1": {
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "[1.1.0-beta1]",
+          "Newtonsoft.Json": "6.0.8",
+          "WindowsAzure.ServiceBus": "2.7.6"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
         }
       },
       "Microsoft.CSharp/4.0.0-beta-23019": {
@@ -372,6 +385,22 @@
           "lib/net45/_._": {}
         }
       },
+      "WindowsAzure.ServiceBus/2.7.6": {
+        "dependencies": {
+          "Microsoft.WindowsAzure.ConfigurationManager": null
+        },
+        "frameworkAssemblies": [
+          "System.Runtime.Serialization",
+          "System.ServiceModel",
+          "System.Xml"
+        ],
+        "compile": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        }
+      },
       "WindowsAzure.Storage/4.3.0": {
         "dependencies": {
           "Microsoft.Data.OData": "5.6.2",
@@ -516,14 +545,25 @@
         "Microsoft.Azure.WebJobs.Extensions.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-alpha2-10112": {
-      "sha512": "ikeqcnVT0BkSHnRnYhEHrzj0ea17HMvtlz7/cL2Og+4QwPl20ATeY/0nGnTe0PTh9FsUwtadkRcF0CwdvlsLRg==",
+    "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1": {
+      "sha512": "C3HZeEaTOLfdmM6IuOC90Oq3DI+jNSCmTrVQoXbEW4HXUsJ9Ja55jIGrTPVlol26R/y3mJWnIFNgbATPZqzpiQ==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.xml",
-        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-alpha2-10112.nupkg",
-        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-alpha2-10112.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1.nupkg",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Extensions.WebHooks.nuspec"
+      ]
+    },
+    "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1": {
+      "serviceable": true,
+      "sha512": "rQIAuE0N47/lIvJ6dKdZs6O3M+ZJI4dkOB1fctuqufRb7fWLng7T8TQGfTR3cPG1Tf0iRqst2UrSkawEoiFcqg==",
+      "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.xml",
+        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1.nupkg",
+        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.ServiceBus.nuspec"
       ]
     },
     "Microsoft.CSharp/4.0.0-beta-23019": {
@@ -869,6 +909,18 @@
         "System.Threading.Tasks.nuspec"
       ]
     },
+    "WindowsAzure.ServiceBus/2.7.6": {
+      "sha512": "UBv4/92XhWh8vAm4hih2xBUSuBtWxQV3H4IXoALImmu8B3OK32CAj7JCXTVzg43jdvRJxibwSBd+5HcRwH9JnQ==",
+      "files": [
+        "content/app.config.install.xdt",
+        "content/web.config.install.xdt",
+        "lib/net40-full/Microsoft.ServiceBus.dll",
+        "lib/net40-full/Microsoft.ServiceBus.xml",
+        "WindowsAzure.ServiceBus.2.7.6.nupkg",
+        "WindowsAzure.ServiceBus.2.7.6.nupkg.sha512",
+        "WindowsAzure.ServiceBus.nuspec"
+      ]
+    },
     "WindowsAzure.Storage/4.3.0": {
       "sha512": "7IQiKZKSNHK+cZzEZohOsFDezxrhyBrNoDl8ZQJPdPnitEbjJaq2LXv01iVe6PRBTZE23bKNUWLtH+dXQfbbuQ==",
       "files": [
@@ -888,7 +940,8 @@
       "EntityFramework >= 6.1.3",
       "Microsoft.AspNet.WebApi.Client >= 5.2.3",
       "Microsoft.Framework.Runtime.Abstractions >= 1.0.0-beta6",
-      "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-beta1"
+      "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-beta1",
+      "Microsoft.Azure.WebJobs.ServiceBus >= 1.1.0-beta1"
     ],
     "DNX,Version=v4.5.1": [
       "System.Collections >= 4.0.10-beta-23019",

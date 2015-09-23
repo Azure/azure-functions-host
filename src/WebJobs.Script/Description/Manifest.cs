@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Extensions.WebHooks;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -94,12 +95,25 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            // Apply ServiceBus configuration
+            ServiceBusConfiguration sbConfig = new ServiceBusConfiguration();
+            configSection = (JObject)Configuration["serviceBus"];
+            value = null;
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("maxConcurrentCalls", out value))
+                {
+                    sbConfig.MessageOptions.MaxConcurrentCalls = (int)value;
+                }
+            }
+            config.UseServiceBus(sbConfig);
+
             // Apply Tracing configuration
             configSection = (JObject)Configuration["tracing"];
             if (configSection != null && configSection.TryGetValue("consoleLevel", out value))
             {
                 TraceLevel consoleLevel;
-                if (Enum.TryParse<TraceLevel>((string)value, out consoleLevel))
+                if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
                 {
                     config.Tracing.ConsoleLevel = consoleLevel;
                 }
