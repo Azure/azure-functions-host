@@ -41,6 +41,32 @@ namespace Microsoft.Azure.WebJobs.Script
             return triggerParameter;
         }
 
+        protected ParameterDescriptor ParseBlobTrigger(JObject trigger, Type triggerParameterType = null)
+        {
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            ConstructorInfo ctorInfo = typeof(BlobTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
+            string blobPath = (string)trigger["blobPath"];
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { blobPath });
+
+            string parameterName = (string)trigger["name"];
+            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            {
+                Name = parameterName,
+                Type = triggerParameterType,
+                Attributes = ParameterAttributes.None,
+                CustomAttributes = new Collection<CustomAttributeBuilder>
+                {
+                    attributeBuilder
+                }
+            };
+
+            return triggerParameter;
+        }
+
         protected ParameterDescriptor ParseTimerTrigger(JObject trigger, Type triggerParameterType = null)
         {
             if (triggerParameterType == null)

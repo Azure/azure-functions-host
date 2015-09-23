@@ -61,6 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "queue":
                     triggerParameter = ParseQueueTrigger(trigger, triggerParameterType);
                     break;
+                case "blob":
+                    triggerParameter = ParseBlobTrigger(trigger, triggerParameterType);
+                    break;
                 case "timer":
                     triggerParameter = ParseTimerTrigger(trigger, triggerParameterType);
                     break;

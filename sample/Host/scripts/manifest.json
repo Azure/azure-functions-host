@@ -16,6 +16,13 @@
       }
     },
     {
+      "source": "BlobTrigger.cs",
+      "trigger": {
+        "type": "blob",
+        "blobPath": "samples-workitems"
+      }
+    },
+    {
       "source": "TimerTrigger.cs",
       "trigger": {
         "type": "timer",
