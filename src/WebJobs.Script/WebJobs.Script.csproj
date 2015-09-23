@@ -121,7 +121,7 @@
     <Compile Include="Description\ParameterDescriptor.cs" />
     <Compile Include="Description\Manifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Config\ScriptConfiguration.cs" />
+    <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />
   </ItemGroup>
   <ItemGroup>

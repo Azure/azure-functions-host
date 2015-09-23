@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> Functions { get; set; }
 
-        public static Manifest Read(ScriptConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
+        public static Manifest Read(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
             string manifestFilePath = Path.Combine(config.ApplicationRootPath, @"scripts\manifest.json");
             Console.WriteLine(string.Format("Reading job manifest file '{0}'", manifestFilePath));
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
             config.TypeLocator = new TypeLocator(type);
         }
 
-        private static Collection<FunctionDescriptor> ReadFunctions(JObject manifest, ScriptConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
+        private static Collection<FunctionDescriptor> ReadFunctions(JObject manifest, ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
             JArray functionArray = (JArray)manifest["functions"];
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();

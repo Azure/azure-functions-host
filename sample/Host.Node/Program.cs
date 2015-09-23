@@ -18,13 +18,13 @@ namespace Host.Node
     {
         static void Main(string[] args)
         {
-            ScriptConfiguration config = new ScriptConfiguration()
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 ApplicationRootPath = Environment.CurrentDirectory,
                 HostAssembly = Assembly.GetExecutingAssembly()
             };
 
-            NodeScriptHost host = NodeScriptHost.Create(config);
+            ScriptHost host = NodeScriptHost.Create(config);
             host.RunAndBlock();
         }
     }
