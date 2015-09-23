@@ -1,6 +1,6 @@
 ﻿Azure WebJobs SDK Script
 ===
-This repo contains libraries that enable a light-weight scripting model for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function scripts written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), CSharp, etc.) along with a simple **manifest.json** file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the WebJobs SDK JobHost runtime (i.e. "Make It Happen!").
+This repo contains libraries that enable a **light-weight scripting model** for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function scripts written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), CSharp, etc.) along with a simple **manifest.json** file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the WebJobs SDK JobHost runtime (i.e. "Make It Happen!").
 
 This opens the door for interesting **UI driven scenarios**, where the user simply chooses trigger options from drop-downs, provides a job script, and the corresponding manifest.json is generated behind the scenes. The scripting runtime is able to take these two simple inputs and set everything else up. The engine behind the scenes is the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**".
 
