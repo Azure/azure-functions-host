@@ -1,0 +1,63 @@
+// This sample manifest.json file shows the full range of configuration
+// options.
+
+{
+  // (Optional) Configuration section allowing you to configure various
+  // settings per feature area.
+  "config": {
+    // Configuration settings for 'queue' triggers.
+    "queues": {
+      // The maximum interval in milliseconds between
+      // queue polls. The default is 1 minute.
+      "maxPollingInterval": 2000,
+      // The number of queue messages to retrieve and process in
+      // parallel (per job function). The default is 16.
+      "batchSize": 16,
+      // The number of times to try processing a message before
+      // moving it to the poison queue. The default is 5
+      "maxDequeueCount": 5,
+      // The threshold at which a new batch of messages will be fetched.
+      // The default is batchSize/2.
+      "newBatchThreshold": 8
+    },
+    // Configuration settings for 'webHook' triggers.
+    "webHooks": {
+      // The port that the WebHook HTTP listener should listen on. When running
+      // in Azure Web Apps, you shouldn't set this explicitly. This setting exists
+      // to facilitate running locally. The default value is 65000.
+      "port": 65000
+    },
+    // Configuration settings for logging/tracing behavior.
+    "tracing": {
+      // The tracing level used for console logging.
+      // The default is 'Info'. Options are: { Off, Error, Warning, Info, Verbose }
+      "consoleLevel": "Verbose"
+    }
+  },
+  // Section declaring an array of all function definitions
+  "functions": [
+    {
+      // Queue trigger example
+      "source": "processWorkItem.js",
+      "trigger": {
+        "type": "queue",
+        "queueName": "samples-workitems"
+      }
+    },
+    {
+      // Timer (Cron) example
+      "source": "scheduledJob.js",
+      "trigger": {
+        "type": "timer",
+        "schedule": "*/10 * * * * *"
+      }
+    },
+    {
+      // WebHook example
+      "source": "webHook.js",
+      "trigger": {
+        "type": "webHook"
+      }
+    }
+  ]
+}
