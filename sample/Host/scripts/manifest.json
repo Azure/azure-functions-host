@@ -16,6 +16,13 @@
       }
     },
     {
+      "source": "ScheduledJob.cs",
+      "trigger": {
+        "type": "timer",
+        "schedule": "*/10 * * * * *"
+      }
+    },
+    {
       "source": "WebHook.cs",
       "trigger": {
         "type": "webHook"

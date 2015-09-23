@@ -14,11 +14,12 @@ namespace Host
     {
         public static void Main(string[] args)
         {
-            ScriptConfiguration config = new ScriptConfiguration()
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 ApplicationRootPath = Directory.GetCurrentDirectory(),
                 HostAssembly = Assembly.GetExecutingAssembly()
             };
+
             ScriptHost host = CSharpScriptHost.Create(config);
             host.RunAndBlock();
         }

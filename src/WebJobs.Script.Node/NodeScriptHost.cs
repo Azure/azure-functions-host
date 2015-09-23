@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
 {
     public class NodeScriptHost : ScriptHost
     {
-        private NodeScriptHost(JobHostConfiguration config, ScriptConfiguration scriptConfig)
+        private NodeScriptHost(JobHostConfiguration config, ScriptHostConfiguration scriptConfig)
             : base(config, scriptConfig)
         {
         }
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 };
         }
 
-        public static NodeScriptHost Create(ScriptConfiguration scriptConfig)
+        public static NodeScriptHost Create(ScriptHostConfiguration scriptConfig)
         {
             JobHostConfiguration config = new JobHostConfiguration();
             NodeScriptHost scriptHost = new NodeScriptHost(config, scriptConfig);

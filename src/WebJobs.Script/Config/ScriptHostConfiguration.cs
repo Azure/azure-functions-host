@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptConfiguration
+    public class ScriptHostConfiguration
     {
         /// <summary>
         /// Gets or sets the full path to the application root directory.

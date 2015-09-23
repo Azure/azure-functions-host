@@ -54,7 +54,7 @@ namespace WebJobs.Script.Tests
                 Client = new HttpClient();
                 Client.BaseAddress = new Uri(BaseUrl);
 
-                ScriptConfiguration config = new ScriptConfiguration
+                ScriptHostConfiguration config = new ScriptHostConfiguration
                 {
                     HostAssembly = Assembly.GetExecutingAssembly(),
                     ApplicationRootPath = Path.Combine(Directory.GetCurrentDirectory(), "csharp")

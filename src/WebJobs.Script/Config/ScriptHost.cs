@@ -8,9 +8,9 @@ namespace Microsoft.Azure.WebJobs.Script
     public abstract class ScriptHost : JobHost
     {
         protected readonly JobHostConfiguration _config;
-        protected readonly ScriptConfiguration _scriptConfig;
+        protected readonly ScriptHostConfiguration _scriptConfig;
 
-        protected ScriptHost(JobHostConfiguration config, ScriptConfiguration scriptConfig) 
+        protected ScriptHost(JobHostConfiguration config, ScriptHostConfiguration scriptConfig) 
             : base(config)
         {
             _config = config;

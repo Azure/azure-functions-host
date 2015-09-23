@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class CSharpScriptHost : ScriptHost
     {
-        protected CSharpScriptHost(JobHostConfiguration config, ScriptConfiguration scriptConfig) 
+        protected CSharpScriptHost(JobHostConfiguration config, ScriptHostConfiguration scriptConfig) 
             : base(config, scriptConfig)
         {
         }
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
             };
         }
 
-        public static CSharpScriptHost Create(ScriptConfiguration scriptConfig)
+        public static CSharpScriptHost Create(ScriptHostConfiguration scriptConfig)
         {
             JobHostConfiguration config = new JobHostConfiguration();
             CSharpScriptHost scriptHost = new CSharpScriptHost(config, scriptConfig);
