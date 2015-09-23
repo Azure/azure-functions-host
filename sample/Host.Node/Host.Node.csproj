@@ -134,13 +134,16 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="scripts\processWorkItem.js">
+    <Content Include="scripts\blobTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\scheduledJob.js">
+    <Content Include="scripts\queueTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\webHook.js">
+    <Content Include="scripts\timerTrigger.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\webHookTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

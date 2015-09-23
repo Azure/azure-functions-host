@@ -9,21 +9,21 @@
   },
   "functions": [
     {
-      "source": "ProcessPost.cs",
+      "source": "QueueTrigger.cs",
       "trigger": {
         "type": "queue",
         "queueName": "samples-posts"
       }
     },
     {
-      "source": "ScheduledJob.cs",
+      "source": "TimerTrigger.cs",
       "trigger": {
         "type": "timer",
         "schedule": "*/10 * * * * *"
       }
     },
     {
-      "source": "WebHook.cs",
+      "source": "WebHookTrigger.cs",
       "trigger": {
         "type": "webHook"
       }

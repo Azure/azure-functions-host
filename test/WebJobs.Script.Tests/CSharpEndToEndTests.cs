@@ -26,7 +26,7 @@ namespace WebJobs.Script.Tests
         public async Task WebHookTest()
         {
             string testData = Guid.NewGuid().ToString();
-            HttpResponseMessage response = await _fixture.Client.PostAsync("Functions/WebHook", new StringContent(testData));
+            HttpResponseMessage response = await _fixture.Client.PostAsync("Functions/WebHookTrigger", new StringContent(testData));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string result = (string)Functions.InvokeData;

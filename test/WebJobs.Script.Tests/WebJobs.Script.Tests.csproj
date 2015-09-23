@@ -130,8 +130,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSharpEndToEndTests.cs" />
-    <Compile Include="csharp\scripts\ScheduledJob.cs" />
-    <Compile Include="csharp\scripts\WebHook.cs" />
+    <Compile Include="csharp\scripts\TimerTrigger.cs" />
+    <Compile Include="csharp\scripts\WebHookTrigger.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -159,10 +159,10 @@
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="node\scripts\scheduledJob.js">
+    <Content Include="node\scripts\timerTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="node\scripts\webHook.js">
+    <Content Include="node\scripts\webHookTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

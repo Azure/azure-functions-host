@@ -9,21 +9,21 @@
   },
   "functions": [
     {
-      "source": "scheduledJob.js",
+      "source": "timerTrigger.js",
       "trigger": {
         "type": "timer",
         "schedule": "*/10 * * * * *"
       }
     },
     {
-      "source": "processWorkItem.js",
+      "source": "queueTrigger.js",
       "trigger": {
         "type": "queue",
         "queueName": "samples-workitems"
       }
     },
     {
-      "source": "webHook.js",
+      "source": "webHookTrigger.js",
       "trigger": {
         "type": "webHook"
       }
