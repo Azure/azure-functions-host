@@ -44,11 +44,14 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 case "blob":
                     triggerParameter = ParseBlobTrigger(trigger);
                     break;
+                case "serviceBus":
+                    triggerParameter = ParseServiceBusTrigger(trigger);
+                    break;
                 case "timer":
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
                 case "webHook":
-                    triggerParameter = ParseWebHookTrigger(trigger, typeof(string));
+                    triggerParameter = ParseWebHookTrigger(trigger);
                     break;
             }
 
