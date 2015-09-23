@@ -21,7 +21,7 @@
     {
       "source": "webHook.js",
       "trigger": {
-        "type": "webhook"
+        "type": "webHook"
       }
     }
   ]

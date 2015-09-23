@@ -18,7 +18,7 @@
     {
       "source": "WebHook.cs",
       "trigger": {
-        "type": "webhook"
+        "type": "webHook"
       }
     }
   ]

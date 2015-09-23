@@ -74,26 +74,29 @@ namespace Microsoft.Azure.WebJobs.Script
             // Apply Queues configuration
             JObject configSection = (JObject)Configuration["queues"];
             JToken value = null;
-            if (configSection.TryGetValue("maxPollingInterval", out value))
+            if (configSection != null)
             {
-                config.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
-            }
-            if (configSection.TryGetValue("batchSize", out value))
-            {
-                config.Queues.BatchSize = (int)value;
-            }
-            if (configSection.TryGetValue("maxDequeueCount", out value))
-            {
-                config.Queues.MaxDequeueCount = (int)value;
-            }
-            if (configSection.TryGetValue("newBatchThreshold", out value))
-            {
-                config.Queues.NewBatchThreshold = (int)value;
+                if (configSection.TryGetValue("maxPollingInterval", out value))
+                {
+                    config.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
+                }
+                if (configSection.TryGetValue("batchSize", out value))
+                {
+                    config.Queues.BatchSize = (int)value;
+                }
+                if (configSection.TryGetValue("maxDequeueCount", out value))
+                {
+                    config.Queues.MaxDequeueCount = (int)value;
+                }
+                if (configSection.TryGetValue("newBatchThreshold", out value))
+                {
+                    config.Queues.NewBatchThreshold = (int)value;
+                }
             }
 
             // Apply Tracing configuration
             configSection = (JObject)Configuration["tracing"];
-            if (configSection.TryGetValue("consoleLevel", out value))
+            if (configSection != null && configSection.TryGetValue("consoleLevel", out value))
             {
                 TraceLevel consoleLevel;
                 if (Enum.TryParse<TraceLevel>((string)value, out consoleLevel))
@@ -105,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Apply WebHooks configuration
             WebHooksConfiguration webHooksConfig = new WebHooksConfiguration();
             configSection = (JObject)Configuration["webhooks"];
-            if (configSection.TryGetValue("port", out value))
+            if (configSection != null && configSection.TryGetValue("port", out value))
             {
                 webHooksConfig = new WebHooksConfiguration((int)value);
             }

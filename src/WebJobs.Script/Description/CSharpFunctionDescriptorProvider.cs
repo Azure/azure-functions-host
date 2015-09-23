@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "timer":
                     triggerParameter = ParseTimerTrigger(trigger, triggerParameterType);
                     break;
-                case "webhook":
+                case "webHook":
                     triggerParameter = ParseWebHookTrigger(trigger, typeof(HttpRequestMessage));
                     break;
             }
