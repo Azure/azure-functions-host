@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return new FunctionDescriptorProvider[]
             {
-                new CSharpFunctionDescriptorProvider(_scriptConfig.HostAssembly)
+                new CSharpFunctionDescriptorProvider(_scriptConfig.HostAssembly.GetTypes())
             };
         }
 

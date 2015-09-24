@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class Manifest
     {
 
-        private Manifest()
+        internal Manifest()
         {
         }
 
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return new Manifest
             {
-                Functions = ReadFunctions(manifest, config, descriptionProviders),
+                Functions = ReadFunctions(manifest, descriptionProviders),
                 Configuration = (JObject)manifest["config"]
             };
         }
@@ -46,14 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script
             config.TypeLocator = new TypeLocator(type);
         }
 
-        private static Collection<FunctionDescriptor> ReadFunctions(JObject manifest, ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
+        internal static Collection<FunctionDescriptor> ReadFunctions(JObject manifest, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             JArray functionArray = (JArray)manifest["functions"];
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             foreach (JObject function in functionArray)
             {
                 FunctionDescriptor descriptor = null;
-                foreach (var provider in descriptionProviders)
+                foreach (var provider in descriptorProviders)
                 {
                     if (provider.TryCreate(function, out descriptor))
                     {

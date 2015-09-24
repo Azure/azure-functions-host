@@ -22,6 +22,15 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             functionDescriptor = null;
 
             string sourceFileName = (string)function["source"];
+            string name = (string)function["name"];
+            if (string.IsNullOrEmpty(name))
+            {
+                // if a method name isn't explicitly provided, derive it
+                // from the script file name
+                name = Path.GetFileNameWithoutExtension(sourceFileName);
+                name = name.Substring(0, 1).ToUpper() + name.Substring(1);
+            }
+
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", sourceFileName);
             ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
 
@@ -65,15 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 Type = typeof(TextWriter)
             };
             parameters.Add(textWriter);
-
-            string name = (string)function["name"];
-            if (string.IsNullOrEmpty(name))
-            {
-                // if a method name isn't explicitly provided, derive it
-                // from the script file name
-                name = Path.GetFileNameWithoutExtension(sourceFileName);
-                name = name.Substring(0, 1).ToUpper() + name.Substring(1);
-            }
 
             functionDescriptor = new FunctionDescriptor
             {
