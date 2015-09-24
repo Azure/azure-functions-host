@@ -15,9 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly Type[] _types;
 
-        public CSharpFunctionDescriptorProvider(Assembly sourceAssembly)
+        public CSharpFunctionDescriptorProvider(Type[] types)
         {
-            _types = sourceAssembly.GetTypes();
+            _types = types;
         }
 
         public override bool TryCreate(JObject function, out FunctionDescriptor functionDescriptor)

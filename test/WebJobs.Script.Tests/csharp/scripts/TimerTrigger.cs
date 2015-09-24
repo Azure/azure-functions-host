@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 
-namespace WebJobs.Script.Tests.csharp.scripts
+namespace WebJobs.Script.Tests
 {
     public static partial class Functions
     {
