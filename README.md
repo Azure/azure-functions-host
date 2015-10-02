@@ -1,6 +1,6 @@
 ﻿Azure WebJobs SDK
 ===
-The **Azure WebJobs SDK** is a framework that simplifies the task of writing background processing code that runs in Azure WebJobs.
+The **Azure WebJobs SDK** is a framework that simplifies the task of writing background processing code that runs in Azure. Generally the WebJobs SDK is hosted Azure WebJobs, but can also be run in a Worker Role.
 
 The Azure WebJobs SDK includes a declarative **binding** and **trigger** system that works with Azure Storage Blobs, Queues and Tables as well as Service Bus. The binding system makes it incredibly easy to write code that reads or writes Azure Storage objects. The trigger system automatically invokes a function in your code whenever any new data is received in a queue or blob.
 
