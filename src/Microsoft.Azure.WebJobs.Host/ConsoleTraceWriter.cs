@@ -8,7 +8,7 @@ using System.IO;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// This <see cref="TraceWriter"/> delegates to an inner user <see cref="TraceWriter"/> (from <see cref="JobHostConfiguration.Tracing"/>,
+    /// This <see cref="TraceWriter"/> delegates to a collection of inner user <see cref="TraceWriter"/>s (from <see cref="JobHostConfiguration.Tracing"/>,
     /// as well as a Console <see cref="TextWriter"/>.
     /// </summary>
     internal class ConsoleTraceWriter : CompositeTraceWriter
@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private readonly JobHostTraceConfiguration _traceConfig;
 
         public ConsoleTraceWriter(JobHostTraceConfiguration traceConfig, TextWriter console)
-            : base(traceConfig.Trace, console)
+            : base(traceConfig.Tracers, console)
         {
             _traceConfig = traceConfig;
         }

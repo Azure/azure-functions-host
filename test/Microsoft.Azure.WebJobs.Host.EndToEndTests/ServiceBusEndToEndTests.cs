@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     NameResolver = _nameResolver,
                     TypeLocator = new FakeTypeLocator(typeof(ServiceBusTestJobs))
                 };
-                config.Tracing.Trace = trace;
+                config.Tracing.Tracers.Add(trace);
                 config.UseServiceBus(_serviceBusConfig);
                 JobHost host = new JobHost(config);
 

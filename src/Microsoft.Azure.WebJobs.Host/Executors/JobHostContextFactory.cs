@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor = new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
 
-            // Create the a wrapper TraceWriter that delegates to both the user 
+            // Create a wrapper TraceWriter that delegates to both the user 
             // TraceWriter specified on Config (if present), as well as to Console
             TraceWriter trace = new ConsoleTraceWriter(config.Tracing, consoleProvider.Out);
 

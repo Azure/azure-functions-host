@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     public class ConsoleTraceWriterTests
     {
         private readonly Mock<TraceWriter> _mockTraceWriter;
+        private readonly Mock<TraceWriter> _mockTraceWriter2;
         private readonly Mock<TextWriter> _mockTextWriter;
         private readonly ConsoleTraceWriter _traceWriter;
         private readonly JobHostTraceConfiguration _traceConfig;
@@ -20,11 +21,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             _mockTextWriter = new Mock<TextWriter>(MockBehavior.Strict);
             _mockTraceWriter = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Info);
+            _mockTraceWriter2 = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Error);
             _traceConfig = new JobHostTraceConfiguration
             {
-                ConsoleLevel = TraceLevel.Info,
-                Trace = _mockTraceWriter.Object
+                ConsoleLevel = TraceLevel.Info
             };
+            _traceConfig.Tracers.Add(_mockTraceWriter.Object);
+            _traceConfig.Tracers.Add(_mockTraceWriter2.Object);
             _traceWriter = new ConsoleTraceWriter(_traceConfig, _mockTextWriter.Object);
         }
 
@@ -38,23 +41,42 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "Test Information No Source", null));
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Warning, null, "Test Warning", null));
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error", null));
+            _mockTraceWriter2.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error", null));
             Exception ex = new Exception("Kaboom!");
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error With Exception", ex));
+            _mockTraceWriter2.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error With Exception", ex));
 
-            // expect these to be logged to both
+            // expect this to be logged to both tracer1 and textWriter
             _traceWriter.Info("Test Information", Host.TraceSource.Host);
 
             // don't expect these to be logged to text writer (based on level filter)
+            // expect the errors to be logged to both traceWriters
             _traceWriter.Warning("Test Warning");
             _traceWriter.Error("Test Error");
             _traceWriter.Error("Test Error With Exception", ex);
 
             // don't expect these to be logged to text writer (based on source filter)
+            // only written to traceWriter1
             _traceWriter.Info("Test Information With Source", "TestSource");
             _traceWriter.Info("Test Information No Source");
 
             _mockTextWriter.VerifyAll();
             _mockTraceWriter.VerifyAll();
+            _mockTraceWriter2.VerifyAll();
+        }
+
+        [Fact]
+        public void Flush_FlushesInnerWriters()
+        {
+            _mockTextWriter.Setup(p => p.Flush());
+            _mockTraceWriter.Setup(p => p.Flush());
+            _mockTraceWriter2.Setup(p => p.Flush());
+
+            _traceWriter.Flush();
+
+            _mockTextWriter.VerifyAll();
+            _mockTraceWriter.VerifyAll();
+            _mockTraceWriter2.VerifyAll();
         }
 
         [Theory]
