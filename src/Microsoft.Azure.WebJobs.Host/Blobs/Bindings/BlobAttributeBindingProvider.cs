@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             List<IBlobContainerArgumentBindingProvider> innerProviders = new List<IBlobContainerArgumentBindingProvider>();
 
             innerProviders.Add(new CloudBlobContainerArgumentBindingProvider());
+            innerProviders.Add(new CloudBlobDirectoryArgumentBindingProvider());
             innerProviders.Add(new CloudBlobEnumerableArgumentBindingProvider());
 
             return new CompositeBlobContainerArgumentBindingProvider(innerProviders);

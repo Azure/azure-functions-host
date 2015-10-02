@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -37,7 +36,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("CloudBlobContainerBinding"));
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
+        }
+
+        [Fact]
+        public async Task BindToCloudBlobDirectory()
+        {
+            await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("CloudBlobDirectoryBinding"));
+
+            Assert.Equal(3, NumBlobsRead);
         }
 
         [Fact]
@@ -52,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("CloudBlobContainerBinding_WithModelBinding"), arguments);
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
         }
 
         [Fact]
@@ -60,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter"));
 
-            Assert.Equal(3, (int)NumBlobsRead);
+            Assert.Equal(3, NumBlobsRead);
         }
 
         [Fact]
@@ -68,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter_NoMatchingBlobs"));
 
-            Assert.Equal(0, (int)NumBlobsRead);
+            Assert.Equal(0, NumBlobsRead);
         }
 
         [Fact]
@@ -76,7 +83,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter_HierarchicalBlobs"));
 
-            Assert.Equal(2, (int)NumBlobsRead);
+            Assert.Equal(2, NumBlobsRead);
+        }
+
+        [Fact]
+        public async Task BindToIEnumerableCloudBlockBlob_WithPrefixFilter_HierarchicalBlobs_UsesFlatBlobListing()
+        {
+            await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithPrefixFilter_HierarchicalBlobs_UsesFlatBlobListing"));
+
+            Assert.Equal(3, NumBlobsRead);
         }
 
         [Fact]
@@ -92,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudBlockBlobBinding_WithModelBinding"), arguments);
 
-            Assert.Equal(3, (int)NumBlobsRead);
+            Assert.Equal(3, NumBlobsRead);
         }
 
         [Fact]
@@ -100,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableCloudPageBlobBinding"));
 
-            Assert.Equal(2, (int)NumBlobsRead);
+            Assert.Equal(2, NumBlobsRead);
         }
 
         [Fact]
@@ -108,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableStringBinding"));
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
         }
 
         [Fact]
@@ -116,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableStreamBinding"));
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
         }
 
         [Fact]
@@ -124,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableTextReaderBinding"));
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
         }
 
         [Fact]
@@ -132,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableICloudBlobBinding"));
 
-            Assert.Equal(5, (int)NumBlobsRead);
+            Assert.Equal(5, NumBlobsRead);
         }
 
         [NoAutomaticTrigger]
@@ -146,6 +161,26 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.Equal(TestData, content);
             }
             NumBlobsRead = blobs.Count();
+        }
+
+        [NoAutomaticTrigger]
+        public static void CloudBlobDirectoryBinding(
+            [Blob(HierarchicalBlobContainerName + "/sub")] CloudBlobDirectory directory)
+        {
+            var directoryItems = directory.ListBlobs();
+
+            var blobs = directoryItems.OfType<CloudBlockBlob>();
+            foreach (CloudBlockBlob blob in blobs)
+            {
+                string content = blob.DownloadText();
+                Assert.Equal(TestData, content);
+            }
+            NumBlobsRead += blobs.Count();
+
+            CloudBlobDirectory subDirectory = directoryItems.OfType<CloudBlobDirectory>().Single();
+            CloudBlockBlob subBlob = subDirectory.ListBlobs().Cast<CloudBlockBlob>().Single();
+            Assert.Equal(TestData, subBlob.DownloadText());
+            NumBlobsRead += 1;
         }
 
         [NoAutomaticTrigger]
@@ -178,6 +213,21 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [NoAutomaticTrigger]
         public static void IEnumerableCloudBlockBlobBinding_WithPrefixFilter_HierarchicalBlobs(
             [Blob(HierarchicalBlobContainerName + "/sub/bl")] IEnumerable<CloudBlockBlob> blobs)
+        {
+            foreach (var blob in blobs)
+            {
+                string content = blob.DownloadText();
+                Assert.Equal(TestData, content);
+            }
+            NumBlobsRead = blobs.Count();
+        }
+
+        // Ensure that a flat blob listing is used, meaning if a route prefix covers
+        // sub directries, blobs within those sub directories are returned. Users can bind
+        // to CloudBlobDirectory if they want to operate on directories.
+        [NoAutomaticTrigger]
+        public static void IEnumerableCloudBlockBlobBinding_WithPrefixFilter_HierarchicalBlobs_UsesFlatBlobListing(
+            [Blob(HierarchicalBlobContainerName + "/sub")] IEnumerable<CloudBlockBlob> blobs)
         {
             foreach (var blob in blobs)
             {

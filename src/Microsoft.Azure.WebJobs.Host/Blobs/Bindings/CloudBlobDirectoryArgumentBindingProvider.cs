@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -10,23 +11,23 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal class CloudBlobContainerArgumentBindingProvider : IBlobContainerArgumentBindingProvider
+    internal class CloudBlobDirectoryArgumentBindingProvider : IBlobContainerArgumentBindingProvider
     {
         public IArgumentBinding<IStorageBlobContainer> TryCreate(ParameterInfo parameter)
         {
-            if (parameter.ParameterType == typeof(CloudBlobContainer))
+            if (parameter.ParameterType == typeof(CloudBlobDirectory))
             {
-                return new CloudBlobContainerArgumentBinding();
+                return new CloudBlobDirectoryArgumentBinding();
             }
 
             return null;
         }
 
-        private class CloudBlobContainerArgumentBinding : IArgumentBinding<IStorageBlobContainer>
+        private class CloudBlobDirectoryArgumentBinding : IArgumentBinding<IStorageBlobContainer>
         {
             public Type ValueType
             {
-                get { return typeof(CloudBlobContainer); }
+                get { return typeof(CloudBlobDirectory); }
             }
 
             public Task<IValueProvider> BindAsync(IStorageBlobContainer container, ValueBindingContext context)
@@ -36,34 +37,37 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     throw new ArgumentNullException("container");
                 }
 
-                return Task.FromResult<IValueProvider>(new ValueProvider(container.SdkObject));
+                BlobValueBindingContext blobValueBindingContext = (BlobValueBindingContext)context;
+                CloudBlobDirectory directory = container.SdkObject.GetDirectoryReference(blobValueBindingContext.Path.BlobName);
+
+                return Task.FromResult<IValueProvider>(new ValueProvider(directory));
             }
 
             private class ValueProvider : IValueProvider
             {
-                private readonly CloudBlobContainer _container;
+                private readonly CloudBlobDirectory _directory;
 
-                public ValueProvider(CloudBlobContainer container)
+                public ValueProvider(CloudBlobDirectory directory)
                 {
-                    _container = container;
+                    _directory = directory;
                 }
 
                 public Type Type
                 {
                     get
                     {
-                        return typeof(CloudBlobContainer);
+                        return typeof(CloudBlobDirectory);
                     }
                 }
 
                 public object GetValue()
                 {
-                    return _container;
+                    return _directory;
                 }
 
                 public string ToInvokeString()
                 {
-                    return _container.Uri.AbsolutePath;
+                    return _directory.Uri.AbsolutePath;
                 }
             }
         }

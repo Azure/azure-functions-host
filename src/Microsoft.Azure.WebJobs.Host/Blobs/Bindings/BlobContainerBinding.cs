@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             BlobPath boundPath = _path.Bind(context.BindingData);
             IStorageBlobContainer container = _client.GetContainerReference(boundPath.ContainerName);
-            ValueBindingContext containerContext = new BlobContainerValueBindingContext(boundPath, context.ValueContext);
+            ValueBindingContext containerContext = new BlobValueBindingContext(boundPath, context.ValueContext);
 
             return await BindBlobContainerAsync(container, containerContext);
         }
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             if (TryConvert(value, _client, out container, out path))
             {
-                return await BindBlobContainerAsync(container, new BlobContainerValueBindingContext(path, context));
+                return await BindBlobContainerAsync(container, new BlobValueBindingContext(path, context));
             }
             
             throw new InvalidOperationException("Unable to convert value to CloudBlobContainer.");
@@ -122,17 +122,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private Task<IValueProvider> BindBlobContainerAsync(IStorageBlobContainer value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
-        }
-
-        internal class BlobContainerValueBindingContext : ValueBindingContext
-        {
-            public BlobContainerValueBindingContext(BlobPath path, ValueBindingContext context)
-                : base(context.FunctionContext, context.CancellationToken)
-            {
-                Path = path;
-            }
-
-            public BlobPath Path { get; private set; }
         }
     }
 }

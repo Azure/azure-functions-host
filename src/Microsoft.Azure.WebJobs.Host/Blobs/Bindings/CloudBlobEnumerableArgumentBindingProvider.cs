@@ -13,7 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.WebJobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class CloudBlobEnumerableArgumentBindingProvider : IBlobContainerArgumentBindingProvider
     {
@@ -41,11 +41,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 _parameter = parameter;
             }
 
-            public FileAccess Access
-            {
-                get { return FileAccess.Read; }
-            }
-
             public Type ValueType
             {
                 get { return typeof(IEnumerable<CloudBlockBlob>); }
@@ -53,10 +48,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public async Task<IValueProvider> BindAsync(IStorageBlobContainer container, ValueBindingContext context)
             {
-                BlobContainerBinding.BlobContainerValueBindingContext containerBindingContext =
-                    (BlobContainerBinding.BlobContainerValueBindingContext)context;
+                BlobValueBindingContext containerBindingContext = (BlobValueBindingContext)context;
 
-                // query the blob container using the blob prefix (if specified)
+                // Query the blob container using the blob prefix (if specified)
+                // Note that we're explicitly using useFlatBlobListing=true to collapse
+                // sub directories. If users want to bind to a sub directory, they can
+                // bind to CloudBlobDirectory.
                 string prefix = containerBindingContext.Path.BlobName;
                 IEnumerable<IStorageListBlobItem> blobItems = await container.ListBlobsAsync(prefix, true, context.CancellationToken);
 
