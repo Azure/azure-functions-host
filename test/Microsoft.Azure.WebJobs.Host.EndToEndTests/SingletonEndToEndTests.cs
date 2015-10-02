@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             // Job with BOTH an implicit Singleton lock on the trigger listener as
             // well as a explicit function Singleton. This means that there will only
-            // be a single listener across, and also means that individual invocations
+            // be a single listener running, and also means that individual invocations
             // are also serialized by scope.
             [Singleton("TestScope")]
             public async Task SingletonTriggerJob_SingletonListener([TestTrigger] string test)

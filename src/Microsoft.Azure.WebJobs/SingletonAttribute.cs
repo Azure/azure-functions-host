@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs
         /// Constructs a new instance using the specified scope.
         /// </summary>
         /// <param name="scope">The scope for the singleton lock. When applied to triggered
-        /// job functions, this value can include route parameters.</param>
+        /// job functions, this value can include binding parameters.</param>
         public SingletonAttribute(string scope)
         {
             Scope = scope;

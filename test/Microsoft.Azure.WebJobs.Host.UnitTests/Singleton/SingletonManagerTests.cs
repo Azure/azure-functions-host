@@ -257,6 +257,30 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             Assert.Equal("No value for named parameter 'Zone'.", exception.Message);
         }
 
+        [Theory]
+        [InlineData("", "")]
+        [InlineData("scope", "scope")]
+        public void GetBoundScope_NullBindingDataScenarios_Succeeds(string scope, string expectedResult)
+        {
+            string result = SingletonManager.GetBoundScope(scope, null);
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Theory]
+        [InlineData("", "")]
+        [InlineData("scope", "scope")]
+        [InlineData("scope{P1}", "scopeTest1")]
+        [InlineData("scope:{P1}-{P2}", "scope:Test1-Test2")]
+        public void GetBoundScope_BindingDataScenarios_Succeeds(string scope, string expectedResult)
+        {
+            Dictionary<string, object> bindingData = new Dictionary<string, object>();
+            bindingData.Add("P1", "Test1");
+            bindingData.Add("P2", "Test2");
+
+            string result = SingletonManager.GetBoundScope(scope, bindingData);
+            Assert.Equal(expectedResult, result);
+        }
+
         private static void TestJob()
         {
         }

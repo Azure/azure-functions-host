@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -158,9 +159,16 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public static string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData)
         {
-            BindingTemplate bindingTemplate = BindingTemplate.FromString(scope);
-            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
-            return bindingTemplate.Bind(parameters);
+            if (bindingData != null)
+            {
+                BindingTemplate bindingTemplate = BindingTemplate.FromString(scope);
+                IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
+                return bindingTemplate.Bind(parameters);
+            }
+            else
+            {
+                return scope;
+            }
         }
 
         public async virtual Task<string> GetLockOwnerAsync(string lockId, CancellationToken cancellationToken)

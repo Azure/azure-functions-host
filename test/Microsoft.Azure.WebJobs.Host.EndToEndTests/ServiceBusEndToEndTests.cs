@@ -327,6 +327,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
 
             // Second listerner for the topic
+            // Just sprinkling Singleton here because previously we had a bug where this didn't work
+            // for ServiceBus.
+            [Singleton]
             public static void SBTopicListener2(
                 [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2")] BrokeredMessage message)
             {
