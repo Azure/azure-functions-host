@@ -385,7 +385,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 }
 
                 Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-                return task.Result;
+                Exception exception = task.Result;
+                Assert.IsType<FunctionInvocationException>(exception);
+                return exception.InnerException;
             }
         }
 
@@ -395,8 +397,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             // Arrange
             TaskCompletionSource<Exception> failureTaskSource = new TaskCompletionSource<Exception>();
-            IServiceProvider serviceProvider = CreateServiceProviderForInstanceFailure(account, programType,
-                failureTaskSource);
+            IServiceProvider serviceProvider = CreateServiceProviderForInstanceFailure(account, programType, failureTaskSource);
             TaskCompletionSource<TResult> successTaskSource = new TaskCompletionSource<TResult>();
             // The task for failed function invocation (should complete successfully with an exception).
             Task<Exception> failureTask = failureTaskSource.Task;
@@ -432,7 +433,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     }
 
                     Assert.Equal(TaskStatus.RanToCompletion, failureTask.Status);
-                    return failureTask.Result;
+                    Exception exception = failureTask.Result;
+                    Assert.IsType<FunctionInvocationException>(exception);
+                    return exception.InnerException;
                 }
             }
             finally

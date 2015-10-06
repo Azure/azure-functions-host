@@ -328,11 +328,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 MethodInfo methodInfo = typeof(ThrowingProgram).GetMethod("Throw");
 
                 // Act & Assert
-                InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                FunctionInvocationException exception = Assert.Throws<FunctionInvocationException>(
                     () => host.Call(methodInfo));
-                Assert.Same(exception, expectedException);
-                Assert.NotNull(exception.StackTrace);
-                Assert.True(exception.StackTrace.StartsWith(expectedStackTrace));
+                Assert.Same(exception.InnerException, expectedException);
+                Assert.NotNull(exception.InnerException.StackTrace);
+                Assert.True(exception.InnerException.StackTrace.StartsWith(expectedStackTrace));
             }
             finally
             {
@@ -429,11 +429,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 CloudQueueMessage message = new CloudQueueMessage(contents);
 
                 // Act & Assert
-                Exception exception = Assert.Throws<InvalidOperationException>(
+                FunctionInvocationException exception = Assert.Throws<FunctionInvocationException>(
                     () => host.Call(methodInfo, new { message = message }));
                 // This exeption shape/message could be better, but it's meets a minimum acceptibility threshold.
-                Assert.Equal("Exception binding parameter 'queueTrigger'", exception.Message);
-                Exception innerException = exception.InnerException;
+                Assert.Equal("Exception binding parameter 'queueTrigger'", exception.InnerException.Message);
+                Exception innerException = exception.InnerException.InnerException;
                 Assert.IsType<InvalidOperationException>(innerException);
                 Assert.Equal("Binding data does not contain expected value 'queueTrigger'.", innerException.Message);
             }

@@ -1125,11 +1125,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private static void AssertInvocationETagFailure(string expectedParameterName, Exception exception)
         {
-            Assert.IsType<InvalidOperationException>(exception);
+            Assert.IsType<FunctionInvocationException>(exception);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
             string expectedMessage = String.Format(CultureInfo.InvariantCulture,
                 "Error while handling parameter {0} after function returned:", expectedParameterName);
-            Assert.Equal(expectedMessage, exception.Message);
-            Exception innerException = exception.InnerException;
+            Assert.Equal(expectedMessage, exception.InnerException.Message);
+            Exception innerException = exception.InnerException.InnerException;
             Assert.IsType<InvalidOperationException>(innerException);
             // This exception is an implementation detail of the fake storage account. A real one would use a
             // StorageException (this assert may need to change if the fake is updated to be more realistic).

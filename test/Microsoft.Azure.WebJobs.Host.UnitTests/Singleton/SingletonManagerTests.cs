@@ -94,10 +94,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             await _singletonManager.ReleaseLockAsync(lockHandle, cancellationToken);
 
             // verify the traces
-            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose WebJobs.Execution Waiting for Singleton lock (testid)")));
-            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose WebJobs.Execution Singleton lock acquired (testid)")));
+            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Waiting for Singleton lock (testid)")));
+            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock acquired (testid)")));
             Assert.Equal(renewCount, _trace.Traces.Count(p => p.ToString().Contains("Renewing Singleton lock (testid)")));
-            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose WebJobs.Execution Singleton lock released (testid)")));
+            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock released (testid)")));
 
             renewCount = 0;
             await Task.Delay(1000);
