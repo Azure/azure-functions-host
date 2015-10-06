@@ -30,8 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => BindToQueueTriggerViaIBinderProgram.TaskSource = s);
 
             // Assert
-            Assert.Equal("Exception while executing function: BindToQueueTriggerViaIBinderProgram.Run", exception.Message);
-            Assert.Equal("No binding found for attribute 'Microsoft.Azure.WebJobs.QueueTriggerAttribute'.", exception.InnerException.Message);
+            Assert.Equal("No binding found for attribute 'Microsoft.Azure.WebJobs.QueueTriggerAttribute'.", exception.Message);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()
