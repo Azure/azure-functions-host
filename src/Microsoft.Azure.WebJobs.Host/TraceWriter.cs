@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Base class for trace writers used by <see cref="JobHost"/>. 
+    /// Base class for trace writers used by the <see cref="JobHost"/>. 
     /// See <see cref="JobHostConfiguration.Tracing"/> for details.
     /// </summary>
     public abstract class TraceWriter
@@ -33,53 +33,50 @@ namespace Microsoft.Azure.WebJobs.Host
         public TraceLevel Level { get; set; }
 
         /// <summary>
-        /// Writes a trace entry.
+        /// Writes a trace event.
         /// </summary>
-        /// <param name="level">The <see cref="TraceLevel"/> for the trace entry</param>
-        /// <param name="source">Optional source of the message.</param>
-        /// <param name="message">The trace message.</param>
-        /// <param name="ex">Optional <see cref="Exception"/> (if an error is being traced).</param>
-        public abstract void Trace(TraceLevel level, string source, string message, Exception ex);
+        /// <param name="traceEvent">The <see cref="TraceEvent"/> to trace.</param>
+        public abstract void Trace(TraceEvent traceEvent);
 
         /// <summary>
-        /// Writes a <see cref="TraceLevel.Verbose"/> level trace entry.
+        /// Writes a <see cref="TraceLevel.Verbose"/> level trace event.
         /// </summary>
         /// <param name="message">The trace message.</param>
         /// <param name="source">The source of the message.</param>
         public void Verbose(string message, string source = null)
         {
-            Trace(TraceLevel.Verbose, source, message, null);
+            Trace(new TraceEvent(TraceLevel.Verbose, message, source));
         }
 
         /// <summary>
-        /// Writes a <see cref="TraceLevel.Info"/> level trace entry.
+        /// Writes a <see cref="TraceLevel.Info"/> level trace event.
         /// </summary>
         /// <param name="message">The trace message.</param>
         /// <param name="source">The source of the message.</param>
         public void Info(string message, string source = null)
         {
-            Trace(TraceLevel.Info, source, message, null);
+            Trace(new TraceEvent(TraceLevel.Info, message, source));
         }
 
         /// <summary>
-        /// Writes a <see cref="TraceLevel.Warning"/> level trace entry.
+        /// Writes a <see cref="TraceLevel.Warning"/> level trace event.
         /// </summary>
         /// <param name="message">The trace message.</param>
         /// <param name="source">The source of the message.</param>
         public void Warning(string message, string source = null)
         {
-            Trace(TraceLevel.Warning, source, message, null);
+            Trace(new TraceEvent(TraceLevel.Warning, message, source));
         }
 
         /// <summary>
-        /// Writes a <see cref="TraceLevel.Error"/> level trace entry.
+        /// Writes a <see cref="TraceLevel.Error"/> level trace event.
         /// </summary>
         /// <param name="message">The trace message.</param>
         /// <param name="ex">The optional <see cref="Exception"/> for the error.</param>
         /// <param name="source">The source of the message.</param>
         public void Error(string message, Exception ex = null, string source = null)
         {
-            Trace(TraceLevel.Error, source, message, ex);
+            Trace(new TraceEvent(TraceLevel.Error, message, source, ex));
         }
 
         /// <summary>

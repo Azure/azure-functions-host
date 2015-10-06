@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         [Fact]
         public void Write_SingleCharacterWrites_BuffersUntilNewline()
         {
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "Mathew\r\n", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "Mathew\r\n")));
 
             _adapter.Write('M');
             _adapter.Write('a');
@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         [Fact]
         public void Write_VariousWriteOverloads_BuffersUntilNewline()
         {
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "=====================\r\n", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "TestData123456True=====================\r\n", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "This is a new line\r\n", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "This is some more text", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "=====================\r\n")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "TestData123456True=====================\r\n")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "This is a new line\r\n")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "This is some more text")));
             _mockTraceWriter.Setup(p => p.Flush());
 
             _adapter.Write("=====================\r\n");
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         [Fact]
         public void Flush_FlushesRemainingBuffer()
         {
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "This is a test", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "This is a test")));
             _mockTraceWriter.Setup(p => p.Flush());
 
             _adapter.Write("This");

@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 exception = ex;
             }
 
-            Assert.Equal("Kaboom!", exception.Message);
+            Assert.Equal("Exception while executing function: TestJobs.SingletonJob", exception.Message);
             VerifyLeaseState(method, null, LeaseState.Available, LeaseStatus.Unlocked);
 
             host.Stop();

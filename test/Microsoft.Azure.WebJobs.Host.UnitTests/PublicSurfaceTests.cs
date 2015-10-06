@@ -126,7 +126,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "StorageClientFactory",
                 "StorageClientFactoryContext",
                 "BindingDataProvider",
-                "IBindingDataProvider"
+                "IBindingDataProvider",
+                "FunctionInvocationException",
+                "TraceEvent"
             };
 
             AssertPublicTypes(expected, assembly);

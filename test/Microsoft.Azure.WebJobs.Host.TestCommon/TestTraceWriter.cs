@@ -9,16 +9,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class TestTraceWriter : TraceWriter
     {
-        public Collection<string> Traces = new Collection<string>();
+        public Collection<TraceEvent> Traces = new Collection<TraceEvent>();
 
         public TestTraceWriter(TraceLevel level) : base(level)
         {
         }
 
-        public override void Trace(TraceLevel level, string source, string message, Exception ex)
+        public override void Trace(TraceEvent traceEvent)
         {
-            string trace = string.Format("{0} {1} {2} {3}", level, source, message, ex);
-            Traces.Add(trace);
+            Traces.Add(traceEvent);
         }
     }
 }

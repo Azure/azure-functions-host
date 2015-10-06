@@ -7,20 +7,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Moq;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 {
     public class TraceWriterFunctionInstanceLoggerTests
     {
-        private readonly Mock<TraceWriter> _mockTraceWriter;
+        private readonly TestTraceWriter _traceWriter;
         private readonly TraceWriterFunctionInstanceLogger _logger;
 
         public TraceWriterFunctionInstanceLoggerTests()
         {
-            _mockTraceWriter = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Warning);
-            _logger = new TraceWriterFunctionInstanceLogger(_mockTraceWriter.Object);
+            _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            _logger = new TraceWriterFunctionInstanceLogger(_traceWriter);
         }
 
         [Fact]
@@ -35,11 +35,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 ReasonDetails = "TestReason"
             };
 
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, Host.TraceSource.Execution, "Executing: 'TestJob' - Reason: 'TestReason'", null));
-
             await _logger.LogFunctionStartedAsync(message, CancellationToken.None);
 
-            _mockTraceWriter.VerifyAll();
+            Assert.Equal(1, _traceWriter.Traces.Count);
+            TraceEvent traceEvent = _traceWriter.Traces[0];
+            Assert.Equal(TraceLevel.Info, traceEvent.Level);
+            Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
+            Assert.Equal("Executing: 'TestJob' - Reason: 'TestReason'", traceEvent.Message);
         }
 
         [Fact]
@@ -47,11 +49,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         {
             FunctionDescriptor descriptor = new FunctionDescriptor
             {
-                ShortName = "TestJob"
+                ShortName = "TestJob",
+                FullName = "TestNamespace.TestJob"
             };
             FunctionCompletedMessage successMessage = new FunctionCompletedMessage
             {
-                Function = descriptor
+                Function = descriptor,
+                FunctionInstanceId = Guid.NewGuid()
             };
 
             Exception ex = new Exception("Kaboom!");
@@ -62,14 +66,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 FunctionInstanceId = new Guid("8d71c9e3-e809-4cfb-bb78-48ae25c7d26d")
             };
 
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, Host.TraceSource.Execution, "Executed: 'TestJob' (Succeeded)", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, Host.TraceSource.Execution, "Executed: 'TestJob' (Failed)", ex));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, Host.TraceSource.Host, "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '8d71c9e3-e809-4cfb-bb78-48ae25c7d26d'", null));
-
             await _logger.LogFunctionCompletedAsync(successMessage, CancellationToken.None);
             await _logger.LogFunctionCompletedAsync(failureMessage, CancellationToken.None);
 
-            _mockTraceWriter.VerifyAll();
+            Assert.Equal(3, _traceWriter.Traces.Count);
+
+            TraceEvent traceEvent = _traceWriter.Traces[0];
+            Assert.Equal(TraceLevel.Info, traceEvent.Level);
+            Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
+            Assert.Equal("Executed: 'TestJob' (Succeeded)", traceEvent.Message);
+
+            traceEvent = _traceWriter.Traces[1];
+            Assert.Equal(TraceLevel.Error, traceEvent.Level);
+            Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
+            Assert.Equal("Executed: 'TestJob' (Failed)", traceEvent.Message);
+            Assert.Same(ex, traceEvent.Exception);
+
+            traceEvent = _traceWriter.Traces[2];
+            Assert.Equal(TraceLevel.Error, traceEvent.Level);
+            Assert.Equal(Host.TraceSource.Host, traceEvent.Source);
+            Assert.Equal("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '8d71c9e3-e809-4cfb-bb78-48ae25c7d26d'", traceEvent.Message);
+            Assert.Same(ex, traceEvent.Exception);
         }
     }
 }

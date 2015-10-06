@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 // Also log the eror message using TraceSource.Host, to ensure
                 // it gets written to Console
                 _trace.Error(string.Format(CultureInfo.InvariantCulture, 
-                    "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId), source: TraceSource.Host);
+                    "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId), message.Failure.Exception, TraceSource.Host);
             }
             return Task.FromResult(0);
         }

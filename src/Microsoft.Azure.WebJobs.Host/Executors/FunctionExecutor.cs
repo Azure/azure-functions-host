@@ -108,8 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 logCompletedCancellationToken = cancellationToken;
             }
 
-            await _functionInstanceLogger.LogFunctionCompletedAsync(completedMessage,
-                logCompletedCancellationToken);
+            await _functionInstanceLogger.LogFunctionCompletedAsync(completedMessage, logCompletedCancellationToken);
 
             if (loggedStartedEvent)
             {
@@ -146,8 +145,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     try
                     {
-                        await ExecuteWithOutputLogsAsync(instance, parameters, traceWriter, outputDefinition,
-                            parameterLogCollector, cancellationToken);
+                        await ExecuteWithOutputLogsAsync(instance, parameters, traceWriter, outputDefinition, parameterLogCollector, cancellationToken);
                         exceptionInfo = null;
                     }
                     catch (OperationCanceledException exception)
@@ -156,8 +154,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     }
                     catch (Exception exception)
                     {
-                        traceWriter.Error("Exception while executing:", exception, TraceSource.Execution);
-                        exceptionInfo = ExceptionDispatchInfo.Capture(exception);
+                        string errorMessage = string.Format("Exception while executing function: {0}", instance.FunctionDescriptor.ShortName);
+                        FunctionInvocationException functionException = new FunctionInvocationException(errorMessage, instance.Id, instance.FunctionDescriptor.FullName, exception);
+                        traceWriter.Error(errorMessage, functionException, TraceSource.Execution);
+                        exceptionInfo = ExceptionDispatchInfo.Capture(functionException);
                     }
                 }
 

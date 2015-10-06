@@ -32,28 +32,29 @@ namespace Microsoft.Azure.WebJobs.Host
             _innerTextWriter = textWriter;
         }
 
-        public override void Trace(TraceLevel level, string source, string message, Exception ex)
+        public override void Trace(TraceEvent traceEvent)
         {
-            InvokeTraceWriters(level, source, message, ex);
-            InvokeTextWriter(level, source, message, ex);
+            InvokeTraceWriters(traceEvent);
+            InvokeTextWriter(traceEvent);
         }
 
-        protected virtual void InvokeTraceWriters(TraceLevel level, string source, string message, Exception ex)
+        protected virtual void InvokeTraceWriters(TraceEvent traceEvent)
         {
             foreach (TraceWriter traceWriter in _innerTraceWriters)
             {
                 // filter based on level before delegating
-                if (traceWriter.Level >= level)
+                if (traceWriter.Level >= traceEvent.Level)
                 {
-                    traceWriter.Trace(level, source, message, ex);
+                    traceWriter.Trace(traceEvent);
                 }
             }
         }
 
-        protected virtual void InvokeTextWriter(TraceLevel level, string source, string message, Exception ex)
+        protected virtual void InvokeTextWriter(TraceEvent traceEvent)
         {
             if (_innerTextWriter != null)
             {
+                string message = traceEvent.Message;
                 if (!string.IsNullOrEmpty(message) &&
                      message.EndsWith("\r\n", StringComparison.OrdinalIgnoreCase))
                 {
@@ -63,9 +64,9 @@ namespace Microsoft.Azure.WebJobs.Host
                 }
 
                 _innerTextWriter.WriteLine(message);
-                if (ex != null)
+                if (traceEvent.Exception != null)
                 {
-                    _innerTextWriter.WriteLine(ex.ToDetails());
+                    _innerTextWriter.WriteLine(traceEvent.Exception.ToDetails());
                 }
             }
         }

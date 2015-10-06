@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.WriteStartDataMessageToQueue",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToQueueAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToBlobAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.AlwaysFails",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
                     "Job host started",
@@ -157,22 +159,49 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 await host.StopAsync();
 
-                bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Contains("Error"))).Any();
+                bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Message.Contains("Error"))).Any();
                 if (!hasError)
                 {
                     Assert.Equal(14, trace.Traces.Count);
-                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TraceWriter log")));
-                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
-                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
+                    Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(16, consoleOutputLines.Length);
+                    Assert.Equal(17, consoleOutputLines.Length);
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
                 }
             }
 
             Console.SetOut(hold);
+        }
+
+        [Fact]
+        public void FunctionFailures_LogsExpectedTraceEvent()
+        {
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            _hostConfig.Tracing.Tracers.Add(trace);
+            JobHost host = new JobHost(_hostConfig);
+
+            MethodInfo methodInfo = GetType().GetMethod("AlwaysFails");
+            try
+            {
+                host.Call(methodInfo);
+            }
+            catch {}
+
+            // We expect 3 error messages total
+            TraceEvent[] traceErrors = trace.Traces.Where(p => p.Level == TraceLevel.Error).ToArray();
+            Assert.Equal(3, traceErrors.Length);
+
+            // Ensure that all errors include the same exception, with function
+            // invocation details
+            FunctionInvocationException functionException = traceErrors.First().Exception as FunctionInvocationException;
+            Assert.NotNull(functionException);
+            Assert.NotEqual(Guid.Empty, functionException.InstanceId);
+            Assert.Equal(string.Format("{0}.{1}", methodInfo.DeclaringType.FullName, methodInfo.Name), functionException.MethodName);
+            Assert.True(traceErrors.All(p => functionException == p.Exception));
         }
 
         [NoAutomaticTrigger]
@@ -185,6 +214,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             byte[] messageBytes = Encoding.UTF8.GetBytes("async");
             await nonSdkBlob.WriteAsync(messageBytes, 0, messageBytes.Length);
+        }
+
+        [NoAutomaticTrigger]
+        public static void AlwaysFails()
+        {
+            throw new Exception("Kaboom!");
         }
 
         public static async Task QueueToQueueAsync(

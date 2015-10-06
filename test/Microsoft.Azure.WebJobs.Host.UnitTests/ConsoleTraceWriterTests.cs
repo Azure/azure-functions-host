@@ -36,15 +36,39 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             _mockTextWriter.Setup(p => p.WriteLine("Test Information"));
 
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, Host.TraceSource.Host, "Test Information", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, "TestSource", "Test Information With Source", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "Test Information No Source", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Warning, null, "Test Warning", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error", null));
-            _mockTraceWriter2.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(
+                q => q.Level == TraceLevel.Info && 
+                q.Source == Host.TraceSource.Host &&
+                q.Message == "Test Information")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(
+                q => q.Level == TraceLevel.Info &&
+                q.Source == "TestSource" &&
+                q.Message == "Test Information With Source")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(
+                q => q.Level == TraceLevel.Info &&
+                q.Source == null &&
+                q.Message == "Test Information No Source")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => 
+                q.Level == TraceLevel.Warning &&
+                q.Source == null &&
+                q.Message == "Test Warning")));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q =>
+                q.Level == TraceLevel.Error &&
+                q.Source == null &&
+                q.Message == "Test Error")));
+            _mockTraceWriter2.Setup(p => p.Trace(It.Is<TraceEvent>(q =>
+                q.Level == TraceLevel.Error &&
+                q.Source == null &&
+                q.Message == "Test Error")));
             Exception ex = new Exception("Kaboom!");
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error With Exception", ex));
-            _mockTraceWriter2.Setup(p => p.Trace(TraceLevel.Error, null, "Test Error With Exception", ex));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q =>
+                q.Level == TraceLevel.Error &&
+                q.Source == null &&
+                q.Message == "Test Error With Exception")));
+            _mockTraceWriter2.Setup(p => p.Trace(It.Is<TraceEvent>(q =>
+                q.Level == TraceLevel.Error &&
+                q.Source == null &&
+                q.Message == "Test Error With Exception")));
 
             // expect this to be logged to both tracer1 and textWriter
             _traceWriter.Info("Test Information", Host.TraceSource.Host);
@@ -101,7 +125,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void ConsoleLevel_CanBeChangedWhileRunning()
         {
             _mockTextWriter.Setup(p => p.WriteLine("Test Information"));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "Test Information", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q =>
+                q.Level == TraceLevel.Info &&
+                q.Source == null &&
+                q.Message == "Test Information")));
 
             _traceWriter.Info("Test Information");
 

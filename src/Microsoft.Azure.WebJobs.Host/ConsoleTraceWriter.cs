@@ -21,15 +21,15 @@ namespace Microsoft.Azure.WebJobs.Host
             _traceConfig = traceConfig;
         }
 
-        protected override void InvokeTextWriter(TraceLevel level, string source, string message, Exception ex)
+        protected override void InvokeTextWriter(TraceEvent traceEvent)
         {
-            if (MapTraceLevel(source, level) <= _traceConfig.ConsoleLevel)
+            if (MapTraceLevel(traceEvent.Source, traceEvent.Level) <= _traceConfig.ConsoleLevel)
             {
                 // For Errors/Warnings we change the Console color
                 // for visibility
                 var holdColor = Console.ForegroundColor;
                 bool changedColor = false;
-                switch (level)
+                switch (traceEvent.Level)
                 {
                     case TraceLevel.Error:
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host
                         break;
                 }
 
-                base.InvokeTextWriter(level, source, message, ex);
+                base.InvokeTextWriter(traceEvent);
 
                 if (changedColor)
                 {

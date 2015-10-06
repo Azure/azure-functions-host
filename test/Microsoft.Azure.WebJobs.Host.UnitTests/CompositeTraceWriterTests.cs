@@ -26,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public void Trace_DelegatesToInnerTraceWriterAndTextWriter()
         {
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Warning, "TestSource", "Test Warning", null));
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, "TestSource", "Test Error", null));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Warning && q.Source == "TestSource" && q.Message == "Test Warning" && q.Exception == null)));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Error && q.Source == "TestSource" && q.Message == "Test Error" && q.Exception == null)));
             Exception ex = new Exception("Kaboom!");
-            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, "TestSource", "Test Error With Exception", ex));
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Error && q.Source == "TestSource" && q.Message == "Test Error With Exception" && q.Exception == ex)));
 
             _mockTextWriter.Setup(p => p.WriteLine("Test Information"));
             _mockTextWriter.Setup(p => p.WriteLine("Test Warning"));
@@ -44,6 +44,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             _mockTextWriter.VerifyAll();
             _mockTraceWriter.VerifyAll();
+        }
+
+        [Fact]
+        public void Trace_CustomProperties()
+        {
+            TraceEvent capturedEvent = null;
+            _mockTraceWriter.Setup(p => p.Trace(It.IsAny<TraceEvent>()))
+                .Callback<TraceEvent>(p =>
+                {
+                    capturedEvent = p;
+                });
+            _mockTextWriter.Setup(p => p.WriteLine("Test Warning"));
+
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Warning, "Test Warning", "Test Source");
+            traceEvent.Properties.Add("Test", "Test Property");
+
+            _traceWriter.Trace(traceEvent);
+
+            _mockTraceWriter.VerifyAll();
+            _mockTextWriter.VerifyAll();
+
+            Assert.Same(traceEvent, capturedEvent);
+            Assert.Equal("Test Property", capturedEvent.Properties["Test"]);
         }
 
         [Fact]

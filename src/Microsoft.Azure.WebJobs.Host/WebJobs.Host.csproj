@@ -693,6 +693,7 @@
     <Compile Include="Timers\RandomExtensions.cs" />
     <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\TaskSeriesCommandResult.cs" />
+    <Compile Include="TraceEvent.cs" />
     <Compile Include="TraceSource.cs" />
     <Compile Include="TraceWriter.cs" />
     <Compile Include="Triggers\ITriggerDataArgumentBinding.cs" />
@@ -860,6 +861,7 @@
     <Compile Include="Triggers\TriggerData.cs" />
     <Compile Include="Indexers\DefaultNameResolver.cs" />
     <Compile Include="NameResolverExtensions.cs" />
+    <Compile Include="FunctionInvocationException.cs" />
     <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Tables\TableEntityPath.cs" />
     <Compile Include="HostContainerNames.cs" />
