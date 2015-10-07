@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
                 {
                     return value;
                 }
-                throw new NotImplementedException();
+                throw new NotSupportedException(string.Format("Cannot resolve name: '{0}'", name));
             }
         }
     }
