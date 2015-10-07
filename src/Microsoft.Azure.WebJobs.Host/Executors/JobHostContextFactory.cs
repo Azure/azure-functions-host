@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (singletonManager == null)
             {
                 IStorageAccount storageAccount = await storageAccountProvider.GetStorageAccountAsync(cancellationToken);
-                singletonManager = new SingletonManager(storageAccount.CreateBlobClient(), backgroundExceptionDispatcher, config.Singleton, trace);
+                singletonManager = new SingletonManager(storageAccount.CreateBlobClient(), backgroundExceptionDispatcher, config.Singleton, trace, config.NameResolver);
             }
             
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))

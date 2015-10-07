@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class SingletonManager
     {
         internal const string FunctionInstanceMetadataKey = "FunctionInstance";
+        private readonly INameResolver _nameResolver;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly SingletonConfiguration _config;
         private IStorageBlobDirectory _directory;
@@ -36,8 +37,9 @@ namespace Microsoft.Azure.WebJobs.Host
         {
         }
 
-        public SingletonManager(IStorageBlobClient blobClient, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace)
+        public SingletonManager(IStorageBlobClient blobClient, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace, INameResolver nameResolver = null)
         {
+            _nameResolver = nameResolver;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _directory = blobClient.GetContainerReference(HostContainerNames.Hosts)
                                    .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
@@ -157,8 +159,13 @@ namespace Microsoft.Azure.WebJobs.Host
             return lockId;
         }
 
-        public static string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData)
+        public string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData)
         {
+            if (_nameResolver != null)
+            {
+                scope = _nameResolver.ResolveWholeString(scope);
+            }
+
             if (bindingData != null)
             {
                 BindingTemplate bindingTemplate = BindingTemplate.FromString(scope);

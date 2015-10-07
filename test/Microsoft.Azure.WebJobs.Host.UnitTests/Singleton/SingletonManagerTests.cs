@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private Mock<IStorageBlockBlob> _mockStorageBlob;
         private TestTraceWriter _trace = new TestTraceWriter(TraceLevel.Verbose);
         private Dictionary<string, string> _mockBlobMetadata;
+        private TestNameResolver _nameResolver;
 
         public SingletonManagerTests()
         {
@@ -52,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             TestHelpers.SetField(_singletonConfig, "_lockPeriod", TimeSpan.FromMilliseconds(500));
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
-            _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace);
+            _nameResolver = new TestNameResolver(); 
+            _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, _nameResolver);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
         }
@@ -240,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             bindingData.Add("Region", "testregion");
             bindingData.Add("Zone", 1);
 
-            string result = SingletonManager.GetBoundScope(@"{Region}\{Zone}", bindingData);
+            string result = _singletonManager.GetBoundScope(@"{Region}\{Zone}", bindingData);
 
             Assert.Equal(@"testregion\1", result);
         }
@@ -252,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             Dictionary<string, object> bindingData = new Dictionary<string, object>();
             bindingData.Add("Region", "testregion");
 
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => SingletonManager.GetBoundScope(@"{Region}\{Zone}", bindingData));
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => _singletonManager.GetBoundScope(@"{Region}\{Zone}", bindingData));
 
             Assert.Equal("No value for named parameter 'Zone'.", exception.Message);
         }
@@ -262,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [InlineData("scope", "scope")]
         public void GetBoundScope_NullBindingDataScenarios_Succeeds(string scope, string expectedResult)
         {
-            string result = SingletonManager.GetBoundScope(scope, null);
+            string result = _singletonManager.GetBoundScope(scope, null);
             Assert.Equal(expectedResult, result);
         }
 
@@ -271,18 +273,43 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [InlineData("scope", "scope")]
         [InlineData("scope{P1}", "scopeTest1")]
         [InlineData("scope:{P1}-{P2}", "scope:Test1-Test2")]
+        [InlineData("%var1%", "Value1")]
+        [InlineData("{P1}%var2%{P2}%var1%", "Test1Value2Test2Value1")]
         public void GetBoundScope_BindingDataScenarios_Succeeds(string scope, string expectedResult)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>();
             bindingData.Add("P1", "Test1");
             bindingData.Add("P2", "Test2");
 
-            string result = SingletonManager.GetBoundScope(scope, bindingData);
+            _nameResolver.Names.Add("var1", "Value1");
+            _nameResolver.Names.Add("var2", "Value2");
+
+            string result = _singletonManager.GetBoundScope(scope, bindingData);
             Assert.Equal(expectedResult, result);
         }
 
         private static void TestJob()
         {
+        }
+
+        private class TestNameResolver : INameResolver
+        {
+            public TestNameResolver()
+            {
+                Names = new Dictionary<string, string>();
+            }
+
+            public Dictionary<string, string> Names { get; private set; }
+
+            public string Resolve(string name)
+            {
+                string value = null;
+                if (Names.TryGetValue(name, out value))
+                {
+                    return value;
+                }
+                throw new NotImplementedException();
+            }
         }
     }
 }
