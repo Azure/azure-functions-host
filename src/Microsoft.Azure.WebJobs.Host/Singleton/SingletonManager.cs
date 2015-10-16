@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -11,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -28,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Host
         private readonly INameResolver _nameResolver;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly SingletonConfiguration _config;
-        private IStorageBlobDirectory _directory;
+        private readonly IStorageAccountProvider _accountProvider;
+        private ConcurrentDictionary<string, IStorageBlobDirectory> _lockDirectoryMap = new ConcurrentDictionary<string, IStorageBlobDirectory>(StringComparer.OrdinalIgnoreCase);
         private TimeSpan _minimumLeaseRenewalInterval = TimeSpan.FromSeconds(1);
         private TraceWriter _trace;
 
@@ -37,12 +40,11 @@ namespace Microsoft.Azure.WebJobs.Host
         {
         }
 
-        public SingletonManager(IStorageBlobClient blobClient, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace, INameResolver nameResolver = null)
+        public SingletonManager(IStorageAccountProvider accountProvider, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace, INameResolver nameResolver = null)
         {
+            _accountProvider = accountProvider;
             _nameResolver = nameResolver;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _directory = blobClient.GetContainerReference(HostContainerNames.Hosts)
-                                   .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
             _config = config;
             _trace = trace;
         }
@@ -85,7 +87,8 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public async virtual Task<object> TryLockAsync(string lockId, string functionInstanceId, SingletonAttribute attribute, CancellationToken cancellationToken)
         {
-            IStorageBlockBlob lockBlob = _directory.GetBlockBlobReference(lockId);
+            IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
+            IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
             await TryCreateAsync(lockBlob, cancellationToken);
 
             _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Waiting for Singleton lock ({0})", lockId), source: TraceSource.Execution);
@@ -220,9 +223,10 @@ namespace Microsoft.Azure.WebJobs.Host
             return singletonAttribute;
         }
 
-        public async virtual Task<string> GetLockOwnerAsync(string lockId, CancellationToken cancellationToken)
+        public async virtual Task<string> GetLockOwnerAsync(SingletonAttribute attribute, string lockId, CancellationToken cancellationToken)
         {
-            IStorageBlockBlob lockBlob = _directory.GetBlockBlobReference(lockId);
+            IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
+            IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
 
             await ReadLeaseBlobMetadata(lockBlob, cancellationToken);
 
@@ -238,6 +242,27 @@ namespace Microsoft.Azure.WebJobs.Host
             lockBlob.Metadata.TryGetValue(FunctionInstanceMetadataKey, out owner);
 
             return owner;
+        }
+
+        internal IStorageBlobDirectory GetLockDirectory(string accountName)
+        {
+            if (string.IsNullOrEmpty(accountName))
+            {
+                accountName = ConnectionStringNames.Storage;
+            }
+
+            IStorageBlobDirectory storageDirectory = null;
+            if (!_lockDirectoryMap.TryGetValue(accountName, out storageDirectory))
+            {
+                Task<IStorageAccount> task = _accountProvider.GetAccountAsync(accountName, CancellationToken.None);
+                IStorageAccount storageAccount = task.Result;
+                IStorageBlobClient blobClient = storageAccount.CreateBlobClient();
+                storageDirectory = blobClient.GetContainerReference(HostContainerNames.Hosts)
+                                       .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
+                _lockDirectoryMap[accountName] = storageDirectory;
+            }
+
+            return storageDirectory;
         }
 
         private ITaskSeriesTimer CreateLeaseRenewalTimer(IStorageBlockBlob leaseBlob, string leaseId, string lockId, TimeSpan leasePeriod, 

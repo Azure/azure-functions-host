@@ -26,10 +26,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const string TestArtifactsPrefix = "singletone2e";
         private const string Queue1Name = TestArtifactsPrefix + "q1%rnd%";
         private const string Queue2Name = TestArtifactsPrefix + "q2%rnd%";
+        private const string Secondary = "SecondaryStorage";
         private Random _rand = new Random(314159);
 
         private static RandomNameResolver _resolver = new TestNameResolver();
         private static CloudBlobDirectory _lockDirectory;
+        private static CloudBlobDirectory _secondaryLockDirectory;
 
         static SingletonEndToEndTests()
         {
@@ -37,6 +39,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(config.StorageConnectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
             _lockDirectory = blobClient.GetContainerReference("azure-webjobs-hosts").GetDirectoryReference("locks");
+
+            string secondaryConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(Secondary);
+            storageAccount = CloudStorageAccount.Parse(secondaryConnectionString);
+            blobClient = storageAccount.CreateCloudBlobClient();
+            _secondaryLockDirectory = blobClient.GetContainerReference("azure-webjobs-hosts").GetDirectoryReference("locks");
         }
 
         public SingletonEndToEndTests()
@@ -221,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
 
             Assert.Equal("Exception while executing function: TestJobs.SingletonJob", exception.Message);
-            VerifyLeaseState(method, null, LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(method, "TestValue", LeaseState.Available, LeaseStatus.Unlocked);
 
             host.Stop();
             host.Dispose();
@@ -244,18 +251,52 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             VerifyLeaseState(method, "Listener", LeaseState.Available, LeaseStatus.Unlocked);
         }
 
-        internal static void VerifyLeaseState(MethodInfo method, string scope, LeaseState leaseState, LeaseStatus leaseStatus)
+        [Fact]
+        public async Task SingletonFunction_StorageAccountOverride()
+        {
+            JobHost host = CreateTestJobHost(1);
+            await host.StartAsync();
+
+            MethodInfo method = typeof(TestJobs).GetMethod("SingletonJob_StorageAccountOverride");
+
+            await host.CallAsync(method, new { message = "{}" });
+
+            await host.StopAsync();
+            host.Dispose();
+
+            // make sure the lease blob was only created in the secondary account
+            VerifyLeaseDoesNotExist(method, null);
+            VerifyLeaseState(method, null, LeaseState.Available, LeaseStatus.Unlocked, directory: _secondaryLockDirectory);
+        }
+
+        internal static void VerifyLeaseState(MethodInfo method, string scope, LeaseState leaseState, LeaseStatus leaseStatus, CloudBlobDirectory directory = null)
+        {
+            string lockId = FormatLockId(method, scope);
+
+            CloudBlobDirectory lockDirectory = directory ?? _lockDirectory;
+            CloudBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
+            lockBlob.FetchAttributes();
+            Assert.Equal(leaseState, lockBlob.Properties.LeaseState);
+            Assert.Equal(leaseStatus, lockBlob.Properties.LeaseStatus);
+        }
+
+        internal static void VerifyLeaseDoesNotExist(MethodInfo method, string scope, CloudBlobDirectory directory = null)
+        {
+            string lockId = FormatLockId(method, scope);
+
+            CloudBlobDirectory lockDirectory = directory ?? _lockDirectory;
+            CloudBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
+            Assert.False(lockBlob.Exists());
+        }
+
+        private static string FormatLockId(MethodInfo method, string scope)
         {
             string lockId = string.Format("{0}.{1}", method.DeclaringType.FullName, method.Name);
             if (!string.IsNullOrEmpty(scope))
             {
                 lockId += "." + scope;
             }
-
-            CloudBlockBlob lockBlob = _lockDirectory.GetBlockBlobReference(lockId);
-            lockBlob.FetchAttributes();
-            Assert.Equal(leaseState, lockBlob.Properties.LeaseState);
-            Assert.Equal(leaseStatus, lockBlob.Properties.LeaseStatus);
+            return lockId;
         }
 
         public class WorkItem
@@ -269,6 +310,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public class TestJobs
         {
+            private const string Secondary = "SecondaryStorage";
             public const string LeaseBlobRootPath = "Microsoft.Azure.WebJobs.Host.EndToEndTests.SingletonEndToEndTests+TestJobs";
             public static int Queue1MessageCount = 0;
             public static int Queue2MessageCount = 0;
@@ -326,6 +368,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 UpdateScopeLock(scope, false);
             }
 
+            [Singleton(Account = Secondary)]
+            [NoAutomaticTrigger]
+            public async Task SingletonJob_StorageAccountOverride()
+            {
+                VerifyLeaseState(
+                    GetType().GetMethod("SingletonJob_StorageAccountOverride"),
+                    null,
+                    LeaseState.Leased, LeaseStatus.Locked,
+                    _secondaryLockDirectory);
+
+                await Task.Delay(50);
+                IncrementJobInvocationCount();
+            }
+
             // Job with an implicit Singleton lock on the trigger listener
             public async Task TriggerJob_SingletonListener([TestTrigger] string test)
             {
@@ -362,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // Override the implicit listener Singleton by providing our own
             // Singleton using Mode = Listener.
             [Singleton("TestScope")]
-            [Singleton("TestScope%test%", SingletonMode.Listener)]
+            [Singleton("TestScope%test%", Mode = SingletonMode.Listener)]
             public async Task SingletonTriggerJob_SingletonListener_ListenerSingletonOverride([TestTrigger] string test)
             {
                 VerifyLeaseState(
@@ -379,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 IncrementJobInvocationCount();
             }
 
-            [Singleton(SingletonMode.Listener)]
+            [Singleton(Mode = SingletonMode.Listener)]
             public async Task QueueFunction_SingletonListener([QueueTrigger("xyz123")] string message)
             {
                 VerifyLeaseState(
@@ -530,7 +586,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     return new ParameterDescriptor();
                 }
 
-                [Singleton(SingletonMode.Listener)]
+                [Singleton(Mode = SingletonMode.Listener)]
                 public class TestTriggerListener : IListener
                 {
                     public static int StartCount = 0;

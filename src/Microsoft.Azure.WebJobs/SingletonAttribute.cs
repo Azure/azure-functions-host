@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs
     /// <summary>
     /// This attribute can be applied to a job functions to ensure that only a single
     /// instance of the function is executed at any given time (even across host instances).
-    /// Distributed locks are used to serialize invocations across all host instances.
+    /// A blob lease is used behind the scenes to implement the lock.
     /// <remarks>
     /// This attribute can also be used in <see cref="SingletonMode.Listener"/> mode to ensure that
     /// the listener for a triggered function is only running on a single instance. Trigger bindings
@@ -25,11 +25,8 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="mode">The <see cref="SingletonMode"/> this singleton should use.
-        /// Defaults to <see cref="SingletonMode.Function"/> if not explicitly specified.
-        /// </param>
-        public SingletonAttribute(SingletonMode mode = SingletonMode.Function)
-            : this(string.Empty, mode)
+        public SingletonAttribute()
+            : this(string.Empty)
         {
         }
 
@@ -38,19 +35,11 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         /// <param name="scope">The scope for the singleton lock. When applied to triggered
         /// job functions, this value can include binding parameters.</param>
-        /// <param name="mode">The <see cref="SingletonMode"/> this singleton should use.
-        /// Defaults to <see cref="SingletonMode.Function"/> if not explicitly specified.
-        /// </param>
-        public SingletonAttribute(string scope, SingletonMode mode = SingletonMode.Function)
+        public SingletonAttribute(string scope)
         {
             Scope = scope;
-            Mode = mode;
+            Mode = SingletonMode.Function;
         }
-
-        /// <summary>
-        /// Gets the <see cref="SingletonMode"/>.
-        /// </summary>
-        public SingletonMode Mode { get; private set; }
 
         /// <summary>
         /// Gets the scope identifier for the singleton lock.
@@ -60,6 +49,21 @@ namespace Microsoft.Azure.WebJobs
             get;
             private set;
         }
+
+        /// <summary>
+        /// Gets or sets the <see cref="SingletonMode"/> this singleton should use.
+        /// Defaults to <see cref="SingletonMode.Function"/> if not explicitly specified.
+        /// </summary>
+        public SingletonMode Mode { get; set; }
+
+        /// <summary>
+        /// Gets the name of the Azure Storage account that the blob lease should be
+        /// created in.
+        /// </summary>
+        /// <remarks>
+        /// If not specified, the default AzureWebJobs storage account will be used.
+        /// </remarks>
+        public string Account { get; set; }
 
         /// <summary>
         /// Gets or sets the timeout value in seconds for lock acquisition.

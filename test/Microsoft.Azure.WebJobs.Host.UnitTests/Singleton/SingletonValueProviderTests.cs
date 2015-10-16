@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public void SingletonWatcher_GetStatus_ReturnsExpectedValue()
         {
             Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
-            mockSingletonManager.Setup(p => p.GetLockOwnerAsync(_lockId, CancellationToken.None)).ReturnsAsync("someotherguy");
+            mockSingletonManager.Setup(p => p.GetLockOwnerAsync(_attribute, _lockId, CancellationToken.None)).ReturnsAsync("someotherguy");
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.Scope, TestInstanceId, _attribute, mockSingletonManager.Object);
             SingletonLock localSingletonLock = (SingletonLock)localValueProvider.GetValue();
 

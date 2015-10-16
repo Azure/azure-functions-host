@@ -8,6 +8,8 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -23,10 +25,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private const string TestLockId = "testid";
         private const string TestInstanceId = "testinstance";
         private const string TestLeaseId = "testleaseid";
+        private const string Secondary = "SecondaryStorage";
 
         private SingletonManager _singletonManager;
         private SingletonConfiguration _singletonConfig;
+        private Mock<IStorageAccountProvider> _mockAccountProvider;
         private Mock<IStorageBlobDirectory> _mockBlobDirectory;
+        private Mock<IStorageBlobDirectory> _mockSecondaryBlobDirectory;
+        private Mock<IStorageAccount> _mockStorageAccount;
+        private Mock<IStorageAccount> _mockSecondaryStorageAccount;
         private Mock<IBackgroundExceptionDispatcher> _mockExceptionDispatcher;
         private Mock<IStorageBlockBlob> _mockStorageBlob;
         private TestTraceWriter _trace = new TestTraceWriter(TraceLevel.Verbose);
@@ -35,11 +42,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
         public SingletonManagerTests()
         {
+            _mockAccountProvider = new Mock<IStorageAccountProvider>(MockBehavior.Strict);
             _mockBlobDirectory = new Mock<IStorageBlobDirectory>(MockBehavior.Strict);
+            _mockSecondaryBlobDirectory = new Mock<IStorageBlobDirectory>(MockBehavior.Strict);
+            _mockStorageAccount = new Mock<IStorageAccount>(MockBehavior.Strict);
+            _mockSecondaryStorageAccount = new Mock<IStorageAccount>(MockBehavior.Strict);
             Mock<IStorageBlobClient> mockBlobClient = new Mock<IStorageBlobClient>(MockBehavior.Strict);
+            Mock<IStorageBlobClient> mockSecondaryBlobClient = new Mock<IStorageBlobClient>(MockBehavior.Strict);
             Mock<IStorageBlobContainer> mockBlobContainer = new Mock<IStorageBlobContainer>(MockBehavior.Strict);
             mockBlobContainer.Setup(p => p.GetDirectoryReference(HostDirectoryNames.SingletonLocks)).Returns(_mockBlobDirectory.Object);
             mockBlobClient.Setup(p => p.GetContainerReference(HostContainerNames.Hosts)).Returns(mockBlobContainer.Object);
+            Mock<IStorageBlobContainer> mockSecondaryBlobContainer = new Mock<IStorageBlobContainer>(MockBehavior.Strict);
+            mockSecondaryBlobContainer.Setup(p => p.GetDirectoryReference(HostDirectoryNames.SingletonLocks)).Returns(_mockSecondaryBlobDirectory.Object);
+            mockSecondaryBlobClient.Setup(p => p.GetContainerReference(HostContainerNames.Hosts)).Returns(mockSecondaryBlobContainer.Object);
+            _mockStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockBlobClient.Object);
+            _mockSecondaryStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockSecondaryBlobClient.Object);
+            _mockAccountProvider.Setup(p => p.GetAccountAsync(ConnectionStringNames.Storage, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_mockStorageAccount.Object);
+            _mockAccountProvider.Setup(p => p.GetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_mockSecondaryStorageAccount.Object);
             _mockExceptionDispatcher = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
 
             _mockStorageBlob = new Mock<IStorageBlockBlob>(MockBehavior.Strict);
@@ -54,9 +75,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
             _nameResolver = new TestNameResolver(); 
-            _singletonManager = new SingletonManager(mockBlobClient.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, _nameResolver);
+            _singletonManager = new SingletonManager(_mockAccountProvider.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, _nameResolver);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
+        }
+
+        [Fact]
+        public void GetLockDirectory_HandlesMultipleAccounts()
+        {
+            IStorageBlobDirectory directory = _singletonManager.GetLockDirectory(ConnectionStringNames.Storage);
+            Assert.Same(_mockBlobDirectory.Object, directory);
+
+            directory = _singletonManager.GetLockDirectory(null);
+            Assert.Same(_mockBlobDirectory.Object, directory);
+
+            directory = _singletonManager.GetLockDirectory(Secondary);
+            Assert.Same(_mockSecondaryBlobDirectory.Object, directory);
         }
 
         [Fact]
@@ -195,11 +229,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             mockBlobProperties.Setup(p => p.LeaseState).Returns(LeaseState.Leased);
             _mockStorageBlob.SetupGet(p => p.Properties).Returns(mockBlobProperties.Object);
 
-            string lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
+            SingletonAttribute attribute = new SingletonAttribute();
+            string lockOwner = await _singletonManager.GetLockOwnerAsync(attribute, TestLockId, CancellationToken.None);
             Assert.Equal(null, lockOwner);
 
             _mockBlobMetadata.Add(SingletonManager.FunctionInstanceMetadataKey, TestLockId);
-            lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
+            lockOwner = await _singletonManager.GetLockOwnerAsync(attribute, TestLockId, CancellationToken.None);
             Assert.Equal(TestLockId, lockOwner);
 
             mockBlobProperties.VerifyAll();
@@ -217,7 +252,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             mockBlobProperties.Setup(p => p.LeaseStatus).Returns(LeaseStatus.Unlocked);
             _mockStorageBlob.SetupGet(p => p.Properties).Returns(mockBlobProperties.Object);
 
-            string lockOwner = await _singletonManager.GetLockOwnerAsync(TestLockId, CancellationToken.None);
+            SingletonAttribute attribute = new SingletonAttribute();
+            string lockOwner = await _singletonManager.GetLockOwnerAsync(attribute, TestLockId, CancellationToken.None);
             Assert.Equal(null, lockOwner);
 
             mockBlobProperties.VerifyAll();
@@ -346,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
         }
 
-        [Singleton("Function", SingletonMode.Listener)]
+        [Singleton("Function", Mode = SingletonMode.Listener)]
         private static void TestJob_ListenerSingleton()
         {
         }
@@ -357,13 +393,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
         }
 
-        [Singleton("bar", SingletonMode.Listener)]
-        [Singleton("foo", SingletonMode.Listener)]
+        [Singleton("bar", Mode = SingletonMode.Listener)]
+        [Singleton("foo", Mode = SingletonMode.Listener)]
         private static void TestJob_MultipleListenerSingletons()
         {
         }
 
-        [Singleton("Listener", SingletonMode.Listener)]
+        [Singleton("Listener", Mode = SingletonMode.Listener)]
         private class TestListener
         {
         }

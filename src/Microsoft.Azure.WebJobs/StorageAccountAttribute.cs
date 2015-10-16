@@ -6,7 +6,7 @@ using System;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Attribute used to override the default Azure Storage account used.
+    /// Attribute used to override the default Azure Storage account used by triggers and binders.
     /// </summary>
     /// <remarks>
     /// This attribute can be applied at the parameter/method/class level, and the precedence
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets the Azure Storage account name to use.
+        /// Gets the name of the Azure Storage account to use.
         /// </summary>
         public string Account { get; private set; }
     }

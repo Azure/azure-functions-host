@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -25,7 +24,6 @@ using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -117,8 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (singletonManager == null)
             {
-                IStorageAccount storageAccount = await storageAccountProvider.GetStorageAccountAsync(cancellationToken);
-                singletonManager = new SingletonManager(storageAccount.CreateBlobClient(), backgroundExceptionDispatcher, config.Singleton, trace, config.NameResolver);
+                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, config.NameResolver);
             }
             
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))

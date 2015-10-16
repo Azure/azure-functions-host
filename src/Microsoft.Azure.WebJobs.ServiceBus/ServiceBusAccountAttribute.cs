@@ -6,7 +6,7 @@ using System;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Attribute used to override the default ServiceBus account used.
+    /// Attribute used to override the default ServiceBus account used by triggers and binders.
     /// </summary>
     /// <remarks>
     /// This attribute can be applied at the parameter/method/class level, and the precedence

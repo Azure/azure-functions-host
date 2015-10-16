@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <returns></returns>
         public async Task<string> GetOwnerAsync(CancellationToken cancellationToken)
         {
-            return await _singletonManager.GetLockOwnerAsync(_lockId, cancellationToken);
+            return await _singletonManager.GetLockOwnerAsync(_attribute, _lockId, cancellationToken);
         }
     }
 }

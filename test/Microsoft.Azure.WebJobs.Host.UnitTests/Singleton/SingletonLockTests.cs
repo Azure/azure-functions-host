@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
             string lockOwner = "ownerid";
-            mockSingletonManager.Setup(p => p.GetLockOwnerAsync(TestLockId, cancellationToken)).ReturnsAsync(lockOwner);
+            mockSingletonManager.Setup(p => p.GetLockOwnerAsync(attribute, TestLockId, cancellationToken)).ReturnsAsync(lockOwner);
 
             SingletonLock singletonLock = new SingletonLock(TestLockId, TestInstanceId, attribute, mockSingletonManager.Object);
 
