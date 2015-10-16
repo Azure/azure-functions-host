@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "QueueTriggerAttribute",
                 "TableAttribute",
                 "SingletonAttribute",
+                "SingletonMode",
                 "StorageAccountAttribute"
             };
 
@@ -121,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IArgumentBindingProvider`1",
                 "ITableArgumentBinding",
                 "SingletonConfiguration",
-                "SingletonMode",
                 "TraceWriter",
                 "JobHostTraceConfiguration",
                 "StorageClientFactory",
