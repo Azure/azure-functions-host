@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         // Convert to lowercase because many Azure services expect only lowercase
         private readonly string _randomString = Guid.NewGuid().ToString("N").ToLower();
 
-        public string Resolve(string name)
+        public virtual string Resolve(string name)
         {
             if (name == "rnd")
             {

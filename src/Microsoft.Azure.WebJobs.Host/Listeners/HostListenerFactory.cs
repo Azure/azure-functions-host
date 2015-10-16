@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,13 +38,9 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 IListener listener = await listenerFactory.CreateAsync(cancellationToken);
 
                 // if the listener is a Singleton, wrap it with our SingletonListener
-                SingletonAttribute singletonAttribute = listener.GetType().GetCustomAttribute<SingletonAttribute>();
+                SingletonAttribute singletonAttribute = SingletonManager.GetListenerSingletonOrNull(listener.GetType(), functionDefinition.Descriptor.Method);
                 if (singletonAttribute != null)
                 {
-                    if (!string.IsNullOrEmpty(singletonAttribute.Scope))
-                    {
-                        throw new InvalidOperationException("SingletonAttribute.Scope values are not supported for singleton listeners.");
-                    }
                     listener = new SingletonListener(functionDefinition.Descriptor.Method, singletonAttribute, _singletonManager, listener);
                 }
 

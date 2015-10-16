@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return lockId;
         }
 
-        public string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData)
+        public string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData = null)
         {
             if (_nameResolver != null)
             {
@@ -176,6 +176,48 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 return scope;
             }
+        }
+
+        public static SingletonAttribute GetFunctionSingletonOrNull(MethodInfo method, bool isTriggered)
+        {
+            if (!isTriggered &&
+                method.GetCustomAttributes<SingletonAttribute>().Any(p => p.Mode == SingletonMode.Listener))
+            {
+                throw new NotSupportedException("SingletonAttribute using mode 'Listener' cannot be applied to non-triggered functions.");
+            }
+
+            SingletonAttribute[] singletonAttributes = method.GetCustomAttributes<SingletonAttribute>().Where(p => p.Mode == SingletonMode.Function).ToArray();
+            if (singletonAttributes.Length > 1)
+            {
+                throw new NotSupportedException("Only one SingletonAttribute using mode 'Function' is allowed.");
+            }
+            else if (singletonAttributes.Length == 1)
+            {
+                return singletonAttributes[0];
+            }
+            return null;
+        }
+
+        public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, MethodInfo method)
+        {
+            // First check the method, then the listener class. This allows a method to override an implicit
+            // listener singleton.
+            SingletonAttribute singletonAttribute = null;
+            SingletonAttribute[] singletonAttributes = method.GetCustomAttributes<SingletonAttribute>().Where(p => p.Mode == SingletonMode.Listener).ToArray();
+            if (singletonAttributes.Length > 1)
+            {
+                throw new NotSupportedException("Only one SingletonAttribute using mode 'Listener' is allowed.");
+            }
+            else if (singletonAttributes.Length == 1)
+            {
+                singletonAttribute = singletonAttributes[0];
+            }
+            else
+            {
+                singletonAttribute = listenerType.GetCustomAttributes<SingletonAttribute>().SingleOrDefault(p => p.Mode == SingletonMode.Listener);
+            }
+
+            return singletonAttribute;
         }
 
         public async virtual Task<string> GetLockOwnerAsync(string lockId, CancellationToken cancellationToken)

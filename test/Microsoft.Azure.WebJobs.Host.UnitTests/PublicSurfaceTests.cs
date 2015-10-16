@@ -121,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IArgumentBindingProvider`1",
                 "ITableArgumentBinding",
                 "SingletonConfiguration",
+                "SingletonMode",
                 "TraceWriter",
                 "JobHostTraceConfiguration",
                 "StorageClientFactory",

@@ -68,7 +68,8 @@
       <Word>ConnectionString</Word>
       <Word>MessagingProvider</Word>
       <Word>CloudBlobContainer</Word>
-    </Recognized>
+      <Word>SingletonAttribute</Word>
+	  </Recognized>
     <Deprecated/>
     <Compound>
       <Term CompoundAlternate="CancellationToken">cancellationToken</Term>
@@ -77,13 +78,14 @@
       <Term CompoundAlternate="ETag">eTag</Term>
     </Compound>
     <DiscreteExceptions>
-	<Term>WebJobs</Term>
-	<Term>ServiceBus</Term>
-	<Term>PartitionKey</Term>
-	<Term>RowKey</Term>
-	<Term>BlobAttribute</Term>
-	<Term>ConnectionString</Term>
-	<Term>MessagingProvider</Term>
+		<Term>WebJobs</Term>
+		<Term>ServiceBus</Term>
+		<Term>PartitionKey</Term>
+		<Term>RowKey</Term>
+		<Term>BlobAttribute</Term>
+		<Term>ConnectionString</Term>
+		<Term>MessagingProvider</Term>
+		<Term>SingletonAttribute</Term>
     </DiscreteExceptions>
   </Words>
   <Acronyms>

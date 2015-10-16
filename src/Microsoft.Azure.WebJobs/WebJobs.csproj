@@ -65,6 +65,7 @@
     <Compile Include="QueueAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />
     <Compile Include="SingletonAttribute.cs" />
+    <Compile Include="SingletonMode.cs" />
     <Compile Include="StorageAccountAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />

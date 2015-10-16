@@ -288,7 +288,83 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             Assert.Equal(expectedResult, result);
         }
 
+        [Fact]
+        public void GetFunctionSingletonOrNull_ThrowsOnMultiple()
+        {
+            MethodInfo method = this.GetType().GetMethod("TestJob_MultipleFunctionSingletons", BindingFlags.Static | BindingFlags.NonPublic);
+
+            NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
+            {
+                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: true);
+            });
+            Assert.Equal("Only one SingletonAttribute using mode 'Function' is allowed.", exception.Message);
+        }
+
+        [Fact]
+        public void GetFunctionSingletonOrNull_ListenerSingletonOnNonTriggeredFunction_Throws()
+        {
+            MethodInfo method = this.GetType().GetMethod("TestJob_ListenerSingleton", BindingFlags.Static | BindingFlags.NonPublic);
+
+            NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
+            {
+                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: false);
+            });
+            Assert.Equal("SingletonAttribute using mode 'Listener' cannot be applied to non-triggered functions.", exception.Message);
+        }
+
+        [Fact]
+        public void GetListenerSingletonOrNull_ThrowsOnMultiple()
+        {
+            MethodInfo method = this.GetType().GetMethod("TestJob_MultipleListenerSingletons", BindingFlags.Static | BindingFlags.NonPublic);
+
+            NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
+            {
+                SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+            });
+            Assert.Equal("Only one SingletonAttribute using mode 'Listener' is allowed.", exception.Message);
+        }
+
+        [Fact]
+        public void GetListenerSingletonOrNull_MethodSingletonTakesPrecedence()
+        {
+            MethodInfo method = this.GetType().GetMethod("TestJob_ListenerSingleton", BindingFlags.Static | BindingFlags.NonPublic);
+
+            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+            Assert.Equal("Function", attribute.Scope);
+        }
+
+        [Fact]
+        public void GetListenerSingletonOrNull_ReturnsListenerClassSingleton()
+        {
+            MethodInfo method = this.GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.NonPublic);
+
+            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+            Assert.Equal("Listener", attribute.Scope);
+        }
+
         private static void TestJob()
+        {
+        }
+
+        [Singleton("Function", SingletonMode.Listener)]
+        private static void TestJob_ListenerSingleton()
+        {
+        }
+
+        [Singleton("bar")]
+        [Singleton("foo")]
+        private static void TestJob_MultipleFunctionSingletons()
+        {
+        }
+
+        [Singleton("bar", SingletonMode.Listener)]
+        [Singleton("foo", SingletonMode.Listener)]
+        private static void TestJob_MultipleListenerSingletons()
+        {
+        }
+
+        [Singleton("Listener", SingletonMode.Listener)]
+        private class TestListener
         {
         }
 

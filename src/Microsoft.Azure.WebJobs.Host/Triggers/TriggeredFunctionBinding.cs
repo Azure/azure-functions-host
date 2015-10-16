@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Triggers
@@ -72,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             BindingContext bindingContext = new BindingContext(context, bindingData);
 
             // Bind Singleton if specified
-            SingletonAttribute singletonAttribute = _descriptor.Method.GetCustomAttribute<SingletonAttribute>();
+            SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: true);
             if (singletonAttribute != null)
             {
                 string boundScope = _singletonManager.GetBoundScope(singletonAttribute.Scope, bindingData);

@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            string lockId = SingletonManager.FormatLockId(_method, _attribute.Scope);
+            string boundScope = _singletonManager.GetBoundScope(_attribute.Scope);
+            string lockId = SingletonManager.FormatLockId(_method, boundScope);
             lockId += ".Listener";
 
             // for listener locks, if the user hasn't explicitly set an override on the

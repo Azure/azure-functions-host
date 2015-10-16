@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -25,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const string Queue2Name = TestArtifactsPrefix + "q2%rnd%";
         private Random _rand = new Random(314159);
 
-        private static RandomNameResolver _resolver = new RandomNameResolver();
+        private static RandomNameResolver _resolver = new TestNameResolver();
         private static CloudBlobDirectory _lockDirectory;
 
         static SingletonEndToEndTests()
@@ -51,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // make a bunch of parallel invocations
             int numInvocations = 20;
             List<Task> invokeTasks = new List<Task>();
+            MethodInfo method = typeof(TestJobs).GetMethod("SingletonJob");
             for (int i = 0; i < numInvocations; i++)
             {
                 int zone = _rand.Next(3) + 1;
@@ -63,12 +67,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     Category = 3,
                     Description = "Test Work Item " + i
                 };
-                invokeTasks.Add(host.CallAsync(typeof(TestJobs).GetMethod("SingletonJob"), new { workItem = workItem }));
+                invokeTasks.Add(host.CallAsync(method, new { workItem = workItem }));
             }
             await Task.WhenAll(invokeTasks.ToArray());
 
             Assert.False(TestJobs.FailureDetected);
             Assert.Equal(numInvocations, TestJobs.JobInvocations[1]);
+
+            VerifyLeaseState(method, "TestValue", LeaseState.Available, LeaseStatus.Unlocked);
 
             host.Stop();
             host.Dispose();
@@ -89,8 +95,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
             await Task.WhenAll(tasks);
 
-            // verify that only 2 listeners were started (one for each of the two singleton functions)
-            Assert.Equal(2, TestTriggerAttributeBindingProvider.TestTriggerBinding.TestTriggerListener.StartCount);
+            // verify that only 2 listeners were started (one for each of the singleton functions)
+            Assert.Equal(3, TestTriggerAttributeBindingProvider.TestTriggerBinding.TestTriggerListener.StartCount);
 
             MethodInfo singletonListenerMethod = typeof(TestJobs).GetMethod("TriggerJob_SingletonListener");
             VerifyLeaseState(singletonListenerMethod, "Listener", LeaseState.Leased, LeaseStatus.Locked);
@@ -123,8 +129,26 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             await host.StopAsync();
             host.Dispose();
 
-            VerifyLeaseState(singletonListenerAndFunctionMethod, "TestScope", LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(singletonListenerAndFunctionMethod, "TestScopeTestValue", LeaseState.Available, LeaseStatus.Unlocked);
             VerifyLeaseState(singletonListenerAndFunctionMethod, "Listener", LeaseState.Available, LeaseStatus.Unlocked);
+        }
+
+        [Fact]
+        public async Task SingletonListener_SingletonFunction_ListenerSingletonOverride_InvocationsAreSerialized()
+        {
+            JobHost host = CreateTestJobHost(1);
+            await host.StartAsync();
+
+            MethodInfo singletonListenerAndFunctionMethod = typeof(TestJobs).GetMethod("SingletonTriggerJob_SingletonListener_ListenerSingletonOverride");
+            VerifyLeaseState(singletonListenerAndFunctionMethod, "TestScopeTestValue.Listener", LeaseState.Leased, LeaseStatus.Locked);
+
+            await host.CallAsync(singletonListenerAndFunctionMethod, new { test = "Test" });
+
+            await host.StopAsync();
+            host.Dispose();
+
+            VerifyLeaseState(singletonListenerAndFunctionMethod, "TestScope", LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(singletonListenerAndFunctionMethod, "TestScopeTestValue.Listener", LeaseState.Available, LeaseStatus.Unlocked);
         }
 
         [Fact]
@@ -203,6 +227,23 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             host.Dispose();
         }
 
+        [Fact]
+        public async Task QueueFunction_SingletonListener()
+        {
+            JobHost host = CreateTestJobHost(1);
+            await host.StartAsync();
+
+            MethodInfo method = typeof(TestJobs).GetMethod("QueueFunction_SingletonListener");
+            VerifyLeaseState(method, "Listener", LeaseState.Leased, LeaseStatus.Locked);
+
+            await host.CallAsync(method, new { message = "{}" });
+
+            await host.StopAsync();
+            host.Dispose();
+
+            VerifyLeaseState(method, "Listener", LeaseState.Available, LeaseStatus.Unlocked);
+        }
+
         internal static void VerifyLeaseState(MethodInfo method, string scope, LeaseState leaseState, LeaseStatus leaseStatus)
         {
             string lockId = string.Format("{0}.{1}", method.DeclaringType.FullName, method.Name);
@@ -261,13 +302,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 UpdateScopeLock(scope, false);
             }
 
-            [Singleton]
+            [Singleton("%test%")]
             [NoAutomaticTrigger]
             public async Task SingletonJob(WorkItem workItem)
             {
                 VerifyLeaseState(
                     GetType().GetMethod("SingletonJob"), 
-                    null, 
+                    "TestValue", 
                     LeaseState.Leased, LeaseStatus.Locked);
 
                 if (workItem.Category < 0)
@@ -301,16 +342,48 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // well as a explicit function Singleton. This means that there will only
             // be a single listener running, and also means that individual invocations
             // are also serialized by scope.
-            [Singleton("TestScope")]
+            [Singleton("TestScope%test%")]
             public async Task SingletonTriggerJob_SingletonListener([TestTrigger] string test)
             {
                 VerifyLeaseState(
                     GetType().GetMethod("SingletonTriggerJob_SingletonListener"),
-                    "TestScope",
+                    "TestScopeTestValue",
                     LeaseState.Leased, LeaseStatus.Locked);
 
                 VerifyLeaseState(
                     GetType().GetMethod("SingletonTriggerJob_SingletonListener"),
+                    "Listener",
+                    LeaseState.Leased, LeaseStatus.Locked);
+
+                await Task.Delay(50);
+                IncrementJobInvocationCount();
+            }
+
+            // Override the implicit listener Singleton by providing our own
+            // Singleton using Mode = Listener.
+            [Singleton("TestScope")]
+            [Singleton("TestScope%test%", SingletonMode.Listener)]
+            public async Task SingletonTriggerJob_SingletonListener_ListenerSingletonOverride([TestTrigger] string test)
+            {
+                VerifyLeaseState(
+                    GetType().GetMethod("SingletonTriggerJob_SingletonListener_ListenerSingletonOverride"),
+                    "TestScope",
+                    LeaseState.Leased, LeaseStatus.Locked);
+
+                VerifyLeaseState(
+                    GetType().GetMethod("SingletonTriggerJob_SingletonListener_ListenerSingletonOverride"),
+                    "TestScopeTestValue.Listener",
+                    LeaseState.Leased, LeaseStatus.Locked);
+
+                await Task.Delay(50);
+                IncrementJobInvocationCount();
+            }
+
+            [Singleton(SingletonMode.Listener)]
+            public async Task QueueFunction_SingletonListener([QueueTrigger("xyz123")] string message)
+            {
+                VerifyLeaseState(
+                    GetType().GetMethod("QueueFunction_SingletonListener"),
                     "Listener",
                     LeaseState.Leased, LeaseStatus.Locked);
 
@@ -457,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     return new ParameterDescriptor();
                 }
 
-                [Singleton]
+                [Singleton(SingletonMode.Listener)]
                 public class TestTriggerListener : IListener
                 {
                     public static int StartCount = 0;
@@ -512,6 +585,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                         }
                     }
                 }
+            }
+        }
+
+        private class TestNameResolver : RandomNameResolver
+        {
+            public override string Resolve(string name)
+            {
+                if (name == "test")
+                {
+                    return "TestValue";
+                }
+                return base.Resolve(name);
             }
         }
 
