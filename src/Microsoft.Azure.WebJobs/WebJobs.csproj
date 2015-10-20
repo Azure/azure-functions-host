@@ -57,6 +57,7 @@
     </Compile>
     <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="BinderExtensions.cs" />
+    <Compile Include="DisableAttribute.cs" />
     <Compile Include="IAsyncCollector.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />
     <Compile Include="IBinder.cs" />

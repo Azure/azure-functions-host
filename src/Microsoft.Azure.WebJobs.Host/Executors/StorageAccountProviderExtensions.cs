@@ -54,25 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </summary>
         internal static string GetAccountOverrideOrNull(ParameterInfo parameter)
         {
-            if (parameter == null || 
-                parameter.GetType() == typeof(AttributeBindingSource.FakeParameterInfo))
-            {
-                return null;
-            }
-
-            StorageAccountAttribute attribute = parameter.GetCustomAttribute<StorageAccountAttribute>();
-            if (attribute != null)
-            {
-                return attribute.Account;
-            }
-
-            attribute = parameter.Member.GetCustomAttribute<StorageAccountAttribute>();
-            if (attribute != null)
-            {
-                return attribute.Account;
-            }
-
-            attribute = parameter.Member.DeclaringType.GetCustomAttribute<StorageAccountAttribute>();
+            StorageAccountAttribute attribute = TypeUtility.GetHierarchicalAttributeOrNull<StorageAccountAttribute>(parameter);
             if (attribute != null)
             {
                 return attribute.Account;

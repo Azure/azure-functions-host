@@ -369,6 +369,7 @@
     <Compile Include="Blobs\IBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />
     <Compile Include="CompositeTraceWriter.cs" />
+    <Compile Include="ConfigurationUtility.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
     <Compile Include="ConsoleTraceWriter.cs" />
@@ -862,6 +863,7 @@
     <Compile Include="Indexers\DefaultNameResolver.cs" />
     <Compile Include="NameResolverExtensions.cs" />
     <Compile Include="FunctionInvocationException.cs" />
+    <Compile Include="TypeUtility.cs" />
     <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Tables\TableEntityPath.cs" />
     <Compile Include="HostContainerNames.cs" />

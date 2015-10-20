@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
 
                 IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
-                IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll(), singletonManager);
+                IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll(), singletonManager, activator, nameResolver, trace);
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;

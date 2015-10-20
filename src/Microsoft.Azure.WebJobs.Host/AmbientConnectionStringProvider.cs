@@ -1,9 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Configuration;
-
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
@@ -37,19 +34,8 @@ namespace Microsoft.Azure.WebJobs.Host
         public string GetConnectionString(string connectionStringName)
         {
             connectionStringName = GetPrefixedConnectionStringName(connectionStringName);
-            string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
-            if (connectionStringEntry != null)
-            {
-                connectionStringInConfig = connectionStringEntry.ConnectionString;
-            }
 
-            if (!String.IsNullOrEmpty(connectionStringInConfig))
-            {
-                return connectionStringInConfig;
-            }
-
-            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
+            return ConfigurationUtility.GetConnectionFromConfigOrEnvironment(connectionStringName);
         }
 
         internal static string GetPrefixedConnectionStringName(string connectionStringName)

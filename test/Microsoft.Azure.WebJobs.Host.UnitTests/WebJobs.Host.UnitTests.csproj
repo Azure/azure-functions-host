@@ -137,6 +137,7 @@
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
+    <Compile Include="ConfigurationUtilityTests.cs" />
     <Compile Include="ConsoleTraceWriterTests.cs" />
     <Compile Include="DefaultExtensionRegistryTests.cs" />
     <Compile Include="EmptyFunctionIndexProvider.cs" />
@@ -150,6 +151,7 @@
     <Compile Include="Executors\NullInstanceFactoryTests.cs" />
     <Compile Include="FunctionIndexerFactory.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
+    <Compile Include="Listeners\HostListenerFactoryTests.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="Protocols\FunctionStartedMessageExtensionsTests.cs" />
