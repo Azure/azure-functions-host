@@ -51,6 +51,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             Assert.Equal("override.servicebus.windows.net", manager.Address.Host);
         }
 
+        [Fact]
+        public void GetConnectionString_ThrowsIfConnectionStringNullOrEmpty()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                _provider.GetConnectionString("MissingConnection");
+            });
+            Assert.Equal("Microsoft Azure WebJobs SDK ServiceBus connection string 'AzureWebJobsMissingConnection' is missing or empty.", ex.Message);
+        }
+
         public void Dispose()
         {
             Environment.SetEnvironmentVariable("AzureWebJobsServiceBusOverride", null);

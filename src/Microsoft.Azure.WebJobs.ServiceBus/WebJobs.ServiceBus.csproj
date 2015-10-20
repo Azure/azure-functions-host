@@ -156,6 +156,7 @@
     <Compile Include="Config\ServiceBusExtensionConfig.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ContentTypes.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="MessagingProvider.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />

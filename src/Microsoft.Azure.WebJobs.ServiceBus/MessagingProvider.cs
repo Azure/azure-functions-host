@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.ServiceBus;
@@ -86,12 +87,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// </summary>
         /// <param name="connectionStringName">The connection string name.</param>
         /// <returns>The ServiceBus connection string.</returns>
-        protected string GetConnectionString(string connectionStringName = null)
+        protected internal string GetConnectionString(string connectionStringName = null)
         {
             string connectionString = _config.ConnectionString;
             if (!string.IsNullOrEmpty(connectionStringName))
             {
                 connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(connectionStringName);
+            }
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException(
+                    string.Format(CultureInfo.InvariantCulture, "Microsoft Azure WebJobs SDK ServiceBus connection string '{0}{1}' is missing or empty.",
+                    "AzureWebJobs", connectionStringName));
             }
 
             return connectionString;
