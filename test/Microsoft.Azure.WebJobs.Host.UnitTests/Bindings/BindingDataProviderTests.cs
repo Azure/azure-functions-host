@@ -50,6 +50,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         }
 
         [Fact]
+        public void FromType_DuplicatePropertiesDetected_Throws()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                BindingDataProvider.FromType(typeof(DerivedWithNew));
+            });
+            Assert.Equal("Multiple properties named 'A' found in type 'DerivedWithNew'.", ex.Message);
+        }
+
+        [Fact]
         public void GetBindingData_IfSimpleDataType_ReturnsValidBindingData()
         {
             // Arrange
@@ -135,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             public DateTime date { get; set; }
         }
 
-        class NestedDataType
+        private class NestedDataType
         {
             public int _field = 0; // skip: not a property
 
@@ -148,6 +158,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             public static int StaticIntProp { get; set; } // skip: not instance property
 
             private int PrivateIntProp { get; set; } // skip: private property
+        }
+
+        private class Base
+        {
+            public int? A { get; set; }
+        }
+
+        private class DerivedWithNew : Base
+        {
+            new public int A { get; set; }
         }
     }
 }

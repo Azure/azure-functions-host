@@ -81,6 +81,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <returns>A <see cref="BindingDataProvider"/> instance or null for unsupported types.</returns>
         public static BindingDataProvider FromType(Type type)
         {
+            if (type == null)
+            {
+                throw new ArgumentNullException("type");
+            }
+
             if ((type == typeof(object)) ||
                 (type == typeof(string)) ||
                 (type == typeof(byte[])))
@@ -99,6 +104,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             foreach (PropertyHelper property in bindingDataProperties)
             {
+                if (contract.ContainsKey(property.Name))
+                {
+                    throw new InvalidOperationException(
+                        string.Format(CultureInfo.InvariantCulture, 
+                        "Multiple properties named '{0}' found in type '{1}'.", property.Name, type.Name));
+                }
                 contract.Add(property.Name, property.PropertyType);
             }
 
