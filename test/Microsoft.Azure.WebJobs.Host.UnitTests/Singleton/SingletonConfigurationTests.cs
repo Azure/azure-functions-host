@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
@@ -90,6 +91,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             {
                 config.LockAcquisitionTimeout = value;
                 Assert.Equal(value, config.LockAcquisitionTimeout);
+            }
+        }
+
+        [Fact]
+        public void ListenerLockRecoveryPollingInterval_RangeValidation()
+        {
+            SingletonConfiguration config = new SingletonConfiguration();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                config.ListenerLockRecoveryPollingInterval = TimeSpan.FromMilliseconds(14999);
+            });
+
+            TimeSpan[] validValues = new TimeSpan[]
+            {
+                Timeout.InfiniteTimeSpan,
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromMinutes(5)
+            };
+            foreach (TimeSpan value in validValues)
+            {
+                config.ListenerLockRecoveryPollingInterval = value;
+                Assert.Equal(value, config.ListenerLockRecoveryPollingInterval);
             }
         }
     }

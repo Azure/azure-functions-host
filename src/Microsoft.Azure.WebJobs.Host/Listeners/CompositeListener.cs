@@ -28,20 +28,28 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         {
             ThrowIfDisposed();
 
+            // start all listeners in parallel
+            List<Task> tasks = new List<Task>();
             foreach (IListener listener in _listeners)
             {
-                await listener.StartAsync(cancellationToken);
+                tasks.Add(listener.StartAsync(cancellationToken));
             }
+
+            await Task.WhenAll(tasks);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
+            // stop all listeners in parallel
+            List<Task> tasks = new List<Task>();
             foreach (IListener listener in _listeners)
             {
-                await listener.StopAsync(cancellationToken);
+                tasks.Add(listener.StopAsync(cancellationToken));
             }
+
+            await Task.WhenAll(tasks);
         }
 
         public void Cancel()
