@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -13,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private TimeSpan _lockPeriod;
         private TimeSpan _lockAcquisitionTimeout;
         private TimeSpan _lockAcquisitionPollingInterval;
+        private TimeSpan _listenerLockRecoveryPollingInterval;
 
         /// <summary>
         /// Constructs a new instance.
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host
             _lockPeriod = TimeSpan.FromSeconds(15);
             _lockAcquisitionTimeout = TimeSpan.FromMinutes(1);
             _lockAcquisitionPollingInterval = TimeSpan.FromSeconds(1);
+            _listenerLockRecoveryPollingInterval = TimeSpan.FromMinutes(1);
         }
 
         /// <summary>
@@ -88,6 +91,36 @@ namespace Microsoft.Azure.WebJobs.Host
                     throw new ArgumentOutOfRangeException("value");
                 }
                 _lockAcquisitionPollingInterval = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the polling interval used by singleton locks of type
+        /// <see cref="SingletonMode.Listener"/> to periodically reattempt to
+        /// acquire their lock if they failed to acquire it on startup.
+        /// </summary>
+        /// <remarks>
+        /// On startup, singleton listeners for triggered functions will each attempt to
+        /// acquire their locks. If they are unable to within the timeout window, the
+        /// listener won't start (and the triggered function won't be running). However,
+        /// behind the scenes, the listener will periodically reattempt to acquire the lock
+        /// based on this value.
+        /// To disable this behavior, set the value to <see cref="Timeout.InfiniteTimeSpan"/>.
+        /// </remarks>
+        public TimeSpan ListenerLockRecoveryPollingInterval
+        {
+            get
+            {
+                return _listenerLockRecoveryPollingInterval;
+            }
+            set
+            {
+                if (value != Timeout.InfiniteTimeSpan &&
+                    value < TimeSpan.FromSeconds(15))
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+                _listenerLockRecoveryPollingInterval = value;
             }
         }
     }

@@ -45,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             await _listener.StartAsync(cancellationToken);
 
+            Assert.Null(_listener.LockTimer);
+
             _mockSingletonManager.VerifyAll();
             _mockInnerListener.VerifyAll();
         }
@@ -57,7 +59,66 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             await _listener.StartAsync(cancellationToken);
 
+            // verify that the LockTimer has been started
+            Assert.NotNull(_listener.LockTimer);
+            Assert.True(_listener.LockTimer.AutoReset);
+            Assert.True(_listener.LockTimer.Enabled);
+            Assert.Equal(_config.ListenerLockRecoveryPollingInterval.TotalMilliseconds, _listener.LockTimer.Interval);
+
             _mockSingletonManager.VerifyAll();
+        }
+
+        [Fact]
+        public async Task StartAsync_DoesNotStartLockTimer_WhenPollingIntervalSetToInfinite()
+        {
+            _config.ListenerLockRecoveryPollingInterval = Timeout.InfiniteTimeSpan;
+
+            CancellationToken cancellationToken = new CancellationToken();
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken)).ReturnsAsync(null);
+
+            await _listener.StartAsync(cancellationToken);
+
+            // verify that the LockTimer has NOT been started
+            Assert.Null(_listener.LockTimer);
+
+            _mockSingletonManager.VerifyAll();
+        }
+
+        [Fact]
+        public async Task TryAcquireLock_WhenLockAcquired_StopsLockTimerAndStartsListener()
+        {
+            _listener.LockTimer = new System.Timers.Timer
+            {
+                Interval = 30 * 1000
+            };
+            _listener.LockTimer.Start();
+
+            SingletonManager.SingletonLockHandle lockHandle = new SingletonManager.SingletonLockHandle();
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, CancellationToken.None)).ReturnsAsync(lockHandle);
+
+            _mockInnerListener.Setup(p => p.StartAsync(CancellationToken.None)).Returns(Task.FromResult(true));
+
+            await _listener.TryAcquireLock();
+
+            Assert.Null(_listener.LockTimer);
+        }
+
+        [Fact]
+        public async Task TryAcquireLock_LockNotAcquired_DoesNotStopLockTimer()
+        {
+            _listener.LockTimer = new System.Timers.Timer
+            {
+                Interval = 30 * 1000
+            };
+            _listener.LockTimer.Start();
+
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, CancellationToken.None)).ReturnsAsync(null);
+
+            Assert.True(_listener.LockTimer.Enabled);
+
+            await _listener.TryAcquireLock();
+
+            Assert.True(_listener.LockTimer.Enabled);
         }
 
         [Fact]
@@ -84,10 +145,28 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
-        public async Task StopAsync_Noops_WhenLockNotAquired()
+        public async Task StopAsync_WhenNotStarted_Noops()
         {
             CancellationToken cancellationToken = new CancellationToken();
             await _listener.StopAsync(cancellationToken);
+        }
+
+        [Fact]
+        public async Task StopAsync_WhenLockNotAcquired_StopsLockTimer()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken)).ReturnsAsync(null);
+
+            await _listener.StartAsync(cancellationToken);
+
+            Assert.True(_listener.LockTimer.Enabled);
+
+            await _listener.StopAsync(cancellationToken);
+
+            Assert.False(_listener.LockTimer.Enabled);
+
+            _mockSingletonManager.VerifyAll();
+            _mockInnerListener.VerifyAll();
         }
 
         [Fact]
@@ -117,10 +196,40 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
+        public void Cancel_StopsLockTimer()
+        {
+            _listener.LockTimer = new System.Timers.Timer
+            {
+                Interval = 30 * 1000
+            };
+            _listener.LockTimer.Start();
+
+            _mockInnerListener.Setup(p => p.Cancel());
+            _listener.Cancel();
+
+            Assert.False(_listener.LockTimer.Enabled);
+        }
+
+        [Fact]
         public void Dispose_DisposesListener()
         {
             _mockInnerListener.Setup(p => p.Dispose());
             _listener.Dispose();
+        }
+
+        [Fact]
+        public void Dispose_DisposesLockTimer()
+        {
+            _listener.LockTimer = new System.Timers.Timer
+            {
+                Interval = 30 * 1000
+            };
+            _listener.LockTimer.Start();
+
+            _mockInnerListener.Setup(p => p.Dispose());
+            _listener.Dispose();
+
+            Assert.False(_listener.LockTimer.Enabled);
         }
 
         private static void TestJob()
