@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
@@ -142,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
-        public void GetService_ReturnsExpectedDefaultServices()
+        public void GetService_IExtensionRegistry_ReturnsDefaultRegistry()
         {
             JobHostConfiguration configuration = new JobHostConfiguration();
 
@@ -154,9 +155,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.NotNull(extensionRegistry);
             IComparable[] results = extensionRegistry.GetExtensions<IComparable>().ToArray();
             Assert.Equal(3, results.Length);
+        }
 
-            IJobHostContextFactory jobHostContextFactory = configuration.GetService<IJobHostContextFactory>();
-            Assert.NotNull(jobHostContextFactory);
+        [Theory]
+        [InlineData(typeof(IJobHostContextFactory), typeof(JobHostContextFactory))]
+        [InlineData(typeof(IExtensionRegistry), typeof(DefaultExtensionRegistry))]
+        [InlineData(typeof(ITypeLocator), typeof(DefaultTypeLocator))]
+        [InlineData(typeof(StorageClientFactory), typeof(StorageClientFactory))]
+        [InlineData(typeof(INameResolver), typeof(DefaultNameResolver))]
+        [InlineData(typeof(IJobActivator), typeof(DefaultJobActivator))]
+        public void GetService_ReturnsExpectedDefaultServices(Type serviceType, Type expectedInstanceType)
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            var service = configuration.GetService(serviceType);
+            Assert.Equal(expectedInstanceType, service.GetType());
         }
 
         [Fact]

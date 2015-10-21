@@ -121,7 +121,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
             catch (ReflectionTypeLoadException ex)
             {
-                // TODO: Log this somewhere?
                 _log.WriteLine("Warning: Only got partial types from assembly: {0}", assembly.FullName);
                 _log.WriteLine("Exception message: {0}", ex.ToString());
 
@@ -130,7 +129,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
             catch (Exception ex)
             {
-                // TODO: Log this somewhere?
                 _log.WriteLine("Warning: Failed to get types from assembly: {0}", assembly.FullName);
                 _log.WriteLine("Exception message: {0}", ex.ToString());
             }

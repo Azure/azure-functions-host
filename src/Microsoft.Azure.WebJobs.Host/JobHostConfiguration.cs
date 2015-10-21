@@ -28,9 +28,6 @@ namespace Microsoft.Azure.WebJobs
         private string _serviceBusConnectionString;
 
         private string _hostId;
-        private ITypeLocator _typeLocator;
-        private INameResolver _nameResolver = new DefaultNameResolver();
-        private IJobActivator _activator = DefaultJobActivator.Instance;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
@@ -56,14 +53,17 @@ namespace Microsoft.Azure.WebJobs
             {
                 _storageAccountProvider = new DefaultStorageAccountProvider(this);
             }
- 
-            IExtensionRegistry extensions = new DefaultExtensionRegistry();
-            _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
+
             Singleton = new SingletonConfiguration();
 
             // add our built in services here
+            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+            ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             AddService<IExtensionRegistry>(extensions);
             AddService<StorageClientFactory>(new StorageClientFactory());
+            AddService<INameResolver>(new DefaultNameResolver());
+            AddService<IJobActivator>(DefaultJobActivator.Instance);
+            AddService<ITypeLocator>(typeLocator);
         }
 
         /// <summary>Gets or sets the host ID.</summary>
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs
         {
             get
             {
-                return _activator;
+                return GetService<IJobActivator>();
             }
             set
             {
@@ -115,8 +115,7 @@ namespace Microsoft.Azure.WebJobs
                 {
                     throw new ArgumentNullException("value");
                 }
-
-                _activator = value;
+                AddService<IJobActivator>(value);
             }
         }
 
@@ -164,15 +163,17 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Gets or sets the type locator.</summary>
         public ITypeLocator TypeLocator
         {
-            get { return _typeLocator; }
+            get
+            {
+                return GetService<ITypeLocator>();
+            }
             set
             {
                 if (value == null)
                 {
                     throw new ArgumentNullException("value");
                 }
-
-                _typeLocator = value;
+                AddService<ITypeLocator>(value);
             }
         }
 
@@ -181,15 +182,17 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         public INameResolver NameResolver
         {
-            get { return _nameResolver; }
+            get
+            {
+                return GetService<INameResolver>();
+            }
             set
             {
                 if (value == null)
                 {
                     throw new ArgumentNullException("value");
                 }
-
-                _nameResolver = value;
+                AddService<INameResolver>(value);
             }
         }
 

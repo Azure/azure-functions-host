@@ -57,7 +57,6 @@
                     $scope.consoleText = ' ';
                 }
 
-                // TODO: do this in a more angular-y way - do not  manipulate DOM directly from a controller
                 $timeout(function() {
                     textArea.scrollTop(textArea[0].scrollHeight);
                 });
