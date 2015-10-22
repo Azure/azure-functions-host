@@ -84,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "INameResolver",
                 "WebJobsShutdownWatcher",
                 "BindingContext",
-                "BindingDataPathHelper",
                 "BindingProviderContext",
                 "BindingTemplate",
                 "BindStepOrder",
@@ -130,7 +129,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingDataProvider",
                 "IBindingDataProvider",
                 "FunctionInvocationException",
-                "TraceEvent"
+                "TraceEvent",
+                "BindingTemplateExtensions"
             };
 
             AssertPublicTypes(expected, assembly);

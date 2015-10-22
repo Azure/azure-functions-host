@@ -415,7 +415,7 @@
     <Compile Include="Bindings\Data\StringToTArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Data\StructDataBinding.cs" />
     <Compile Include="Bindings\Data\DataBindingProvider.cs" />
-    <Compile Include="Bindings\BindablePathExtensions.cs" />
+    <Compile Include="Bindings\BindingTemplateExtensions.cs" />
     <Compile Include="Bindings\IBindablePath.cs" />
     <Compile Include="Bindings\IFunctionBinding.cs" />
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Class containing helper methods for path binding
     /// </summary>
-    public static class BindingDataPathHelper
+    internal static class BindingDataPathHelper
     {
         /// <summary>
         /// Converts all parameter values in the specified binding data to their path compatible string values.
