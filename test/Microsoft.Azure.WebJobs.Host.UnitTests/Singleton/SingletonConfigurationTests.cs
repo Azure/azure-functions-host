@@ -15,8 +15,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             SingletonConfiguration config = new SingletonConfiguration();
 
             Assert.Equal(TimeSpan.FromSeconds(15), config.LockPeriod);
+            Assert.Equal(TimeSpan.FromSeconds(60), config.ListenerLockPeriod);
             Assert.Equal(TimeSpan.FromMinutes(1), config.LockAcquisitionTimeout);
-            Assert.Equal(TimeSpan.FromSeconds(1), config.LockAcquisitionPollingInterval);
+            Assert.Equal(TimeSpan.FromSeconds(3), config.LockAcquisitionPollingInterval);
         }
 
         [Fact]
@@ -47,6 +48,37 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             {
                 config.LockPeriod = value;
                 Assert.Equal(value, config.LockPeriod);
+            }
+        }
+
+        [Fact]
+        public void ListenerLockPeriod_RangeValidation()
+        {
+            SingletonConfiguration config = new SingletonConfiguration();
+
+            TimeSpan[] invalidValues = new TimeSpan[]
+            {
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(14),
+                TimeSpan.FromSeconds(61)
+            };
+            foreach (TimeSpan value in invalidValues)
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() =>
+                {
+                    config.ListenerLockPeriod = value;
+                });
+            }
+
+            TimeSpan[] validValues = new TimeSpan[]
+            {
+                TimeSpan.FromSeconds(16),
+                TimeSpan.FromSeconds(59)
+            };
+            foreach (TimeSpan value in validValues)
+            {
+                config.ListenerLockPeriod = value;
+                Assert.Equal(value, config.ListenerLockPeriod);
             }
         }
 

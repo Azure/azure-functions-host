@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return lockHandle;
         }
 
-        public async virtual Task<object> TryLockAsync(string lockId, string functionInstanceId, SingletonAttribute attribute, CancellationToken cancellationToken)
+        public async virtual Task<object> TryLockAsync(string lockId, string functionInstanceId, SingletonAttribute attribute, CancellationToken cancellationToken, bool retry = true)
         {
             IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
             IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
@@ -93,8 +93,9 @@ namespace Microsoft.Azure.WebJobs.Host
 
             _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Waiting for Singleton lock ({0})", lockId), source: TraceSource.Execution);
 
-            string leaseId = await TryAcquireLeaseAsync(lockBlob, _config.LockPeriod, cancellationToken);
-            if (string.IsNullOrEmpty(leaseId))
+            TimeSpan lockPeriod = GetLockPeriod(attribute, _config);
+            string leaseId = await TryAcquireLeaseAsync(lockBlob, lockPeriod, cancellationToken);
+            if (string.IsNullOrEmpty(leaseId) && retry)
             {
                 // Someone else has the lease. Continue trying to periodically get the lease for
                 // a period of time
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 while (string.IsNullOrEmpty(leaseId) && remainingWaitTime > 0)
                 {
                     await Task.Delay(_config.LockAcquisitionPollingInterval);
-                    leaseId = await TryAcquireLeaseAsync(lockBlob, _config.LockPeriod, cancellationToken);
+                    leaseId = await TryAcquireLeaseAsync(lockBlob, lockPeriod, cancellationToken);
                     remainingWaitTime -= _config.LockAcquisitionPollingInterval.TotalMilliseconds;
                 }
             }
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 LeaseId = leaseId,
                 LockId = lockId,
                 Blob = lockBlob,
-                LeaseRenewalTimer = CreateLeaseRenewalTimer(lockBlob, leaseId, lockId, _config.LockPeriod, _backgroundExceptionDispatcher)
+                LeaseRenewalTimer = CreateLeaseRenewalTimer(lockBlob, leaseId, lockId, lockPeriod, _backgroundExceptionDispatcher)
             };
 
             // start the renewal timer, which ensures that we maintain our lease until
@@ -263,6 +264,12 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             return storageDirectory;
+        }
+
+        internal static TimeSpan GetLockPeriod(SingletonAttribute attribute, SingletonConfiguration config)
+        {
+            return attribute.Mode == SingletonMode.Listener ?
+                    config.ListenerLockPeriod : config.LockPeriod;
         }
 
         private ITaskSeriesTimer CreateLeaseRenewalTimer(IStorageBlockBlob leaseBlob, string leaseId, string lockId, TimeSpan leasePeriod, 

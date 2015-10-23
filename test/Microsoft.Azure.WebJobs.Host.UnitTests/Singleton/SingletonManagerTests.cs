@@ -171,6 +171,30 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
+        public async Task TryLockAsync_WithContention_NoRetry_DoesNotPollForLease()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, It.Is<AccessCondition>(q => q.IfNoneMatchETag == "*"), null, null, cancellationToken)).Returns(Task.FromResult(true));
+
+            int count = 0;
+            _mockStorageBlob.Setup(p => p.AcquireLeaseAsync(_singletonConfig.LockPeriod, null, cancellationToken))
+                .Returns(() =>
+                {
+                    count++;
+                    return Task.FromResult<string>(null);
+                });
+
+            SingletonAttribute attribute = new SingletonAttribute();
+            SingletonManager.SingletonLockHandle lockHandle = (SingletonManager.SingletonLockHandle)
+                await _singletonManager.TryLockAsync(TestLockId, TestInstanceId, attribute, cancellationToken, retry: false);
+
+            Assert.Null(lockHandle);
+            Assert.Equal(1, count);
+
+            _mockStorageBlob.VerifyAll();
+        }
+
+        [Fact]
         public async Task LockAsync_WithContention_AcquisitionTimeoutExpires_Throws()
         {
             CancellationToken cancellationToken = new CancellationToken();
@@ -376,6 +400,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
             Assert.Equal("Listener", attribute.Scope);
+        }
+
+        [Fact]
+        public void GetLockPeriod_ReturnsExpectedValue()
+        {
+            SingletonAttribute attribute = new SingletonAttribute
+            {
+                Mode = SingletonMode.Listener
+            };
+            SingletonConfiguration config = new SingletonConfiguration()
+            {
+                LockPeriod = TimeSpan.FromSeconds(16),
+                ListenerLockPeriod = TimeSpan.FromSeconds(17)
+            };
+
+            TimeSpan value = SingletonManager.GetLockPeriod(attribute, config);
+            Assert.Equal(config.ListenerLockPeriod, value);
+
+            attribute.Mode = SingletonMode.Function;
+            value = SingletonManager.GetLockPeriod(attribute, config);
+            Assert.Equal(config.LockPeriod, value);
         }
 
         private static void TestJob()

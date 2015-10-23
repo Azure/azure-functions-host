@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly MethodInfo _method;
         private readonly SingletonAttribute _attribute;
         private readonly SingletonManager _singletonManager;
+        private readonly SingletonConfiguration _singletonConfig;
         private readonly IListener _innerListener;
         private string _lockId;
         private object _lockHandle;
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _method = method;
             _attribute = attribute;
             _singletonManager = singletonManager;
+            _singletonConfig = _singletonManager.Config;
             _innerListener = innerListener;
 
             string boundScope = _singletonManager.GetBoundScope(_attribute.Scope);
@@ -36,30 +38,22 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            // for listener locks, if the user hasn't explicitly set an override on the
-            // attribute, we want to default the timeout to the lock period. We want to
-            // stop as soon as possible (since we want startup to be relatively fast)
-            // however we don't want to give up before waiting for a natural lease expiry.
-            // If we miss the lock, the recovery timer will periodically reattempt to acquire.
-            if (_attribute.LockAcquisitionTimeout == null)
-            {
-                _attribute.LockAcquisitionTimeout = (int)_singletonManager.Config.LockPeriod.TotalSeconds;
-            }
- 
-            _lockHandle = await _singletonManager.TryLockAsync(_lockId, null, _attribute, cancellationToken);
+            // When recovery is enabled, we don't do retries on the individual lock attempts,
+            // since retries are being done outside
+            bool recoveryEnabled = _singletonConfig.ListenerLockRecoveryPollingInterval != Timeout.InfiniteTimeSpan;
+            _lockHandle = await _singletonManager.TryLockAsync(_lockId, null, _attribute, cancellationToken, retry: !recoveryEnabled);
 
             if (_lockHandle == null)
             {
                 // If we're unable to acquire the lock, it means another listener
-                // has it so we return w/o starting our listener
+                // has it so we return w/o starting our listener.
                 //
                 // However, we also start a periodic background "recovery" timer that will recheck
                 // occasionally for the lock. This ensures that if the host that has the lock goes
                 // down for whatever reason, others will have a chance to resume the work.
-                TimeSpan recoveryPollingInterval = _singletonManager.Config.ListenerLockRecoveryPollingInterval;
-                if (recoveryPollingInterval != Timeout.InfiniteTimeSpan)
+                if (recoveryEnabled)
                 {
-                    LockTimer = new System.Timers.Timer(recoveryPollingInterval.TotalMilliseconds);
+                    LockTimer = new System.Timers.Timer(_singletonConfig.ListenerLockRecoveryPollingInterval.TotalMilliseconds);
                     LockTimer.Elapsed += OnLockTimer;
                     LockTimer.Start();
                 }
@@ -117,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         internal async Task TryAcquireLock()
         {
-            _lockHandle = await _singletonManager.TryLockAsync(_lockId, null, _attribute, CancellationToken.None);
+            _lockHandle = await _singletonManager.TryLockAsync(_lockId, null, _attribute, CancellationToken.None, retry: false);
 
             if (_lockHandle != null)
             {
