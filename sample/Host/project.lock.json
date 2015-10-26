@@ -3,6 +3,26 @@
   "version": 1,
   "targets": {
     "DNX,Version=v4.5.1": {
+      "Autofac/3.5.0": {
+        "compile": {
+          "lib/net40/Autofac.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Autofac.dll": {}
+        }
+      },
+      "Autofac.WebApi2/3.4.0": {
+        "dependencies": {
+          "Autofac": "[3.5.0, 4.0.0)",
+          "Microsoft.AspNet.WebApi.Core": "[5.2.0, 6.0.0)"
+        },
+        "compile": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        }
+      },
       "EntityFramework/6.1.3": {
         "frameworkAssemblies": [
           "System.ComponentModel.DataAnnotations"
@@ -50,9 +70,32 @@
           "lib/net45/System.Net.Http.Formatting.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs/1.1.0-beta1": {
+      "Microsoft.AspNet.WebApi.Core/5.2.3": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Core": "[1.1.0-beta1]",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3"
+        },
+        "compile": {
+          "lib/net45/System.Web.Http.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Web.Http.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3": {
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Core": "5.2.2",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3"
+        },
+        "compile": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs/1.1.0-beta1-10145": {
+        "dependencies": {
+          "Microsoft.Azure.WebJobs.Core": "[1.1.0-beta1-10145]",
           "Newtonsoft.Json": "6.0.8",
           "WindowsAzure.Storage": "4.3.0"
         },
@@ -63,7 +106,7 @@
           "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Core/1.1.0-beta1": {
+      "Microsoft.Azure.WebJobs.Core/1.1.0-beta1-10145": {
         "compile": {
           "lib/net45/Microsoft.Azure.WebJobs.dll": {}
         },
@@ -71,9 +114,9 @@
           "lib/net45/Microsoft.Azure.WebJobs.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1": {
+      "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1-10168": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "1.1.0-beta1",
+          "Microsoft.Azure.WebJobs": "1.1.0-beta1-10145",
           "Microsoft.Tpl.Dataflow": "4.5.24",
           "ncrontab": "2.0.0"
         },
@@ -84,9 +127,25 @@
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1": {
+      "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-beta1-10168": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-beta1",
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-beta1-10168]",
+          "Sendgrid": "6.1.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1-10168": {
+        "dependencies": {
+          "Autofac.WebApi2": "3.4.0",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3",
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-beta1-10168]",
           "SuaveServerWrapper": "0.0.2"
         },
         "compile": {
@@ -96,9 +155,9 @@
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1": {
+      "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1-10145": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "[1.1.0-beta1]",
+          "Microsoft.Azure.WebJobs": "[1.1.0-beta1-10145]",
           "Newtonsoft.Json": "6.0.8",
           "WindowsAzure.ServiceBus": "2.7.6"
         },
@@ -284,6 +343,25 @@
           "lib/net45/Newtonsoft.Json.dll": {}
         }
       },
+      "Sendgrid/6.1.0": {
+        "dependencies": {
+          "SendGrid.SmtpApi": "1.3.1"
+        },
+        "compile": {
+          "lib/SendGridMail.dll": {}
+        },
+        "runtime": {
+          "lib/SendGridMail.dll": {}
+        }
+      },
+      "SendGrid.SmtpApi/1.3.1": {
+        "compile": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        },
+        "runtime": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        }
+      },
       "Suave/0.31.2": {
         "dependencies": {
           "FSharp.Core": "3.1.2.5",
@@ -423,6 +501,28 @@
     }
   },
   "libraries": {
+    "Autofac/3.5.0": {
+      "sha512": "ge1fziLkxQhFEBreAaQlFiIVzpL32rSnpInJCJAmfFnHO6ab0VcW+0nzeZWY8WaSkDFcg6KNxB9v4Tp2icnXSg==",
+      "files": [
+        "Autofac.3.5.0.nupkg",
+        "Autofac.3.5.0.nupkg.sha512",
+        "Autofac.nuspec",
+        "lib/net40/Autofac.dll",
+        "lib/net40/Autofac.xml",
+        "lib/portable-net4+sl5+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1/Autofac.dll",
+        "lib/portable-net4+sl5+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1/Autofac.xml"
+      ]
+    },
+    "Autofac.WebApi2/3.4.0": {
+      "sha512": "1/cKBk207OsCssgxpaIIMB/4xxCtRUykqQdPuKFTwLS/RZ+oJJ7E0CB/w1QLtJtNO2P9zoecAuCbCUV25Nn2RA==",
+      "files": [
+        "Autofac.WebApi2.3.4.0.nupkg",
+        "Autofac.WebApi2.3.4.0.nupkg.sha512",
+        "Autofac.WebApi2.nuspec",
+        "lib/net45/Autofac.Integration.WebApi.dll",
+        "lib/net45/Autofac.Integration.WebApi.xml"
+      ]
+    },
     "EntityFramework/6.1.3": {
       "serviceable": true,
       "sha512": "2xzFHAF3VVdmTR3//MygtQpwfbDjeaq+nQwCcokLzen7MKHOojPaxNPQPa4diHY1QtcR7zlHAJHNRqPB7W2Syw==",
@@ -513,61 +613,95 @@
         "Microsoft.AspNet.WebApi.Client.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs/1.1.0-beta1": {
+    "Microsoft.AspNet.WebApi.Core/5.2.3": {
       "serviceable": true,
-      "sha512": "P3BGyMM2uMKttajlWJZGvk2SVnknXTAZ8MjsB/8u1JAUO/lfT3DS/fbjvD4bema/vP8al+v6r1YHVh5Lt8SgmQ==",
+      "sha512": "o90QYlRV8VKR1S7+EcJw9w8WSyVFLl+IIzN8ILZ+n2t6rsc/KS8kBxRzA7wCFPRUHhebCfLqilBk39phvanx3g==",
+      "files": [
+        "Content/web.config.transform",
+        "lib/net45/System.Web.Http.dll",
+        "lib/net45/System.Web.Http.xml",
+        "Microsoft.AspNet.WebApi.Core.5.2.3.nupkg",
+        "Microsoft.AspNet.WebApi.Core.5.2.3.nupkg.sha512",
+        "Microsoft.AspNet.WebApi.Core.nuspec"
+      ]
+    },
+    "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3": {
+      "serviceable": true,
+      "sha512": "6fVo5EcZv48NxGNzKCR+n8wsKMnkx8CIkDtOCJDcN41WInuorLnqNXJ75355OBAyjuR6ZbPbnn1zshoOXYxLDw==",
+      "files": [
+        "content/App.config",
+        "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll",
+        "lib/net45/Microsoft.AspNet.WebHooks.Receivers.xml",
+        "Microsoft.AspNet.WebHooks.Receivers.1.2.0-beta3.nupkg",
+        "Microsoft.AspNet.WebHooks.Receivers.1.2.0-beta3.nupkg.sha512",
+        "Microsoft.AspNet.WebHooks.Receivers.nuspec"
+      ]
+    },
+    "Microsoft.Azure.WebJobs/1.1.0-beta1-10145": {
+      "serviceable": true,
+      "sha512": "KMFt1+gRUq+gAYwpSBTBXLwDKEEOGg81qB/Kn2bn7D6HhS8yBp9RwPdlFpRYZXUxzTM/82VOzl0ms6FBaHO+mg==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Host.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Host.xml",
-        "Microsoft.Azure.WebJobs.1.1.0-beta1.nupkg",
-        "Microsoft.Azure.WebJobs.1.1.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.1.1.0-beta1-10145.nupkg",
+        "Microsoft.Azure.WebJobs.1.1.0-beta1-10145.nupkg.sha512",
         "Microsoft.Azure.WebJobs.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Core/1.1.0-beta1": {
+    "Microsoft.Azure.WebJobs.Core/1.1.0-beta1-10145": {
       "serviceable": true,
-      "sha512": "w3Ivc18lLWk/dRu49a1fBef6h9CxE36Tq18yuSIEloSffgkrtrmmsNwjjz4xPpYUGmEGzHhM8sMM7IcIbstxUg==",
+      "sha512": "U3kQOK7eHs5LViF1ZziOuEnwF68ieKF+9BBelqSvOoKt5qMCmJ9fyPXz9NN5IrIPcNzpnWQDUkBcRRI3T+wzSw==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.dll",
         "lib/net45/Microsoft.Azure.WebJobs.xml",
-        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1.nupkg",
-        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1-10145.nupkg",
+        "Microsoft.Azure.WebJobs.Core.1.1.0-beta1-10145.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Core.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1": {
-      "sha512": "rHn/2Q6Y5GL3z4cO+OB8Hg9fgs/Yj2iaPtHMN5/lY3aj2uem1+sMZOnuyBUp5vsRh1HD6S/BIva6AfuZTHYGsg==",
+    "Microsoft.Azure.WebJobs.Extensions/1.0.0-beta1-10168": {
+      "sha512": "CPS9QiJDBltmunlzQMmGMMvb2taBvO/GjmhcoSUbiEsRCzemzxoypOF2W/aCom2F6j/UCPFnyTQgMco0TuR3Ew==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.xml",
-        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1.nupkg",
-        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1-10168.nupkg",
+        "Microsoft.Azure.WebJobs.Extensions.1.0.0-beta1-10168.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Extensions.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1": {
-      "sha512": "C3HZeEaTOLfdmM6IuOC90Oq3DI+jNSCmTrVQoXbEW4HXUsJ9Ja55jIGrTPVlol26R/y3mJWnIFNgbATPZqzpiQ==",
+    "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-beta1-10168": {
+      "sha512": "y4HD4EQpZ48ibQd0oeDa9lLnLbjcCvuLTI+iHtS0I8xyKuWfhdi2EhYFnkavJ63h5K9TYC2El8jY4SCnIoWBdg==",
+      "files": [
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll",
+        "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.xml",
+        "Microsoft.Azure.WebJobs.Extensions.SendGrid.1.0.0-beta1-10168.nupkg",
+        "Microsoft.Azure.WebJobs.Extensions.SendGrid.1.0.0-beta1-10168.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Extensions.SendGrid.nuspec"
+      ]
+    },
+    "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta1-10168": {
+      "sha512": "eDYvjy0W27WaHsswzYara0QS+nGcam9mdtJTBK7kdi7YJGc79kn7UdiOrr/hh0bk8GYlKl4cdkdD/AI9+y/dfQ==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll",
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.xml",
-        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1.nupkg",
-        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1-10168.nupkg",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks.1.0.0-beta1-10168.nupkg.sha512",
         "Microsoft.Azure.WebJobs.Extensions.WebHooks.nuspec"
       ]
     },
-    "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1": {
+    "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-beta1-10145": {
       "serviceable": true,
-      "sha512": "rQIAuE0N47/lIvJ6dKdZs6O3M+ZJI4dkOB1fctuqufRb7fWLng7T8TQGfTR3cPG1Tf0iRqst2UrSkawEoiFcqg==",
+      "sha512": "JiZqbudwCYsmGJgyZ1xhmFv5d1+CnBuqVEfrwCfGSEL6GAHAwY/mwqMGG6bqq3Iq4Qga2My2Ny86fGVbqogmbg==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll",
         "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.xml",
-        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1.nupkg",
-        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1.nupkg.sha512",
+        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1-10145.nupkg",
+        "Microsoft.Azure.WebJobs.ServiceBus.1.1.0-beta1-10145.nupkg.sha512",
         "Microsoft.Azure.WebJobs.ServiceBus.nuspec"
       ]
     },
     "Microsoft.CSharp/4.0.0-beta-23019": {
-      "sha512": "TsYR8ylpBw89cxCTzA9eD8wqLR5u4TnNvUCLU7Qt9TlbxmNM0jPaz80L4N+W81kEoOpchlckGGCTA4JVemmEVA==",
+      "sha512": "wp5SlNCIXAFqPbWMOAD8eedaPA1vPyBSh6P/OZUaSab4ogrFdElpHVoW+wTicbXLVJcvQwp1Jtk9xP5Slmq4EA==",
       "files": [
         "lib/dotnet/Microsoft.CSharp.dll",
         "lib/net45/_._",
@@ -774,6 +908,25 @@
         "tools/install.ps1"
       ]
     },
+    "Sendgrid/6.1.0": {
+      "sha512": "FYJu0QIddaAfD67T37ywZqB8mdNGEjLz/m8iLTKE1b0SWwzJaJ4xLLCj+vNZ/1kVaVneENHn8zmiv06qQQD/Vw==",
+      "files": [
+        "lib/SendGridMail.dll",
+        "Sendgrid.6.1.0.nupkg",
+        "Sendgrid.6.1.0.nupkg.sha512",
+        "Sendgrid.nuspec"
+      ]
+    },
+    "SendGrid.SmtpApi/1.3.1": {
+      "sha512": "SxBvvuwGnGpNd88Y70edON4idaNk9wLi7n9gokpHcImjZM+5Z4CFpjvf/1N3D1ZkuFKacXAoNnyYFvFfgeNtDg==",
+      "files": [
+        "lib/net40/SendGrid.SmtpApi.dll",
+        "lib/portable-net4+wp81/SendGrid.SmtpApi.dll",
+        "SendGrid.SmtpApi.1.3.1.nupkg",
+        "SendGrid.SmtpApi.1.3.1.nupkg.sha512",
+        "SendGrid.SmtpApi.nuspec"
+      ]
+    },
     "Suave/0.31.2": {
       "sha512": "UoG9Ys+wrh0tHzsP5bdh6TPAaiNildfWXLoa4KNTXJIYkOAns3mCPKIfPTeu4aNRWLxFIu0CmbCZ0BR83LbIVg==",
       "files": [
@@ -795,7 +948,7 @@
       ]
     },
     "System.Collections/4.0.10-beta-23019": {
-      "sha512": "76/FZ9wYhhU6wdNwrB3NiVJ5lpLZnLhS3dbLCOXOSf8NN3KXPrlcm5f2PUeHSJxgu5nP2H8lGLfshIaWq2qSNQ==",
+      "sha512": "MHZUp2LFl6sc22mBNHgM1vN5cQcxdcqPuQ3xRThg1UOH+eZ3rJIk5Ja+mkMFOdAiMB626u0fQMNEdNfItRyWuw==",
       "files": [
         "lib/DNXCore50/System.Collections.dll",
         "lib/net46/_._",
@@ -809,7 +962,7 @@
       ]
     },
     "System.Linq/4.0.0-beta-23019": {
-      "sha512": "kw6QeVsZWOKdonnArSWFerSyXCsr2LmGqT9Z2W7HFf7yN09o6O8YLfIALlFnhD4CXgJZYC8ebgMPC6uK9IZfOQ==",
+      "sha512": "jBHOkMRLTew/lr+awaPzEt5+rif4S7L9h/tY17unLaILq9P5muWVtsP2Tg/9YAJmHYoJDoCBKMpdGJ0hA5kqow==",
       "files": [
         "lib/dotnet/System.Linq.dll",
         "lib/net45/_._",
@@ -881,7 +1034,7 @@
       ]
     },
     "System.Threading/4.0.10-beta-23019": {
-      "sha512": "xJYu7J22Fc4G7pfUlPBYuRj4Rla0VkaqU77SW2DyT/oMq1KQmmR7oQnQ7yq/yig0St17I7rYZYBbSrNbe1l5+g==",
+      "sha512": "ss8p5o4C+f+rjpq0hxrcFsRXGUF+ojzjsW9MKfLrAqTuXhQywwDAPiTEvvEmDG8ptpwfQHWR09jlhcBNFhkG6w==",
       "files": [
         "lib/DNXCore50/System.Threading.dll",
         "lib/net46/_._",
@@ -895,7 +1048,7 @@
       ]
     },
     "System.Threading.Tasks/4.0.0-beta-23019": {
-      "sha512": "frcOMzzaVN9AHhlJRLKOqm9WHws2byLa+CDFUZIQzUWqrpubH0CDtNj1je5lJpD1QDwJBmnXepKUXCwt/wt9Ew==",
+      "sha512": "y3+puoROfucGrjJkHwvSu0BsoBvFFzFWnJvTbQnM20qgKZsH8NMPTUBEOHa/gNilkc8fTGsM7sX3Iug/QiM0Xg==",
       "files": [
         "lib/net45/_._",
         "lib/win8/_._",
@@ -940,8 +1093,8 @@
       "EntityFramework >= 6.1.3",
       "Microsoft.AspNet.WebApi.Client >= 5.2.3",
       "Microsoft.Framework.Runtime.Abstractions >= 1.0.0-beta6",
-      "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-beta1",
-      "Microsoft.Azure.WebJobs.ServiceBus >= 1.1.0-beta1"
+      "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-beta1-10168",
+      "Microsoft.Azure.WebJobs.ServiceBus >= 1.1.0-beta1-10145"
     ],
     "DNX,Version=v4.5.1": [
       "System.Collections >= 4.0.10-beta-23019",

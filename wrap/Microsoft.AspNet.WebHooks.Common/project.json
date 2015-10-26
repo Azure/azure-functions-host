@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0-*",
+  "frameworks": {
+    "net451": {
+      "bin": {
+        "assembly": "../../packages/Microsoft.AspNet.WebHooks.Common.1.2.0-beta3/lib/net45/Microsoft.AspNet.WebHooks.Common.dll"
+      }
+    }
+  }
+}
