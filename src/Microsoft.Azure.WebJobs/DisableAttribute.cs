@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs
     /// started. The attribute only affects triggered functions.
     /// </remarks>
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter)]
     public sealed class DisableAttribute : Attribute
     {
         /// <summary>

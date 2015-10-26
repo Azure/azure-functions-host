@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs
     /// This attribute can be applied at the parameter/method/class level, and the precedence
     /// is in that order.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter)]
     public sealed class ServiceBusAccountAttribute : Attribute
     {
         /// <summary>
