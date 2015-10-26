@@ -7,8 +7,8 @@ using System.Diagnostics;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Base class for trace writers used by the <see cref="JobHost"/>. 
-    /// See <see cref="JobHostConfiguration.Tracing"/> for details.
+    /// Base class for trace writers used by the <see cref="JobHost"/> for
+    /// event logging. See <see cref="JobHostConfiguration.Tracing"/> for details.
     /// </summary>
     public abstract class TraceWriter
     {
@@ -23,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Host
 
         /// <summary>
         /// Gets or sets the <see cref="TraceLevel"/> filter used to filter traces.
-        /// Only trace entries with a <see cref="TraceLevel"/> less than or equal to
-        /// this level will be logged.
+        /// Only trace events with a <see cref="TraceLevel"/> less than or equal to
+        /// this level will be traced.
         /// <remarks>
         /// Level filtering will be done externally by the <see cref="JobHost"/>, so
-        /// does not need to be done by this class.
+        /// it shouldn't be done by this class.
         /// </remarks>
         /// </summary>
         public TraceLevel Level { get; set; }
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// Flush any buffered trace entries.
+        /// Flush any buffered trace events.
         /// </summary>
         public virtual void Flush()
         {

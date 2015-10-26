@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets the ServiceBus account name to use.
+        /// Gets the name of the ServiceBus connection string to use.
         /// </summary>
         public string Account { get; private set; }
     }

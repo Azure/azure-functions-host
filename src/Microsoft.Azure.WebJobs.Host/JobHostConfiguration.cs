@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets the configuration for log tracing.
+        /// Gets the configuration for event tracing.
         /// </summary>
         public JobHostTraceConfiguration Tracing
         {

@@ -52,13 +52,13 @@ namespace Microsoft.Azure.WebJobs
 
         /// <summary>
         /// Gets the name of the application setting or environment variable that will
-        /// be used to determine whether the function(s) will be disabled.
+        /// be used to determine whether the function(s) should be disabled.
         /// </summary>
         public string SettingName { get; private set; }
 
         /// <summary>
         /// Gets the custom <see cref="Type"/> that will be invoked to determine
-        /// whether the function(s) will be disabled.
+        /// whether the function(s) should be disabled.
         /// </summary>
         public Type ProviderType { get; private set; }
     }

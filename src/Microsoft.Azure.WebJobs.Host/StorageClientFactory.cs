@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Factory class for the creation of all Azure Storage clients used by the framework.
+    /// Factory class for the creation of all Azure Storage clients used by by a <see cref="JobHost"/>.
     /// </summary>
     /// <remarks>
     /// Subclasses can override the various methods to customize client creation.
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host
     public class StorageClientFactory
     {
         /// <summary>
-        /// Creates a <see cref="CloudBlobClient"/> instance for the specified <see cref="CloudStorageAccount"/>.
+        /// Creates a <see cref="CloudBlobClient"/> instance for the specified <see cref="StorageClientFactoryContext"/>.
         /// </summary>
         /// <param name="context">The <see cref="StorageClientFactoryContext"/>.</param>
         /// <returns>The <see cref="CloudBlobClient"/>.</returns>
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// Creates a <see cref="CloudTableClient"/> instance for the specified <see cref="CloudStorageAccount"/>.
+        /// Creates a <see cref="CloudTableClient"/> instance for the specified <see cref="StorageClientFactoryContext"/>.
         /// </summary>
         /// <param name="context">The <see cref="StorageClientFactoryContext"/>.</param>
         /// <returns>The <see cref="CloudTableClient"/>.</returns>
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// Creates a <see cref="CloudQueueClient"/> instance for the specified <see cref="CloudStorageAccount"/>.
+        /// Creates a <see cref="CloudQueueClient"/> instance for the specified <see cref="StorageClientFactoryContext"/>.
         /// </summary>
         /// <param name="context">The <see cref="StorageClientFactoryContext"/>.</param>
         /// <returns>The <see cref="CloudQueueClient"/>.</returns>
