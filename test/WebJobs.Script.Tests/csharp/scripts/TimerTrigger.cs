@@ -3,7 +3,7 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
+using Microsoft.Azure.WebJobs;
 
 namespace WebJobs.Script.Tests
 {
