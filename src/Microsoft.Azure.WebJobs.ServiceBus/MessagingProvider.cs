@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         /// <summary>
-        /// Creates a <see cref="MessageProcessor"/> using the specified context.
+        /// Creates a <see cref="MessageProcessor"/> for the specified ServiceBus entity.
         /// </summary>
         /// <param name="entityPath">The ServiceBus entity to create a <see cref="MessageProcessor"/> for.</param>
         /// <returns>The <see cref="MessageProcessor"/>.</returns>

@@ -28,13 +28,23 @@ namespace Microsoft.Azure.WebJobs.Host
                 return attribute;
             }
 
-            attribute = parameter.Member.GetCustomAttribute<T>();
+            return GetHierarchicalAttributeOrNull<T>((MethodInfo)parameter.Member);
+        }
+
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        {
+            T attribute = method.GetCustomAttribute<T>();
             if (attribute != null)
             {
                 return attribute;
             }
 
-            attribute = parameter.Member.DeclaringType.GetCustomAttribute<T>();
+            attribute = method.DeclaringType.GetCustomAttribute<T>();
             if (attribute != null)
             {
                 return attribute;

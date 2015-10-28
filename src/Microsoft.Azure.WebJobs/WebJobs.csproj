@@ -58,6 +58,7 @@
     <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="BinderExtensions.cs" />
     <Compile Include="DisableAttribute.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IAsyncCollector.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />
     <Compile Include="IBinder.cs" />
@@ -71,6 +72,7 @@
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TimeoutAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Common\PublicKey.snk">

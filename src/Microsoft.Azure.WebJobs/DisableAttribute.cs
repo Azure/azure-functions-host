@@ -9,11 +9,17 @@ namespace Microsoft.Azure.WebJobs
     /// Attribute that can be applied to job functions, trigger parameters and classes
     /// to conditionally disable triggered functions.
     /// <remarks>
+    /// <para>
     /// For example, by using this attribute, you can dynamically disable functions temporarily
     /// by changing application settings. Note that the disable check is done on startup only.
     /// If a <see cref="DisableAttribute"/> in the hierarchy (Parameter/Method/Class) exists and
     /// indicates that the function should be disabled, the listener for that function will not be
     /// started. The attribute only affects triggered functions.
+    /// </para>
+    /// <para>
+    /// Additionally, when running in an Azure Web App, you can set app setting WEBJOBS_STOPPED to 1
+    /// to completely disable the JobHost. In this case the JobHost won't even be started.
+    /// </para>
     /// </remarks>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter)]

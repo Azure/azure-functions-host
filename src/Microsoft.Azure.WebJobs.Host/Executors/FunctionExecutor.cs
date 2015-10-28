@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,12 +23,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionOutputLogger _functionOutputLogger;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly TimeSpan? _functionTimeout;
         private readonly TraceWriter _trace;
 
         private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger, 
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, TraceWriter trace)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, TraceWriter trace, TimeSpan? functionTimeout)
         {
             if (functionInstanceLogger == null)
             {
@@ -52,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _functionOutputLogger = functionOutputLogger;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _trace = trace;
+            _functionTimeout = functionTimeout;
         }
 
         public HostOutputMessage HostOutputMessage
@@ -126,15 +130,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Create the console output writer
             IFunctionOutputDefinition outputDefinition = await _functionOutputLogger.CreateAsync(instance, cancellationToken);
 
+            // Create a linked token source that will allow us to signal function cancellation
+            // (e.g. Based on TimeoutAttribute, etc.)
+            CancellationTokenSource functionCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
             using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand, _backgroundExceptionDispatcher))
+            using (functionCancellationTokenSource)
             {
                 // We create a new composite trace writer that will also forward
                 // output to the function output log (in addition to console, user TraceWriter, etc.).
                 TraceWriter traceWriter = new CompositeTraceWriter(_trace, outputLog.Output);
-                FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, cancellationToken, traceWriter);
 
-                // Must bind before logging (bound invoke string is included in log message).
+                FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, functionCancellationTokenSource.Token, traceWriter);
+
+                // Must bind before logging (bound invoke string is included in log message).             
                 IReadOnlyDictionary<string, IValueProvider> parameters =
                     await instance.BindingSource.BindAsync(new ValueBindingContext(functionContext, cancellationToken));
 
@@ -145,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     try
                     {
-                        await ExecuteWithOutputLogsAsync(instance, parameters, traceWriter, outputDefinition, parameterLogCollector, cancellationToken);
+                        await ExecuteWithOutputLogsAsync(instance, parameters, traceWriter, outputDefinition, parameterLogCollector, functionCancellationTokenSource);
                         exceptionInfo = null;
                     }
                     catch (OperationCanceledException exception)
@@ -187,6 +197,69 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 return startedMessageId;
             }
+        }
+
+        /// <summary>
+        /// If the specified function instance requires a timeout (either via <see cref="TimeoutAttribute"/>
+        /// or because <see cref="JobHostConfiguration.FunctionTimeout"/> has been set, create and start the
+        /// timer.
+        /// </summary>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        internal static System.Timers.Timer StartFunctionTimeout(IFunctionInstance instance, TimeSpan? globalTimeout, CancellationTokenSource cancellationTokenSource, TraceWriter trace)
+        {
+            MethodInfo method = instance.FunctionDescriptor.Method;
+            if (!method.GetParameters().Any(p => p.ParameterType == typeof(CancellationToken)))
+            {
+                // function doesn't bind to the CancellationToken, so no point in setting
+                // up the cancellation timer
+                return null;
+            }
+
+            // first see if there is a Timeout applied to the method or class
+            TimeSpan? timeout = globalTimeout;
+            TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
+            if (timeoutAttribute != null)
+            {
+                timeout = timeoutAttribute.Timeout;
+            }
+
+            if (timeout != null)
+            {
+                // Create a Timer that will cancel the token source when it fires. We're using our
+                // own Timer (rather than CancellationToken.CancelAfter) so we can write a log entry
+                // before cancellation occurs.
+                var timer = new System.Timers.Timer(timeout.Value.TotalMilliseconds)
+                {
+                    AutoReset = false
+                };
+                timer.Elapsed += (o, e) => 
+                {
+                    OnFunctionTimeout(timer, method, instance.Id, timeout.Value, trace, cancellationTokenSource);
+                };
+                timer.Start();
+
+                return timer;
+            }
+
+            return null;
+        }
+
+        internal static void OnFunctionTimeout(System.Timers.Timer timer, MethodInfo method, Guid instanceId, 
+            TimeSpan timeout, TraceWriter trace, CancellationTokenSource cancellationTokenSource)
+        {
+            timer.Stop();
+
+            string message = string.Format(CultureInfo.InvariantCulture,
+                "Timeout value of {0} exceeded by function '{1}.{2}' (Id: '{3}'). Initiating cancellation.",
+                timeout.ToString(), method.DeclaringType.Name, method.Name, instanceId);
+            trace.Error(message, null, TraceSource.Execution);
+
+            trace.Flush();
+
+            // only cancel the token AFTER we've logged our error, since
+            // the Dashboard function output is also tied to this cancellation
+            // token and we don't want to dispose the logger prematurely.
+            cancellationTokenSource.Cancel();
         }
 
         private Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
@@ -240,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             TraceWriter trace,
             IFunctionOutputDefinition outputDefinition,
             IDictionary<string, ParameterLog> parameterLogCollector,
-            CancellationToken cancellationToken)
+            CancellationTokenSource functionCancellationTokenSource)
         {
             IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
@@ -250,15 +323,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 try
                 {
-                    await ExecuteWithWatchersAsync(invoker, parameters, cancellationToken);
-
+                    await ExecuteWithWatchersAsync(instance, parameters, _functionTimeout, trace, functionCancellationTokenSource);
+                    
                     if (updateParameterLogTimer != null)
                     {
                         // Stop the watches after calling IValueBinder.SetValue (it may do things that should show up in
                         // the watches).
                         // Also, IValueBinder.SetValue could also take a long time (flushing large caches), and so it's
                         // useful to have watches still running.
-                        await updateParameterLogTimer.StopAsync(cancellationToken);
+                        await updateParameterLogTimer.StopAsync(functionCancellationTokenSource.Token);
                     }
                 }
                 finally
@@ -286,12 +359,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return watches;
         }
 
-        internal static async Task ExecuteWithWatchersAsync(IFunctionInvoker invoker,
+        internal static async Task ExecuteWithWatchersAsync(IFunctionInstance instance,
             IReadOnlyDictionary<string, IValueProvider> parameters,
-            CancellationToken cancellationToken)
+            TimeSpan? globalFunctionTimeout,
+            TraceWriter traceWriter,
+            CancellationTokenSource functionCancellationTokenSource)
         {
+            IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyList<string> parameterNames = invoker.ParameterNames;
             IDelayedException delayedBindingException;
+
             object[] invokeParameters = PrepareParameters(parameterNames, parameters, out delayedBindingException);
 
             if (delayedBindingException != null)
@@ -305,11 +382,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             SingletonLock singleton = null;
             if (TryGetSingletonLock(parameters, out singleton))
             {
-                await singleton.AcquireAsync(cancellationToken);
+                await singleton.AcquireAsync(functionCancellationTokenSource.Token);
             }
 
-            // Cancellation token is provide by invokeParameters (if the method binds to CancellationToken).
-            await invoker.InvokeAsync(invokeParameters);
+            var timer = StartFunctionTimeout(instance, globalFunctionTimeout, functionCancellationTokenSource, traceWriter);
+            try
+            {
+                await invoker.InvokeAsync(invokeParameters);
+            }
+            finally
+            {
+                if (timer != null)
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                }
+            }
 
             // Process any out parameters and persist any pending values.
             // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
@@ -328,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     try
                     {
                         // This could do complex things that may fail. Catch the exception.
-                        await binder.SetValueAsync(argument, cancellationToken);
+                        await binder.SetValueAsync(argument, functionCancellationTokenSource.Token);
                     }
                     catch (OperationCanceledException)
                     {
@@ -345,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (singleton != null)
             {
-                await singleton.ReleaseAsync(cancellationToken);
+                await singleton.ReleaseAsync(functionCancellationTokenSource.Token);
             }
         }
 

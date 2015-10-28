@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -159,6 +160,14 @@ namespace Microsoft.Azure.WebJobs
                 _serviceBusConnectionStringSet = true;
             }
         }
+
+        /// <summary>
+        /// Gets or sets the timeout that function invocations will be constrained to.
+        /// <see cref="TimeoutAttribute"/> for details. If <see cref="TimeoutAttribute"/>
+        /// is applied to a function or its containing class, that timeout value will override
+        /// this global value.
+        /// </summary>
+        public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>Gets or sets the type locator.</summary>
         public ITypeLocator TypeLocator

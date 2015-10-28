@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (functionExecutor == null)
                 {
-                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace);
+                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace, config.FunctionTimeout);
                 }
 
                 if (functionIndexProvider == null)

@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Task<IFunctionOutputLogger> task = functionOutputLoggerProvider.GetAsync(CancellationToken.None);
             task.Wait();
             IFunctionOutputLogger functionOutputLogger = task.Result;
-            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, new TestTraceWriter(TraceLevel.Verbose));
+            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, new TestTraceWriter(TraceLevel.Verbose), null);
 
             SingletonConfiguration singletonConfig = new SingletonConfiguration();
             TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
