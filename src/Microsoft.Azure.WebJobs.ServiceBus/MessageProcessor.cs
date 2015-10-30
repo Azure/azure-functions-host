@@ -58,7 +58,17 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <returns></returns>
         public virtual async Task CompleteProcessingMessageAsync(BrokeredMessage message, FunctionResult result, CancellationToken cancellationToken)
         {
-            if (!result.Succeeded)
+            if (result.Succeeded)
+            {
+                if (!MessageOptions.AutoComplete)
+                {
+                    // AutoComplete is true by default, but if set to false
+                    // we need to complete the message
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await message.CompleteAsync();
+                }
+            }
+            else
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await message.AbandonAsync();
