@@ -8,21 +8,21 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Base class for trace writers used by the <see cref="JobHost"/> for
-    /// event logging. See <see cref="JobHostConfiguration.Tracing"/> for details.
+    /// event tracing. See <see cref="JobHostConfiguration.Tracing"/> for details.
     /// </summary>
     public abstract class TraceWriter
     {
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="level">The <see cref="TraceLevel"/> used to filter traces.</param>
+        /// <param name="level">The <see cref="TraceLevel"/> used to filter trace events.</param>
         protected TraceWriter(TraceLevel level)
         {
             Level = level;
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="TraceLevel"/> filter used to filter traces.
+        /// Gets or sets the <see cref="TraceLevel"/> filter used to filter trace events.
         /// Only trace events with a <see cref="TraceLevel"/> less than or equal to
         /// this level will be traced.
         /// <remarks>

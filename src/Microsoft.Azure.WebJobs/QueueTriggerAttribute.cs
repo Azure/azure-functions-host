@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Represents an attribute that binds a parameter to an Azure Queue message, causing the method to run when a
+    /// Attribute used to bind a parameter to an Azure Queue message, causing the function to run when a
     /// message is enqueued.
     /// </summary>
     /// <remarks>

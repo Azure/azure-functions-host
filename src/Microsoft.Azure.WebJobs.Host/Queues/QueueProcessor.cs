@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// </summary>
     /// <remarks>
     /// Custom <see cref="QueueProcessor"/> implementations can be registered by implementing
-    /// a custom <see cref="IQueueProcessorFactory"/> and setting it on the <see cref="JobHostQueuesConfiguration"/>.
+    /// a custom <see cref="IQueueProcessorFactory"/> and setting it via <see cref="JobHostQueuesConfiguration.QueueProcessorFactory"/>.
     /// </remarks>
     [CLSCompliant(false)]
     public class QueueProcessor
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         private readonly int _maxDequeueCount;
 
         /// <summary>
-        /// Constructs a new instance
+        /// Constructs a new instance.
         /// </summary>
         /// <param name="context">The factory context.</param>
         public QueueProcessor(QueueProcessorFactoryContext context)
@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             _poisonQueue = context.PoisonQueue;
             _trace = context.Trace;
             _maxDequeueCount = context.MaxDequeueCount;
+
             BatchSize = context.BatchSize;
             NewBatchThreshold = context.NewBatchThreshold;
         }
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         public int BatchSize { get; protected set; }
 
         /// <summary>
-        /// Gets the threshold at which a new batch of messages will be fetched.
+        /// Gets or sets the threshold at which a new batch of messages will be fetched.
         /// </summary>
         public int NewBatchThreshold { get; protected set; }
 

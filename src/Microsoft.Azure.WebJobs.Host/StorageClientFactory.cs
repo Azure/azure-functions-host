@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Factory class for the creation of all Azure Storage clients used by by a <see cref="JobHost"/>.
+    /// Factory class for all Azure Storage clients used by by a <see cref="JobHost"/>.
     /// </summary>
     /// <remarks>
     /// Subclasses can override the various methods to customize client creation.

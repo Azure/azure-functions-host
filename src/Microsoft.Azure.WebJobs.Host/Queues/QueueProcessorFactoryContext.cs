@@ -7,16 +7,16 @@ using Microsoft.WindowsAzure.Storage.Queue;
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     /// <summary>
-    /// Provides context input for <see cref="IQueueProcessorFactory"/>
+    /// Provides context input for <see cref="IQueueProcessorFactory"/>.
     /// </summary>
     [CLSCompliant(false)]
     public class QueueProcessorFactoryContext
     {
         /// <summary>
-        /// Constructs a new instance
+        /// Constructs a new instance.
         /// </summary>
         /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
-        /// <param name="trace">The <see cref="TraceWriter"/> to write to.</param>
+        /// <param name="trace">The <see cref="TraceWriter"/> to trace events to.</param>
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
         public QueueProcessorFactoryContext(CloudQueue queue, TraceWriter trace, CloudQueue poisonQueue = null)         
         {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         }
 
         /// <summary>
-        /// Constructs a new instance
+        /// Constructs a new instance.
         /// </summary>
         /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
         /// <param name="trace">The <see cref="TraceWriter"/> to write to.</param>
@@ -50,20 +50,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="CloudQueue"/> the 
-        /// <see cref="QueueProcessor"/> will operate on.
+        /// Gets the <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.
         /// </summary>
         public CloudQueue Queue { get; private set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="CloudQueue"/> for
-        /// poison messages that the <see cref="QueueProcessor"/> will use.
+        /// Gets the <see cref="CloudQueue"/> for poison messages that the <see cref="QueueProcessor"/> will use.
         /// May be null.
         /// </summary>
         public CloudQueue PoisonQueue { get; private set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="TraceWriter"/>.
+        /// Gets the <see cref="TraceWriter"/>.
         /// </summary>
         public TraceWriter Trace { get; private set; }
 

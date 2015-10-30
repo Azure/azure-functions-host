@@ -8,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Configuration class containing settings related to event tracing.
+    /// <see cref="JobHostConfiguration.Tracing"/>.
     /// </summary>
     public class JobHostTraceConfiguration
     {

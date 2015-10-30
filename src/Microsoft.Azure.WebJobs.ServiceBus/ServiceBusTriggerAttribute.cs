@@ -8,7 +8,7 @@ using Microsoft.ServiceBus.Messaging;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Represents an attribute that binds a parameter to a Service Bus Queue message, causing the method to run when a
+    /// Attribute used to bind a parameter to a ServiceBus Queue message, causing the function to run when a
     /// message is enqueued.
     /// </summary>
     /// <remarks>

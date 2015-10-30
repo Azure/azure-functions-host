@@ -9,7 +9,9 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs
 {
-    /// <summary>Represents an attribute that binds a parameter to an Azure Table or Table entity.</summary>
+    /// <summary>
+    /// Attribute used to bind a parameter to an Azure Table or Table entity.
+    /// </summary>
     /// <remarks>
     /// When only the table name is provided, the attribute binds to a table, and the method parameter type can be one
     /// of the following:

@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         /// <summary>
         /// Gets or sets the <see cref="IQueueProcessorFactory"/> that will be used to create
-        /// <see cref="QueueProcessor"/> instances.
+        /// <see cref="QueueProcessor"/> instances that will be used to process messages.
         /// </summary>
         [CLSCompliant(false)]
         public IQueueProcessorFactory QueueProcessorFactory 

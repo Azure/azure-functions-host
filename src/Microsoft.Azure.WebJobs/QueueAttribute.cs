@@ -8,7 +8,9 @@ using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs
 {
-    /// <summary>Represents an attribute that binds a parameter to an Azure Queue.</summary>
+    /// <summary>
+    /// Attribute used to bind a parameter to an Azure Queue.
+    /// </summary>
     /// <remarks>
     /// The method parameter type can be one of the following:
     /// <list type="bullet">
@@ -17,9 +19,8 @@ namespace Microsoft.Azure.WebJobs
     /// <item><description><see cref="string"/> (out parameter)</description></item>
     /// <item><description><see cref="T:byte[]"/> (out parameter)</description></item>
     /// <item><description>A user-defined type (out parameter, serialized as JSON)</description></item>
-    /// <item><description>
-    /// <see cref="ICollection{T}"/> of these types (to enqueue multiple messages via <see cref="ICollection{T}.Add"/>
-    /// </description></item>
+    /// <item><description><see cref="ICollector{T}"/> of these types (to enqueue multiple messages via <see cref="ICollector{T}.Add"/></description></item>
+    /// <item><description><see cref="IAsyncCollector{T}"/> of these types (to enqueue multiple messages via <see cref="IAsyncCollector{T}.AddAsync(T, System.Threading.CancellationToken)"/></description></item>
     /// </list>
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]

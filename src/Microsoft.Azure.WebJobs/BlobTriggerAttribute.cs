@@ -8,7 +8,7 @@ using System.IO;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Represents an attribute that binds a parameter to an Azure Blob, causing the method to run when a blob is
+    /// Attribute used to bind a parameter to an Azure Blob, causing the method to run when a blob is
     /// uploaded.
     /// </summary>
     /// <remarks>

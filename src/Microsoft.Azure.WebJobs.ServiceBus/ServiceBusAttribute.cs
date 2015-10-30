@@ -8,7 +8,9 @@ using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
 {
-    /// <summary>Binds to Azure Service Bus Queues and Topics.</summary>
+    /// <summary>
+    /// Attribute used to bind a parameter to Azure ServiceBus Queues and Topics.
+    /// </summary>
     /// <remarks>
     /// The method parameter type can be one of the following:
     /// <list type="bullet">

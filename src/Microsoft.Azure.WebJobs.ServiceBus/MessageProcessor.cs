@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// </summary>
     /// <remarks>
     /// Custom <see cref="MessageProcessor"/> implementations can be specified by implementing
-    /// a custom <see cref="MessagingProvider"/> and setting it on the <see cref="ServiceBusConfiguration"/>.
+    /// a custom <see cref="MessagingProvider"/> and setting it via <see cref="ServiceBusConfiguration.MessagingProvider"/>.
     /// </remarks>
     public class MessageProcessor
     {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// </summary>
         /// <param name="message">The message to process.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use.</param>
-        /// <returns>True if the message processing should continue, false otherwise.</returns>
+        /// <returns>A <see cref="Task"/> that returns true if the message processing should continue, false otherwise.</returns>
         public virtual async Task<bool> BeginProcessingMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
         {
             return await Task.FromResult<bool>(true);
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="message">The message to complete processing for.</param>
         /// <param name="result">The <see cref="FunctionResult"/> from the job invocation.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use</param>
-        /// <returns></returns>
+        /// <returns>A <see cref="Task"/> that will complete the message processing.</returns>
         public virtual async Task CompleteProcessingMessageAsync(BrokeredMessage message, FunctionResult result, CancellationToken cancellationToken)
         {
             if (result.Succeeded)
