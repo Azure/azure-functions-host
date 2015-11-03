@@ -25,7 +25,7 @@
         "System.Linq": "4.0.0-beta-23019",
         "System.Threading": "4.0.10-beta-23019",
         "Microsoft.CSharp": "4.0.0-beta-23019",
-        "Microsoft.Azure.WebJobs.Script": "1.0.0-*"
+        "Microsoft.Azure.WebJobs.Script": "0.0.1-alpha1-*"
       }
     }
   }
