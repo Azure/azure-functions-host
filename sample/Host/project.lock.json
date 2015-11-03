@@ -4,6 +4,7 @@
   "targets": {
     "DNX,Version=v4.5.1": {
       "Autofac/3.5.0": {
+        "type": "package",
         "compile": {
           "lib/net40/Autofac.dll": {}
         },
@@ -12,6 +13,7 @@
         }
       },
       "Autofac.WebApi2/3.4.0": {
+        "type": "package",
         "dependencies": {
           "Autofac": "[3.5.0, 4.0.0)",
           "Microsoft.AspNet.WebApi.Core": "[5.2.0, 6.0.0)"
@@ -24,6 +26,7 @@
         }
       },
       "EntityFramework/6.1.3": {
+        "type": "package",
         "frameworkAssemblies": [
           "System.ComponentModel.DataAnnotations"
         ],
@@ -37,6 +40,7 @@
         }
       },
       "FSharp.Core/3.1.2.5": {
+        "type": "package",
         "compile": {
           "lib/net40/FSharp.Core.dll": {}
         },
@@ -45,6 +49,7 @@
         }
       },
       "FsPickler/1.2.5": {
+        "type": "package",
         "frameworkAssemblies": [
           "System.Runtime.Serialization",
           "System.Xml"
@@ -57,6 +62,7 @@
         }
       },
       "Microsoft.AspNet.WebApi.Client/5.2.3": {
+        "type": "package",
         "dependencies": {
           "Newtonsoft.Json": "6.0.4"
         },
@@ -71,6 +77,7 @@
         }
       },
       "Microsoft.AspNet.WebApi.Core/5.2.3": {
+        "type": "package",
         "dependencies": {
           "Microsoft.AspNet.WebApi.Client": "5.2.3"
         },
@@ -82,6 +89,7 @@
         }
       },
       "Microsoft.AspNet.WebHooks.Common/1.2.0-beta3a": {
+        "type": "package",
         "dependencies": {
           "Microsoft.AspNet.WebApi.Core": "5.2.2"
         },
@@ -93,6 +101,7 @@
         }
       },
       "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3a": {
+        "type": "package",
         "dependencies": {
           "Microsoft.AspNet.WebApi.Core": "5.2.2",
           "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a"
@@ -105,6 +114,7 @@
         }
       },
       "Microsoft.Azure.WebJobs/1.1.0-rc1": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Azure.WebJobs.Core": "[1.1.0-rc1]",
           "Newtonsoft.Json": "6.0.8",
@@ -118,6 +128,7 @@
         }
       },
       "Microsoft.Azure.WebJobs.Core/1.1.0-rc1": {
+        "type": "package",
         "compile": {
           "lib/net45/Microsoft.Azure.WebJobs.dll": {}
         },
@@ -126,6 +137,7 @@
         }
       },
       "Microsoft.Azure.WebJobs.Extensions/1.0.0-rc1": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Azure.WebJobs": "1.1.0-rc1",
           "Microsoft.Tpl.Dataflow": "4.5.24",
@@ -139,6 +151,7 @@
         }
       },
       "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-rc1": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-rc1]",
           "Sendgrid": "6.1.0"
@@ -151,6 +164,7 @@
         }
       },
       "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta2": {
+        "type": "package",
         "dependencies": {
           "Autofac.WebApi2": "3.4.0",
           "Microsoft.AspNet.WebApi.Client": "5.2.3",
@@ -166,7 +180,41 @@
           "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
         }
       },
+      "Microsoft.Azure.WebJobs.Script/1.0.0": {
+        "type": "project",
+        "dependencies": {
+          "Autofac": "3.5.0",
+          "Autofac.WebApi2": "3.4.0",
+          "FSharp.Core": "3.1.2.5",
+          "FsPickler": "1.2.5",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3a",
+          "Microsoft.Azure.WebJobs": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Core": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.SendGrid": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.WebHooks": "1.0.0-beta2",
+          "Microsoft.Azure.WebJobs.ServiceBus": "1.1.0-rc1",
+          "Microsoft.Data.Edm": "5.6.2",
+          "Microsoft.Data.OData": "5.6.2",
+          "Microsoft.Data.Services.Client": "5.6.2",
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+          "ncrontab": "2.0.0",
+          "Newtonsoft.Json": "6.0.8",
+          "Sendgrid": "6.1.0",
+          "SendGrid.SmtpApi": "1.3.1",
+          "Suave": "0.31.2",
+          "SuaveServerWrapper": "0.0.2",
+          "System.Spatial": "5.6.2",
+          "WindowsAzure.ServiceBus": "2.7.6",
+          "WindowsAzure.Storage": "4.3.0"
+        }
+      },
       "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-rc1": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Azure.WebJobs": "[1.1.0-rc1]",
           "Newtonsoft.Json": "6.0.8",
@@ -180,6 +228,7 @@
         }
       },
       "Microsoft.CSharp/4.0.0-beta-23019": {
+        "type": "package",
         "frameworkAssemblies": [
           "Microsoft.CSharp"
         ],
@@ -191,6 +240,7 @@
         }
       },
       "Microsoft.Data.Edm/5.6.2": {
+        "type": "package",
         "compile": {
           "lib/net40/Microsoft.Data.Edm.dll": {}
         },
@@ -228,6 +278,7 @@
         }
       },
       "Microsoft.Data.OData/5.6.2": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Data.Edm": "[5.6.2]",
           "System.Spatial": "[5.6.2]"
@@ -269,6 +320,7 @@
         }
       },
       "Microsoft.Data.Services.Client/5.6.2": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Data.OData": "[5.6.2]"
         },
@@ -309,6 +361,7 @@
         }
       },
       "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
+        "type": "package",
         "frameworkAssemblies": [
           "Microsoft.CSharp",
           "mscorlib",
@@ -323,6 +376,7 @@
         }
       },
       "Microsoft.Tpl.Dataflow/4.5.24": {
+        "type": "package",
         "compile": {
           "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
         },
@@ -331,6 +385,7 @@
         }
       },
       "Microsoft.WindowsAzure.ConfigurationManager/1.8.0.0": {
+        "type": "package",
         "compile": {
           "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll": {}
         },
@@ -339,6 +394,7 @@
         }
       },
       "ncrontab/2.0.0": {
+        "type": "package",
         "compile": {
           "lib/net20/NCrontab.dll": {}
         },
@@ -347,6 +403,7 @@
         }
       },
       "Newtonsoft.Json/6.0.8": {
+        "type": "package",
         "compile": {
           "lib/net45/Newtonsoft.Json.dll": {}
         },
@@ -355,6 +412,7 @@
         }
       },
       "Sendgrid/6.1.0": {
+        "type": "package",
         "dependencies": {
           "SendGrid.SmtpApi": "1.3.1"
         },
@@ -366,6 +424,7 @@
         }
       },
       "SendGrid.SmtpApi/1.3.1": {
+        "type": "package",
         "compile": {
           "lib/net40/SendGrid.SmtpApi.dll": {}
         },
@@ -374,6 +433,7 @@
         }
       },
       "Suave/0.31.2": {
+        "type": "package",
         "dependencies": {
           "FSharp.Core": "3.1.2.5",
           "FsPickler": "1.2.5"
@@ -386,6 +446,7 @@
         }
       },
       "SuaveServerWrapper/0.0.2": {
+        "type": "package",
         "dependencies": {
           "Suave": "0.31.2"
         },
@@ -397,6 +458,7 @@
         }
       },
       "System.Collections/4.0.10-beta-23019": {
+        "type": "package",
         "dependencies": {
           "System.Runtime": "4.0.0-beta-23019"
         },
@@ -405,6 +467,7 @@
         }
       },
       "System.Linq/4.0.0-beta-23019": {
+        "type": "package",
         "compile": {
           "ref/net45/_._": {}
         },
@@ -413,6 +476,7 @@
         }
       },
       "System.Runtime/4.0.0-beta-23019": {
+        "type": "package",
         "compile": {
           "ref/net45/_._": {}
         },
@@ -421,6 +485,7 @@
         }
       },
       "System.Spatial/5.6.2": {
+        "type": "package",
         "compile": {
           "lib/net40/System.Spatial.dll": {}
         },
@@ -458,6 +523,7 @@
         }
       },
       "System.Threading/4.0.10-beta-23019": {
+        "type": "package",
         "dependencies": {
           "System.Runtime": "4.0.0-beta-23019",
           "System.Threading.Tasks": "4.0.0-beta-23019"
@@ -467,6 +533,7 @@
         }
       },
       "System.Threading.Tasks/4.0.0-beta-23019": {
+        "type": "package",
         "compile": {
           "ref/net45/_._": {}
         },
@@ -475,6 +542,7 @@
         }
       },
       "WindowsAzure.ServiceBus/2.7.6": {
+        "type": "package",
         "dependencies": {
           "Microsoft.WindowsAzure.ConfigurationManager": null
         },
@@ -491,6 +559,7 @@
         }
       },
       "WindowsAzure.Storage/4.3.0": {
+        "type": "package",
         "dependencies": {
           "Microsoft.Data.OData": "5.6.2",
           "Microsoft.Data.Services.Client": "5.6.2",
@@ -512,7 +581,12 @@
     }
   },
   "libraries": {
+    "Microsoft.Azure.WebJobs.Script/1.0.0": {
+      "type": "project",
+      "path": "../../wrap/Microsoft.Azure.WebJobs.Script/project.json"
+    },
     "Autofac/3.5.0": {
+      "type": "package",
       "sha512": "ge1fziLkxQhFEBreAaQlFiIVzpL32rSnpInJCJAmfFnHO6ab0VcW+0nzeZWY8WaSkDFcg6KNxB9v4Tp2icnXSg==",
       "files": [
         "Autofac.3.5.0.nupkg",
@@ -525,6 +599,7 @@
       ]
     },
     "Autofac.WebApi2/3.4.0": {
+      "type": "package",
       "sha512": "1/cKBk207OsCssgxpaIIMB/4xxCtRUykqQdPuKFTwLS/RZ+oJJ7E0CB/w1QLtJtNO2P9zoecAuCbCUV25Nn2RA==",
       "files": [
         "Autofac.WebApi2.3.4.0.nupkg",
@@ -535,6 +610,7 @@
       ]
     },
     "EntityFramework/6.1.3": {
+      "type": "package",
       "serviceable": true,
       "sha512": "2xzFHAF3VVdmTR3//MygtQpwfbDjeaq+nQwCcokLzen7MKHOojPaxNPQPa4diHY1QtcR7zlHAJHNRqPB7W2Syw==",
       "files": [
@@ -562,6 +638,7 @@
       ]
     },
     "FSharp.Core/3.1.2.5": {
+      "type": "package",
       "sha512": "1V9wPWZuLgewzk01tc5wRyGrmdOI+Lc9/MsAeMXFffjjGA1Ydv5KU2mnWLz+O6TcHeACwK0M3yHbb/we233vvg==",
       "files": [
         "FSharp.Core.3.1.2.5.nupkg",
@@ -598,6 +675,7 @@
       ]
     },
     "FsPickler/1.2.5": {
+      "type": "package",
       "sha512": "fR5fgBjepQcQYFyKV545/cNgLfRWlqs8ajmIgPTORfeDN+fUpY+3jm9ijuPbkIkNFtgNOEHtXOjZh0SB8zaAcA==",
       "files": [
         "FsPickler.1.2.5.nupkg",
@@ -612,6 +690,7 @@
       ]
     },
     "Microsoft.AspNet.WebApi.Client/5.2.3": {
+      "type": "package",
       "serviceable": true,
       "sha512": "3kiI8peSXbXHDDrRuo+QaX0iCEVRe0nvn2dBDRw656uPX32UalbBlSIDUDlJxu05eau4tnuhsikiUuugvvoUoQ==",
       "files": [
@@ -625,6 +704,7 @@
       ]
     },
     "Microsoft.AspNet.WebApi.Core/5.2.3": {
+      "type": "package",
       "serviceable": true,
       "sha512": "o90QYlRV8VKR1S7+EcJw9w8WSyVFLl+IIzN8ILZ+n2t6rsc/KS8kBxRzA7wCFPRUHhebCfLqilBk39phvanx3g==",
       "files": [
@@ -637,6 +717,7 @@
       ]
     },
     "Microsoft.AspNet.WebHooks.Common/1.2.0-beta3a": {
+      "type": "package",
       "serviceable": true,
       "sha512": "2VGlKG2uq22BsVsN+3lvKLglq/ZHWJGl+5HdQ9vmEfaOXONTIQcd87RvdjAkRGujD2a6litZGZdWsiwmX7juhA==",
       "files": [
@@ -649,6 +730,7 @@
       ]
     },
     "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3a": {
+      "type": "package",
       "serviceable": true,
       "sha512": "nWkOJxIuopX8uWWjUWQ9Cb2VdX0EtDxbqdEb42i2DqJ3tFUbEjjRumFVAQHZPGrXf9Y9xYGD67WbWM0ihNipSA==",
       "files": [
@@ -661,6 +743,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs/1.1.0-rc1": {
+      "type": "package",
       "serviceable": true,
       "sha512": "PuQ1q+PUlmPbRKUuy/UNFPvHxfDBnbfgsslqyCXsWqVg8hCQxAycrDzdh4LyuB1ud2z+RR7hOaS26q3esIDMBw==",
       "files": [
@@ -672,6 +755,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs.Core/1.1.0-rc1": {
+      "type": "package",
       "serviceable": true,
       "sha512": "MHhD3C0xnnS7Iay/mvflDr5voPmpkgDwFXPT6qvTay4wv6ZzD5MsFo0wcCERMd28TJhokO9B4/KbeH4+NyrAKA==",
       "files": [
@@ -683,6 +767,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs.Extensions/1.0.0-rc1": {
+      "type": "package",
       "sha512": "qc1whnA/myC4objI1wN3gYnvMmwU228PlyPgkmmI50WNWuleicdE4cYVvgtvJsQDWpB6kcZgiT73gTMRiQs5PA==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll",
@@ -693,6 +778,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-rc1": {
+      "type": "package",
       "sha512": "qO9ahi8iQQ+VyasaC9lGecCb1jJmmUBC8p8lHiEpihZlPaP2BhuryKfEpC+yCy5GlfI3OSJhnE4AMhbO45nQ1w==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll",
@@ -703,6 +789,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta2": {
+      "type": "package",
       "sha512": "bN1jF/rjelFi3DXC0riUEUkXNtc9ayGRBcX71BVmpjle42Wisz2ptmblnAktki0iYcntbUtaZKmy/RJgkeYbGA==",
       "files": [
         "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll",
@@ -713,6 +800,7 @@
       ]
     },
     "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-rc1": {
+      "type": "package",
       "serviceable": true,
       "sha512": "v1bC4cX2cLGPsV4qyr/d3zALTEaA1RpTIe3pXD/Vu88qmWbmwsY6mdnW9kJGka3EE/dpGkovlhWPlbG3Jv1iug==",
       "files": [
@@ -724,6 +812,7 @@
       ]
     },
     "Microsoft.CSharp/4.0.0-beta-23019": {
+      "type": "package",
       "sha512": "TsYR8ylpBw89cxCTzA9eD8wqLR5u4TnNvUCLU7Qt9TlbxmNM0jPaz80L4N+W81kEoOpchlckGGCTA4JVemmEVA==",
       "files": [
         "lib/dotnet/Microsoft.CSharp.dll",
@@ -740,6 +829,7 @@
       ]
     },
     "Microsoft.Data.Edm/5.6.2": {
+      "type": "package",
       "sha512": "jWP4yPWTgMS1I0J73iIvPXRo4wzsqKKKGOyeh3xOEu6m4/t/hWLgd3UsmQmB0ycvHF6ru6J2mDlv+C41xaw0lw==",
       "files": [
         "lib/net40/de/Microsoft.Data.Edm.resources.dll",
@@ -781,6 +871,7 @@
       ]
     },
     "Microsoft.Data.OData/5.6.2": {
+      "type": "package",
       "sha512": "Sa+lHW0AOE5GqJJJc1GiGYFLupBXc0WwOcnCHccS8PQl6xuMCfNMdM08opzG97zuihPVNkx8aznS/X2xGieMUA==",
       "files": [
         "lib/net40/de/Microsoft.Data.OData.resources.dll",
@@ -822,6 +913,7 @@
       ]
     },
     "Microsoft.Data.Services.Client/5.6.2": {
+      "type": "package",
       "sha512": "IUofwHAdPGP/NauOaZUcnNGtg9GXWUOEVhlHHIwKWA1wSQmcmUbvCLZ83+ocQqSiK9IOyJrFhOclU3PoKwg0Ew==",
       "files": [
         "lib/net40/de/Microsoft.Data.Services.Client.resources.dll",
@@ -863,6 +955,7 @@
       ]
     },
     "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
+      "type": "package",
       "serviceable": true,
       "sha512": "w4Cwg6jgPd3XFGOgBGU3GVGVAwUcMglSDTlI23M8uI7yhDRSDbxZ2HPbjTEBMoj+IYdkfunZWFdA67tdk8L8Tg==",
       "files": [
@@ -876,6 +969,7 @@
       ]
     },
     "Microsoft.Tpl.Dataflow/4.5.24": {
+      "type": "package",
       "serviceable": true,
       "sha512": "6BE4Vu74+dkv5AkJd+UxW1sFMepMZOVlUoMZDUKqhc4Bf7pe7yySzCj6QrowUZbCqcDPwOiQsAgz3nXiLQSyMw==",
       "files": [
@@ -890,6 +984,7 @@
       ]
     },
     "Microsoft.WindowsAzure.ConfigurationManager/1.8.0.0": {
+      "type": "package",
       "sha512": "a6b+9C3kZ3YtyqlxDfMSEYnqARFpr/BQcCqZFCgqBAEHDUZNr2/GOL9gC2gialM0SMOSJ5PXic4NirF19HtMwQ==",
       "files": [
         "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll",
@@ -899,6 +994,7 @@
       ]
     },
     "ncrontab/2.0.0": {
+      "type": "package",
       "sha512": "vM5me4GCgQ9kXA4EBP7QfEl2vJ5VSyjYf7IesbjWWLz2UmXSNuxxXnUWWDRYACIbkEHrdGxleB47iPz38Evw0g==",
       "files": [
         "COPYING.txt",
@@ -909,6 +1005,7 @@
       ]
     },
     "Newtonsoft.Json/6.0.8": {
+      "type": "package",
       "sha512": "7ut47NDedTW19EbL0JpFDYUP62fcuz27hJrehCDNajdCS5NtqL+E39+7Um3OkNc2wl2ym7K8Ln5eNuLus6mVGQ==",
       "files": [
         "lib/net20/Newtonsoft.Json.dll",
@@ -932,6 +1029,7 @@
       ]
     },
     "Sendgrid/6.1.0": {
+      "type": "package",
       "sha512": "FYJu0QIddaAfD67T37ywZqB8mdNGEjLz/m8iLTKE1b0SWwzJaJ4xLLCj+vNZ/1kVaVneENHn8zmiv06qQQD/Vw==",
       "files": [
         "lib/SendGridMail.dll",
@@ -941,6 +1039,7 @@
       ]
     },
     "SendGrid.SmtpApi/1.3.1": {
+      "type": "package",
       "sha512": "SxBvvuwGnGpNd88Y70edON4idaNk9wLi7n9gokpHcImjZM+5Z4CFpjvf/1N3D1ZkuFKacXAoNnyYFvFfgeNtDg==",
       "files": [
         "lib/net40/SendGrid.SmtpApi.dll",
@@ -951,6 +1050,7 @@
       ]
     },
     "Suave/0.31.2": {
+      "type": "package",
       "sha512": "UoG9Ys+wrh0tHzsP5bdh6TPAaiNildfWXLoa4KNTXJIYkOAns3mCPKIfPTeu4aNRWLxFIu0CmbCZ0BR83LbIVg==",
       "files": [
         "lib/net40/Suave.dll",
@@ -962,6 +1062,7 @@
       ]
     },
     "SuaveServerWrapper/0.0.2": {
+      "type": "package",
       "sha512": "RoPbmWzVTD43U+p8KT8VE/B/WQp/UivDCA8UMkpyexZ9sEhJ/jsjWuuPxlHhn8HiPvQIf8ymu7XD0xgqILDKqQ==",
       "files": [
         "lib/net45/SuaveServerWrapper.dll",
@@ -971,6 +1072,7 @@
       ]
     },
     "System.Collections/4.0.10-beta-23019": {
+      "type": "package",
       "sha512": "76/FZ9wYhhU6wdNwrB3NiVJ5lpLZnLhS3dbLCOXOSf8NN3KXPrlcm5f2PUeHSJxgu5nP2H8lGLfshIaWq2qSNQ==",
       "files": [
         "lib/DNXCore50/System.Collections.dll",
@@ -985,6 +1087,7 @@
       ]
     },
     "System.Linq/4.0.0-beta-23019": {
+      "type": "package",
       "sha512": "kw6QeVsZWOKdonnArSWFerSyXCsr2LmGqT9Z2W7HFf7yN09o6O8YLfIALlFnhD4CXgJZYC8ebgMPC6uK9IZfOQ==",
       "files": [
         "lib/dotnet/System.Linq.dll",
@@ -1001,6 +1104,7 @@
       ]
     },
     "System.Runtime/4.0.0-beta-23019": {
+      "type": "package",
       "sha512": "BUB/5CSzjDRQlifthFztT1eWmnnb2QCK2WKd0kxAt8ytB+2oXiVqpSvcbtzRsidp8wGdG51fyolfiznodSIX9A==",
       "files": [
         "lib/net45/_._",
@@ -1016,6 +1120,7 @@
       ]
     },
     "System.Spatial/5.6.2": {
+      "type": "package",
       "sha512": "1uQgiOxpRXWZnPt0uRjAaQ71J5oVz/v88wBcDLlJGZh7QPAnmGQxOe8Fc6WYVWprOXipTTdpMAaPjGTfrRFQ8g==",
       "files": [
         "lib/net40/de/System.Spatial.resources.dll",
@@ -1057,6 +1162,7 @@
       ]
     },
     "System.Threading/4.0.10-beta-23019": {
+      "type": "package",
       "sha512": "xJYu7J22Fc4G7pfUlPBYuRj4Rla0VkaqU77SW2DyT/oMq1KQmmR7oQnQ7yq/yig0St17I7rYZYBbSrNbe1l5+g==",
       "files": [
         "lib/DNXCore50/System.Threading.dll",
@@ -1071,6 +1177,7 @@
       ]
     },
     "System.Threading.Tasks/4.0.0-beta-23019": {
+      "type": "package",
       "sha512": "frcOMzzaVN9AHhlJRLKOqm9WHws2byLa+CDFUZIQzUWqrpubH0CDtNj1je5lJpD1QDwJBmnXepKUXCwt/wt9Ew==",
       "files": [
         "lib/net45/_._",
@@ -1086,6 +1193,7 @@
       ]
     },
     "WindowsAzure.ServiceBus/2.7.6": {
+      "type": "package",
       "sha512": "UBv4/92XhWh8vAm4hih2xBUSuBtWxQV3H4IXoALImmu8B3OK32CAj7JCXTVzg43jdvRJxibwSBd+5HcRwH9JnQ==",
       "files": [
         "content/app.config.install.xdt",
@@ -1098,6 +1206,7 @@
       ]
     },
     "WindowsAzure.Storage/4.3.0": {
+      "type": "package",
       "sha512": "7IQiKZKSNHK+cZzEZohOsFDezxrhyBrNoDl8ZQJPdPnitEbjJaq2LXv01iVe6PRBTZE23bKNUWLtH+dXQfbbuQ==",
       "files": [
         "lib/net40/Microsoft.WindowsAzure.Storage.dll",
