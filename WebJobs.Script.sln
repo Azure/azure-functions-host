@@ -19,6 +19,8 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Host", "sample\Host\Host.xp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Packages.csproj", "{34AB8F63-18DE-4E0D-B21C-15E33B091634}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -55,5 +61,6 @@ Global
 		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{142A138E-3932-4FCE-AF4D-4787FF40335F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), WebJobs.Script.sln))\tools\NuGetProj.settings.targets"/>
+  <PropertyGroup>
+    <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
+    <NuGetPackageId>Microsoft.Azure.WebJobs.Script</NuGetPackageId>
+    <NuGetPackageVersion>$(WebJobsPackageVersion)</NuGetPackageVersion>
+    <NuGetPackSymbols>false</NuGetPackSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
+      <Project>{E6F59990-F3A1-469F-A9D8-6D529121D385}</Project>
+      <Name>WebJobs.Script</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <NuGetContent Include="$(WebJobsRootPath)\src\WebJobs.Script\bin\$(Configuration)\Microsoft.Azure.WebJobs.Script.dll">
+      <Destination>lib\net451\Microsoft.Azure.WebJobs.Script.dll</Destination>
+    </NuGetContent>
+    <!--<NuGetContent Include="$(WebJobsRootPath)\src\WebJobs.Script\bin\$(Configuration)\Microsoft.Azure.WebJobs.Script.xml">
+      <Destination>lib\net451\Microsoft.Azure.WebJobs.Script.xml</Destination>
+    </NuGetContent>-->
+  </ItemGroup>
+  <Import Project="$(WebJobsToolsPath)NuGetProj.targets"/>
+  <Target Name="BeforeBuild">
+    <PropertyGroup>
+      <!-- Define properties you want to use inside your nuspec file. -->
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(WebJobsPackageEULA);WebJobsPackageVersion=$(WebJobsPackageVersion)</NuSpecProperties>
+    </PropertyGroup>
+  </Target>
+</Project>

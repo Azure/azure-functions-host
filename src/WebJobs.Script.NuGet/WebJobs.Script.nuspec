@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>$NuGetPackageId$</id>
+    <title>Microsoft.Azure.WebJobs.Script</title>
+    <version>$NuGetPackageVersion$</version>
+    <authors>Microsoft</authors>
+    <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
+    <summary>Microsoft.Azure.WebJobs.Script enables a multi-language scripting model for the WebJobs SDK.</summary>
+    <description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Script. For more information, please visit http://github.com/Azure/azure-webjobs-sdk-script</description>
+    <language>en-US</language>
+    <projectUrl>https://azure.microsoft.com/en-us/documentation/articles/websites-webjobs-resources</projectUrl>
+    <licenseUrl>$PackageEULA$</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <tags>Microsoft Azure WebJobs Jobs Script Node.js CSharp DNX</tags>
+    <dependencies>
+      <dependency id="Microsoft.Azure.WebJobs" version="1.1.0-rc1" />
+      <dependency id="ncrontab" version="2.0.0" />
+      <dependency id="Microsoft.Tpl.Dataflow" version="4.5.24" />
+    </dependencies>
+  </metadata>
+</package>
