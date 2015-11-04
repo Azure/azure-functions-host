@@ -130,7 +130,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
             string schedule = (string)trigger["schedule"];
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { schedule });
+            bool runOnStartup = false;
+            JToken token = null;
+            if (trigger.TryGetValue("runOnStartup", out token))
+            {
+                runOnStartup = token.Value<bool>();
+            }
+            PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, 
+                new object[] { schedule }, 
+                new PropertyInfo[] { runOnStartupProperty }, 
+                new object[] { runOnStartup });
 
             string parameterName = (string)trigger["name"];
             ParameterDescriptor triggerParameter = new ParameterDescriptor

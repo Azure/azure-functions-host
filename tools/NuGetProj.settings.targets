@@ -7,7 +7,7 @@
     <Version>0.0.1</Version>
     <PrereleaseTag>-alpha1</PrereleaseTag>
     <IncludeBuildNumberInVersion>1</IncludeBuildNumberInVersion>
-    <BUILD_NUMBER>10003</BUILD_NUMBER>
+    <BUILD_NUMBER>10004</BUILD_NUMBER>
   </PropertyGroup>
   <Choose>
     <When Condition=" '$(IncludeBuildNumberInVersion)' == '1'">
