@@ -5,6 +5,9 @@
     },
     "tracing": {
       "consoleLevel": "Verbose"
+    },
+    "singleton": {
+      "listenerLockPeriod":  "00:00:15"
     }
   },
   "functions": [

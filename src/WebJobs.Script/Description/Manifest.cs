@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Extensions.WebHooks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -92,6 +93,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (configSection.TryGetValue("newBatchThreshold", out value))
                 {
                     config.Queues.NewBatchThreshold = (int)value;
+                }
+            }
+
+            // Apply ServiceBus configuration
+            configSection = (JObject)Configuration["singleton"];
+            value = null;
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("listenerLockPeriod", out value))
+                {
+                    config.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value);
                 }
             }
 
