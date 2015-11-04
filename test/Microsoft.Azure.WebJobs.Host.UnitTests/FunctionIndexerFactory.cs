@@ -51,9 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
 
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
-            var task = outputLoggerProvider.GetAsync(CancellationToken.None);
-            task.Wait();
-            IFunctionOutputLogger outputLogger = task.Result;
+            IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
             IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, new TestTraceWriter(TraceLevel.Verbose), null);
 
             if (extensionRegistry == null)

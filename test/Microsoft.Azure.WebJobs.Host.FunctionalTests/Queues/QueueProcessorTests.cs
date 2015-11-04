@@ -123,7 +123,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
                 DefaultStorageAccountProvider accountProvider = new DefaultStorageAccountProvider(services.Object);
                 var task = accountProvider.GetStorageAccountAsync(CancellationToken.None);
-                task.Wait();
                 IStorageQueueClient client = task.Result.CreateQueueClient();
                 QueueClient = client.SdkObject;
 

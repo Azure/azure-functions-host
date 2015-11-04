@@ -188,22 +188,22 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 {
                     if (triggerBinding != null && !hasNoAutomaticTriggerAttribute)
                     {
-                        throw new InvalidOperationException(string.Format("Cannot bind parameter '{0}' when using this trigger.", parameter.Name));
+                        throw new InvalidOperationException(
+                            string.Format(Resource.UnableToBindParameterFormat, 
+                            parameter.Name, parameter.ParameterType.Name, Resource.ExtensionInitializationMessage));
                     }
                     else
                     {
                         // Host.Call-only parameter
-                        string parameterName = parameter.Name;
-                        Type parameterType = parameter.ParameterType;
-
-                        binding = InvokeBinding.Create(parameterName, parameterType);
-
+                        binding = InvokeBinding.Create(parameter.Name, parameter.ParameterType);
                         if (binding == null && invalidInvokeBindingException == null)
                         {
                             // This function might not have any attribute, in which case we shouldn't throw an
                             // exception when we can't bind it. Instead, save this exception for later once we determine
                             // whether or not it is an SDK function.
-                            invalidInvokeBindingException = new InvalidOperationException(string.Format("Cannot bind parameter '{0}' to type {1}.", parameterName, parameterType.Name));
+                            invalidInvokeBindingException = new InvalidOperationException(
+                                string.Format(Resource.UnableToBindParameterFormat,
+                                parameter.Name, parameter.ParameterType, Resource.ExtensionInitializationMessage));
                         }
                     }
                 }

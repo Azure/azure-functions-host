@@ -245,7 +245,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (descriptorsCount == 0)
                 {
-                    trace.Warning("No functions found. Try making job classes and methods public.", TraceSource.Indexing);
+                    trace.Warning(string.Format("No job functions found. Try making your job classes and methods public. {0}", 
+                        Resource.ExtensionInitializationMessage), TraceSource.Indexing);
                 }
                 else
                 {

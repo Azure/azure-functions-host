@@ -108,7 +108,6 @@ namespace Microsoft.Azure.WebJobs.Host
                     {
                         // periodically determine and log the current owner
                         Task<string> task = _singletonLock.GetOwnerAsync(CancellationToken.None);
-                        task.Wait();
                         _log.LockOwner = task.Result;
 
                         _lastOwnerCheck = DateTime.UtcNow;

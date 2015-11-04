@@ -60,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             {
                 CancellationToken token = new CancellationToken();
                 Task<IStorageAccount> task = accountProvider.GetStorageAccountAsync(token);
-                task.Wait();
                 _storageAccount = task.Result;
             }
 
