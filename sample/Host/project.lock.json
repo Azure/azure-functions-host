@@ -384,13 +384,13 @@
           "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
         }
       },
-      "Microsoft.WindowsAzure.ConfigurationManager/1.8.0.0": {
+      "Microsoft.WindowsAzure.ConfigurationManager/2.0.3": {
         "type": "package",
         "compile": {
-          "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll": {}
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
         },
         "runtime": {
-          "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll": {}
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
         }
       },
       "ncrontab/2.0.0": {
@@ -983,13 +983,14 @@
         "Microsoft.Tpl.Dataflow.nuspec"
       ]
     },
-    "Microsoft.WindowsAzure.ConfigurationManager/1.8.0.0": {
+    "Microsoft.WindowsAzure.ConfigurationManager/2.0.3": {
       "type": "package",
-      "sha512": "a6b+9C3kZ3YtyqlxDfMSEYnqARFpr/BQcCqZFCgqBAEHDUZNr2/GOL9gC2gialM0SMOSJ5PXic4NirF19HtMwQ==",
+      "sha512": "eDGJg2SMh+csgvzGxg3l7yeWSKc2ZdBz1i6RHm8k5iaZ40EcJMH2OX1/QcUD3w3E4kDwOx4kzic8yluqsjGt/Q==",
       "files": [
-        "lib/net35-full/Microsoft.WindowsAzure.Configuration.dll",
-        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.nupkg",
-        "Microsoft.WindowsAzure.ConfigurationManager.1.8.0.nupkg.sha512",
+        "lib/net40/Microsoft.WindowsAzure.Configuration.dll",
+        "lib/net40/Microsoft.WindowsAzure.Configuration.xml",
+        "Microsoft.WindowsAzure.ConfigurationManager.2.0.3.nupkg",
+        "Microsoft.WindowsAzure.ConfigurationManager.2.0.3.nupkg.sha512",
         "Microsoft.WindowsAzure.ConfigurationManager.nuspec"
       ]
     },
@@ -1226,7 +1227,8 @@
       "Microsoft.AspNet.WebApi.Client >= 5.2.3",
       "Microsoft.Framework.Runtime.Abstractions >= 1.0.0-beta6",
       "Microsoft.Azure.WebJobs.Extensions >= 1.0.0-rc1",
-      "Microsoft.Azure.WebJobs.ServiceBus >= 1.1.0-rc1"
+      "Microsoft.Azure.WebJobs.ServiceBus >= 1.1.0-rc1",
+      "Microsoft.WindowsAzure.ConfigurationManager >= 2.0.3"
     ],
     "DNX,Version=v4.5.1": [
       "System.Collections >= 4.0.10-beta-23019",

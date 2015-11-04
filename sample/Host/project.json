@@ -11,7 +11,8 @@
     "Microsoft.AspNet.WebApi.Client": "5.2.3",
     "Microsoft.Framework.Runtime.Abstractions": "1.0.0-beta6",
     "Microsoft.Azure.WebJobs.Extensions": "1.0.0-rc1",
-    "Microsoft.Azure.WebJobs.ServiceBus": "1.1.0-rc1"
+    "Microsoft.Azure.WebJobs.ServiceBus": "1.1.0-rc1",
+    "Microsoft.WindowsAzure.ConfigurationManager":  "2.0.3"
   },
 
   "commands": {
