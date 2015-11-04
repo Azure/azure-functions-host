@@ -25,7 +25,8 @@ namespace WebJobs.Script.Tests
             JObject trigger = new JObject
             {
                 { "type", "timer" },
-                { "schedule", "* * * * * *" }
+                { "schedule", "* * * * * *" },
+                { "runOnStartup", true }
             };
             JObject function = new JObject
             {
@@ -45,6 +46,7 @@ namespace WebJobs.Script.Tests
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.Equal("Cron: '* * * * * *'", attribute.Schedule.ToString());
+            Assert.True(attribute.RunOnStartup);
 
             // verify TextWriter parameter
             parameter = parameters[1];
