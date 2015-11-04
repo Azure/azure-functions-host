@@ -9,9 +9,9 @@ namespace Host
 {
     public static partial class Functions
     {
-        public static void TimerTrigger(TimerInfo timerInfo, TraceWriter traceWriter)
+        public static void TimerTrigger(TimerInfo timerInfo, TraceWriter trace)
         {
-            traceWriter.Info(string.Format("C# TimerTrigger function invoked at ", DateTime.Now));
+            trace.Info(string.Format("C# TimerTrigger function invoked at ", DateTime.Now));
         }
     }
 }
