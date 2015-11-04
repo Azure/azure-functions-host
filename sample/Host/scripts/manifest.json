@@ -29,7 +29,8 @@
       "source": "TimerTrigger.cs",
       "trigger": {
         "type": "timer",
-        "schedule": "*/10 * * * * *"
+        "schedule": "*/15 * * * * *",
+        "runOnStartup": true
       }
     },
     {
