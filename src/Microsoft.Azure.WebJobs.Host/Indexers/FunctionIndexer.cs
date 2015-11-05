@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                             // whether or not it is an SDK function.
                             invalidInvokeBindingException = new InvalidOperationException(
                                 string.Format(Resource.UnableToBindParameterFormat,
-                                parameter.Name, parameter.ParameterType, Resource.ExtensionInitializationMessage));
+                                parameter.Name, parameter.ParameterType.Name, Resource.ExtensionInitializationMessage));
                         }
                     }
                 }
