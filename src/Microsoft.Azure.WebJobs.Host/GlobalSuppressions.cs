@@ -12,3 +12,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0", Scope = "member", Target = "Microsoft.Azure.WebJobs.Host.PropertyHelper.#MakeFastPropertySetter`1(System.Reflection.PropertyInfo)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "IsDisabled", Scope = "member", Target = "Microsoft.Azure.WebJobs.Host.Listeners.HostListenerFactory.#IsDisabledByProvider(System.Type,System.Reflection.MethodInfo,Microsoft.Azure.WebJobs.Host.IJobActivator)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "MethodInfo", Scope = "member", Target = "Microsoft.Azure.WebJobs.Host.Listeners.HostListenerFactory.#IsDisabledByProvider(System.Type,System.Reflection.MethodInfo,Microsoft.Azure.WebJobs.Host.IJobActivator)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1824:MarkAssembliesWithNeutralResourcesLanguage")]
+
