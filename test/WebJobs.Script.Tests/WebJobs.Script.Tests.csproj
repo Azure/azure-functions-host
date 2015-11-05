@@ -172,6 +172,7 @@
     <Compile Include="CSharpFunctionGenerationTests.cs" />
     <Compile Include="csharp\scripts\TimerTrigger.cs" />
     <Compile Include="csharp\scripts\WebHookTrigger.cs" />
+    <Compile Include="ManifestTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

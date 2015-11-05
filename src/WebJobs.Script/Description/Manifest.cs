@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public void Apply(JobHostConfiguration config)
         {
-            ApplyConfiguration(config);
+            ApplyConfiguration(Configuration, config);
 
             Type type = FunctionGenerator.Generate(Functions);
             config.TypeLocator = new TypeLocator(type);
@@ -71,10 +71,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        private void ApplyConfiguration(JobHostConfiguration config)
+        internal static void ApplyConfiguration(JObject manifest, JobHostConfiguration config)
         {
+            JToken hostId = (JToken)manifest["id"];
+            if (hostId == null)
+            {
+                throw new InvalidOperationException("An 'id' must be specified in the 'config' section of the manifest.");
+            }
+            config.HostId = (string)hostId;
+
             // Apply Queues configuration
-            JObject configSection = (JObject)Configuration["queues"];
+            JObject configSection = (JObject)manifest["queues"];
             JToken value = null;
             if (configSection != null)
             {
@@ -96,20 +103,36 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            // Apply ServiceBus configuration
-            configSection = (JObject)Configuration["singleton"];
+            // Apply Singleton configuration
+            configSection = (JObject)manifest["singleton"];
             value = null;
             if (configSection != null)
             {
+                if (configSection.TryGetValue("lockPeriod", out value))
+                {
+                    config.Singleton.LockPeriod = TimeSpan.Parse((string)value);
+                }
                 if (configSection.TryGetValue("listenerLockPeriod", out value))
                 {
                     config.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value);
+                }
+                if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
+                {
+                    config.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value);
+                }
+                if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
+                {
+                    config.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value);
+                }
+                if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
+                {
+                    config.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value);
                 }
             }
 
             // Apply ServiceBus configuration
             ServiceBusConfiguration sbConfig = new ServiceBusConfiguration();
-            configSection = (JObject)Configuration["serviceBus"];
+            configSection = (JObject)manifest["serviceBus"];
             value = null;
             if (configSection != null)
             {
@@ -121,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
             config.UseServiceBus(sbConfig);
 
             // Apply Tracing configuration
-            configSection = (JObject)Configuration["tracing"];
+            configSection = (JObject)manifest["tracing"];
             if (configSection != null && configSection.TryGetValue("consoleLevel", out value))
             {
                 TraceLevel consoleLevel;
@@ -133,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Apply WebHooks configuration
             WebHooksConfiguration webHooksConfig = new WebHooksConfiguration();
-            configSection = (JObject)Configuration["webhooks"];
+            configSection = (JObject)manifest["webhooks"];
             if (configSection != null && configSection.TryGetValue("port", out value))
             {
                 webHooksConfig = new WebHooksConfiguration((int)value);
