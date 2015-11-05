@@ -189,8 +189,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     if (triggerBinding != null && !hasNoAutomaticTriggerAttribute)
                     {
                         throw new InvalidOperationException(
-                            string.Format(Resource.UnableToBindParameterFormat, 
-                            parameter.Name, parameter.ParameterType.Name, Resource.ExtensionInitializationMessage));
+                            string.Format(Constants.UnableToBindParameterFormat, 
+                            parameter.Name, parameter.ParameterType.Name, Constants.ExtensionInitializationMessage));
                     }
                     else
                     {
@@ -202,8 +202,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                             // exception when we can't bind it. Instead, save this exception for later once we determine
                             // whether or not it is an SDK function.
                             invalidInvokeBindingException = new InvalidOperationException(
-                                string.Format(Resource.UnableToBindParameterFormat,
-                                parameter.Name, parameter.ParameterType.Name, Resource.ExtensionInitializationMessage));
+                                string.Format(Constants.UnableToBindParameterFormat,
+                                parameter.Name, parameter.ParameterType.Name, Constants.ExtensionInitializationMessage));
                         }
                     }
                 }

@@ -373,6 +373,7 @@
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
     <Compile Include="ConsoleTraceWriter.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
@@ -478,11 +479,6 @@
     <Compile Include="Loggers\TraceWriterFunctionInstanceLogger.cs" />
     <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\IQueueProcessorFactory.cs" />
-    <Compile Include="Resource.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resource.resx</DependentUpon>
-    </Compile>
     <Compile Include="Singleton\SingletonListener.cs" />
     <Compile Include="Queues\QueueProcessor.cs" />
     <Compile Include="Queues\DefaultQueueProcessorFactory.cs" />
@@ -935,12 +931,6 @@
       <Link>CustomDictionary.xml</Link>
       <SubType>Designer</SubType>
     </CodeAnalysisDictionary>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resource.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resource.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

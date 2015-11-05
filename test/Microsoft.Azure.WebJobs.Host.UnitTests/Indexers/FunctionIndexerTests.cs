@@ -37,8 +37,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
                     CancellationToken.None).GetAwaiter().GetResult());
             InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
             Assert.NotNull(innerException);
-            Assert.Equal(string.Format("Cannot bind parameter 'parsed' to type Foo&. Make sure the parameter Type is supported by the binding. {0}", 
-                Resource.ExtensionInitializationMessage), innerException.Message);
+            Assert.Equal(string.Format("Cannot bind parameter 'parsed' to type Foo&. Make sure the parameter Type is supported by the binding. {0}",
+                Constants.ExtensionInitializationMessage), innerException.Message);
         }
 
         [Theory]
