@@ -1,5 +1,6 @@
 ﻿{
   "config": {
+    "id": "9f4ea53c5136457d883d685e57164f08",
     "queues": {
       "maxPollingInterval": 2000
     },
@@ -10,7 +11,7 @@
       "port": 45000
     },
     "singleton": {
-      "listenerLockPeriod":  "00:00:15"
+      "listenerLockPeriod": "00:00:15"
     }
   },
   "functions": [
