@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Newtonsoft.Json.Linq;
@@ -13,13 +14,14 @@ namespace WebJobs.Script.Tests
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
 
         [Fact]
-        public void ApplyConfiguration_Default()
+        public void ApplyConfiguration_TopLevel()
         {
             JObject manifest = new JObject();
             manifest["id"] = ID;
             JobHostConfiguration config = new JobHostConfiguration();
 
             Manifest.ApplyConfiguration(manifest, config);
+
             Assert.Equal(ID, config.HostId);
         }
 
@@ -32,10 +34,9 @@ namespace WebJobs.Script.Tests
             manifest["queues"] = queuesConfig;
             JobHostConfiguration config = new JobHostConfiguration();
 
-            // verify empty config
             Manifest.ApplyConfiguration(manifest, config);
-            Assert.Equal(ID, config.HostId);
 
+            Assert.Equal(ID, config.HostId);
             Assert.Equal(60 * 1000, config.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(16, config.Queues.BatchSize);
             Assert.Equal(5, config.Queues.MaxDequeueCount);
@@ -46,8 +47,8 @@ namespace WebJobs.Script.Tests
             queuesConfig["maxDequeueCount"] = 3;
             queuesConfig["newBatchThreshold"] = 123;
 
-            // set all the knobs and verify
             Manifest.ApplyConfiguration(manifest, config);
+
             Assert.Equal(5000, config.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(17, config.Queues.BatchSize);
             Assert.Equal(3, config.Queues.MaxDequeueCount);
@@ -63,12 +64,11 @@ namespace WebJobs.Script.Tests
             manifest["singleton"] = singleton;
             JobHostConfiguration config = new JobHostConfiguration();
 
-            // verify empty config
             Manifest.ApplyConfiguration(manifest, config);
-            Assert.Equal(ID, config.HostId);
 
+            Assert.Equal(ID, config.HostId);
             Assert.Equal(15, config.Singleton.LockPeriod.TotalSeconds);
-            Assert.Equal(60, config.Singleton.ListenerLockPeriod.TotalSeconds);
+            Assert.Equal(1, config.Singleton.ListenerLockPeriod.TotalMinutes);
             Assert.Equal(1, config.Singleton.ListenerLockRecoveryPollingInterval.TotalMinutes);
             Assert.Equal(1, config.Singleton.LockAcquisitionTimeout.TotalMinutes);
             Assert.Equal(3, config.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
@@ -79,13 +79,30 @@ namespace WebJobs.Script.Tests
             singleton["lockAcquisitionTimeout"] = "00:05:00";
             singleton["lockAcquisitionPollingInterval"] = "00:00:08";
 
-            // set all the knobs and verify
             Manifest.ApplyConfiguration(manifest, config);
+
             Assert.Equal(17, config.Singleton.LockPeriod.TotalSeconds);
             Assert.Equal(22, config.Singleton.ListenerLockPeriod.TotalSeconds);
             Assert.Equal(33, config.Singleton.ListenerLockRecoveryPollingInterval.TotalSeconds);
             Assert.Equal(5, config.Singleton.LockAcquisitionTimeout.TotalMinutes);
             Assert.Equal(8, config.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Tracing()
+        {
+            JObject manifest = new JObject();
+            manifest["id"] = ID;
+            JObject tracing = new JObject();
+            manifest["tracing"] = tracing;
+            JobHostConfiguration config = new JobHostConfiguration();
+
+            Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
+
+            tracing["consoleLevel"] = "Verbose";
+
+            Manifest.ApplyConfiguration(manifest, config);
+            Assert.Equal(TraceLevel.Verbose, config.Tracing.ConsoleLevel);
         }
     }
 }
