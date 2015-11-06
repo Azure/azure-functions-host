@@ -183,7 +183,7 @@ namespace WebJobs.Script.Tests
                 new CSharpFunctionDescriptorProvider(new Type[] { typeof(Functions) })
             };
             var functions = Manifest.ReadFunctions(manifest, descriptorProviders);
-            Type t = FunctionGenerator.Generate(functions);
+            Type t = FunctionGenerator.Generate("Host.Functions", functions);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
             return method;

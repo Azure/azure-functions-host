@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -10,9 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private Type[] _types;
 
-        public TypeLocator(params Type[] types)
+        public TypeLocator(IEnumerable<Type> types)
         {
-            _types = types;
+            _types = types.ToArray();
         }
 
         public IReadOnlyList<Type> GetTypes()

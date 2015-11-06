@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.WebHooks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -15,14 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class Manifest
     {
+        private readonly JObject _manifest;
+        private readonly ScriptHostConfiguration _scriptHostConfig;
+        private readonly Collection<FunctionDescriptor> _functions;
 
-        internal Manifest()
+        private Manifest(ScriptHostConfiguration scriptHostConfig, Collection<FunctionDescriptor> functions, JObject manifest)
         {
+            _scriptHostConfig = scriptHostConfig;
+            _functions = functions;
+            _manifest = manifest;
         }
-
-        private JObject Configuration { get; set; }
-
-        private Collection<FunctionDescriptor> Functions { get; set; }
 
         public static Manifest Read(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
@@ -32,19 +34,26 @@ namespace Microsoft.Azure.WebJobs.Script
 
             JObject manifest = JObject.Parse(json);
 
-            return new Manifest
-            {
-                Functions = ReadFunctions(manifest, descriptionProviders),
-                Configuration = (JObject)manifest["config"]
-            };
+            var functions = ReadFunctions(manifest, descriptionProviders);
+            return new Manifest(config, functions, manifest);
         }
 
         public void Apply(JobHostConfiguration config)
         {
-            ApplyConfiguration(Configuration, config);
+            var configuration = (JObject)_manifest["config"];
+            ApplyConfiguration(configuration, config);
 
-            Type type = FunctionGenerator.Generate(Functions);
-            config.TypeLocator = new TypeLocator(type);
+            List<Type> types = new List<Type>(_scriptHostConfig.HostAssembly.GetTypes());
+            string defaultNamespace = "Host";
+            if (types.Any())
+            {
+                defaultNamespace = types.First().Namespace;
+            }
+            string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
+            Type type = FunctionGenerator.Generate(typeName, _functions);
+            types.Add(type);
+
+            config.TypeLocator = new TypeLocator(types);
         }
 
         internal static Collection<FunctionDescriptor> ReadFunctions(JObject manifest, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
