@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _invokerMap[method];
         }
 
-        public static Type Generate(Collection<FunctionDescriptor> functions)
+        public static Type Generate(string typeName, Collection<FunctionDescriptor> functions)
         {
             Console.WriteLine(string.Format("Generating {0} job function(s)", functions.Count));
 
@@ -32,11 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     aName,
                     AssemblyBuilderAccess.RunAndSave);
 
-            // For a single-module assembly, the module name is usually 
-            // the assembly name plus an extension.
             ModuleBuilder mb = ab.DefineDynamicModule(aName.Name, aName.Name + ".dll");
 
-            TypeBuilder tb = mb.DefineType("Functions", TypeAttributes.Public);
+            TypeBuilder tb = mb.DefineType(typeName, TypeAttributes.Public);
 
             foreach (FunctionDescriptor descriptor in functions)
             {
