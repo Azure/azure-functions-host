@@ -1,6 +1,6 @@
 {
   "locked": false,
-  "version": 1,
+  "version": 2,
   "targets": {
     "DNX,Version=v4.5.1": {
       "Autofac/3.5.0": {
@@ -168,6 +168,7 @@
       },
       "Microsoft.Azure.WebJobs.Script/1.0.0": {
         "type": "project",
+        "framework": ".NETFramework,Version=v4.5.1",
         "dependencies": {
           "Autofac": "3.5.0",
           "Autofac.WebApi2": "3.4.0",
@@ -187,7 +188,7 @@
           "Microsoft.Data.OData": "5.6.2",
           "Microsoft.Data.Services.Client": "5.6.2",
           "Microsoft.Tpl.Dataflow": "4.5.24",
-          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
           "ncrontab": "2.0.0",
           "Newtonsoft.Json": "6.0.8",
           "Sendgrid": "6.1.0",
@@ -549,7 +550,1135 @@
         "dependencies": {
           "Microsoft.Data.OData": "5.6.2",
           "Microsoft.Data.Services.Client": "5.6.2",
-          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
+          "Newtonsoft.Json": "5.0.8"
+        },
+        "frameworkAssemblies": [
+          "System.Data",
+          "System.Xml",
+          "System.Xml.Linq"
+        ],
+        "compile": {
+          "lib/net40/Microsoft.WindowsAzure.Storage.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.WindowsAzure.Storage.dll": {}
+        }
+      }
+    },
+    "DNX,Version=v4.5.1/win7-x86": {
+      "Autofac/3.5.0": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Autofac.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Autofac.dll": {}
+        }
+      },
+      "Autofac.WebApi2/3.4.0": {
+        "type": "package",
+        "dependencies": {
+          "Autofac": "[3.5.0, 4.0.0)",
+          "Microsoft.AspNet.WebApi.Core": "[5.2.0, 6.0.0)"
+        },
+        "compile": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        }
+      },
+      "FSharp.Core/3.1.2.5": {
+        "type": "package",
+        "compile": {
+          "lib/net40/FSharp.Core.dll": {}
+        },
+        "runtime": {
+          "lib/net40/FSharp.Core.dll": {}
+        }
+      },
+      "FsPickler/1.2.5": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System.Runtime.Serialization",
+          "System.Xml"
+        ],
+        "compile": {
+          "lib/net45/FsPickler.dll": {}
+        },
+        "runtime": {
+          "lib/net45/FsPickler.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebApi.Client/5.2.3": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "6.0.4"
+        },
+        "frameworkAssemblies": [
+          "System.Net.Http"
+        ],
+        "compile": {
+          "lib/net45/System.Net.Http.Formatting.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Net.Http.Formatting.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebApi.Core/5.2.3": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Client": "5.2.3"
+        },
+        "compile": {
+          "lib/net45/System.Web.Http.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Web.Http.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebHooks.Common/1.2.0-beta3a": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Core": "5.2.2"
+        },
+        "compile": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Common.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Common.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3a": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Core": "5.2.2",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a"
+        },
+        "compile": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs/1.1.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs.Core": "[1.1.0-rc1]",
+          "Newtonsoft.Json": "6.0.8",
+          "WindowsAzure.Storage": "4.3.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Core/1.1.0-rc1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions/1.0.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "1.1.0-rc1",
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "ncrontab": "2.0.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-rc1]",
+          "Sendgrid": "6.1.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta2": {
+        "type": "package",
+        "dependencies": {
+          "Autofac.WebApi2": "3.4.0",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3a",
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-rc1]",
+          "SuaveServerWrapper": "0.0.2"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Script/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.1",
+        "dependencies": {
+          "Autofac": "3.5.0",
+          "Autofac.WebApi2": "3.4.0",
+          "FSharp.Core": "3.1.2.5",
+          "FsPickler": "1.2.5",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3a",
+          "Microsoft.Azure.WebJobs": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Core": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.SendGrid": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.WebHooks": "1.0.0-beta2",
+          "Microsoft.Azure.WebJobs.ServiceBus": "1.1.0-rc1",
+          "Microsoft.Data.Edm": "5.6.2",
+          "Microsoft.Data.OData": "5.6.2",
+          "Microsoft.Data.Services.Client": "5.6.2",
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
+          "ncrontab": "2.0.0",
+          "Newtonsoft.Json": "6.0.8",
+          "Sendgrid": "6.1.0",
+          "SendGrid.SmtpApi": "1.3.1",
+          "Suave": "0.31.2",
+          "SuaveServerWrapper": "0.0.2",
+          "System.Spatial": "5.6.2",
+          "WindowsAzure.ServiceBus": "2.7.6",
+          "WindowsAzure.Storage": "4.3.0"
+        }
+      },
+      "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "[1.1.0-rc1]",
+          "Newtonsoft.Json": "6.0.8",
+          "WindowsAzure.ServiceBus": "2.7.6"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
+        }
+      },
+      "Microsoft.CSharp/4.0.0-beta-23019": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp"
+        ],
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "Microsoft.Data.Edm/5.6.2": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Microsoft.Data.Edm.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.Edm.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.Edm.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.Edm.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.Edm.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.Edm.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.Edm.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.Edm.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Data.OData/5.6.2": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.Edm": "[5.6.2]",
+          "System.Spatial": "[5.6.2]"
+        },
+        "compile": {
+          "lib/net40/Microsoft.Data.OData.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.OData.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.OData.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.OData.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.OData.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.OData.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.OData.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.OData.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.OData.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.OData.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.OData.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Data.Services.Client/5.6.2": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.OData": "[5.6.2]"
+        },
+        "compile": {
+          "lib/net40/Microsoft.Data.Services.Client.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.Services.Client.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll": {}
+        }
+      },
+      "Microsoft.Tpl.Dataflow/4.5.24": {
+        "type": "package",
+        "compile": {
+          "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
+        },
+        "runtime": {
+          "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
+        }
+      },
+      "Microsoft.WindowsAzure.ConfigurationManager/2.0.3": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
+        }
+      },
+      "ncrontab/2.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net20/NCrontab.dll": {}
+        },
+        "runtime": {
+          "lib/net20/NCrontab.dll": {}
+        }
+      },
+      "Newtonsoft.Json/6.0.8": {
+        "type": "package",
+        "compile": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        }
+      },
+      "Sendgrid/6.1.0": {
+        "type": "package",
+        "dependencies": {
+          "SendGrid.SmtpApi": "1.3.1"
+        },
+        "compile": {
+          "lib/SendGridMail.dll": {}
+        },
+        "runtime": {
+          "lib/SendGridMail.dll": {}
+        }
+      },
+      "SendGrid.SmtpApi/1.3.1": {
+        "type": "package",
+        "compile": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        },
+        "runtime": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        }
+      },
+      "Suave/0.31.2": {
+        "type": "package",
+        "dependencies": {
+          "FSharp.Core": "3.1.2.5",
+          "FsPickler": "1.2.5"
+        },
+        "compile": {
+          "lib/net40/Suave.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Suave.dll": {}
+        }
+      },
+      "SuaveServerWrapper/0.0.2": {
+        "type": "package",
+        "dependencies": {
+          "Suave": "0.31.2"
+        },
+        "compile": {
+          "lib/net45/SuaveServerWrapper.dll": {}
+        },
+        "runtime": {
+          "lib/net45/SuaveServerWrapper.dll": {}
+        }
+      },
+      "System.Collections/4.0.10-beta-23019": {
+        "type": "package",
+        "dependencies": {
+          "System.Runtime": "4.0.0-beta-23019"
+        },
+        "compile": {
+          "ref/dotnet/System.Collections.dll": {}
+        }
+      },
+      "System.Linq/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "System.Runtime/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "System.Spatial/5.6.2": {
+        "type": "package",
+        "compile": {
+          "lib/net40/System.Spatial.dll": {}
+        },
+        "runtime": {
+          "lib/net40/System.Spatial.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/System.Spatial.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/System.Spatial.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/System.Spatial.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/System.Spatial.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/System.Spatial.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/System.Spatial.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/System.Spatial.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/System.Spatial.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/System.Spatial.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Threading/4.0.10-beta-23019": {
+        "type": "package",
+        "dependencies": {
+          "System.Runtime": "4.0.0-beta-23019",
+          "System.Threading.Tasks": "4.0.0-beta-23019"
+        },
+        "compile": {
+          "ref/dotnet/System.Threading.dll": {}
+        }
+      },
+      "System.Threading.Tasks/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "WindowsAzure.ServiceBus/2.7.6": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.WindowsAzure.ConfigurationManager": null
+        },
+        "frameworkAssemblies": [
+          "System.Runtime.Serialization",
+          "System.ServiceModel",
+          "System.Xml"
+        ],
+        "compile": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        }
+      },
+      "WindowsAzure.Storage/4.3.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.OData": "5.6.2",
+          "Microsoft.Data.Services.Client": "5.6.2",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
+          "Newtonsoft.Json": "5.0.8"
+        },
+        "frameworkAssemblies": [
+          "System.Data",
+          "System.Xml",
+          "System.Xml.Linq"
+        ],
+        "compile": {
+          "lib/net40/Microsoft.WindowsAzure.Storage.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.WindowsAzure.Storage.dll": {}
+        }
+      }
+    },
+    "DNX,Version=v4.5.1/win7-x64": {
+      "Autofac/3.5.0": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Autofac.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Autofac.dll": {}
+        }
+      },
+      "Autofac.WebApi2/3.4.0": {
+        "type": "package",
+        "dependencies": {
+          "Autofac": "[3.5.0, 4.0.0)",
+          "Microsoft.AspNet.WebApi.Core": "[5.2.0, 6.0.0)"
+        },
+        "compile": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Autofac.Integration.WebApi.dll": {}
+        }
+      },
+      "FSharp.Core/3.1.2.5": {
+        "type": "package",
+        "compile": {
+          "lib/net40/FSharp.Core.dll": {}
+        },
+        "runtime": {
+          "lib/net40/FSharp.Core.dll": {}
+        }
+      },
+      "FsPickler/1.2.5": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System.Runtime.Serialization",
+          "System.Xml"
+        ],
+        "compile": {
+          "lib/net45/FsPickler.dll": {}
+        },
+        "runtime": {
+          "lib/net45/FsPickler.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebApi.Client/5.2.3": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "6.0.4"
+        },
+        "frameworkAssemblies": [
+          "System.Net.Http"
+        ],
+        "compile": {
+          "lib/net45/System.Net.Http.Formatting.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Net.Http.Formatting.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebApi.Core/5.2.3": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Client": "5.2.3"
+        },
+        "compile": {
+          "lib/net45/System.Web.Http.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Web.Http.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebHooks.Common/1.2.0-beta3a": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Core": "5.2.2"
+        },
+        "compile": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Common.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Common.dll": {}
+        }
+      },
+      "Microsoft.AspNet.WebHooks.Receivers/1.2.0-beta3a": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNet.WebApi.Core": "5.2.2",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a"
+        },
+        "compile": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.AspNet.WebHooks.Receivers.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs/1.1.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs.Core": "[1.1.0-rc1]",
+          "Newtonsoft.Json": "6.0.8",
+          "WindowsAzure.Storage": "4.3.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Host.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Core/1.1.0-rc1": {
+        "type": "package",
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions/1.0.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "1.1.0-rc1",
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "ncrontab": "2.0.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions.SendGrid/1.0.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-rc1]",
+          "Sendgrid": "6.1.0"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.SendGrid.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Extensions.WebHooks/1.0.0-beta2": {
+        "type": "package",
+        "dependencies": {
+          "Autofac.WebApi2": "3.4.0",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3a",
+          "Microsoft.Azure.WebJobs.Extensions": "[1.0.0-rc1]",
+          "SuaveServerWrapper": "0.0.2"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.Extensions.WebHooks.dll": {}
+        }
+      },
+      "Microsoft.Azure.WebJobs.Script/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.5.1",
+        "dependencies": {
+          "Autofac": "3.5.0",
+          "Autofac.WebApi2": "3.4.0",
+          "FSharp.Core": "3.1.2.5",
+          "FsPickler": "1.2.5",
+          "Microsoft.AspNet.WebApi.Client": "5.2.3",
+          "Microsoft.AspNet.WebApi.Core": "5.2.3",
+          "Microsoft.AspNet.WebHooks.Common": "1.2.0-beta3a",
+          "Microsoft.AspNet.WebHooks.Receivers": "1.2.0-beta3a",
+          "Microsoft.Azure.WebJobs": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Core": "1.1.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.SendGrid": "1.0.0-rc1",
+          "Microsoft.Azure.WebJobs.Extensions.WebHooks": "1.0.0-beta2",
+          "Microsoft.Azure.WebJobs.ServiceBus": "1.1.0-rc1",
+          "Microsoft.Data.Edm": "5.6.2",
+          "Microsoft.Data.OData": "5.6.2",
+          "Microsoft.Data.Services.Client": "5.6.2",
+          "Microsoft.Tpl.Dataflow": "4.5.24",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
+          "ncrontab": "2.0.0",
+          "Newtonsoft.Json": "6.0.8",
+          "Sendgrid": "6.1.0",
+          "SendGrid.SmtpApi": "1.3.1",
+          "Suave": "0.31.2",
+          "SuaveServerWrapper": "0.0.2",
+          "System.Spatial": "5.6.2",
+          "WindowsAzure.ServiceBus": "2.7.6",
+          "WindowsAzure.Storage": "4.3.0"
+        }
+      },
+      "Microsoft.Azure.WebJobs.ServiceBus/1.1.0-rc1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "[1.1.0-rc1]",
+          "Newtonsoft.Json": "6.0.8",
+          "WindowsAzure.ServiceBus": "2.7.6"
+        },
+        "compile": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Microsoft.Azure.WebJobs.ServiceBus.dll": {}
+        }
+      },
+      "Microsoft.CSharp/4.0.0-beta-23019": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp"
+        ],
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "Microsoft.Data.Edm/5.6.2": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Microsoft.Data.Edm.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.Edm.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.Edm.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.Edm.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.Edm.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.Edm.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.Edm.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.Edm.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.Edm.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Data.OData/5.6.2": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.Edm": "[5.6.2]",
+          "System.Spatial": "[5.6.2]"
+        },
+        "compile": {
+          "lib/net40/Microsoft.Data.OData.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.OData.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.OData.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.OData.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.OData.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.OData.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.OData.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.OData.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.OData.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.OData.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.OData.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Data.Services.Client/5.6.2": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.OData": "[5.6.2]"
+        },
+        "compile": {
+          "lib/net40/Microsoft.Data.Services.Client.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.Data.Services.Client.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/Microsoft.Data.Services.Client.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Microsoft.Framework.Runtime.Abstractions/1.0.0-beta6": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.Runtime.Abstractions.dll": {}
+        }
+      },
+      "Microsoft.Tpl.Dataflow/4.5.24": {
+        "type": "package",
+        "compile": {
+          "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
+        },
+        "runtime": {
+          "lib/portable-net45+win8+wpa81/System.Threading.Tasks.Dataflow.dll": {}
+        }
+      },
+      "Microsoft.WindowsAzure.ConfigurationManager/2.0.3": {
+        "type": "package",
+        "compile": {
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Microsoft.WindowsAzure.Configuration.dll": {}
+        }
+      },
+      "ncrontab/2.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net20/NCrontab.dll": {}
+        },
+        "runtime": {
+          "lib/net20/NCrontab.dll": {}
+        }
+      },
+      "Newtonsoft.Json/6.0.8": {
+        "type": "package",
+        "compile": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        }
+      },
+      "Sendgrid/6.1.0": {
+        "type": "package",
+        "dependencies": {
+          "SendGrid.SmtpApi": "1.3.1"
+        },
+        "compile": {
+          "lib/SendGridMail.dll": {}
+        },
+        "runtime": {
+          "lib/SendGridMail.dll": {}
+        }
+      },
+      "SendGrid.SmtpApi/1.3.1": {
+        "type": "package",
+        "compile": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        },
+        "runtime": {
+          "lib/net40/SendGrid.SmtpApi.dll": {}
+        }
+      },
+      "Suave/0.31.2": {
+        "type": "package",
+        "dependencies": {
+          "FSharp.Core": "3.1.2.5",
+          "FsPickler": "1.2.5"
+        },
+        "compile": {
+          "lib/net40/Suave.dll": {}
+        },
+        "runtime": {
+          "lib/net40/Suave.dll": {}
+        }
+      },
+      "SuaveServerWrapper/0.0.2": {
+        "type": "package",
+        "dependencies": {
+          "Suave": "0.31.2"
+        },
+        "compile": {
+          "lib/net45/SuaveServerWrapper.dll": {}
+        },
+        "runtime": {
+          "lib/net45/SuaveServerWrapper.dll": {}
+        }
+      },
+      "System.Collections/4.0.10-beta-23019": {
+        "type": "package",
+        "dependencies": {
+          "System.Runtime": "4.0.0-beta-23019"
+        },
+        "compile": {
+          "ref/dotnet/System.Collections.dll": {}
+        }
+      },
+      "System.Linq/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "System.Runtime/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "System.Spatial/5.6.2": {
+        "type": "package",
+        "compile": {
+          "lib/net40/System.Spatial.dll": {}
+        },
+        "runtime": {
+          "lib/net40/System.Spatial.dll": {}
+        },
+        "resource": {
+          "lib/net40/de/System.Spatial.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net40/es/System.Spatial.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net40/fr/System.Spatial.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net40/it/System.Spatial.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net40/ja/System.Spatial.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net40/ko/System.Spatial.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net40/ru/System.Spatial.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net40/zh-Hans/System.Spatial.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net40/zh-Hant/System.Spatial.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Threading/4.0.10-beta-23019": {
+        "type": "package",
+        "dependencies": {
+          "System.Runtime": "4.0.0-beta-23019",
+          "System.Threading.Tasks": "4.0.0-beta-23019"
+        },
+        "compile": {
+          "ref/dotnet/System.Threading.dll": {}
+        }
+      },
+      "System.Threading.Tasks/4.0.0-beta-23019": {
+        "type": "package",
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        }
+      },
+      "WindowsAzure.ServiceBus/2.7.6": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.WindowsAzure.ConfigurationManager": null
+        },
+        "frameworkAssemblies": [
+          "System.Runtime.Serialization",
+          "System.ServiceModel",
+          "System.Xml"
+        ],
+        "compile": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        },
+        "runtime": {
+          "lib/net40-full/Microsoft.ServiceBus.dll": {}
+        }
+      },
+      "WindowsAzure.Storage/4.3.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Data.OData": "5.6.2",
+          "Microsoft.Data.Services.Client": "5.6.2",
+          "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0",
           "Newtonsoft.Json": "5.0.8"
         },
         "frameworkAssemblies": [
