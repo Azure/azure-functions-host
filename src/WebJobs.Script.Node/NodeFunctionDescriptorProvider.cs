@@ -75,6 +75,14 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             };
             parameters.Add(textWriter);
 
+            // Add an IBinder to support the binding programming model
+            ParameterDescriptor binder = new ParameterDescriptor
+            {
+                Name = "binder",
+                Type = typeof(IBinder)
+            };
+            parameters.Add(binder);
+
             functionDescriptor = new FunctionDescriptor
             {
                 Name = name,
