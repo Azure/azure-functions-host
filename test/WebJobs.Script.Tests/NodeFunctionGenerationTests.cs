@@ -35,23 +35,15 @@ namespace WebJobs.Script.Tests
             };
             MethodInfo method = GenerateMethod(function);
 
-            Assert.Equal("Test", method.Name);
-            ParameterInfo[] parameters = method.GetParameters();
-            Assert.Equal(2, parameters.Length);
-            Assert.Equal(typeof(Task), method.ReturnType);
+            VerifyCommonProperties(method);
 
             // verify trigger parameter
-            ParameterInfo parameter = parameters[0];
+            ParameterInfo parameter = method.GetParameters()[0];
             Assert.Equal("input", parameter.Name);
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.Equal("Cron: '* * * * * *'", attribute.Schedule.ToString());
             Assert.True(attribute.RunOnStartup);
-
-            // verify TextWriter parameter
-            parameter = parameters[1];
-            Assert.Equal("log", parameter.Name);
-            Assert.Equal(typeof(TextWriter), parameter.ParameterType);
         }
 
         [Fact]
@@ -163,17 +155,18 @@ namespace WebJobs.Script.Tests
         {
             Assert.Equal(expectedName, method.Name);
             ParameterInfo[] parameters = method.GetParameters();
-            Assert.Equal(2, parameters.Length);
+            Assert.Equal(3, parameters.Length);
             Assert.Equal(typeof(Task), method.ReturnType);
 
-            ParameterInfo parameter = parameters[0];
-            Assert.Equal("input", parameter.Name);
-            Assert.Equal(typeof(string), parameter.ParameterType);
-
             // verify TextWriter parameter
-            parameter = parameters[1];
+            ParameterInfo parameter = parameters[1];
             Assert.Equal("log", parameter.Name);
             Assert.Equal(typeof(TextWriter), parameter.ParameterType);
+
+            // verify IBinder parameter
+            parameter = parameters[2];
+            Assert.Equal("binder", parameter.Name);
+            Assert.Equal(typeof(IBinder), parameter.ParameterType);
         }
 
         private static MethodInfo GenerateMethod(JObject function)

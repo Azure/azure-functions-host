@@ -157,6 +157,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Binders\BlobBinder.cs" />
     <Compile Include="NodeScriptHost.cs" />
     <Compile Include="NodeFunctionDescriptorProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

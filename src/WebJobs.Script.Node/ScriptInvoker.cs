@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
+using Microsoft.Azure.WebJobs.Script.Node.Binders;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Node
@@ -35,18 +36,27 @@ namespace Microsoft.Azure.WebJobs.Script.Node
 
         public async Task Invoke(object[] parameters)
         {
-            // TODO: Decide how to handle this
-            Type triggerParameterType = parameters[0].GetType();
+            var context = CreateContext(parameters);
+
+            await _scriptFunc(context);
+        }
+
+        private object CreateContext(object[] parameters)
+        {
+            object input = parameters[0];
+            TextWriter textWriter = (TextWriter)parameters[1];
+            IBinder binder = (IBinder)parameters[2];
+
+            Type triggerParameterType = input.GetType();
             if (triggerParameterType == typeof(string))
             {
                 // convert string into Dictionary which Edge will convert into an object
                 // before invoking the function
-                parameters[0] = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)parameters[0]);
+                input = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)input);
             }
 
             // create a TextWriter wrapper that can be exposed to Node.js
-            TextWriter textWriter = (TextWriter)parameters[1];
-            var logFunc = (Func<object, Task<object>>)((text) =>
+            var log = (Func<object, Task<object>>)((text) =>
             {
                 textWriter.WriteLine(text);
                 return Task.FromResult<object>(null);
@@ -54,11 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Node
 
             var context = new
             {
-                input = parameters[0],
-                log = logFunc
+                input = input,
+                log = log,
+                blob = BlobBinder.Create(binder)
             };
 
-            await _scriptFunc(context);
+            return context;
         }
     }
 }
