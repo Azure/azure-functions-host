@@ -21,17 +21,18 @@ namespace Microsoft.Azure.WebJobs.Script.Node
         {
             functionDescriptor = null;
 
-            string sourceFileName = (string)function["source"];
+            // name might point to a single file, or a module
+            string source = (string)function["source"];
             string name = (string)function["name"];
             if (string.IsNullOrEmpty(name))
             {
                 // if a method name isn't explicitly provided, derive it
                 // from the script file name
-                name = Path.GetFileNameWithoutExtension(sourceFileName);
+                name = Path.GetFileNameWithoutExtension(source);
                 name = name.Substring(0, 1).ToUpper() + name.Substring(1);
             }
 
-            string scriptFilePath = Path.Combine(_applicationRoot, "scripts", sourceFileName);
+            string scriptFilePath = Path.Combine(_applicationRoot, "scripts", source);
             ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
 
             JObject trigger = (JObject)function["trigger"];

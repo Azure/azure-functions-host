@@ -13,7 +13,7 @@
   },
   "functions": [
     {
-      "source": "timerTrigger.js",
+      "source": "timerTrigger",
       "trigger": {
         "type": "timer",
         "schedule": "*/15 * * * * *",
