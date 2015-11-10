@@ -51,7 +51,10 @@
     <Content Include="scripts\queueTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\timerTrigger.js">
+    <Content Include="scripts\timerTrigger\logger.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\timerTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="scripts\webHookTrigger.js">
