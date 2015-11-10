@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _config = config;
         }
 
-        public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
+        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             if (context == null)
             {
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (attribute == null)
             {
-                return null;
+                return Task.FromResult<ITriggerBinding>(null);
             }
 
             string queueName = null;
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             string connectionName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
             ServiceBusAccount account = new ServiceBusAccount
             {
-                MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(entityPath, connectionName),
+                MessagingFactory = _config.MessagingProvider.CreateMessagingFactory(entityPath, connectionName),
                 NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(connectionName)
             };
 
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access, _config);
             }
 
-            return binding;
+            return Task.FromResult<ITriggerBinding>(binding);
         }
 
         private string Resolve(string queueName)

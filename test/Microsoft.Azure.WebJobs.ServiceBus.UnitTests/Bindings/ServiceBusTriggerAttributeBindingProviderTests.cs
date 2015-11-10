@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Bindings
         public async Task TryCreateAsync_AccountOverride_OverrideIsApplied()
         {
             _mockMessagingProvider.Setup(p => p.CreateNamespaceManager("testaccount")).Returns<NamespaceManager>(null);
-            _mockMessagingProvider.Setup(p => p.CreateMessagingFactoryAsync("test", "testaccount")).ReturnsAsync(null);
+            _mockMessagingProvider.Setup(p => p.CreateMessagingFactory("test", "testaccount")).Returns<MessagingFactory>(null);
 
             ParameterInfo parameter = GetType().GetMethod("TestJob_AccountOverride").GetParameters()[0];
             TriggerBindingProviderContext context = new TriggerBindingProviderContext(parameter, CancellationToken.None);
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Bindings
         public async Task TryCreateAsync_DefaultAccount()
         {
             _mockMessagingProvider.Setup(p => p.CreateNamespaceManager(null)).Returns<NamespaceManager>(null);
-            _mockMessagingProvider.Setup(p => p.CreateMessagingFactoryAsync("test", null)).ReturnsAsync(null);
+            _mockMessagingProvider.Setup(p => p.CreateMessagingFactory("test", null)).Returns<MessagingFactory>(null);
 
             ParameterInfo parameter = GetType().GetMethod("TestJob").GetParameters()[0];
             TriggerBindingProviderContext context = new TriggerBindingProviderContext(parameter, CancellationToken.None);

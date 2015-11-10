@@ -50,12 +50,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="entityPath">The ServiceBus entity to create a <see cref="MessagingFactory"/> for.</param>
         /// <param name="connectionStringName">Optional connection string name indicating the connection string to use.
         /// If null, the default connection string on the <see cref="ServiceBusConfiguration"/> will be used.</param>
-        /// <remarks>
-        /// This method is async because many of the interesting <see cref="MessagingFactory"/>
-        /// create methods that overrides might want to call are async.
-        /// </remarks>
-        /// <returns>A Task that returns the <see cref="MessagingFactory"/>.</returns>
-        public virtual Task<MessagingFactory> CreateMessagingFactoryAsync(string entityPath, string connectionStringName = null)
+        /// <returns>A <see cref="MessagingFactory"/>.</returns>
+        public virtual MessagingFactory CreateMessagingFactory(string entityPath, string connectionStringName = null)
         {
             if (string.IsNullOrEmpty(entityPath))
             {
@@ -64,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             string connectionString = GetConnectionString(connectionStringName);
 
-            return Task.FromResult(MessagingFactory.CreateFromConnectionString(connectionString));
+            return MessagingFactory.CreateFromConnectionString(connectionString);
         }
 
         /// <summary>

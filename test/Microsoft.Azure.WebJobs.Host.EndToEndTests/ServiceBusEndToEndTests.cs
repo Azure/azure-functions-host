@@ -399,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 return new CustomMessageProcessor(messageOptions, _trace);
             }
 
-            public async override Task<MessagingFactory> CreateMessagingFactoryAsync(string entityPath, string connectionStringName = null)
+            public override MessagingFactory CreateMessagingFactory(string entityPath, string connectionStringName = null)
             {
                 // demonstrate that the MessagingFactory can be customized
                 // per queue/topic
@@ -408,9 +408,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 MessagingFactorySettings settings = factory.GetSettings();
                 settings.OperationTimeout = TimeSpan.FromSeconds(15);
 
-                factory = await MessagingFactory.CreateAsync(factory.Address, settings);
-
-                return factory;
+                return MessagingFactory.Create(factory.Address, settings);
             }
 
             public override NamespaceManager CreateNamespaceManager(string connectionStringName = null)

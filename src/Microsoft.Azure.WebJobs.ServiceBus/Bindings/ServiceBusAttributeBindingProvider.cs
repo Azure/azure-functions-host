@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             _config = config;
         }
 
-        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             if (context == null)
             {
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             if (attribute == null)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             string queueOrTopicName = Resolve(attribute.QueueOrTopicName);
@@ -68,12 +68,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             string connectionName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
             ServiceBusAccount account = new ServiceBusAccount
             {
-                MessagingFactory = await _config.MessagingProvider.CreateMessagingFactoryAsync(queueOrTopicName, connectionName),
+                MessagingFactory = _config.MessagingProvider.CreateMessagingFactory(queueOrTopicName, connectionName),
                 NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(connectionName)
             };
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute.Access);
-            return binding;
+            return Task.FromResult<IBinding>(binding);
         }
 
         private static void ValidateContractCompatibility(IBindableServiceBusPath path, IReadOnlyDictionary<string, Type> bindingDataContract)
