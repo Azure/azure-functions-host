@@ -13,9 +13,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Node", "src\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{FF9C0818-30D3-437A-A62D-7A61CA44F459}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Host.Node", "sample\Host.Node\Host.Node.csproj", "{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Host.Script", "sample\Host.Script\Host.Script.csproj", "{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Host", "sample\Host\Host.xproj", "{142A138E-3932-4FCE-AF4D-4787FF40335F}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Host.Dnx", "sample\Host.Dnx\Host.Dnx.xproj", "{142A138E-3932-4FCE-AF4D-4787FF40335F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}"
 EndProject

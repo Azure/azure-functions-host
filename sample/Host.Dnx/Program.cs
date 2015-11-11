@@ -5,7 +5,7 @@ using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script;
 
-namespace Host
+namespace Host.Dnx
 {
     /// <summary>
     /// Sample CSharp script host. 

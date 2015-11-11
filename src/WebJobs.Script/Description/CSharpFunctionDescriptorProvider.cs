@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string source = (string)function["source"];
                 name = Path.GetFileNameWithoutExtension(source);
             }
+
             MethodInfo method = FindMethod(name);
             if (method == null)
             {

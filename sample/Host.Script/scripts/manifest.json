@@ -39,6 +39,30 @@
       "trigger": {
         "type": "webHook"
       }
+    },
+    {
+      "source": "powerShellQueueTrigger.ps1",
+      "name": "powerShellQueueTrigger",
+      "trigger": {
+        "type": "queue",
+        "queueName": "samples-powershell"
+      }
+    },
+    {
+      "source": "queueTrigger.bat",
+      "name": "batchQueueTrigger",
+      "trigger": {
+        "type": "queue",
+        "queueName": "samples-batch"
+      }
+    },
+    {
+      "source": "queueTrigger.py",
+      "name":  "pythonQueueTrigger",
+      "trigger": {
+        "type": "queue",
+        "queueName": "samples-python"
+      }
     }
   ]
 }
