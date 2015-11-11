@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void Initialize()
         {
-            IEnumerable<FunctionDescriptorProvider> descriptionProviders = GetFunctionDescriptionProviders();
+            List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>(GetFunctionDescriptionProviders());
+            descriptionProviders.Insert(0, new ScriptFunctionDescriptorProvider(_scriptConfig.ApplicationRootPath));
 
             Manifest manifest = Manifest.Read(_scriptConfig, descriptionProviders);
             manifest.Apply(_config);

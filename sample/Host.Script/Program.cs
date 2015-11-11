@@ -6,7 +6,8 @@ using System.Reflection;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Node;
 
-namespace Host.Node
+namespace Host.Script
+
 {
     /// <summary>
     /// Sample Node.js script host. 

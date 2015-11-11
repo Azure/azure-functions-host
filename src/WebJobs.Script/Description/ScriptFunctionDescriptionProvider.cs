@@ -3,16 +3,15 @@
 
 using System.Collections.ObjectModel;
 using System.IO;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Node
+namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
+    internal class ScriptFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly string _applicationRoot;
 
-        public NodeFunctionDescriptorProvider(string applicationRoot)
+        public ScriptFunctionDescriptorProvider(string applicationRoot)
         {
             _applicationRoot = applicationRoot;
         }
@@ -21,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
         {
             functionDescriptor = null;
 
-            // name might point to a single file, or a module
             string source = (string)function["source"];
             string name = (string)function["name"];
             if (string.IsNullOrEmpty(name))
@@ -31,6 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 name = Path.GetFileNameWithoutExtension(source);
             }
             name = name.Substring(0, 1).ToUpper() + name.Substring(1);
+
+            string extension = Path.GetExtension(source).ToLower();
+            if (!ScriptInvoker.IsSupportedScriptType(extension))
+            {
+                return false;
+            }
 
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", source);
             ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
@@ -75,14 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Node
                 Type = typeof(TextWriter)
             };
             parameters.Add(textWriter);
-
-            // Add an IBinder to support the binding programming model
-            ParameterDescriptor binder = new ParameterDescriptor
-            {
-                Name = "binder",
-                Type = typeof(IBinder)
-            };
-            parameters.Add(binder);
 
             functionDescriptor = new FunctionDescriptor
             {
