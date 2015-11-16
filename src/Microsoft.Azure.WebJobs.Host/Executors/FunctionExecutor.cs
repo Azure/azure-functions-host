@@ -400,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             // Process any out parameters and persist any pending values.
-            // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
+            // Ensure IValueBinder.SetValue is called in BindStepOrder. This ordering is particularly important for
             // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
             // occurred by the time messages are enqueued.
             string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
