@@ -9,7 +9,10 @@
     },
     "singleton": {
       "listenerLockPeriod": "00:00:15"
-    }
+    },
+      "webhooks": {
+      "port": 46000
+     }
   },
   "functions": [
     {
@@ -41,7 +44,7 @@
       }
     },
     {
-      "source": "powerShellQueueTrigger.ps1",
+      "source": "queueTrigger.ps1",
       "name": "powerShellQueueTrigger",
       "trigger": {
         "type": "queue",
