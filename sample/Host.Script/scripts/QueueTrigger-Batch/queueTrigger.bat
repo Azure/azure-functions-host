@@ -1,1 +1,5 @@
-echo Windows Batch script processed queue message %1
+echo OFF
+
+SET /p input=
+
+echo Windows Batch script processed queue message '%input%'

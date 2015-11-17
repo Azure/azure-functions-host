@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -51,27 +52,26 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal Task InvokePythonScript(string input, TextWriter textWriter)
         {
-            string scriptHostArguments = string.Format("{0} \"{1}\"", _scriptFilePath, input);
+            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("python.exe", scriptHostArguments, textWriter);
+            return InvokeScriptHostCore("python.exe", scriptHostArguments, textWriter, input);
         }
 
         internal Task InvokePowerShellScript(string input, TextWriter textWriter)
         {
-            string scriptInputArguments = string.Format("-p1 \"{0}\"", input);
-            string scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0} {1}", _scriptFilePath, scriptInputArguments);
+            string scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("PowerShell.exe", scriptHostArguments, textWriter);
+            return InvokeScriptHostCore("PowerShell.exe", scriptHostArguments, textWriter, input);
         }
 
         internal Task InvokeWindowsBatchScript(string input, TextWriter textWriter)
         {
-            string scriptHostArguments = string.Format("/c {0} \"{1}\"", _scriptFilePath, input);
+            string scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter);
+            return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter, input);
         }
 
-        internal Task InvokeScriptHostCore(string path, string arguments, TextWriter textWriter)
+        internal Task InvokeScriptHostCore(string path, string arguments, TextWriter textWriter, string stdin = null)
         {
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
 
@@ -81,16 +81,22 @@ namespace Microsoft.Azure.WebJobs.Script
             // - need to handle stderr as well
             Process process = CreateProcess(path, workingDirectory, arguments);
             process.Start();
+            if (stdin != null)
+            {
+                process.StandardInput.WriteLine(stdin);
+                process.StandardInput.Flush();
+            }
             process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                string error = process.StandardError.ReadToEnd();
+                throw new ApplicationException(error);
+            }
 
             // write the results to the Dashboard
             string output = process.StandardOutput.ReadToEnd();
             textWriter.Write(output);
-
-            if (process.ExitCode != 0)
-            {
-                // TODO: handle/log failure
-            }
 
             return Task.FromResult(0);
         }
