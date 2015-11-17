@@ -13,8 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script
     // TODO: make this internal
     public class ScriptFunctionInvoker : IFunctionInvoker
     {
-        // TODO: Add support for php, sh
-        private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py" };
+        private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
+        private const string ProgramFiles64bitKey = "ProgramW6432";
+        private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
 
@@ -47,7 +48,28 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "py":
                     await InvokePythonScript(input, textWriter);
                     break;
+                case "php":
+                    await InvokePhpScript(input, textWriter);
+                    break;
+                case "sh":
+                    await InvokeBashScript(input, textWriter);
+                    break;
             }
+        }
+
+        internal Task InvokeBashScript(string input, TextWriter textWriter)
+        {
+            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
+            string bashPath = ResolveBashPath();
+
+            return InvokeScriptHostCore(bashPath, scriptHostArguments, textWriter, input);
+        }
+
+        internal Task InvokePhpScript(string input, TextWriter textWriter)
+        {
+            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
+
+            return InvokeScriptHostCore("php.exe", scriptHostArguments, textWriter, input);
         }
 
         internal Task InvokePythonScript(string input, TextWriter textWriter)
@@ -130,6 +152,44 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 StartInfo = psi
             };
+        }
+
+        internal static string ResolveBashPath()
+        {
+            // first see if the path is specified as an evironment variable
+            // (useful for running locally outside of Azure)
+            string path = Environment.GetEnvironmentVariable(BashPathEnvironmentKey);
+            if (!string.IsNullOrEmpty(path))
+            {
+                path = Path.Combine(path, "bash.exe");
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            // attempt to resolve the path relative to ProgramFiles based on
+            // standard Azure WebApp images
+            string relativePath = Path.Combine("Git", "bin", "bash.exe");
+            return ResolveRelativePathToProgramFiles(relativePath, relativePath, "bash.exe");
+        }
+
+        private static string ResolveRelativePathToProgramFiles(string relativeX86Path, string relativeX64Path, string target)
+        {
+            string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            string path = Path.Combine(programFiles, relativeX86Path);
+            if (!File.Exists(path))
+            {
+                programFiles = Environment.GetEnvironmentVariable(ProgramFiles64bitKey) ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                path = Path.Combine(programFiles, relativeX64Path);
+            }
+
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException(string.Format("Unable to locate '{0}'. Make sure it is installed.", target));
+            }
+
+            return path;
         }
     }
 }
