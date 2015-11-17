@@ -161,6 +161,7 @@
   <ItemGroup>
     <Compile Include="Binders\BlobBinder.cs" />
     <Compile Include="Config\ScriptHost.cs" />
+    <Compile Include="Description\FunctionFolderInfo.cs" />
     <Compile Include="Description\IFunctionInvoker.cs" />
     <Compile Include="Description\FunctionDescriptorProvider.cs" />
     <Compile Include="Description\FunctionDescriptor.cs" />

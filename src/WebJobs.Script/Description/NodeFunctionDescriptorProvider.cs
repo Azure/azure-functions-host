@@ -9,27 +9,27 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private readonly string _applicationRoot;
+        private readonly string _rootPath;
 
-        public NodeFunctionDescriptorProvider(string applicationRoot)
+        public NodeFunctionDescriptorProvider(string rootPath)
         {
-            _applicationRoot = applicationRoot;
+            _rootPath = rootPath;
         }
 
-        public override bool TryCreate(FunctionInfo function, out FunctionDescriptor functionDescriptor)
+        public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
         {
             functionDescriptor = null;
 
             // name might point to a single file, or a module
-            string extension = Path.GetExtension(function.Source).ToLower();
+            string extension = Path.GetExtension(functionFolderInfo.Source).ToLower();
             if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
             {
                 return false;
             }
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(function.Source);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(functionFolderInfo.Source);
 
-            JObject trigger = (JObject)function.Configuration["trigger"];
+            JObject trigger = (JObject)functionFolderInfo.Configuration["trigger"];
             string triggerType = (string)trigger["type"];
 
             string parameterName = (string)trigger["name"];
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             functionDescriptor = new FunctionDescriptor
             {
-                Name = function.Name,
+                Name = functionFolderInfo.Name,
                 Invoker = invoker,
                 Parameters = parameters
             };

@@ -10,16 +10,9 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FunctionInfo
-    {
-        public string Name { get; set; }
-        public string Source { get; set; }
-        public JObject Configuration { get; set; }
-    }
-
     public abstract class FunctionDescriptorProvider
     {
-        public abstract bool TryCreate(FunctionInfo function, out FunctionDescriptor functionDescriptor);
+        public abstract bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor);
 
         protected ParameterDescriptor ParseQueueTrigger(JObject trigger, Type triggerParameterType = null)
         {

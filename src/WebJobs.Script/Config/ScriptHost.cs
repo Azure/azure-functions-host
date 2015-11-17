@@ -29,12 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                new ScriptFunctionDescriptorProvider(_scriptHostConfig.ApplicationRootPath),
-                new NodeFunctionDescriptorProvider(_scriptHostConfig.ApplicationRootPath)
+                new ScriptFunctionDescriptorProvider(_scriptHostConfig.RootPath),
+                new NodeFunctionDescriptorProvider(_scriptHostConfig.RootPath)
             };
 
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(_scriptHostConfig.ApplicationRootPath, "host.json");
+            string hostConfigFilePath = Path.Combine(_scriptHostConfig.RootPath, "host.json");
             Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
@@ -57,13 +57,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 scriptConfig = new ScriptHostConfiguration()
                 {
-                    ApplicationRootPath = Environment.CurrentDirectory
+                    RootPath = Environment.CurrentDirectory
                 };
             }
 
-            if (!Path.IsPathRooted(scriptConfig.ApplicationRootPath))
+            if (!Path.IsPathRooted(scriptConfig.RootPath))
             {
-                scriptConfig.ApplicationRootPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.ApplicationRootPath);
+                scriptConfig.RootPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootPath);
             }
 
             JobHostConfiguration config = new JobHostConfiguration();
@@ -75,11 +75,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
-            string scriptRootPath = config.ApplicationRootPath;
-            List<FunctionInfo> functionInfos = new List<FunctionInfo>();
+            string scriptRootPath = config.RootPath;
+            List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
-                FunctionInfo functionInfo = new FunctionInfo();
+                FunctionFolderInfo functionInfo = new FunctionFolderInfo();
 
                 // read the function config
                 string functionConfigPath = Path.Combine(scriptDir, "function.json");
@@ -140,22 +140,22 @@ namespace Microsoft.Azure.WebJobs.Script
                     functionInfo.Source = functionPrimary;
                 }
 
-                functionInfos.Add(functionInfo);
+                functionFolderInfos.Add(functionInfo);
             }
 
-            var functions = ReadFunctions(functionInfos, descriptionProviders);
+            var functions = ReadFunctions(functionFolderInfos, descriptionProviders);
             return functions;
         }
 
-        internal static Collection<FunctionDescriptor> ReadFunctions(List<FunctionInfo> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal static Collection<FunctionDescriptor> ReadFunctions(List<FunctionFolderInfo> functionFolderInfos, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            foreach (FunctionInfo function in functions)
+            foreach (FunctionFolderInfo functionFolderInfo in functionFolderInfos)
             {
                 FunctionDescriptor descriptor = null;
                 foreach (var provider in descriptorProviders)
                 {
-                    if (provider.TryCreate(function, out descriptor))
+                    if (provider.TryCreate(functionFolderInfo, out descriptor))
                     {
                         break;
                     }

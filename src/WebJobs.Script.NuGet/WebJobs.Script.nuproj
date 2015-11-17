@@ -17,9 +17,6 @@
     <NuGetContent Include="$(WebJobsRootPath)\src\WebJobs.Script\bin\$(Configuration)\Microsoft.Azure.WebJobs.Script.dll">
       <Destination>lib\net451\Microsoft.Azure.WebJobs.Script.dll</Destination>
     </NuGetContent>
-    <NuGetContent Include="$(WebJobsRootPath)\src\WebJobs.Script.Host\bin\$(Configuration)\WebJobs.Script.Host.exe">
-      <Destination>lib\net451\WebJobs.Script.Host.exe</Destination>
-    </NuGetContent>
     <!--<NuGetContent Include="$(WebJobsRootPath)\src\WebJobs.Script\bin\$(Configuration)\Microsoft.Azure.WebJobs.Script.xml">
       <Destination>lib\net451\Microsoft.Azure.WebJobs.Script.xml</Destination>
     </NuGetContent>-->
