@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Node;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -58,12 +57,7 @@ namespace WebJobs.Script.Tests
                 Client = new HttpClient();
                 Client.BaseAddress = new Uri(BaseUrl);
 
-                ScriptHostConfiguration config = new ScriptHostConfiguration
-                {
-                    HostAssembly = Assembly.GetExecutingAssembly(),
-                    ApplicationRootPath = Path.Combine(Directory.GetCurrentDirectory(), "node")
-                };
-                Host = NodeScriptHost.Create(config);
+                Host = ScriptHost.Create();
                 Host.Start();
             }
 

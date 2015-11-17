@@ -3,10 +3,9 @@
 
 using System.Collections.ObjectModel;
 using System.IO;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Node
+namespace Microsoft.Azure.WebJobs.Script
 {
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
@@ -23,6 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Node
 
             // name might point to a single file, or a module
             string source = (string)function["source"];
+            string extension = Path.GetExtension(source).ToLower();
+            if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
+            {
+                return false;
+            }
+
             string name = (string)function["name"];
             if (string.IsNullOrEmpty(name))
             {
@@ -33,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Node
             name = name.Substring(0, 1).ToUpper() + name.Substring(1);
 
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", source);
-            ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(scriptFilePath);
 
             JObject trigger = (JObject)function["trigger"];
             string triggerType = (string)trigger["type"];

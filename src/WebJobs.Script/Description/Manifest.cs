@@ -43,14 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script
             var configuration = (JObject)_manifest["config"];
             ApplyConfiguration(configuration, config);
 
-            List<Type> types = new List<Type>(_scriptHostConfig.HostAssembly.GetTypes());
             string defaultNamespace = "Host";
-            if (types.Any())
-            {
-                defaultNamespace = types.First().Namespace;
-            }
             string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
             Type type = FunctionGenerator.Generate(typeName, _functions);
+            List<Type> types = new List<Type>();
             types.Add(type);
 
             config.TypeLocator = new TypeLocator(types);

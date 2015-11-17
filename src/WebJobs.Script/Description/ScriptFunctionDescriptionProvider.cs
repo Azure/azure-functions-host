@@ -31,13 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script
             name = name.Substring(0, 1).ToUpper() + name.Substring(1);
 
             string extension = Path.GetExtension(source).ToLower();
-            if (!ScriptInvoker.IsSupportedScriptType(extension))
+            if (!ScriptFunctionInvoker.IsSupportedScriptType(extension))
             {
                 return false;
             }
 
             string scriptFilePath = Path.Combine(_applicationRoot, "scripts", source);
-            ScriptInvoker invoker = new ScriptInvoker(scriptFilePath);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath);
 
             JObject trigger = (JObject)function["trigger"];
             string triggerType = (string)trigger["type"];

@@ -43,6 +43,10 @@
       <HintPath>..\..\packages\Autofac.WebApi2.3.4.0\lib\net45\Autofac.Integration.WebApi.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="EdgeJs, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Edge.js.4.0.0\lib\EdgeJs.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.Core, Version=4.3.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\FSharp.Core.3.1.2.5\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
@@ -155,27 +159,48 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Config\CSharpScriptHost.cs" />
+    <Compile Include="Binders\BlobBinder.cs" />
     <Compile Include="Config\ScriptHost.cs" />
-    <Compile Include="Description\CSharpFunctionDescriptorProvider.cs" />
     <Compile Include="Description\IFunctionInvoker.cs" />
     <Compile Include="Description\FunctionDescriptorProvider.cs" />
     <Compile Include="Description\FunctionDescriptor.cs" />
     <Compile Include="CodeGen\FunctionGenerator.cs" />
-    <Compile Include="Description\MethodInvoker.cs" />
     <Compile Include="Description\ParameterDescriptor.cs" />
     <Compile Include="Description\Manifest.cs" />
     <Compile Include="Description\ScriptFunctionDescriptionProvider.cs" />
-    <Compile Include="Description\ScriptInvoker.cs" />
+    <Compile Include="Description\ScriptFunctionInvoker.cs" />
+    <Compile Include="Description\NodeFunctionDescriptorProvider.cs" />
+    <Compile Include="Description\NodeFunctionInvoker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="edge\x64\edge.node">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="edge\x86\edge.node">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="edge\double_edge.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="edge\edge.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="edge\x64\node.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="edge\x86\node.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <EmbeddedResource Include="functionTemplate.js" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

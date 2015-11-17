@@ -5,8 +5,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Reflection.Emit;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
-using Microsoft.Azure.WebJobs.Extensions.WebHooks;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 

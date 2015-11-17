@@ -7,27 +7,27 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
-using Microsoft.Azure.WebJobs.Script.Node.Binders;
+using Microsoft.Azure.WebJobs.Script.Binders;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.WebJobs.Script.Node
+namespace Microsoft.Azure.WebJobs.Script
 {
     // TODO: make this internal
-    public class ScriptInvoker : IFunctionInvoker
+    public class NodeFunctionInvoker : IFunctionInvoker
     {
         private readonly Func<object, Task<object>> _scriptFunc;
         private static string FunctionTemplate;
 
-        static ScriptInvoker()
+        static NodeFunctionInvoker()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.Node.functionTemplate.js")))
+            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.functionTemplate.js")))
             {
                 FunctionTemplate = reader.ReadToEnd();
             }
         }
 
-        public ScriptInvoker(string scriptFilePath)
+        public NodeFunctionInvoker(string scriptFilePath)
         {
             scriptFilePath = scriptFilePath.Replace('\\', '/');
             string script = string.Format(FunctionTemplate, scriptFilePath);

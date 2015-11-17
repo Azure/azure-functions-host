@@ -7,10 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
-using Microsoft.Azure.WebJobs.Extensions.WebHooks;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Node;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -176,10 +173,9 @@ namespace WebJobs.Script.Tests
                 { "functions", new JArray(function) }
             };
 
-            string applicationRootPath = Path.Combine(Environment.CurrentDirectory, "node");
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
-                new NodeFunctionDescriptorProvider(applicationRootPath)
+                new NodeFunctionDescriptorProvider(Environment.CurrentDirectory)
             };
             var functions = Manifest.ReadFunctions(manifest, descriptorProviders);
             Type t = FunctionGenerator.Generate("Host.Functions", functions);

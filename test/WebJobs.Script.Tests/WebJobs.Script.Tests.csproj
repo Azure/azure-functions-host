@@ -168,10 +168,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CSharpEndToEndTests.cs" />
-    <Compile Include="CSharpFunctionGenerationTests.cs" />
-    <Compile Include="csharp\scripts\TimerTrigger.cs" />
-    <Compile Include="csharp\scripts\WebHookTrigger.cs" />
     <Compile Include="ManifestTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />
@@ -179,33 +175,26 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="csharp\scripts\manifest.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="node\scripts\manifest.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="packages.config" />
+    <None Include="scripts\manifest.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="node\scripts\test.js">
+    <Content Include="scripts\test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="node\scripts\timerTrigger.js">
+    <Content Include="scripts\timerTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="node\scripts\webHookTrigger.js">
+    <Content Include="scripts\webHookTrigger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.Node\WebJobs.Script.Node.csproj">
-      <Project>{b1b3dc38-a276-45a6-b56f-3724ccac2ff3}</Project>
-      <Name>WebJobs.Script.Node</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>
