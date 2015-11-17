@@ -66,8 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal Task InvokeWindowsBatchScript(string input, TextWriter textWriter)
         {
-            string scriptInputArguments = string.Format("-p1 \"{0}\"", input);
-            string scriptHostArguments = string.Format("/c {0} {1}", _scriptFilePath, scriptInputArguments);
+            string scriptHostArguments = string.Format("/c {0} \"{1}\"", _scriptFilePath, input);
 
             return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter);
         }

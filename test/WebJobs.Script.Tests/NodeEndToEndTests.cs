@@ -37,7 +37,7 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ScheduledJobTest()
+        public async Task TimerJobTest()
         {
             // job is running every second, so give it a few seconds to
             // generate some output

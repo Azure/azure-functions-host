@@ -1,0 +1,6 @@
+{
+    "trigger": {
+      "type": "blob",
+      "blobPath": "samples-workitems"
+    }
+}
