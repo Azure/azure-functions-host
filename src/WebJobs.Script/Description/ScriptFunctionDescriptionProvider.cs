@@ -9,27 +9,27 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class ScriptFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private readonly string _applicationRoot;
+        private readonly string _rootPath;
 
-        public ScriptFunctionDescriptorProvider(string applicationRoot)
+        public ScriptFunctionDescriptorProvider(string rootPath)
         {
-            _applicationRoot = applicationRoot;
+            _rootPath = rootPath;
         }
 
-        public override bool TryCreate(FunctionInfo function, out FunctionDescriptor functionDescriptor)
+        public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
         {
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(function.Source).ToLower();
+            string extension = Path.GetExtension(functionFolderInfo.Source).ToLower();
             if (!ScriptFunctionInvoker.IsSupportedScriptType(extension))
             {
                 return false;
             }
 
-            string scriptFilePath = Path.Combine(_applicationRoot, function.Source);
+            string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath);
 
-            JObject trigger = (JObject)function.Configuration["trigger"];
+            JObject trigger = (JObject)functionFolderInfo.Configuration["trigger"];
             string triggerType = (string)trigger["type"];
 
             string parameterName = (string)trigger["name"];
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             functionDescriptor = new FunctionDescriptor
             {
-                Name = function.Name,
+                Name = functionFolderInfo.Name,
                 Invoker = invoker,
                 Parameters = parameters
             };

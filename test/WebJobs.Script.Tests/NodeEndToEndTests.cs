@@ -59,7 +59,7 @@ namespace WebJobs.Script.Tests
 
                 ScriptHostConfiguration config = new ScriptHostConfiguration()
                 {
-                    ApplicationRootPath = "scripts"
+                    RootPath = "scripts"
                 };
 
                 Host = ScriptHost.Create(config);

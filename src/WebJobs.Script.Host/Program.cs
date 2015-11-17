@@ -12,7 +12,7 @@ namespace WebJobs.Script.Host
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                ApplicationRootPath = args[0]
+                RootPath = args[0]
             };
 
             ScriptHost host = ScriptHost.Create(config);
