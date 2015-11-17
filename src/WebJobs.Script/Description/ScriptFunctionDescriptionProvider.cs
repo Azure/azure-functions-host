@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            string scriptFilePath = Path.Combine(_applicationRoot, "scripts", function.Source);
+            string scriptFilePath = Path.Combine(_applicationRoot, function.Source);
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath);
 
             JObject trigger = (JObject)function.Configuration["trigger"];

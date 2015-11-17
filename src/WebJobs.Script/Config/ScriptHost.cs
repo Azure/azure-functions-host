@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
             };
 
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(_scriptHostConfig.ApplicationRootPath, @"scripts\host.json");
+            string hostConfigFilePath = Path.Combine(_scriptHostConfig.ApplicationRootPath, "host.json");
             Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
@@ -61,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 };
             }
 
+            if (!Path.IsPathRooted(scriptConfig.ApplicationRootPath))
+            {
+                scriptConfig.ApplicationRootPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.ApplicationRootPath);
+            }
+
             JobHostConfiguration config = new JobHostConfiguration();
             ScriptHost scriptHost = new ScriptHost(config, scriptConfig);
             scriptHost.Initialize();
@@ -70,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
-            string scriptRootPath = Path.Combine(config.ApplicationRootPath, "scripts");
+            string scriptRootPath = config.ApplicationRootPath;
             List<FunctionInfo> functionInfos = new List<FunctionInfo>();
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
