@@ -1,0 +1,6 @@
+{
+    "trigger": {
+      "type": "queue",
+      "queueName": "samples-fsharp"
+    }
+}

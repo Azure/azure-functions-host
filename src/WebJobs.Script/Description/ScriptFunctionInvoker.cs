@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
-        private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh" };
+        private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
 
@@ -54,7 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "sh":
                     await InvokeBashScript(input, textWriter);
                     break;
+                case "fsx":
+                    await InvokeFSharpScript(input, textWriter);
+                    break;
             }
+        }
+
+        internal Task InvokeFSharpScript(string input, TextWriter textWriter)
+        {
+            string scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
+
+            return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter, input);
         }
 
         internal Task InvokeBashScript(string input, TextWriter textWriter)
