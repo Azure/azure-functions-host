@@ -1,7 +1,7 @@
 ﻿var logger = require('./logger');
 
-// demonstrates that a function can be a node module, with the
-// manifest pointing to a module directory rather than a single file
+// demonstrates that a function can be a node module including
+// multiple files
 module.exports = function (context) {
     var timeStamp = new Date().toISOString();
     context.log('Node.js timer trigger function ran at ' + timeStamp);

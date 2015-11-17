@@ -39,34 +39,55 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="scripts\queueTrigger.bat">
+    <None Include="scripts\BlobTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="scripts\manifest.json">
+    <None Include="scripts\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\QueueTrigger-Batch\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\QueueTrigger-Batch\queueTrigger.bat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
-    <None Include="scripts\queueTrigger.ps1">
+    <None Include="scripts\QueueTrigger-Powershell\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\QueueTrigger-Powershell\queueTrigger.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\QueueTrigger-Python\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\QueueTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\TimerTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="scripts\WebHookTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="scripts\blobTrigger.js">
+    <Content Include="scripts\BlobTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\queueTrigger.py">
+    <Content Include="scripts\QueueTrigger-Python\queueTrigger.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\queueTrigger.js">
+    <Content Include="scripts\QueueTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\timerTrigger\logger.js">
+    <Content Include="scripts\TimerTrigger\logger.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\timerTrigger\index.js">
+    <Content Include="scripts\TimerTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\webHookTrigger.js">
+    <Content Include="scripts\WebHookTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -155,6 +176,7 @@
       <Name>WebJobs.Script</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

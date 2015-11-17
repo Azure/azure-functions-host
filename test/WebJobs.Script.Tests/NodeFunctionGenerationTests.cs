@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -19,16 +20,18 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
+            FunctionInfo function = new FunctionInfo();
+            function.Name = "Test";
+            function.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
                 { "type", "timer" },
                 { "schedule", "* * * * * *" },
                 { "runOnStartup", true }
             };
-            JObject function = new JObject
+            function.Configuration = new JObject
             {
-                { "source", "test.js" },
-                { "trigger", trigger },
+                { "trigger", trigger }
             };
             MethodInfo method = GenerateMethod(function);
 
@@ -46,20 +49,21 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
+            FunctionInfo function = new FunctionInfo();
+            function.Name = "Test";
+            function.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
                 { "type", "queue" },
                 { "queueName", "test" }
             };
-            JObject function = new JObject
+            function.Configuration = new JObject
             {
-                { "name", "Foo" },
-                { "source", "test.js" },
-                { "trigger", trigger },
+                { "trigger", trigger }
             };
             MethodInfo method = GenerateMethod(function);
 
-            VerifyCommonProperties(method, "Foo");
+            VerifyCommonProperties(method);
 
             // verify trigger parameter
             ParameterInfo parameter = method.GetParameters()[0];
@@ -72,15 +76,17 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
+            FunctionInfo function = new FunctionInfo();
+            function.Name = "Test";
+            function.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
                 { "type", "blob" },
                 { "blobPath", "foo/bar" }
             };
-            JObject function = new JObject
+            function.Configuration = new JObject
             {
-                { "source", "test.js" },
-                { "trigger", trigger },
+                { "trigger", trigger }
             };
             MethodInfo method = GenerateMethod(function);
 
@@ -97,14 +103,16 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateWebHookTriggerFunction()
         {
+            FunctionInfo function = new FunctionInfo();
+            function.Name = "Test";
+            function.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
                 { "type", "webHook" }
             };
-            JObject function = new JObject
+            function.Configuration = new JObject
             {
-                { "source", "test.js" },
-                { "trigger", trigger },
+                { "trigger", trigger }
             };
             MethodInfo method = GenerateMethod(function);
 
@@ -121,6 +129,9 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
+            FunctionInfo function = new FunctionInfo();
+            function.Name = "Test";
+            function.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
                 { "type", "serviceBus" },
@@ -128,10 +139,9 @@ namespace WebJobs.Script.Tests
                 { "subscriptionName", "testSubscription" },
                 { "accessRights", "listen" }
             };
-            JObject function = new JObject
+            function.Configuration = new JObject
             {
-                { "source", "test.js" },
-                { "trigger", trigger },
+                { "trigger", trigger }
             };
             MethodInfo method = GenerateMethod(function);
 
@@ -148,9 +158,9 @@ namespace WebJobs.Script.Tests
             Assert.Equal(AccessRights.Listen, attribute.Access);
         }
 
-        private static void VerifyCommonProperties(MethodInfo method, string expectedName = "Test")
+        private static void VerifyCommonProperties(MethodInfo method)
         {
-            Assert.Equal(expectedName, method.Name);
+            Assert.Equal("Test", method.Name);
             ParameterInfo[] parameters = method.GetParameters();
             Assert.Equal(3, parameters.Length);
             Assert.Equal(typeof(Task), method.ReturnType);
@@ -166,19 +176,17 @@ namespace WebJobs.Script.Tests
             Assert.Equal(typeof(IBinder), parameter.ParameterType);
         }
 
-        private static MethodInfo GenerateMethod(JObject function)
+        private static MethodInfo GenerateMethod(FunctionInfo function)
         {
-            JObject manifest = new JObject
-            {
-                { "functions", new JArray(function) }
-            };
+            List<FunctionInfo> functions = new List<FunctionInfo>();
+            functions.Add(function);
 
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
                 new NodeFunctionDescriptorProvider(Environment.CurrentDirectory)
             };
-            var functions = Manifest.ReadFunctions(manifest, descriptorProviders);
-            Type t = FunctionGenerator.Generate("Host.Functions", functions);
+            var functionDescriptors = ScriptHost.ReadFunctions(functions, descriptorProviders);
+            Type t = FunctionGenerator.Generate("Host.Functions", functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
             return method;

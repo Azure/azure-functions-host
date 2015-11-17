@@ -1,0 +1,6 @@
+﻿{
+  "trigger": {
+    "type": "timer",
+    "schedule": "* * * * * *"
+  }
+}

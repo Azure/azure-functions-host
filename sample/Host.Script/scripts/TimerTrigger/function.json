@@ -1,0 +1,7 @@
+﻿{
+    "trigger": {
+      "type": "timer",
+      "schedule": "*/15 * * * * *",
+      "runOnStartup": true
+    }
+}

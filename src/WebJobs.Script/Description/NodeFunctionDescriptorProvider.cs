@@ -16,31 +16,20 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationRoot = applicationRoot;
         }
 
-        public override bool TryCreate(JObject function, out FunctionDescriptor functionDescriptor)
+        public override bool TryCreate(FunctionInfo function, out FunctionDescriptor functionDescriptor)
         {
             functionDescriptor = null;
 
             // name might point to a single file, or a module
-            string source = (string)function["source"];
-            string extension = Path.GetExtension(source).ToLower();
+            string extension = Path.GetExtension(function.Source).ToLower();
             if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
             {
                 return false;
             }
 
-            string name = (string)function["name"];
-            if (string.IsNullOrEmpty(name))
-            {
-                // if a method name isn't explicitly provided, derive it
-                // from the script file name
-                name = Path.GetFileNameWithoutExtension(source);
-            }
-            name = name.Substring(0, 1).ToUpper() + name.Substring(1);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(function.Source);
 
-            string scriptFilePath = Path.Combine(_applicationRoot, "scripts", source);
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(scriptFilePath);
-
-            JObject trigger = (JObject)function["trigger"];
+            JObject trigger = (JObject)function.Configuration["trigger"];
             string triggerType = (string)trigger["type"];
 
             string parameterName = (string)trigger["name"];
@@ -91,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             functionDescriptor = new FunctionDescriptor
             {
-                Name = name,
+                Name = function.Name,
                 Invoker = invoker,
                 Parameters = parameters
             };
