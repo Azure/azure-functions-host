@@ -1,3 +1,3 @@
-param([string]$p1)
+$in = [System.Console]::ReadLine()
 
-Write-Host "Powershell script processed message: '$p1'" 
+[System.Console]::WriteLine("Powershell script processed message: '$in'") 
