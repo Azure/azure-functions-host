@@ -75,6 +75,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Bash", "QueueT
 		sample\QueueTrigger-Bash\run.sh = sample\QueueTrigger-Bash\run.sh
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-FSharp", "QueueTrigger-FSharp", "{644AFFC7-46C5-483A-812E-F5C9B93CBA86}"
+	ProjectSection(SolutionItems) = preProject
+		sample\QueueTrigger-FSharp\function.json = sample\QueueTrigger-FSharp\function.json
+		sample\QueueTrigger-FSharp\run.fsx = sample\QueueTrigger-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,5 +121,6 @@ Global
 		{C9E1FA6F-B62F-4CC6-B4AB-B1E3D46EF23A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A36EED66-E934-4A43-864D-DF89A6A6ED0D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{2EC32A23-907C-40E1-A3E4-BDB425653873} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{644AFFC7-46C5-483A-812E-F5C9B93CBA86} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
