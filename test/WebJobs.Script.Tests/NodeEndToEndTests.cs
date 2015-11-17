@@ -57,7 +57,12 @@ namespace WebJobs.Script.Tests
                 Client = new HttpClient();
                 Client.BaseAddress = new Uri(BaseUrl);
 
-                Host = ScriptHost.Create();
+                ScriptHostConfiguration config = new ScriptHostConfiguration()
+                {
+                    ApplicationRootPath = "scripts"
+                };
+
+                Host = ScriptHost.Create(config);
                 Host.Start();
             }
 

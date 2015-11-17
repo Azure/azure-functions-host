@@ -176,13 +176,13 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
-    <None Include="scripts\host.json">
+    <None Include="Scripts\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="scripts\TimerTrigger\function.json">
+    <None Include="Scripts\TimerTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="scripts\WebHookTrigger\function.json">
+    <None Include="Scripts\WebHookTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -190,13 +190,13 @@
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="scripts\Common\test.js">
+    <Content Include="Scripts\Common\test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\TimerTrigger\index.js">
+    <Content Include="Scripts\TimerTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\WebHookTrigger\index.js">
+    <Content Include="Scripts\WebHookTrigger\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
