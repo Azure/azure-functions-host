@@ -17,7 +17,7 @@ namespace WebJobs.Script.Tests
         [Fact]
         public async Task Generate_EndToEnd()
         {
-            // construct our TimerTrigger attribute
+            // construct our TimerTrigger attribute ([TimerTrigger("00:00:02", RunOnStartup = true)])
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
             ParameterDescriptor parameter = new ParameterDescriptor("timerInfo", typeof(TimerInfo));
             ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
