@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 using System.IO;
+using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -63,19 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script
             parameters.Add(triggerParameter);
 
             // Add a TraceWriter for logging
-            ParameterDescriptor textWriter = new ParameterDescriptor
-            {
-                Name = "log",
-                Type = typeof(TextWriter)
-            };
-            parameters.Add(textWriter);
+            parameters.Add(new ParameterDescriptor("log", typeof(TraceWriter)));
 
-            functionDescriptor = new FunctionDescriptor
-            {
-                Name = functionFolderInfo.Name,
-                Invoker = invoker,
-                Parameters = parameters
-            };
+            functionDescriptor = new FunctionDescriptor(functionFolderInfo.Name, invoker, parameters);
 
             return true;
         }

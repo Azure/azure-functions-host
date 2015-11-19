@@ -26,18 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName });
 
             string parameterName = (string)trigger["name"];
-            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            var attributes = new Collection<CustomAttributeBuilder>
             {
-                Name = parameterName,
-                Type = triggerParameterType,
-                Attributes = ParameterAttributes.None,
-                CustomAttributes = new Collection<CustomAttributeBuilder>
-                {
-                    attributeBuilder
-                }
+                attributeBuilder
             };
-
-            return triggerParameter;
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
         protected ParameterDescriptor ParseBlobTrigger(JObject trigger, Type triggerParameterType = null)
@@ -52,18 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { blobPath });
 
             string parameterName = (string)trigger["name"];
-            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            var attributes = new Collection<CustomAttributeBuilder>
             {
-                Name = parameterName,
-                Type = triggerParameterType,
-                Attributes = ParameterAttributes.None,
-                CustomAttributes = new Collection<CustomAttributeBuilder>
-                {
-                    attributeBuilder
-                }
+                attributeBuilder
             };
-
-            return triggerParameter;
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
         protected ParameterDescriptor ParseServiceBusTrigger(JObject trigger, Type triggerParameterType = null)
@@ -105,18 +91,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string parameterName = (string)trigger["name"];
-            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            var attributes = new Collection<CustomAttributeBuilder>
             {
-                Name = parameterName,
-                Type = triggerParameterType,
-                Attributes = ParameterAttributes.None,
-                CustomAttributes = new Collection<CustomAttributeBuilder>
-                {
-                    attributeBuilder
-                }
+                attributeBuilder
             };
-
-            return triggerParameter;
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
         protected ParameterDescriptor ParseTimerTrigger(JObject trigger, Type triggerParameterType = null)
@@ -141,18 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 new object[] { runOnStartup });
 
             string parameterName = (string)trigger["name"];
-            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            var attributes = new Collection<CustomAttributeBuilder>
             {
-                Name = parameterName,
-                Type = triggerParameterType,
-                Attributes = ParameterAttributes.None,
-                CustomAttributes = new Collection<CustomAttributeBuilder>
-                {
-                    attributeBuilder
-                }
+                attributeBuilder
             };
-
-            return triggerParameter;
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
         protected ParameterDescriptor ParseWebHookTrigger(JObject trigger, Type triggerParameterType = null)
@@ -167,18 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { route });
 
             string parameterName = (string)trigger["name"];
-            ParameterDescriptor triggerParameter = new ParameterDescriptor
+            var attributes = new Collection<CustomAttributeBuilder>
             {
-                Name = parameterName,
-                Type = triggerParameterType,
-                Attributes = ParameterAttributes.None,
-                CustomAttributes = new Collection<CustomAttributeBuilder>
-                {
-                    attributeBuilder
-                }
+                attributeBuilder
             };
-
-            return triggerParameter;
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
     }
 }

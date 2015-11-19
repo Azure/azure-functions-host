@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binders;
 using Newtonsoft.Json;
 
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private object CreateContext(object[] parameters)
         {
             object input = parameters[0];
-            TextWriter textWriter = (TextWriter)parameters[1];
+            TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
 
             Type triggerParameterType = input.GetType();
@@ -55,10 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 input = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)input);
             }
 
-            // create a TextWriter wrapper that can be exposed to Node.js
+            // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)((text) =>
             {
-                textWriter.WriteLine(text);
+                traceWriter.Verbose((string)text);
                 return Task.FromResult<object>(null);
             });
 

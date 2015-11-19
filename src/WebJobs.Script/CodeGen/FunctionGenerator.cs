@@ -22,11 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return _invokerMap[method];
         }
 
-        public static Type Generate(string typeName, Collection<FunctionDescriptor> functions)
+        public static Type Generate(string assemblyName, string typeName, Collection<FunctionDescriptor> functions)
         {
-            Console.WriteLine(string.Format("Generating {0} job function(s)", functions.Count));
-
-            AssemblyName aName = new AssemblyName("ScriptHost");
+            AssemblyName aName = new AssemblyName(assemblyName);
             AssemblyBuilder ab =
                 AppDomain.CurrentDomain.DefineDynamicAssembly(
                     aName,
@@ -36,16 +34,24 @@ namespace Microsoft.Azure.WebJobs.Script
 
             TypeBuilder tb = mb.DefineType(typeName, TypeAttributes.Public);
 
-            foreach (FunctionDescriptor descriptor in functions)
+            foreach (FunctionDescriptor function in functions)
             {
-                MethodBuilder methodBuilder = tb.DefineMethod(descriptor.Name, MethodAttributes.Public | MethodAttributes.Static);
-                Type[] types = descriptor.Parameters.Select(p => p.Type).ToArray();
+                MethodBuilder methodBuilder = tb.DefineMethod(function.Name, MethodAttributes.Public | MethodAttributes.Static);
+                Type[] types = function.Parameters.Select(p => p.Type).ToArray();
                 methodBuilder.SetParameters(types);
                 methodBuilder.SetReturnType(typeof(Task));
 
-                for (int i = 0; i < descriptor.Parameters.Count; i++)
+                if (function.CustomAttributes != null)
                 {
-                    ParameterDescriptor parameter = descriptor.Parameters[i];
+                    foreach (CustomAttributeBuilder attributeBuilder in function.CustomAttributes)
+                    {
+                        methodBuilder.SetCustomAttribute(attributeBuilder);
+                    }
+                }
+
+                for (int i = 0; i < function.Parameters.Count; i++)
+                {
+                    ParameterDescriptor parameter = function.Parameters[i];
                     ParameterBuilder parameterBuilder = methodBuilder.DefineParameter(i + 1, parameter.Attributes, parameter.Name);
                     if (parameter.CustomAttributes != null)
                     {
@@ -56,9 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
-                _invokerMap[descriptor.Name] = descriptor.Invoker;
+                _invokerMap[function.Name] = function.Invoker;
 
-                MethodInfo invokeMethod = descriptor.Invoker.GetType().GetMethod("Invoke");
+                MethodInfo invokeMethod = function.Invoker.GetType().GetMethod("Invoke");
                 MethodInfo getInvoker = typeof(FunctionGenerator).GetMethod("GetInvoker", BindingFlags.Static | BindingFlags.Public);
 
                 ILGenerator il = methodBuilder.GetILGenerator();
@@ -69,12 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 il.Emit(OpCodes.Nop);
 
                 // declare an array for all parameter values
-                il.Emit(OpCodes.Ldc_I4, descriptor.Parameters.Count);
+                il.Emit(OpCodes.Ldc_I4, function.Parameters.Count);
                 il.Emit(OpCodes.Newarr, typeof(object));
                 il.Emit(OpCodes.Stloc_0);
 
                 // copy each parameter into the arg array
-                for (int i = 0; i < descriptor.Parameters.Count; i++)
+                for (int i = 0; i < function.Parameters.Count; i++)
                 {
                     il.Emit(OpCodes.Ldloc_0);
                     il.Emit(OpCodes.Ldc_I4, i);
@@ -83,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // get the invoker instance
-                il.Emit(OpCodes.Ldstr, descriptor.Name);
+                il.Emit(OpCodes.Ldstr, function.Name);
                 il.Emit(OpCodes.Call, getInvoker);
                 il.Emit(OpCodes.Stloc_1);
 
@@ -97,19 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script
             Type t = tb.CreateType();
 
             return t;
-        }
-
-        private static CustomAttributeBuilder[] BuildCustomAttributes(IEnumerable<CustomAttributeData> customAttributes)
-        {
-            return customAttributes.Select(attribute =>
-            {
-                var attributeArgs = attribute.ConstructorArguments.Select(a => a.Value).ToArray();
-                var namedPropertyInfos = attribute.NamedArguments.Select(a => a.MemberInfo).OfType<PropertyInfo>().ToArray();
-                var namedPropertyValues = attribute.NamedArguments.Where(a => a.MemberInfo is PropertyInfo).Select(a => a.TypedValue.Value).ToArray();
-                var namedFieldInfos = attribute.NamedArguments.Select(a => a.MemberInfo).OfType<FieldInfo>().ToArray();
-                var namedFieldValues = attribute.NamedArguments.Where(a => a.MemberInfo is FieldInfo).Select(a => a.TypedValue.Value).ToArray();
-                return new CustomAttributeBuilder(attribute.Constructor, attributeArgs, namedPropertyInfos, namedPropertyValues, namedFieldInfos, namedFieldValues);
-            }).ToArray();
         }
     }
 }

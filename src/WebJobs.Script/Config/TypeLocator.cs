@@ -11,6 +11,16 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private Type[] _types;
 
+        public TypeLocator(Type type)
+        {
+            _types = new Type[] { type };
+        }
+
+        public TypeLocator(params Type[] types)
+        {
+            _types = types;
+        }
+
         public TypeLocator(IEnumerable<Type> types)
         {
             _types = types.ToArray();

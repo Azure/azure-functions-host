@@ -10,9 +10,25 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ParameterDescriptor
     {
-        public string Name { get; set; }
-        public Type Type { get; set; }
+        public ParameterDescriptor(string name, Type type)
+            : this(name, type, new Collection<CustomAttributeBuilder>())
+        {
+        }
+
+        public ParameterDescriptor(string name, Type type, Collection<CustomAttributeBuilder> attributes) 
+        {
+            Name = name;
+            Type = type;
+            Attributes = ParameterAttributes.None;
+            CustomAttributes = attributes;
+        }
+
+        public string Name { get; private set; }
+
+        public Type Type { get; private set; }
+
         public ParameterAttributes Attributes { get; set; }
-        public Collection<CustomAttributeBuilder> CustomAttributes { get; set; }
+
+        public Collection<CustomAttributeBuilder> CustomAttributes { get; private set; }
     }
 }
