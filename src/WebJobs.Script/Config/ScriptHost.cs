@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHost : JobHost
     {
+        private const string HostAssemblyName = "ScriptHost";
         protected readonly JobHostConfiguration _jobHostConfig;
         protected readonly ScriptHostConfiguration _scriptHostConfig;
 
@@ -44,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions = ReadFunctions(_scriptHostConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
-            Type type = FunctionGenerator.Generate(typeName, functions);
+            Console.WriteLine(string.Format("Generating {0} job function(s)", functions.Count));
+            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
 

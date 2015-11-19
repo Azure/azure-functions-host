@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
@@ -168,7 +169,7 @@ namespace WebJobs.Script.Tests
             // verify TextWriter parameter
             ParameterInfo parameter = parameters[1];
             Assert.Equal("log", parameter.Name);
-            Assert.Equal(typeof(TextWriter), parameter.ParameterType);
+            Assert.Equal(typeof(TraceWriter), parameter.ParameterType);
 
             // verify IBinder parameter
             parameter = parameters[2];
@@ -186,7 +187,7 @@ namespace WebJobs.Script.Tests
                 new NodeFunctionDescriptorProvider(Environment.CurrentDirectory)
             };
             var functionDescriptors = ScriptHost.ReadFunctions(functionFolderInfos, descriptorProviders);
-            Type t = FunctionGenerator.Generate("Host.Functions", functionDescriptors);
+            Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
             return method;
