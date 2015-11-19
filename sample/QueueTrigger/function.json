@@ -1,6 +1,6 @@
 ﻿{
-    "trigger": {
-      "type": "queue",
-      "queueName": "samples-workitems"
-    }
+  "trigger": {
+    "type": "queue",
+    "queueName": "samples-workitems"
+  }
 }

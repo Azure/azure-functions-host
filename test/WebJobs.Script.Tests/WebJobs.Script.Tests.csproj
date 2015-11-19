@@ -168,7 +168,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FunctionDescriptorTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="ScriptHostTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
