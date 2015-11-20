@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, functionFolderInfo.Configuration);
 
             JObject trigger = (JObject)functionFolderInfo.Configuration["trigger"];
             string triggerType = (string)trigger["type"];
@@ -65,6 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Add a TraceWriter for logging
             parameters.Add(new ParameterDescriptor("log", typeof(TraceWriter)));
+
+            // Add an IBinder to support output bindings
+            parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
             functionDescriptor = new FunctionDescriptor(functionFolderInfo.Name, invoker, parameters);
 

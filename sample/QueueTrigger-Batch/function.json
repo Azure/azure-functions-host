@@ -1,6 +1,13 @@
 ﻿{
-    "trigger": {
-      "type": "queue",
-      "queueName": "samples-batch"
+  "trigger": {
+    "type": "queue",
+    "queueName": "samples-batch"
+  },
+  "outputs": [
+    {
+      "type": "blob",
+      "name": "output",
+      "path": "samples-output/{itemId}"
     }
+  ]
 }
