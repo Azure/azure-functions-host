@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -19,11 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
+        private readonly JObject _functionConfiguration;
+        private readonly Collection<OutputBinding> _outputBindings;
 
-        public ScriptFunctionInvoker(string scriptFilePath)
+        public ScriptFunctionInvoker(string scriptFilePath, JObject functionConfiguration)
         {
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
+            _functionConfiguration = functionConfiguration;
+
+            // parse the output bindings
+            JArray outputs = (JArray)_functionConfiguration["outputs"];
+            _outputBindings = OutputBinding.GetOutputBindings(outputs);
         }
 
         public static bool IsSupportedScriptType(string extension)
@@ -36,83 +46,87 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string input = parameters[0].ToString();
             TraceWriter traceWriter = (TraceWriter)parameters[1];
+            IBinder binder = (IBinder)parameters[2];
 
+            string scriptHostArguments;
             switch (_scriptType)
             {
                 case "ps1":
-                    await InvokePowerShellScript(input, traceWriter);
+                    scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
+                    await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, traceWriter, binder, input);
                     break;
                 case "cmd":
                 case "bat":
-                    await InvokeWindowsBatchScript(input, traceWriter);
+                    scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
+                    await ExecuteScriptAsync("cmd", scriptHostArguments, traceWriter, binder, input);
                     break;
                 case "py":
-                    await InvokePythonScript(input, traceWriter);
+                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    await ExecuteScriptAsync("python.exe", scriptHostArguments, traceWriter, binder, input);
                     break;
                 case "php":
-                    await InvokePhpScript(input, traceWriter);
+                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    await ExecuteScriptAsync("php.exe", scriptHostArguments, traceWriter, binder, input);
                     break;
                 case "sh":
-                    await InvokeBashScript(input, traceWriter);
+                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    string bashPath = ResolveBashPath();
+                    await ExecuteScriptAsync(bashPath, scriptHostArguments, traceWriter, binder, input);
                     break;
                 case "fsx":
-                    await InvokeFSharpScript(input, traceWriter);
+                    scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
+                    await ExecuteScriptAsync("cmd", scriptHostArguments, traceWriter, binder, input);
                     break;
             }
         }
 
-        internal Task InvokeFSharpScript(string input, TraceWriter traceWriter)
+        internal async Task ExecuteScriptAsync(string path, string arguments, TraceWriter traceWriter, IBinder binder, string stdin = null)
         {
-            string scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
-
-            return InvokeScriptHostCore("cmd", scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokeBashScript(string input, TraceWriter traceWriter)
-        {
-            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
-            string bashPath = ResolveBashPath();
-
-            return InvokeScriptHostCore(bashPath, scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokePhpScript(string input, TraceWriter traceWriter)
-        {
-            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
-
-            return InvokeScriptHostCore("php.exe", scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokePythonScript(string input, TraceWriter traceWriter)
-        {
-            string scriptHostArguments = string.Format("{0}", _scriptFilePath);
-
-            return InvokeScriptHostCore("python.exe", scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokePowerShellScript(string input, TraceWriter traceWriter)
-        {
-            string scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
-
-            return InvokeScriptHostCore("PowerShell.exe", scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokeWindowsBatchScript(string input, TraceWriter traceWriter)
-        {
-            string scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
-
-            return InvokeScriptHostCore("cmd", scriptHostArguments, traceWriter, input);
-        }
-
-        internal Task InvokeScriptHostCore(string path, string arguments, TraceWriter traceWriter, string stdin = null)
-        {
+            string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
+
+            // if there are any binding parameters in the output bindings,
+            // parse the input as json to get the binding data
+            Dictionary<string, string> bindingData = new Dictionary<string, string>();
+            bindingData["InstanceId"] = instanceId;
+            if (_outputBindings.Any(p => p.HasBindingParameters))
+            {
+                try
+                {
+                    JObject parsed = JObject.Parse(stdin);
+                    bindingData = parsed.ToObject<Dictionary<string, string>>();
+                }
+                catch
+                {
+                    // it's not an error if the incoming message isn't JSON
+                    // there are cases where there will be output binding parameters
+                    // that don't bind to JSON properties
+                }
+            }
+
+            // if there are any output bindings declared, set up the temporary
+            // output directory
+            string rootOutputPath = Path.Combine(Path.GetTempPath(), "webjobs", "output");
+            string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
+            if (_outputBindings.Count > 0)
+            {
+                Directory.CreateDirectory(functionInstanceOutputPath);
+            }
+
+            // setup the script execution environment
+            Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
+            environmentVariables["InstanceId"] = instanceId;
+            environmentVariables["OutputPath"] = functionInstanceOutputPath;
+            foreach (var outputBinding in _outputBindings)
+            {
+                environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+            }
 
             // TODO
             // - put a timeout on how long we wait?
             // - need to periodically flush the standard out to the TraceWriter
             // - need to handle stderr as well
-            Process process = CreateProcess(path, workingDirectory, arguments);
+            Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
             process.Start();
             if (stdin != null)
             {
@@ -131,7 +145,17 @@ namespace Microsoft.Azure.WebJobs.Script
             string output = process.StandardOutput.ReadToEnd();
             traceWriter.Verbose(output);
 
-            return Task.FromResult(0);
+            // process output bindings
+            foreach (var outputBinding in _outputBindings)
+            {
+                await outputBinding.BindAsync(binder, functionInstanceOutputPath, bindingData);
+            }
+
+            // clean up the output directory
+            if (_outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
+            {
+                Directory.Delete(functionInstanceOutputPath, recursive: true);
+            }
         }
 
         internal Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)
