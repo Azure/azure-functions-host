@@ -28,17 +28,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(functionFolderInfo.Source);
-
+            
             JObject trigger = (JObject)functionFolderInfo.Configuration["trigger"];
             string triggerType = (string)trigger["type"];
 
-            string parameterName = (string)trigger["name"];
-            if (string.IsNullOrEmpty(parameterName))
+            string triggerParameterName = (string)trigger["name"];
+            if (string.IsNullOrEmpty(triggerParameterName))
             {
                 // default the name to simply 'input'
-                trigger["name"] = "input";
+                trigger["name"] = triggerParameterName = "input";
             }
+
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(triggerParameterName, functionFolderInfo.Source, functionFolderInfo.Configuration);
 
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)

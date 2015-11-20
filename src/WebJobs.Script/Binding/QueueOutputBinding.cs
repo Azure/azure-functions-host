@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, string outputPath, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
         {
             string boundQueueName = QueueName;
             if (bindingData != null)
@@ -38,8 +38,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
-            string outFilePath = System.IO.Path.Combine(outputPath, Name);
-            byte[] bytes = File.ReadAllBytes(outFilePath);
+            byte[] bytes;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                stream.CopyTo(ms);
+                bytes = ms.ToArray();
+            }
             await collector.AddAsync(bytes);
         }
     }

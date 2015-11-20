@@ -3,13 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binders;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -18,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly Func<object, Task<object>> _scriptFunc;
         private static string FunctionTemplate;
+        private readonly Collection<OutputBinding> _outputBindings;
+        private readonly string _triggerParameterName;
 
         static NodeFunctionInvoker()
         {
@@ -28,26 +33,84 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public NodeFunctionInvoker(string scriptFilePath)
+        public NodeFunctionInvoker(string triggerParameterName, string scriptFilePath, JObject functionConfiguration)
         {
+            _triggerParameterName = triggerParameterName;
             scriptFilePath = scriptFilePath.Replace('\\', '/');
             string script = string.Format(FunctionTemplate, scriptFilePath);
             _scriptFunc = Edge.Func(script);
+
+            // parse the output bindings
+            JArray outputs = (JArray)functionConfiguration["outputs"];
+            _outputBindings = OutputBinding.GetOutputBindings(outputs);
         }
 
         public async Task Invoke(object[] parameters)
-        {
-            var context = CreateContext(parameters);
-
-            await _scriptFunc(context);
-        }
-
-        private object CreateContext(object[] parameters)
         {
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
 
+            var context = CreateContext(input, traceWriter, binder);
+
+            // if there are any binding parameters in the output bindings,
+            // parse the input as json to get the binding data
+            Dictionary<string, string> bindingData = new Dictionary<string, string>();
+            if (_outputBindings.Any(p => p.HasBindingParameters))
+            {
+                try
+                {
+                    JObject parsed = JObject.Parse(input as string);
+                    bindingData = parsed.ToObject<Dictionary<string, string>>();
+                }
+                catch
+                {
+                    // it's not an error if the incoming message isn't JSON
+                    // there are cases where there will be output binding parameters
+                    // that don't bind to JSON properties
+                }
+            }
+
+            IDictionary<string, object> functionOutput = null;
+            if (_outputBindings.Count > 0)
+            {
+                var output = (Func<object, Task<object>>)((binding) =>
+                {
+                    // cache the output value for the bind step below
+                    functionOutput = binding as IDictionary<string, object>;
+                    return Task.FromResult<object>(null);
+                });
+                context["output"] = output;
+            }
+
+            await _scriptFunc(context);
+
+            // process output bindings
+            if (functionOutput != null)
+            {
+                foreach (OutputBinding binding in _outputBindings)
+                {
+                    // get the output value from the script
+                    object value = null;
+                    if (functionOutput.TryGetValue(binding.Name, out value))
+                    {
+                        byte[] bytes = null;
+                        if (value.GetType() == typeof(string))
+                        {
+                            bytes = Encoding.UTF8.GetBytes((string)value);
+                        }
+
+                        using (MemoryStream ms = new MemoryStream(bytes))
+                        {
+                            await binding.BindAsync(binder, ms, bindingData);
+                        }
+                    }
+                }
+            }
+        }
+
+        private Dictionary<string, object> CreateContext(object input, TraceWriter traceWriter, IBinder binder)
+        {
             Type triggerParameterType = input.GetType();
             if (triggerParameterType == typeof(string))
             {
@@ -63,11 +126,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 return Task.FromResult<object>(null);
             });
 
-            var context = new
+            string instanceId = Guid.NewGuid().ToString();
+            var context = new Dictionary<string, object>()
             {
-                input = input,
-                log = log,
-                blob = BlobBinder.Create(binder)
+                { "instanceId", instanceId },
+                { _triggerParameterName, input },
+                { "log", log }
             };
 
             return context;
