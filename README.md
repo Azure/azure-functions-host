@@ -4,24 +4,39 @@ This repo contains libraries that enable a **light-weight scripting model** for 
 
 This opens the door for interesting **UI driven scenarios**, where the user simply chooses trigger options from drop-downs, provides a job script, and the corresponding function.json is generated behind the scenes. The scripting runtime is able to take these two simple inputs and set everything else up. The engine behind the scenes is the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/). 
 
-As an example, here's a simple Node.js job function:
+As an example, here's a simple Node.js job function that receives a queue message and writes that message to Azure Blob storage:
 
 ```javascript
+var util = require('util');
+
 module.exports = function (context) {
-    var workItem = context.input;
-    console.log('Node.js job function processed work item ' + workItem.ID);
+    context.log('Node.js queue trigger function processed work item ' 
+        + util.inspect(context.workItem.id));
+
+    context.output({
+        receipt: JSON.stringify(context.workItem)
+    })
+
     context.done();
 }
 ```
 
-And here's the corresponding function.json file that instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue:
+And here's the corresponding function.json file which includes  the trigger instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue, as well as the output blob binding:
 
 ```javascript
 {
   "trigger": {
-      "type": "queue",
-      "queueName": "samples-workitems"
+    "type": "queue",
+    "name": "workItem",
+    "queueName": "samples-workitems"
+  },
+  "outputs": [
+    {
+      "type": "blob",
+      "name": "receipt",
+      "path": "samples-workitems/{id}"
     }
+  ]
 }
 ```
 
