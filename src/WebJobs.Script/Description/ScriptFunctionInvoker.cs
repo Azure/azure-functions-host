@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -34,82 +35,82 @@ namespace Microsoft.Azure.WebJobs.Script
         public async Task Invoke(object[] parameters)
         {
             string input = parameters[0].ToString();
-            TextWriter textWriter = (TextWriter)parameters[1];
+            TraceWriter traceWriter = (TraceWriter)parameters[1];
 
             switch (_scriptType)
             {
                 case "ps1":
-                    await InvokePowerShellScript(input, textWriter);
+                    await InvokePowerShellScript(input, traceWriter);
                     break;
                 case "cmd":
                 case "bat":
-                    await InvokeWindowsBatchScript(input, textWriter);
+                    await InvokeWindowsBatchScript(input, traceWriter);
                     break;
                 case "py":
-                    await InvokePythonScript(input, textWriter);
+                    await InvokePythonScript(input, traceWriter);
                     break;
                 case "php":
-                    await InvokePhpScript(input, textWriter);
+                    await InvokePhpScript(input, traceWriter);
                     break;
                 case "sh":
-                    await InvokeBashScript(input, textWriter);
+                    await InvokeBashScript(input, traceWriter);
                     break;
                 case "fsx":
-                    await InvokeFSharpScript(input, textWriter);
+                    await InvokeFSharpScript(input, traceWriter);
                     break;
             }
         }
 
-        internal Task InvokeFSharpScript(string input, TextWriter textWriter)
+        internal Task InvokeFSharpScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore("cmd", scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokeBashScript(string input, TextWriter textWriter)
+        internal Task InvokeBashScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("{0}", _scriptFilePath);
             string bashPath = ResolveBashPath();
 
-            return InvokeScriptHostCore(bashPath, scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore(bashPath, scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokePhpScript(string input, TextWriter textWriter)
+        internal Task InvokePhpScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("{0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("php.exe", scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore("php.exe", scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokePythonScript(string input, TextWriter textWriter)
+        internal Task InvokePythonScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("{0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("python.exe", scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore("python.exe", scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokePowerShellScript(string input, TextWriter textWriter)
+        internal Task InvokePowerShellScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("PowerShell.exe", scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore("PowerShell.exe", scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokeWindowsBatchScript(string input, TextWriter textWriter)
+        internal Task InvokeWindowsBatchScript(string input, TraceWriter traceWriter)
         {
             string scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
 
-            return InvokeScriptHostCore("cmd", scriptHostArguments, textWriter, input);
+            return InvokeScriptHostCore("cmd", scriptHostArguments, traceWriter, input);
         }
 
-        internal Task InvokeScriptHostCore(string path, string arguments, TextWriter textWriter, string stdin = null)
+        internal Task InvokeScriptHostCore(string path, string arguments, TraceWriter traceWriter, string stdin = null)
         {
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
 
             // TODO
             // - put a timeout on how long we wait?
-            // - need to periodically flush the standard out to the TextWriter
+            // - need to periodically flush the standard out to the TraceWriter
             // - need to handle stderr as well
             Process process = CreateProcess(path, workingDirectory, arguments);
             process.Start();
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // write the results to the Dashboard
             string output = process.StandardOutput.ReadToEnd();
-            textWriter.Write(output);
+            traceWriter.Verbose(output);
 
             return Task.FromResult(0);
         }
