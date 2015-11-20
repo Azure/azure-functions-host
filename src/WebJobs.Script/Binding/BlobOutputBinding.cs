@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, string outputPath, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
         {
             string boundBlobPath = Path;
             if (bindingData != null)
@@ -38,11 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             Stream outStream = binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess.Write));
-            string outFilePath = System.IO.Path.Combine(outputPath, Name);
-            using (Stream fileStream = File.OpenRead(outFilePath))
-            {
-                await fileStream.CopyToAsync(outStream);
-            }
+            await stream.CopyToAsync(outStream);
         }
     }
 }

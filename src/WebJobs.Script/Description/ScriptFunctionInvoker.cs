@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -22,17 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
-        private readonly JObject _functionConfiguration;
         private readonly Collection<OutputBinding> _outputBindings;
 
         public ScriptFunctionInvoker(string scriptFilePath, JObject functionConfiguration)
         {
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
-            _functionConfiguration = functionConfiguration;
 
             // parse the output bindings
-            JArray outputs = (JArray)_functionConfiguration["outputs"];
+            JArray outputs = (JArray)functionConfiguration["outputs"];
             _outputBindings = OutputBinding.GetOutputBindings(outputs);
         }
 
@@ -148,7 +145,11 @@ namespace Microsoft.Azure.WebJobs.Script
             // process output bindings
             foreach (var outputBinding in _outputBindings)
             {
-                await outputBinding.BindAsync(binder, functionInstanceOutputPath, bindingData);
+                string outFilePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+                using (FileStream stream = File.OpenRead(outFilePath))
+                {
+                    await outputBinding.BindAsync(binder, stream, bindingData);
+                }
             }
 
             // clean up the output directory

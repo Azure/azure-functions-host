@@ -1,6 +1,14 @@
 ﻿{
   "trigger": {
     "type": "queue",
+    "name": "workItem",
     "queueName": "samples-workitems"
-  }
+  },
+  "outputs": [
+    {
+      "type": "blob",
+      "name": "receipt",
+      "path": "samples-workitems/{id}"
+    }
+  ]
 }

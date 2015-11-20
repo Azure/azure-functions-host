@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public abstract bool HasBindingParameters { get; }
 
-        public abstract Task BindAsync(IBinder binder, string outputPath, IReadOnlyDictionary<string, string> bindingData);
+        public abstract Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData);
 
         internal static Collection<OutputBinding> GetOutputBindings(JArray outputs)
         {

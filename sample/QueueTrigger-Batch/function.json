@@ -7,7 +7,7 @@
     {
       "type": "blob",
       "name": "output",
-      "path": "samples-output/{itemId}"
+      "path": "samples-output/{id}"
     }
   ]
 }
