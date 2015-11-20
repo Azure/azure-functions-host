@@ -159,7 +159,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Binding\BlobBinder.cs" />
     <Compile Include="Binding\BlobOutputBinding.cs" />
     <Compile Include="Binding\OutputBinding.cs" />
     <Compile Include="Binding\QueueOutputBinding.cs" />
