@@ -15,7 +15,7 @@ module.exports = function (context) {
 
     context.output({
         receipt: JSON.stringify(context.workItem)
-    })
+    });
 
     context.done();
 }
