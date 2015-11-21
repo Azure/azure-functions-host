@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly Func<object, Task<object>> _scriptFunc;
         private static string FunctionTemplate;
-        private readonly Collection<OutputBinding> _outputBindings;
+        private readonly Collection<Binding> _inputBindings;
+        private readonly Collection<Binding> _outputBindings;
         private readonly string _triggerParameterName;
 
         static NodeFunctionInvoker()
@@ -33,16 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public NodeFunctionInvoker(string triggerParameterName, string scriptFilePath, JObject functionConfiguration)
+        internal NodeFunctionInvoker(string triggerParameterName, string scriptFilePath, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _triggerParameterName = triggerParameterName;
             scriptFilePath = scriptFilePath.Replace('\\', '/');
             string script = string.Format(FunctionTemplate, scriptFilePath);
             _scriptFunc = Edge.Func(script);
 
-            // parse the output bindings
-            JArray outputs = (JArray)functionConfiguration["outputs"];
-            _outputBindings = OutputBinding.GetOutputBindings(outputs);
+            _inputBindings = inputBindings;
+            _outputBindings = outputBindings;
         }
 
         public async Task Invoke(object[] parameters)
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // process output bindings
             if (functionOutput != null)
             {
-                foreach (OutputBinding binding in _outputBindings)
+                foreach (Binding binding in _outputBindings)
                 {
                     // get the output value from the script
                     object value = null;

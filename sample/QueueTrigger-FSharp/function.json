@@ -1,6 +1,10 @@
 {
-  "trigger": {
-    "type": "queue",
-    "queueName": "samples-fsharp"
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "samples-fsharp"
+      }
+    ]
   }
 }

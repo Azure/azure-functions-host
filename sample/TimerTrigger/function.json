@@ -1,7 +1,11 @@
 ﻿{
-  "trigger": {
-    "type": "timer",
-    "schedule": "*/15 * * * * *",
-    "runOnStartup": true
+  "bindings": {
+    "input": [
+      {
+        "type": "timerTrigger",
+        "schedule": "*/15 * * * * *",
+        "runOnStartup": true
+      }
+    ]
   }
 }

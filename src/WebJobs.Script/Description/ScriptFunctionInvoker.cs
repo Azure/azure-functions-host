@@ -21,16 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
-        private readonly Collection<OutputBinding> _outputBindings;
+        private readonly Collection<Binding> _inputBindings;
+        private readonly Collection<Binding> _outputBindings;
 
-        public ScriptFunctionInvoker(string scriptFilePath, JObject functionConfiguration)
+        internal ScriptFunctionInvoker(string scriptFilePath, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
-
-            // parse the output bindings
-            JArray outputs = (JArray)functionConfiguration["outputs"];
-            _outputBindings = OutputBinding.GetOutputBindings(outputs);
+            _inputBindings = inputBindings;
+            _outputBindings = outputBindings;
         }
 
         public static bool IsSupportedScriptType(string extension)
@@ -81,12 +80,16 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
+            string rootOutputPath = Path.Combine(Path.GetTempPath(), "webjobs", "output");
+            string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
+            Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 
-            // if there are any binding parameters in the output bindings,
+            // if there are any parameters in the bindings,
             // parse the input as json to get the binding data
             Dictionary<string, string> bindingData = new Dictionary<string, string>();
             bindingData["InstanceId"] = instanceId;
-            if (_outputBindings.Any(p => p.HasBindingParameters))
+            if (_outputBindings.Any(p => p.HasBindingParameters) ||
+                _inputBindings.Any(p => p.HasBindingParameters))
             {
                 try
                 {
@@ -101,17 +104,27 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            // if there are any output bindings declared, set up the temporary
+            // if there are any input or output bindings declared, set up the temporary
             // output directory
-            string rootOutputPath = Path.Combine(Path.GetTempPath(), "webjobs", "output");
-            string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
-            if (_outputBindings.Count > 0)
+            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
+            if (_outputBindings.Count > 0 || nonTriggerInputBindings.Any())
             {
                 Directory.CreateDirectory(functionInstanceOutputPath);
             }
 
+            // process input bindings
+            foreach (var inputBinding in nonTriggerInputBindings)
+            {
+                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+                using (FileStream stream = File.OpenWrite(filePath))
+                {
+                    await inputBinding.BindAsync(binder, stream, bindingData);
+                }
+
+                environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+            }
+
             // setup the script execution environment
-            Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             environmentVariables["InstanceId"] = instanceId;
             foreach (var outputBinding in _outputBindings)
             {
@@ -144,10 +157,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // process output bindings
             foreach (var outputBinding in _outputBindings)
             {
-                string outFilePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
-                if (File.Exists(outFilePath))
+                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+                if (File.Exists(filePath))
                 {
-                    using (FileStream stream = File.OpenRead(outFilePath))
+                    using (FileStream stream = File.OpenRead(filePath))
                     {
                         await outputBinding.BindAsync(binder, stream, bindingData);
                     }

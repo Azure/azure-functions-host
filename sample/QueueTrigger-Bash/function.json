@@ -1,6 +1,10 @@
 {
-  "trigger": {
-    "type": "queue",
-    "queueName": "samples-bash"
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "samples-bash"
+      }
+    ]
   }
 }

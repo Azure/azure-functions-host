@@ -1,13 +1,17 @@
 ﻿{
-  "trigger": {
-    "type": "queue",
-    "queueName": "samples-python"
-  },
-  "outputs": [
-    {
-      "type": "blob",
-      "name": "output",
-      "path": "samples-output/{id}"
-    }
-  ]
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "samples-python"
+      }
+    ],
+    "output": [
+      {
+        "type": "blob",
+        "name": "output",
+        "path": "samples-output/{id}"
+      }
+    ]
+  }
 }

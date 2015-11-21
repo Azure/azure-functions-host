@@ -9,12 +9,12 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class QueueOutputBinding : OutputBinding
+    internal class QueueBinding : Binding
     {
         private readonly BindingTemplate _queueNameBindingTemplate;
 
-        public QueueOutputBinding(string name, string queueName) : base(name, "queue")
-        {
+        public QueueBinding(string name, string queueName, FileAccess fileAccess, bool isTrigger) : base(name, "queue", fileAccess, isTrigger)
+        {   
             QueueName = queueName;
             _queueNameBindingTemplate = BindingTemplate.FromString(QueueName);
         }
@@ -37,14 +37,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 boundQueueName = _queueNameBindingTemplate.Bind(bindingData);
             }
 
-            IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
-            byte[] bytes;
-            using (MemoryStream ms = new MemoryStream())
+            if (FileAccess == FileAccess.Write)
             {
-                stream.CopyTo(ms);
-                bytes = ms.ToArray();
+                Stream queueStream = binder.Bind<Stream>(new QueueAttribute(boundQueueName));
+                await queueStream.CopyToAsync(stream);
             }
-            await collector.AddAsync(bytes);
+            else
+            {
+                IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
+                byte[] bytes;
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    bytes = ms.ToArray();
+                }
+                await collector.AddAsync(bytes);
+            }
         }
     }
 }
