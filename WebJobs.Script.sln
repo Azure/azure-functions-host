@@ -81,6 +81,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-FSharp", "Queu
 		sample\QueueTrigger-FSharp\run.fsx = sample\QueueTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResizeImage", "ResizeImage", "{1B6E0EA1-DB38-431C-864A-2A553DACB8DA}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ResizeImage\function.json = sample\ResizeImage\function.json
+		sample\ResizeImage\resize.bat = sample\ResizeImage\resize.bat
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resizer", "Resizer", "{5C458CC0-F3EC-463E-9091-2B08955C4375}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ResizeImage\Resizer\ImageProcessor.dll = sample\ResizeImage\Resizer\ImageProcessor.dll
+		sample\ResizeImage\Resizer\Resizer.exe = sample\ResizeImage\Resizer\Resizer.exe
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -122,5 +134,7 @@ Global
 		{A36EED66-E934-4A43-864D-DF89A6A6ED0D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{2EC32A23-907C-40E1-A3E4-BDB425653873} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{644AFFC7-46C5-483A-812E-F5C9B93CBA86} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{1B6E0EA1-DB38-431C-864A-2A553DACB8DA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 	EndGlobalSection
 EndGlobal
