@@ -21,7 +21,7 @@ module.exports = function (context) {
 }
 ```
 
-And here's the corresponding **function.json** file which includes the trigger definition that instructs the runtime to invoke this function whenever a new queue message is added to the `samples-workitems`:
+And here's the corresponding **function.json** file which includes a trigger **input binding** that instructs the runtime to invoke this function whenever a new queue message is added to the `samples-workitems`:
 
 ```javascript
 {
@@ -39,7 +39,7 @@ And here's the corresponding **function.json** file which includes the trigger d
     }]
 }
 ```
-The `receipt` blob output binding that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
+The `receipt` blob **output binding** that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
 
 Here's a Windows Batch script that uses the **same function definition**, processes the same queue messages and writes them to blobs:
 
