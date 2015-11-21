@@ -25,12 +25,14 @@ And here's the corresponding **function.json** file which includes the trigger d
 
 ```javascript
 {
-  "trigger": {
-    "type": "queue",
-    "name": "workItem",
-    "queueName": "samples-workitems"
+  "bindings": {
+    "input": [{
+        "type": "queueTrigger",
+        "name": "workItem",
+        "queueName": "samples-workitems"
+      }]
   },
-  "outputs": [{
+  "output": [{
       "type": "blob",
       "name": "receipt",
       "path": "samples-workitems/{id}"
