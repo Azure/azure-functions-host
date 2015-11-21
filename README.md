@@ -97,7 +97,7 @@ The samples also includes a canonical [image resize sample](http://github.com/Az
 }
 ```
 
-When the script receives a queue message on queue `image-resize`, the input binding reads the original image from blob storage (binding to the `name` property from the queue message), sets up the output binding, and invokes the script. Here's the batch script:
+When the script receives a queue message on queue `image-resize`, the input binding reads the original image from blob storage (binding to the `name` property from the queue message), sets up the output binding, and invokes the script. Here's the batch script (resize.bat):
 
 ```batch
 .\Resizer\Resizer.exe %original% %resized% 200
