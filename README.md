@@ -39,7 +39,7 @@ And here's the corresponding **function.json** file which includes the trigger d
 ```
 The `receipt` blob output binding that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
 
-Here's a Windows Batch file that uses the **same function definition**, and processes queue messages and writes them to blobs:
+Here's a Windows Batch script that uses the **same function definition**, and processes queue messages and writes them to blobs:
 
 ```batch
 SET /p workItem=
