@@ -21,7 +21,7 @@ module.exports = function (context) {
 }
 ```
 
-And here's the corresponding function.json file which includes the trigger definition instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue, as well as the output blob binding:
+And here's the corresponding function.json file which includes the trigger definition instructs the runtime to invoke this function whenever a new queue message is added to the `samples-workitems` Azure Storage Queue, as well as the output blob binding:
 
 ```javascript
 {
@@ -37,7 +37,7 @@ And here's the corresponding function.json file which includes the trigger defin
     }]
 }
 ```
-Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
+Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message
 
 A Python script might look like this:
 
@@ -47,7 +47,7 @@ message = "Python script processed queue message '{0}'".format(input)
 print(message)
 ```
 
-Note that for all script types other than Node.js, trigger input is passed via STDIN, and output is written via STDOUT.
+Note that for all script types other than Node.js, trigger input is passed via STDIN, and output logs is written via STDOUT.
 
 The runtime will be initialized automatically with these inputs, live monitoring of the Azure Queue will begin, and the function will be invoked when queue messages are added. In addition to Queue processing, all the other WebJobs SDK triggers are supported - triggering on new Blobs, cron scheduled functions, ServiceBus queues, etc. Virtually all of the WebJobs SDK triggers (including [Extensions](http://github.com/Azure/azure-webjobs-sdk-extensions)) are available for scripting. Most of the configuration options found in the WebJobs SDK can also be specified via json metadata.
 
