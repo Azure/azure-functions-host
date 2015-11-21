@@ -37,9 +37,9 @@ And here's the corresponding function.json file which includes the trigger defin
     }]
 }
 ```
-Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message
+Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
 
-A Python script might look like this:
+A Python script that receives queue messages might look like this:
 
 ```python
 input = raw_input();
