@@ -42,7 +42,7 @@ Note that the blob binding path `samples-workitems/{id}` includes a parameter `{
 A Python script might look like this:
 
 ```python
-input = input();
+input = raw_input();
 message = "Python script processed queue message '{0}'".format(input)
 print(message)
 ```
