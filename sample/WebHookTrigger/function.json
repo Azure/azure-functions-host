@@ -1,5 +1,5 @@
 ﻿{
-    "trigger": {
-      "type": "webHook"
-    }
+  "trigger": {
+    "type": "webHook"
+  }
 }

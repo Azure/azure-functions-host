@@ -1,6 +1,6 @@
 {
-    "trigger": {
-      "type": "queue",
-      "queueName": "samples-php"
-    }
+  "trigger": {
+    "type": "queue",
+    "queueName": "samples-php"
+  }
 }

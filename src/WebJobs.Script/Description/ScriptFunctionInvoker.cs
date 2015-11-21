@@ -113,7 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // setup the script execution environment
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             environmentVariables["InstanceId"] = instanceId;
-            environmentVariables["OutputPath"] = functionInstanceOutputPath;
             foreach (var outputBinding in _outputBindings)
             {
                 environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
@@ -146,9 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script
             foreach (var outputBinding in _outputBindings)
             {
                 string outFilePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
-                using (FileStream stream = File.OpenRead(outFilePath))
+                if (File.Exists(outFilePath))
                 {
-                    await outputBinding.BindAsync(binder, stream, bindingData);
+                    using (FileStream stream = File.OpenRead(outFilePath))
+                    {
+                        await outputBinding.BindAsync(binder, stream, bindingData);
+                    }
                 }
             }
 
