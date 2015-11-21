@@ -97,13 +97,13 @@ The samples also includes a canonical [image resize sample](http://github.com/Az
 }
 ```
 
-When the script receives a queue message on queue `image-resize`, the input binding reads the original image from blob binding the `name` property from the queue message, binds to the output blob, and invokes the script. Here's the batch script:
+When the script receives a queue message on queue `image-resize`, the input binding reads the original image from blob storage (binding to the `name` property from the queue message), sets up the output binding, and invokes the script. Here's the batch script:
 
 ```batch
 .\Resizer\Resizer.exe %original% %resized% 200
 ```
 
-Using Resizer.exe which is part of the function content, the operation is a simple one-liner. The bound paths set up by the runtime are passed into the resizer, resizer processes the image, and writes to `%resized%`. The ouput binding uploads the image written to `%resized%` to blob storage.
+Using Resizer.exe which is part of the function content, the operation is a simple one-liner. The bound paths set up by the runtime are passed into the resizer, the resizer processes the image, and writes the result to `%resized%`. The ouput binding uploads the image written to `%resized%` to blob storage.
 
 On startup, the runtime loads these scripts and metadata files and begins live monitoring of the Azure Queue. The functions are invoked automatically when queue messages are added. In addition to Queue triggers, all the other WebJobs SDK triggers are supported - triggering on new Blobs, cron scheduled functions, ServiceBus queues, etc. Virtually all of the WebJobs SDK triggers (including [Extensions](http://github.com/Azure/azure-webjobs-sdk-extensions)) are available for scripting. Most of the configuration options found in the WebJobs SDK can also be specified via json metadata.
 
