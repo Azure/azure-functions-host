@@ -30,15 +30,14 @@ And here's the corresponding function.json file which includes  the trigger inst
     "name": "workItem",
     "queueName": "samples-workitems"
   },
-  "outputs": [
-    {
+  "outputs": [{
       "type": "blob",
       "name": "receipt",
       "path": "samples-workitems/{id}"
-    }
-  ]
+    }]
 }
 ```
+Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
 
 A Python script might look like this:
 
