@@ -47,7 +47,7 @@ echo Windows Batch script processed work item '%workItem%'
 echo %workItem% > %receipt%
 ```
 
-And the same function in Python:
+Here's the same function in Python:
 
 ```python
 import os
