@@ -26,17 +26,21 @@ And here's the corresponding **function.json** file which includes a trigger **i
 ```javascript
 {
   "bindings": {
-    "input": [{
+    "input": [
+      {
         "type": "queueTrigger",
         "name": "workItem",
         "queueName": "samples-workitems"
-      }]
+      }
+    ]
   },
-  "output": [{
+  "output": [
+    {
       "type": "blob",
       "name": "receipt",
       "path": "samples-workitems/{id}"
-    }]
+    }
+  ]
 }
 ```
 The `receipt` blob **output binding** that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming message.
