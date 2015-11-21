@@ -53,13 +53,13 @@ And the same function in Python:
 import os
 
 # read the queue message and write to stdout
-input = raw_input();
-message = "Python script processed queue message '{0}'".format(input)
+workItem = raw_input();
+message = "Python script processed work item '{0}'".format(workItem)
 print(message)
 
 # write to the output binding
 f = open(os.environ['receipt'], 'w')
-f.write(input)
+f.write(workItem)
 ```
 
 Note that for all script types other than Node.js, trigger input is passed via STDIN, and output logs is written via STDOUT. You can see more script language [examples here](http://github.com/Azure/azure-webjobs-sdk-script/tree/master/sample).
