@@ -21,7 +21,7 @@ module.exports = function (context) {
 }
 ```
 
-And here's the corresponding function.json file which includes  the trigger instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue, as well as the output blob binding:
+And here's the corresponding function.json file which includes the trigger definition instructs the runtime to invoke this function whenever a new queue message is added to the 'samples-workitems' Azure Storage Queue, as well as the output blob binding:
 
 ```javascript
 {
