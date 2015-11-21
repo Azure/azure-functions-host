@@ -1,0 +1,22 @@
+{
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "image-resize"
+      },
+      {
+        "type": "blob",
+        "name": "original",
+        "path": "images-original/{name}"
+      }
+    ],
+    "output": [
+      {
+        "type": "blob",
+        "name": "resized",
+        "path": "images-resized/{name}"
+      }
+    ]
+  }
+}
