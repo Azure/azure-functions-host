@@ -1,6 +1,10 @@
 {
-  "trigger": {
-    "type": "blob",
-    "blobPath": "samples-workitems"
+  "bindings": {
+    "input": [
+      {
+        "type": "blobTrigger",
+        "path": "samples-workitems"
+      }
+    ]
   }
 }

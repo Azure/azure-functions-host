@@ -9,11 +9,11 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class BlobOutputBinding : OutputBinding
+    internal class BlobBinding : Binding
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobOutputBinding(string name, string path) : base(name, "blob")
+        public BlobBinding(string name, string path, FileAccess fileAccess, bool isTrigger) : base(name, "blob", fileAccess, isTrigger)
         {
             Path = path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
@@ -37,8 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 boundBlobPath = _pathBindingTemplate.Bind(bindingData);
             }
 
-            Stream outStream = binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess.Write));
-            await stream.CopyToAsync(outStream);
+            Stream blobStream = binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
+            if (FileAccess == FileAccess.Write)
+            {
+                await stream.CopyToAsync(blobStream);
+            }
+            else
+            {
+                await blobStream.CopyToAsync(stream);
+            }
         }
     }
 }

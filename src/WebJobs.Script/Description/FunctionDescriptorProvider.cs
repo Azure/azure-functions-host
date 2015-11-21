@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ConstructorInfo ctorInfo = typeof(BlobTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string blobPath = (string)trigger["blobPath"];
+            string blobPath = (string)trigger["path"];
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { blobPath });
 
             string parameterName = (string)trigger["name"];

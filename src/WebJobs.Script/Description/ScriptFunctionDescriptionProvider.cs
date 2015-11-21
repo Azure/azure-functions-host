@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
@@ -27,10 +28,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, functionFolderInfo.Configuration);
+            // parse the bindings
+            JObject bindings = (JObject)functionFolderInfo.Configuration["bindings"];
+            JArray inputs = (JArray)bindings["input"];
+            Collection<Binding> inputBindings = Binding.GetBindings(inputs, FileAccess.Read);
 
-            JObject trigger = (JObject)functionFolderInfo.Configuration["trigger"];
+            JArray outputs = (JArray)bindings["output"];
+            Collection<Binding> outputBindings = Binding.GetBindings(outputs, FileAccess.Write);
+
+            string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, inputBindings, outputBindings);
+
+            JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
             string triggerType = (string)trigger["type"];
 
             string parameterName = (string)trigger["name"];
@@ -43,19 +52,19 @@ namespace Microsoft.Azure.WebJobs.Script
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
             {
-                case "queue":
+                case "queueTrigger":
                     triggerParameter = ParseQueueTrigger(trigger);
                     break;
-                case "blob":
+                case "blobTrigger":
                     triggerParameter = ParseBlobTrigger(trigger);
                     break;
-                case "serviceBus":
+                case "serviceBusTrigger":
                     triggerParameter = ParseServiceBusTrigger(trigger);
                     break;
-                case "timer":
+                case "timerTrigger":
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
-                case "webHook":
+                case "webHookTrigger":
                     triggerParameter = ParseWebHookTrigger(trigger);
                     break;
             }

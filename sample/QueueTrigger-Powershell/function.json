@@ -1,6 +1,10 @@
 ﻿{
-  "trigger": {
-    "type": "queue",
-    "queueName": "samples-powershell"
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "samples-powershell"
+      }
+    ]
   }
 }

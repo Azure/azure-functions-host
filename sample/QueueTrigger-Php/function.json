@@ -1,6 +1,10 @@
 {
-  "trigger": {
-    "type": "queue",
-    "queueName": "samples-php"
+  "bindings": {
+    "input": [
+      {
+        "type": "queueTrigger",
+        "queueName": "samples-php"
+      }
+    ]
   }
 }

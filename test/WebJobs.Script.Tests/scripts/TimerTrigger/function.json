@@ -1,6 +1,10 @@
 ﻿{
-  "trigger": {
-    "type": "timer",
-    "schedule": "* * * * * *"
+  "bindings": {
+    "input": [
+      {
+        "type": "timerTrigger",
+        "schedule": "* * * * * *"
+      }
+    ]
   }
 }

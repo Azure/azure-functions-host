@@ -21,20 +21,13 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
-                { "type", "timer" },
+                { "type", "timerTrigger" },
                 { "schedule", "* * * * * *" },
                 { "runOnStartup", true }
             };
-            functionFolderInfo.Configuration = new JObject
-            {
-                { "trigger", trigger }
-            };
-            MethodInfo method = GenerateMethod(functionFolderInfo);
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -50,19 +43,12 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
-                { "type", "queue" },
+                { "type", "queueTrigger" },
                 { "queueName", "test" }
             };
-            functionFolderInfo.Configuration = new JObject
-            {
-                { "trigger", trigger }
-            };
-            MethodInfo method = GenerateMethod(functionFolderInfo);
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -77,19 +63,12 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
-                { "type", "blob" },
-                { "blobPath", "foo/bar" }
+                { "type", "blobTrigger" },
+                { "path", "foo/bar" }
             };
-            functionFolderInfo.Configuration = new JObject
-            {
-                { "trigger", trigger }
-            };
-            MethodInfo method = GenerateMethod(functionFolderInfo);
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -104,18 +83,11 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateWebHookTriggerFunction()
         {
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
-                { "type", "webHook" }
+                { "type", "webHookTrigger" }
             };
-            functionFolderInfo.Configuration = new JObject
-            {
-                { "trigger", trigger }
-            };
-            MethodInfo method = GenerateMethod(functionFolderInfo);
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -130,21 +102,14 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
             JObject trigger = new JObject
             {
-                { "type", "serviceBus" },
+                { "type", "serviceBusTrigger" },
                 { "topicName", "testTopic" },
                 { "subscriptionName", "testSubscription" },
                 { "accessRights", "listen" }
             };
-            functionFolderInfo.Configuration = new JObject
-            {
-                { "trigger", trigger }
-            };
-            MethodInfo method = GenerateMethod(functionFolderInfo);
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -177,10 +142,19 @@ namespace WebJobs.Script.Tests
             Assert.Equal(typeof(IBinder), parameter.ParameterType);
         }
 
-        private static MethodInfo GenerateMethod(FunctionFolderInfo function)
+        private static MethodInfo GenerateMethod(JObject trigger)
         {
+            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
+            functionFolderInfo.Name = "Test";
+            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
+
+            JArray inputs = new JArray(trigger);
+            functionFolderInfo.Configuration = new JObject();
+            functionFolderInfo.Configuration["bindings"] = new JObject();
+            functionFolderInfo.Configuration["bindings"]["input"] = inputs;
+
             List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
-            functionFolderInfos.Add(function);
+            functionFolderInfos.Add(functionFolderInfo);
 
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
