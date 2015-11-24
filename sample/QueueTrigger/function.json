@@ -6,13 +6,13 @@
         "name": "workItem",
         "queueName": "samples-workitems"
       }
+    ],
+    "output": [
+      {
+        "type": "blob",
+        "name": "receipt",
+        "path": "samples-workitems/{id}"
+      }
     ]
-  },
-  "output": [
-    {
-      "type": "blob",
-      "name": "receipt",
-      "path": "samples-workitems/{id}"
-    }
-  ]
+  }
 }
