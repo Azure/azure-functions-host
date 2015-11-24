@@ -111,4 +111,4 @@ When hosted in an [Azure Web App](http://azure.microsoft.com/en-us/services/app-
 
 The Script library is available as a Nuget package (**Microsoft.Azure.WebJobs.Script**). Currently this package is available on the [App Service Myget feed](http://github.com/Azure/azure-webjobs-sdk/wiki/%22Nightly%22-Builds).
 
-Please see the [Wiki](https://github.com/Azure/azure-webjobs-sdk-script/wiki) for more information, and also please log any issues/feedback on our [issues list](https://github.com/Azure/azure-webjobs-sdk-script/issues) and we'll investigate. 
+Please see the [Wiki](https://github.com/Azure/azure-webjobs-sdk-script/wiki) for more information on how to use and deploy the library, and also please log any issues/feedback on our [issues list](https://github.com/Azure/azure-webjobs-sdk-script/issues) and we'll investigate. 
