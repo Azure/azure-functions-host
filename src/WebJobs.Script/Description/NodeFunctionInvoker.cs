@@ -60,8 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 try
                 {
+                    // parse the object skipping any nested objects (binding data
+                    // only includes top level properties)
                     JObject parsed = JObject.Parse(input as string);
-                    bindingData = parsed.ToObject<Dictionary<string, string>>();
+                    bindingData = parsed.Children<JProperty>()
+                        .Where(p => p.Value.Type != JTokenType.Object)
+                        .ToDictionary(p => p.Name, p => (string)p);
                 }
                 catch
                 {
