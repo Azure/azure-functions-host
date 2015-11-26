@@ -16,33 +16,35 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        protected readonly JobHostConfiguration _jobHostConfig;
-        protected readonly ScriptHostConfiguration _scriptHostConfig;
 
         protected ScriptHost(JobHostConfiguration config, ScriptHostConfiguration scriptConfig) 
             : base(config)
         {
-            _jobHostConfig = config;
-            _scriptHostConfig = scriptConfig;
+            HostConfig = config;
+            ScriptConfig = scriptConfig;
         }
+
+        public JobHostConfiguration HostConfig { get; private set; }
+
+        public ScriptHostConfiguration ScriptConfig { get; private set; }
 
         protected virtual void Initialize()
         {
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                new ScriptFunctionDescriptorProvider(_scriptHostConfig.RootPath),
-                new NodeFunctionDescriptorProvider(_scriptHostConfig.RootPath)
+                new ScriptFunctionDescriptorProvider(ScriptConfig.RootPath),
+                new NodeFunctionDescriptorProvider(ScriptConfig.RootPath)
             };
 
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(_scriptHostConfig.RootPath, "host.json");
+            string hostConfigFilePath = Path.Combine(ScriptConfig.RootPath, "host.json");
             Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
-            ApplyConfiguration(hostConfig, _jobHostConfig);
+            ApplyConfiguration(hostConfig, HostConfig);
 
             // read all script functions and apply to JobHostConfiguration
-            Collection<FunctionDescriptor> functions = ReadFunctions(_scriptHostConfig, descriptionProviders);
+            Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
             Console.WriteLine(string.Format("Generating {0} job function(s)", functions.Count));
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
             List<Type> types = new List<Type>();
             types.Add(type);
 
-            _jobHostConfig.TypeLocator = new TypeLocator(types);
+            HostConfig.TypeLocator = new TypeLocator(types);
         }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)

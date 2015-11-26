@@ -146,7 +146,7 @@ namespace WebJobs.Script.Tests
         {
             FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
             functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"scripts\Common\test.js");
+            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\Common\test.js");
 
             JArray inputs = new JArray(trigger);
             functionFolderInfo.Configuration = new JObject();

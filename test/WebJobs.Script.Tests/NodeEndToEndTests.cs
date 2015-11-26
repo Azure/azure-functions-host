@@ -5,22 +5,16 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Script;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.Tests
 {
-    public class NodeEndToEndTests : IClassFixture<NodeEndToEndTests.TestFixture>
+    public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
-        private readonly TestFixture _fixture;
-
-        public NodeEndToEndTests(TestFixture fixture)
+        public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
-            _fixture = fixture;
         }
 
         [Fact]
@@ -28,7 +22,7 @@ namespace WebJobs.Script.Tests
         {
             string expectedValue = Guid.NewGuid().ToString();
             string testData = string.Format("{{ \"test\": \"{0}\" }}", expectedValue);
-            HttpResponseMessage response = await _fixture.Client.PostAsync("Functions/WebHookTrigger", new StringContent(testData));
+            HttpResponseMessage response = await Fixture.Client.PostAsync("Functions/WebHookTrigger", new StringContent(testData));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string json = File.ReadAllText("test.txt");
@@ -47,36 +41,21 @@ namespace WebJobs.Script.Tests
             Assert.True(lines.Length > 2);
         }
 
-        public class TestFixture : IDisposable
+        public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture()
+            public TestFixture() : base(@"TestScripts\Node")
             {
                 File.Delete("joblog.txt");
 
                 BaseUrl = "http://localhost:46002/";
                 Client = new HttpClient();
                 Client.BaseAddress = new Uri(BaseUrl);
-
-                ScriptHostConfiguration config = new ScriptHostConfiguration()
-                {
-                    RootPath = "scripts"
-                };
-
-                Host = ScriptHost.Create(config);
-                Host.Start();
             }
 
             public HttpClient Client { get; private set; }
 
-            public JobHost Host { get; private set; }
-
             public string BaseUrl { get; private set; }
-
-            public void Dispose()
-            {
-                Host.Stop();
-                Host.Dispose();
-            }
         }
     }
 }
+
