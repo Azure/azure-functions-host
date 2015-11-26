@@ -6,9 +6,6 @@
   "tracing": {
     "consoleLevel": "Verbose"
   },
-  "webhooks": {
-    "port": 46002
-  },
   "singleton": {
     "listenerLockPeriod": "00:00:15"
   }
