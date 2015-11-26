@@ -1,3 +1,3 @@
-$in = [System.Console]::ReadLine()
+$in = [Console]::ReadLine()
 
-[System.Console]::WriteLine("Powershell script processed queue message: '$in'") 
+[Console]::WriteLine("Powershell script processed queue message '$in'") 
