@@ -5,14 +5,18 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     internal abstract class Binding
     {
-        public Binding(string name, string type, FileAccess fileAccess, bool isTrigger)
+        private readonly JobHostConfiguration _config;
+
+        protected Binding(JobHostConfiguration config, string name, string type, FileAccess fileAccess, bool isTrigger)
         {
+            _config = config;
             Name = name;
             Type = type;
             FileAccess = fileAccess;
@@ -31,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public abstract Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData);
 
-        internal static Collection<Binding> GetBindings(JArray bindingArray, FileAccess fileAccess)
+        internal static Collection<Binding> GetBindings(JobHostConfiguration config, JArray bindingArray, FileAccess fileAccess)
         {
             Collection<Binding> bindings = new Collection<Binding>();
 
@@ -45,27 +49,44 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (type == "blob")
                     {
                         string path = (string)binding["path"];
-                        bindings.Add(new BlobBinding(name, path, fileAccess, isTrigger: false));
+                        bindings.Add(new BlobBinding(config, name, path, fileAccess, isTrigger: false));
                     }
                     else if (type == "blobTrigger")
                     {
                         string path = (string)binding["path"];
-                        bindings.Add(new BlobBinding(name, path, fileAccess, isTrigger: true));
+                        bindings.Add(new BlobBinding(config, name, path, fileAccess, isTrigger: true));
                     }
                     else if (type == "queue")
                     {
                         string queueName = (string)binding["queueName"];
-                        bindings.Add(new QueueBinding(name, queueName, fileAccess, isTrigger: false));
+                        bindings.Add(new QueueBinding(config, name, queueName, fileAccess, isTrigger: false));
                     }
                     else if (type == "queueTrigger")
                     {
                         string queueName = (string)binding["queueName"];
-                        bindings.Add(new QueueBinding(name, queueName, fileAccess, isTrigger: true));
+                        bindings.Add(new QueueBinding(config, name, queueName, fileAccess, isTrigger: true));
+                    }
+                    else if (type == "table")
+                    {
+                        string tableName = (string)binding["tableName"];
+                        string partitionKey = (string)binding["partitionKey"];
+                        string rowKey = (string)binding["rowKey"];
+                        bindings.Add(new TableBinding(config, name, tableName, partitionKey, rowKey, fileAccess));
                     }
                 }
             }
 
             return bindings;
+        }
+
+        protected string Resolve(string name)
+        {
+            if (_config.NameResolver == null)
+            {
+                return name;
+            }
+
+            return _config.NameResolver.ResolveWholeString(name);
         }
     }
 }

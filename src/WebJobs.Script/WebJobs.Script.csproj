@@ -55,6 +55,10 @@
       <HintPath>..\..\packages\FsPickler.1.2.5\lib\net45\FsPickler.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.WindowsAzure.Storage, Version=4.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\WindowsAzure.Storage.4.3.0\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-beta3a\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
       <Private>True</Private>
@@ -162,6 +166,8 @@
     <Compile Include="Binding\BlobBinding.cs" />
     <Compile Include="Binding\Binding.cs" />
     <Compile Include="Binding\QueueBinding.cs" />
+    <Compile Include="Binding\TableBinding.cs" />
+    <Compile Include="Config\NameResolver.cs" />
     <Compile Include="Config\ScriptHost.cs" />
     <Compile Include="Description\FunctionFolderInfo.cs" />
     <Compile Include="Description\IFunctionInvoker.cs" />

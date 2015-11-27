@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BindingTemplate _queueNameBindingTemplate;
 
-        public QueueBinding(string name, string queueName, FileAccess fileAccess, bool isTrigger) : base(name, "queue", fileAccess, isTrigger)
+        public QueueBinding(JobHostConfiguration config, string name, string queueName, FileAccess fileAccess, bool isTrigger) : base(config, name, "queue", fileAccess, isTrigger)
         {   
             QueueName = queueName;
             _queueNameBindingTemplate = BindingTemplate.FromString(QueueName);
@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 boundQueueName = _queueNameBindingTemplate.Bind(bindingData);
             }
+
+            boundQueueName = Resolve(boundQueueName);
 
             if (FileAccess == FileAccess.Write)
             {

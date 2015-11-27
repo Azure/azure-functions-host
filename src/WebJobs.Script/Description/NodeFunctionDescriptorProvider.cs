@@ -11,10 +11,12 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
+        private readonly JobHostConfiguration _config;
         private readonly string _rootPath;
 
-        public NodeFunctionDescriptorProvider(string rootPath)
+        public NodeFunctionDescriptorProvider(JobHostConfiguration config, string rootPath)
         {
+            _config = config;
             _rootPath = rootPath;
         }
 
@@ -32,10 +34,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // parse the bindings
             JObject bindings = (JObject)functionFolderInfo.Configuration["bindings"];
             JArray inputs = (JArray)bindings["input"];
-            Collection<Binding> inputBindings = Binding.GetBindings(inputs, FileAccess.Read);
+            Collection<Binding> inputBindings = Binding.GetBindings(_config, inputs, FileAccess.Read);
 
             JArray outputs = (JArray)bindings["output"];
-            Collection<Binding> outputBindings = Binding.GetBindings(outputs, FileAccess.Write);
+            Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
             string triggerType = (string)trigger["type"];

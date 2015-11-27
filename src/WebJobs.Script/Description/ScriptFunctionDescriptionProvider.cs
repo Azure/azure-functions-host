@@ -11,10 +11,12 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class ScriptFunctionDescriptorProvider : FunctionDescriptorProvider
     {
+        private readonly JobHostConfiguration _config;
         private readonly string _rootPath;
 
-        public ScriptFunctionDescriptorProvider(string rootPath)
+        public ScriptFunctionDescriptorProvider(JobHostConfiguration config, string rootPath)
         {
+            _config = config;
             _rootPath = rootPath;
         }
 
@@ -31,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // parse the bindings
             JObject bindings = (JObject)functionFolderInfo.Configuration["bindings"];
             JArray inputs = (JArray)bindings["input"];
-            Collection<Binding> inputBindings = Binding.GetBindings(inputs, FileAccess.Read);
+            Collection<Binding> inputBindings = Binding.GetBindings(_config, inputs, FileAccess.Read);
 
             JArray outputs = (JArray)bindings["output"];
-            Collection<Binding> outputBindings = Binding.GetBindings(outputs, FileAccess.Write);
+            Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
             string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, inputBindings, outputBindings);

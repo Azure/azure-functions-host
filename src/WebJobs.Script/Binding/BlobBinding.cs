@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobBinding(string name, string path, FileAccess fileAccess, bool isTrigger) : base(name, "blob", fileAccess, isTrigger)
+        public BlobBinding(JobHostConfiguration config, string name, string path, FileAccess fileAccess, bool isTrigger) : base(config, name, "blob", fileAccess, isTrigger)
         {
             Path = path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 boundBlobPath = _pathBindingTemplate.Bind(bindingData);
             }
+
+            boundBlobPath = Resolve(boundBlobPath);
 
             Stream blobStream = binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
             if (FileAccess == FileAccess.Write)

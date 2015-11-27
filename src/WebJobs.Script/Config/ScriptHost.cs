@@ -32,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                new ScriptFunctionDescriptorProvider(ScriptConfig.RootPath),
-                new NodeFunctionDescriptorProvider(ScriptConfig.RootPath)
+                new ScriptFunctionDescriptorProvider(HostConfig, ScriptConfig.RootPath),
+                new NodeFunctionDescriptorProvider(HostConfig, ScriptConfig.RootPath)
             };
 
             // read host.json and apply to JobHostConfiguration
@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
             types.Add(type);
 
             HostConfig.TypeLocator = new TypeLocator(types);
+            HostConfig.NameResolver = new NameResolver();
         }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
