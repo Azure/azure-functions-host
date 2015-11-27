@@ -5,6 +5,15 @@
         "type": "queueTrigger",
         "queueName": "samples-powershell"
       }
+    ],
+    "output": [
+      {
+        "type": "table",
+        "name": "output",
+        "tableName": "samples",
+        "partitionKey": "samples",
+        "rowKey": "%rand-guid%"
+      }
     ]
   }
 }
