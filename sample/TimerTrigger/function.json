@@ -3,8 +3,15 @@
     "input": [
       {
         "type": "timerTrigger",
-        "schedule": "*/15 * * * * *",
+        "schedule": "0 * * * * *",
         "runOnStartup": true
+      }
+    ],
+    "output": [
+      {
+        "type": "queue",
+        "name": "message",
+        "queueName": "samples-fsharp"
       }
     ]
   }
