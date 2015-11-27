@@ -39,22 +39,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             boundQueueName = Resolve(boundQueueName);
 
-            if (FileAccess == FileAccess.Write)
+            IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
+            byte[] bytes;
+            using (MemoryStream ms = new MemoryStream())
             {
-                Stream queueStream = binder.Bind<Stream>(new QueueAttribute(boundQueueName));
-                await queueStream.CopyToAsync(stream);
+                stream.CopyTo(ms);
+                bytes = ms.ToArray();
             }
-            else
-            {
-                IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
-                byte[] bytes;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    stream.CopyTo(ms);
-                    bytes = ms.ToArray();
-                }
-                await collector.AddAsync(bytes);
-            }
+            await collector.AddAsync(bytes);
         }
     }
 }

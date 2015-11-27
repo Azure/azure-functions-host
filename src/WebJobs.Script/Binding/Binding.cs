@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -58,6 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     else if (type == "queue")
                     {
+                        if (fileAccess != FileAccess.Write)
+                        {
+                            throw new InvalidOperationException("Queue binding can only be used for output.");
+                        }
                         string queueName = (string)binding["queueName"];
                         bindings.Add(new QueueBinding(config, name, queueName, fileAccess, isTrigger: false));
                     }

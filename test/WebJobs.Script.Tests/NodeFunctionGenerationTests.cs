@@ -156,9 +156,10 @@ namespace WebJobs.Script.Tests
             List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
             functionFolderInfos.Add(functionFolderInfo);
 
+            JobHostConfiguration config = new JobHostConfiguration();
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
-                new NodeFunctionDescriptorProvider(Environment.CurrentDirectory)
+                new NodeFunctionDescriptorProvider(config, Environment.CurrentDirectory)
             };
             var functionDescriptors = ScriptHost.ReadFunctions(functionFolderInfos, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
