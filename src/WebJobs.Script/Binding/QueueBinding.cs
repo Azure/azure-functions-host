@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             boundQueueName = Resolve(boundQueueName);
 
+            // only an output binding is supported
             IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
             byte[] bytes;
             using (MemoryStream ms = new MemoryStream())

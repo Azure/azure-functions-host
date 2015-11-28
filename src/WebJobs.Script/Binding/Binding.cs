@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -76,7 +77,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         string tableName = (string)binding["tableName"];
                         string partitionKey = (string)binding["partitionKey"];
                         string rowKey = (string)binding["rowKey"];
-                        bindings.Add(new TableBinding(config, name, tableName, partitionKey, rowKey, fileAccess));
+
+                        TableQuery tableQuery = new TableQuery
+                        {
+                            TakeCount = (int?)binding["take"],
+                            FilterString = (string)binding["filter"]
+                        };
+
+                        bindings.Add(new TableBinding(config, name, tableName, partitionKey, rowKey, fileAccess, tableQuery));
                     }
                 }
             }
