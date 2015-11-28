@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -16,14 +17,27 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BindingTemplate _partitionKeyBindingTemplate;
         private readonly BindingTemplate _rowKeyBindingTemplate;
+        private readonly TableQuery _tableQuery;
 
-        public TableBinding(JobHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess fileAccess) : base(config, name, "queue", fileAccess, false)
+        public TableBinding(JobHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess fileAccess, TableQuery tableQuery = null) : base(config, name, "queue", fileAccess, false)
         {
             TableName = tableName;
             PartitionKey = partitionKey;
             RowKey = rowKey;
             _partitionKeyBindingTemplate = BindingTemplate.FromString(PartitionKey);
-            _rowKeyBindingTemplate = BindingTemplate.FromString(RowKey);
+            if (!string.IsNullOrEmpty(RowKey))
+            {
+                _rowKeyBindingTemplate = BindingTemplate.FromString(RowKey);
+            }
+
+            _tableQuery = tableQuery;
+            if (_tableQuery == null)
+            {
+                _tableQuery = new TableQuery
+                {
+                    TakeCount = 50
+                };
+            }
         }
 
         public string TableName { get; private set; }
@@ -35,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
             get
             {
                 return _partitionKeyBindingTemplate.ParameterNames.Any() ||
-                       _rowKeyBindingTemplate.ParameterNames.Any();
+                       (_rowKeyBindingTemplate != null && _rowKeyBindingTemplate.ParameterNames.Any());
             }
         }
 
@@ -46,11 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script
             if (bindingData != null)
             {
                 boundPartitionKey = _partitionKeyBindingTemplate.Bind(bindingData);
-                boundRowKey = _rowKeyBindingTemplate.Bind(bindingData);
+                if (_rowKeyBindingTemplate != null)
+                {
+                    boundRowKey = _rowKeyBindingTemplate.Bind(bindingData);
+                }
             }
 
             boundPartitionKey = Resolve(boundPartitionKey);
-            boundRowKey = Resolve(boundRowKey);
+            if (!string.IsNullOrEmpty(boundRowKey))
+            {
+                boundRowKey = Resolve(boundRowKey);
+            }
 
             if (FileAccess == FileAccess.Write)
             {
@@ -77,25 +97,81 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                DynamicTableEntity tableEntity = binder.Bind<DynamicTableEntity>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
-                if (tableEntity != null)
+                if (!string.IsNullOrEmpty(boundPartitionKey) &&
+                    !string.IsNullOrEmpty(boundRowKey))
                 {
-                    OperationContext context = new OperationContext();
-                    var entityProperties = tableEntity.WriteEntity(context);
-
-                    JObject jsonObject = new JObject();
-                    foreach (var entityProperty in entityProperties)
+                    // singleton
+                    DynamicTableEntity tableEntity = binder.Bind<DynamicTableEntity>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    if (tableEntity != null)
                     {
-                        jsonObject.Add(entityProperty.Key, entityProperty.Value.StringValue);
+                        string json = ConvertEntityToJObject(tableEntity).ToString();
+                        using (StreamWriter sw = new StreamWriter(stream))
+                        {
+                            await sw.WriteAsync(json);
+                        }
                     }
-                    string json = jsonObject.ToString();
+                }
+                else
+                {
+                    // binding to entire table (query multiple table entities)
+                    CloudTable table = binder.Bind<CloudTable>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    var entities = table.ExecuteQuery(_tableQuery);
 
+                    JArray entityArray = new JArray();
+                    foreach (var entity in entities)
+                    {
+                        entityArray.Add(ConvertEntityToJObject(entity));
+                    }
+
+                    string json = entityArray.ToString(Formatting.None);
                     using (StreamWriter sw = new StreamWriter(stream))
                     {
                         await sw.WriteAsync(json);
                     }
                 }
             }
+        }
+
+        private static JObject ConvertEntityToJObject(DynamicTableEntity tableEntity)
+        {
+            OperationContext context = new OperationContext();
+            var entityProperties = tableEntity.WriteEntity(context);
+
+            JObject jsonObject = new JObject();
+            foreach (var entityProperty in entityProperties)
+            {
+                JValue value = null;
+                switch (entityProperty.Value.PropertyType)
+                {
+                    case EdmType.String:
+                        value = new JValue(entityProperty.Value.StringValue);
+                        break;
+                    case EdmType.Int32:
+                        value = new JValue(entityProperty.Value.Int32Value);
+                        break;
+                    case EdmType.Int64:
+                        value = new JValue(entityProperty.Value.Int64Value);
+                        break;
+                    case EdmType.DateTime:
+                        value = new JValue(entityProperty.Value.DateTime);
+                        break;
+                    case EdmType.Boolean:
+                        value = new JValue(entityProperty.Value.BooleanValue);
+                        break;
+                    case EdmType.Guid:
+                        value = new JValue(entityProperty.Value.GuidValue);
+                        break;
+                    case EdmType.Double:
+                        value = new JValue(entityProperty.Value.DoubleValue);
+                        break;
+                    case EdmType.Binary:
+                        value = new JValue(entityProperty.Value.BinaryValue);
+                        break;
+                }
+
+                jsonObject.Add(entityProperty.Key, value);
+            }
+            return jsonObject;
         }
     }
 }

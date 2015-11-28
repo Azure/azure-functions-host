@@ -4,6 +4,14 @@
       {
         "type": "queueTrigger",
         "queueName": "samples-python"
+      },
+      {
+        "type": "table",
+        "name": "input",
+        "tableName": "samples",
+        "partitionKey": "samples",
+        "take": 5,
+        "filter": "status eq 1"
       }
     ],
     "output": [
