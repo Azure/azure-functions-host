@@ -118,9 +118,10 @@ namespace Microsoft.Azure.WebJobs.Script
             Type triggerParameterType = input.GetType();
             if (triggerParameterType == typeof(string))
             {
-                // convert string into Dictionary which Edge will convert into an object
+                // convert string into Dictionary (recursively) which Edge will convert into an object
                 // before invoking the function
-                input = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)input);
+                input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                    (string)input, new DictionaryJsonConverter());
             }
 
             // create a TraceWriter wrapper that can be exposed to Node.js
