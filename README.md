@@ -59,7 +59,7 @@ And here's a Python function for the same function definition doing the same thi
 import os
 
 # read the queue message and write to stdout
-workItem = raw_input();
+workItem = input();
 message = "Python script processed work item '{0}'".format(workItem)
 print(message)
 
