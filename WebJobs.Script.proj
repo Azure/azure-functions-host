@@ -1,11 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
+	<Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
     <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
     <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
   </PropertyGroup>
@@ -79,6 +80,23 @@
   <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace">
     <MSBuild Projects="@(Binplace)"
              BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+  
+  <Target Name="PackageScriptHost" DependsOnTargets="Build">
+    <PropertyGroup>
+		<ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
+	</PropertyGroup>
+	<ItemGroup>
+		<ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
+		<EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
+	</ItemGroup>
+    <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
+	<Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
+	<Zip
+		InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
+		OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"
+		OverwriteExistingFile="true"
+	/>
   </Target>
 
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
@@ -189,4 +207,51 @@
       </Code>
     </Task>
   </UsingTask>
+  
+  <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <InputPath ParameterType="System.String" Required="true" />
+      <OutputFileName ParameterType="System.String" Required="true" />
+      <OverwriteExistingFile ParameterType="System.Boolean" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System.IO.Compression" />
+      <Using Namespace="System.IO.Compression" />
+      <Code Type="Fragment" Language="cs">
+      <![CDATA[        
+        const int BufferSize = 64 * 1024;
+ 
+        var buffer = new byte[BufferSize];
+        var fileMode = OverwriteExistingFile ? FileMode.Create : FileMode.CreateNew;
+ 
+        string[] InputFileNames = Directory.GetFiles(InputPath, "*.*", SearchOption.AllDirectories);
+
+		using (var outputFileStream = new FileStream(OutputFileName, fileMode))
+		{
+			using (var archive = new ZipArchive(outputFileStream, ZipArchiveMode.Create))
+			{
+				foreach (var inputFileName in InputFileNames)
+				{
+					string relativeFileName = inputFileName.Substring(InputPath.Length + 1);
+					var archiveEntry = archive.CreateEntry(relativeFileName);
+
+					using (var fs = new FileStream(inputFileName, FileMode.Open))
+					{
+						using (var zipStream = archiveEntry.Open())
+						{
+							int bytesRead = -1;
+							while ((bytesRead = fs.Read(buffer, 0, BufferSize)) > 0)
+							{
+								zipStream.Write(buffer, 0, bytesRead);
+							}
+						}
+					}
+				}
+			}
+		}   
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  
 </Project>
