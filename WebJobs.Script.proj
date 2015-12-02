@@ -6,7 +6,6 @@
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
-	<Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
     <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
     <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
   </PropertyGroup>
