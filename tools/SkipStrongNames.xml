@@ -1,18 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <assemblies defaultPublicKeyToken="31bf3856ad364e35">
   <!-- Production assemblies -->
-  <assembly name="Dashboard"/>
-  <assembly name="Microsoft.Azure.WebJobs"/>
-  <assembly name="Microsoft.Azure.WebJobs.Host"/>
-  <assembly name="Microsoft.Azure.WebJobs.Protocols"/>
-  <assembly name="Microsoft.Azure.WebJobs.ServiceBus"/>
-  <assembly name="Microsoft.Azure.WebJobs.Storage"/>
+  <assembly name="Microsoft.Azure.WebJobs.Script"/>
+  <assembly name="WebJobs.Script.Host"/>
 
   <!-- Unit test assemblies -->
-  <assembly name="Dashboard.UnitTests"/>
-  <assembly name="Microsoft.Azure.WebJobs.Host.TestCommon"/>
-  <assembly name="Microsoft.Azure.WebJobs.Host.FunctionalTests"/>
-  <assembly name="Microsoft.Azure.WebJobs.Host.UnitTests"/>
-  <assembly name="Microsoft.Azure.WebJobs.ServiceBus.UnitTests"/>
-  <assembly name="Microsoft.Azure.WebJobs.Storage.IntegrationTests"/>
+  <assembly name="WebJobs.Script.Tests"/>
 </assemblies>
