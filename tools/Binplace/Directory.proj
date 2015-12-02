@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="Common.targets"/>
+  
+  <Target Name="CoreGetBinplace">
+    <MSBuild Projects="$(ProjectFile)"
+             Targets="GetOutputPath"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" PropertyName="BinplaceInputsFolder"/>
+    </MSBuild>
+
+    <ItemGroup>
+      <BinplaceInputs Include="$(BinplaceInputsFolder)\**"/>
+      <Binplace Include="@(BinplaceInputs)">
+        <OutputPath>$(BinplaceOutputPath)\%(RecursiveDir)\%(Filename)%(Extension)</OutputPath>
+      </Binplace>
+    </ItemGroup>
+  </Target>
+</Project>

@@ -2,7 +2,7 @@ import os
 import json
 
 # read the queue message and write to stdout
-input = raw_input();
+input = input();
 message = "Python script processed queue message '{0}'".format(input)
 print(message)
 
