@@ -12,6 +12,7 @@ using Xunit;
 
 namespace WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
     public class FunctionGeneratorTests
     {
         [Fact]
