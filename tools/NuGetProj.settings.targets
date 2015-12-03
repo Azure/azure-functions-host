@@ -6,8 +6,8 @@
     <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
     <Version>0.0.1</Version>
     <PrereleaseTag>-alpha1</PrereleaseTag>
-    <IncludeBuildNumberInVersion>1</IncludeBuildNumberInVersion>
-    <BUILD_NUMBER>10007</BUILD_NUMBER>
+    <IncludeBuildNumberInVersion></IncludeBuildNumberInVersion>
+    <BUILD_NUMBER></BUILD_NUMBER>
   </PropertyGroup>
   <Choose>
     <When Condition=" '$(IncludeBuildNumberInVersion)' == '1'">
