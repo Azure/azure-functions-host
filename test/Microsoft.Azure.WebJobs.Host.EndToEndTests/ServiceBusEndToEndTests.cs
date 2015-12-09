@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
     public class ServiceBusEndToEndTests
     {
         private const string PrefixForAll = "t-%rnd%-";
-
+        private const int SBTimeout = 60 * 1000;
         private const string QueueNamePrefix = PrefixForAll + "queue-";
         private const string StartQueueName = QueueNamePrefix + "start";
 
@@ -32,14 +32,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static string _resultMessage2;
 
         private NamespaceManager _namespaceManager;
+        private NamespaceManager _secondaryNamespaceManager;
         private ServiceBusConfiguration _serviceBusConfig;
         private RandomNameResolver _nameResolver;
+        private string _secondaryConnectionString;
 
         public ServiceBusEndToEndTests()
         {
             _serviceBusConfig = new ServiceBusConfiguration();
             _nameResolver = new RandomNameResolver();
             _namespaceManager = NamespaceManager.CreateFromConnectionString(_serviceBusConfig.ConnectionString);
+            _secondaryConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("ServiceBusSecondary");
+            _secondaryNamespaceManager = NamespaceManager.CreateFromConnectionString(_secondaryConnectionString);
         }
 
         [Fact]
@@ -126,12 +130,62 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
+        [Fact]
+        public async Task MultipleAccountTest()
+        {
+            try
+            {
+                TestTraceWriter trace = new TestTraceWriter(TraceLevel.Info);
+                _serviceBusConfig = new ServiceBusConfiguration();
+                _serviceBusConfig.MessagingProvider = new CustomMessagingProvider(_serviceBusConfig, trace);
+
+                JobHostConfiguration config = new JobHostConfiguration()
+                {
+                    NameResolver = _nameResolver,
+                    TypeLocator = new FakeTypeLocator(typeof(ServiceBusTestJobs))
+                };
+                config.Tracing.Tracers.Add(trace);
+                config.UseServiceBus(_serviceBusConfig);
+                JobHost host = new JobHost(config);
+
+                string queueName = ResolveName(StartQueueName);
+                string queuePrefix = queueName.Replace("-queue-start", "");
+                string firstTopicName = string.Format("{0}-topic/Subscriptions/{0}-queue-topic-1", queuePrefix);
+
+                WriteQueueMessage(_secondaryNamespaceManager, _secondaryConnectionString, queueName, "Test");
+
+                _topicSubscriptionCalled1 = new ManualResetEvent(initialState: false);
+
+                await host.StartAsync();
+
+                _topicSubscriptionCalled1.WaitOne(SBTimeout);
+
+                // ensure all logs have had a chance to flush
+                await Task.Delay(3000);
+
+                // Wait for the host to terminate
+                await host.StopAsync();
+                host.Dispose();
+
+                Assert.Equal("Test-topic-1", _resultMessage1);
+            }
+            finally
+            {
+                Cleanup();
+            }
+        }
+
         private void Cleanup()
         {
             string elementName = ResolveName(StartQueueName);
             if (_namespaceManager.QueueExists(elementName))
             {
                 _namespaceManager.DeleteQueue(elementName);
+            }
+
+            if (_secondaryNamespaceManager.QueueExists(elementName))
+            {
+                _secondaryNamespaceManager.DeleteQueue(elementName);
             }
 
             elementName = ResolveName(QueueNamePrefix + "1");
@@ -181,9 +235,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await host.StartAsync();
 
-            int timeout = 1 * 60 * 1000;
-            _topicSubscriptionCalled1.WaitOne(timeout);
-            _topicSubscriptionCalled2.WaitOne(timeout);
+            _topicSubscriptionCalled1.WaitOne(SBTimeout);
+            _topicSubscriptionCalled2.WaitOne(SBTimeout);
 
             // ensure all logs have had a chance to flush
             await Task.Delay(3000);
@@ -204,6 +257,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 {
                     "Found the following functions:",
                     string.Format("{0}.SBQueue2SBQueue", jobContainerType.FullName),
+                    string.Format("{0}.MultipleAccounts", jobContainerType.FullName),
                     string.Format("{0}.SBQueue2SBTopic", jobContainerType.FullName),
                     string.Format("{0}.SBTopicListener1", jobContainerType.FullName),
                     string.Format("{0}.SBTopicListener2", jobContainerType.FullName),
@@ -232,17 +286,22 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private void CreateStartMessage(string serviceBusConnectionString, string queueName)
         {
-            if (!_namespaceManager.QueueExists(queueName))
+            WriteQueueMessage(_namespaceManager, serviceBusConnectionString, queueName, "E2E");
+        }
+
+        private void WriteQueueMessage(NamespaceManager namespaceManager, string connectionString, string queueName, string message)
+        {
+            if (!namespaceManager.QueueExists(queueName))
             {
-                _namespaceManager.CreateQueue(queueName);
+                namespaceManager.CreateQueue(queueName);
             }
 
-            QueueClient queueClient = QueueClient.CreateFromConnectionString(serviceBusConnectionString, queueName);
+            QueueClient queueClient = QueueClient.CreateFromConnectionString(connectionString, queueName);
 
             using (Stream stream = new MemoryStream())
             using (TextWriter writer = new StreamWriter(stream))
             {
-                writer.Write("E2E");
+                writer.Write(message);
                 writer.Flush();
                 stream.Position = 0;
 
@@ -303,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public class ServiceBusTestJobs : ServiceBusTestJobsBase
         {
-            // Passes  service bus message from a queue to another queue
+            // Passes service bus message from a queue to another queue
             public static void SBQueue2SBQueue(
                 [ServiceBusTrigger(StartQueueName)] string start,
                 [ServiceBus(QueueNamePrefix + "1")] out string message)
@@ -334,6 +393,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2")] BrokeredMessage message)
             {
                 SBTopicListener2Impl(message);
+            }
+
+            // Demonstrate triggering on a queue in one account, and writing to a topic
+            // in the primary subscription
+            public static void MultipleAccounts(
+                [ServiceBusTrigger(StartQueueName), ServiceBusAccount("ServiceBusSecondary")] string input,
+                [ServiceBus(TopicName)] out string output)
+            {
+                output = input;
             }
         }
 
