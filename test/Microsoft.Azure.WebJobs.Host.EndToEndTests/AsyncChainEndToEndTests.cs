@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
             finally
             {
-                await host.StopAsync();
+                host.Stop();
             }
         }
 
@@ -329,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
             finally
             {
-                await host.StopAsync();
+                host.Stop();
             }
         }
 
