@@ -185,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     var valueBindingContext = new ValueBindingContext(functionContext, cancellationToken);
                     var parameters = await instance.BindingSource.BindAsync(valueBindingContext);
 
+                    Exception invocationException = null;
                     ExceptionDispatchInfo exceptionInfo = null;
                     string startedMessageId = null;
                     using (ValueProviderDisposable.Create(parameters))
@@ -193,32 +194,37 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         {
                             startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
                         }
-                        
+
                         try
                         {
                             await ExecuteWithLoggingAsync(instance, parameters, traceWriter, outputDefinition, parameterLogCollector, functionTraceLevel, functionCancellationTokenSource);
                         }
-                        catch (Exception exception)
+                        catch (Exception ex)
                         {
-                            if (outputDefinition == null)
-                            {
-                                // In error cases, even if logging is disabled for this function, we want to force
-                                // log errors. So we must delay initialize logging here
-                                await initializeOutputAsync();
-                                startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
-                            }
+                            invocationException = ex;
+                        }
+                    }
 
-                            if (exception is OperationCanceledException)
-                            {
-                                exceptionInfo = ExceptionDispatchInfo.Capture(exception);
-                            }
-                            else
-                            {
-                                string errorMessage = string.Format("Exception while executing function: {0}", instance.FunctionDescriptor.ShortName);
-                                FunctionInvocationException functionException = new FunctionInvocationException(errorMessage, instance.Id, instance.FunctionDescriptor.FullName, exception);
-                                traceWriter.Error(errorMessage, functionException, TraceSource.Execution);
-                                exceptionInfo = ExceptionDispatchInfo.Capture(functionException);
-                            }
+                    if (invocationException != null)
+                    {
+                        if (outputDefinition == null)
+                        {
+                            // In error cases, even if logging is disabled for this function, we want to force
+                            // log errors. So we must delay initialize logging here
+                            await initializeOutputAsync();
+                            startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
+                        }
+
+                        if (invocationException is OperationCanceledException)
+                        {
+                            exceptionInfo = ExceptionDispatchInfo.Capture(invocationException);
+                        }
+                        else
+                        {
+                            string errorMessage = string.Format("Exception while executing function: {0}", instance.FunctionDescriptor.ShortName);
+                            FunctionInvocationException fex = new FunctionInvocationException(errorMessage, instance.Id, instance.FunctionDescriptor.FullName, invocationException);
+                            traceWriter.Error(errorMessage, fex, TraceSource.Execution);
+                            exceptionInfo = ExceptionDispatchInfo.Capture(fex);
                         }
                     }
 
