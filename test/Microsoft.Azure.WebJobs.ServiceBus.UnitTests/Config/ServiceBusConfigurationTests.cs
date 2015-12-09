@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
         {
             ServiceBusConfiguration config = new ServiceBusConfiguration();
             Assert.Equal(16, config.MessageOptions.MaxConcurrentCalls);
+            Assert.Equal(0, config.PrefetchCount);
         }
 
         [Fact]
@@ -26,6 +27,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
             string testConnection = "testconnection";
             config.ConnectionString = testConnection;
             Assert.Equal(testConnection, config.ConnectionString);
+        }
+
+        [Fact]
+        public void PrefetchCount_GetSet()
+        {
+            ServiceBusConfiguration config = new ServiceBusConfiguration();
+            Assert.Equal(0, config.PrefetchCount);
+            config.PrefetchCount = 100;
+            Assert.Equal(100, config.PrefetchCount);
         }
     }
 }

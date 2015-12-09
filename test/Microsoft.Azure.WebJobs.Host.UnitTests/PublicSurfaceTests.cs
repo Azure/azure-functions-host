@@ -22,8 +22,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
             var names = GetAssemblyReferences(typeof(QueueTriggerAttribute).Assembly);
 
-            Assert.Equal(1, names.Count);
+            Assert.Equal(2, names.Count);
             Assert.Equal("mscorlib", names[0]);
+            Assert.Equal("System", names[1]);
         }
 
         [Fact]
@@ -63,7 +64,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "SingletonMode",
                 "StorageAccountAttribute",
                 "DisableAttribute",
-                "TimeoutAttribute"
+                "TimeoutAttribute",
+                "TraceLevelAttribute"
             };
 
             AssertPublicTypes(expected, assembly);

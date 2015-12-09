@@ -52,6 +52,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         }
 
         [Fact]
+        public void CreateMessageReceiver_ReturnsExpectedReceiver()
+        {
+            MessagingFactory factory = _provider.CreateMessagingFactory("test");
+            MessageReceiver receiver = _provider.CreateMessageReceiver(factory, "test");
+            Assert.Equal("test", receiver.Path);
+
+            _config.PrefetchCount = 100;
+            receiver = _provider.CreateMessageReceiver(factory, "test");
+            Assert.Equal(100, receiver.PrefetchCount);
+        }
+
+        [Fact]
         public void GetConnectionString_ThrowsIfConnectionStringNullOrEmpty()
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>

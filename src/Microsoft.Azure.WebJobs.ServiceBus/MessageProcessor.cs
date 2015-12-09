@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         /// <summary>
-        /// Gets the <see cref="OnMessageOptions"/> that will be used by the message receiver.
+        /// Gets the <see cref="OnMessageOptions"/> that will be used by the <see cref="MessageReceiver"/>.
         /// </summary>
         public OnMessageOptions MessageOptions { get; protected set; }
 

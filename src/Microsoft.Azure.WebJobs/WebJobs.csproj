@@ -73,6 +73,7 @@
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TimeoutAttribute.cs" />
+    <Compile Include="TraceLevelAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Common\PublicKey.snk">

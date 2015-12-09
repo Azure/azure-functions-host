@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -19,17 +21,19 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     {
         // Contents for what's written. Owned by the timer thread.
         private readonly StringWriter _innerWriter;
-
+        private readonly IStorageBlockBlob _outputBlob;
         private readonly Func<string, CancellationToken, Task> _uploadCommand;
 
         // Thread-safe access to _innerWriter so that user threads can write to it. 
         private readonly TextWriter _synchronizedWriter;
         private object _writerSyncLock = new object();
         private bool _disposed;
+        private string _existingContent = null;
 
-        private UpdateOutputLogCommand(StringWriter innerWriter, Func<string, CancellationToken, Task> uploadCommand)
+        private UpdateOutputLogCommand(IStorageBlockBlob outputBlob, Func<string, CancellationToken, Task> uploadCommand)
         {
-            _innerWriter = innerWriter;
+            _outputBlob = outputBlob;
+            _innerWriter = new StringWriter(CultureInfo.InvariantCulture);
             _synchronizedWriter = TextWriter.Synchronized(_innerWriter);
             _uploadCommand = uploadCommand;
         }
@@ -52,16 +56,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        public static Task<UpdateOutputLogCommand> CreateAsync(IStorageBlockBlob outputBlob, string existingContents,
-            CancellationToken cancellationToken)
+        public static UpdateOutputLogCommand Create(IStorageBlockBlob outputBlob)
         {
-            return CreateAsync(outputBlob, existingContents, (contents, innerToken) => UploadTextAsync(
-                outputBlob, contents, innerToken), cancellationToken);
+            return Create(outputBlob, (contents, innerToken) => UploadTextAsync(outputBlob, contents, innerToken));
         }
 
-        public static async Task<UpdateOutputLogCommand> CreateAsync(IStorageBlockBlob outputBlob,
-            string existingContents, Func<string, CancellationToken, Task> uploadCommand,
-            CancellationToken cancellationToken)
+        public static UpdateOutputLogCommand Create(IStorageBlockBlob outputBlob, Func<string, CancellationToken, Task> uploadCommand)
         {
             if (outputBlob == null)
             {
@@ -72,41 +72,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 throw new ArgumentNullException("uploadCommand");
             }
 
-            StringWriter innerWriter = new StringWriter();
-
-            if (existingContents != null)
-            {
-                // This can happen if the function was running previously and the 
-                // node crashed. Save previous output, could be useful for diagnostics.
-                innerWriter.WriteLine("Previous execution information:");
-                innerWriter.WriteLine(existingContents);
-
-                var lastTime = await GetBlobModifiedUtcTimeAsync(outputBlob, cancellationToken);
-                if (lastTime.HasValue)
-                {
-                    var delta = DateTime.UtcNow - lastTime.Value;
-                    innerWriter.WriteLine("... Last write at {0}, {1} ago", lastTime, delta);
-                }
-
-                innerWriter.WriteLine("========================");
-            }
-
-            return new UpdateOutputLogCommand(innerWriter, uploadCommand);
+            return new UpdateOutputLogCommand(outputBlob, uploadCommand);
         }
 
         public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
         {
-            ThrowIfDisposed();
-
-            // For synchronized text writer, the object is its own lock.
-            string snapshot;
-
-            lock (_writerSyncLock)
-            {
-                snapshot = _innerWriter.ToString();
-            }
-
-            await _uploadCommand.Invoke(snapshot, cancellationToken);
+            await UpdateOutputBlob(cancellationToken);
             return true;
         }
 
@@ -120,21 +91,71 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        public Task SaveAndCloseAsync(CancellationToken cancellationToken)
+        public async Task SaveAndCloseAsync(CancellationToken cancellationToken)
+        {
+            await UpdateOutputBlob(cancellationToken, flushAndClose: true);
+        }
+
+        private async Task<string> GetExistingContent(CancellationToken cancellationToken)
+        {
+            if (_existingContent == null)
+            {
+                _existingContent = await ReadBlobAsync(_outputBlob, cancellationToken);
+                if (_existingContent != null)
+                {
+                    // This can happen if the function was running previously and the 
+                    // node crashed. Save previous output, could be useful for diagnostics.
+                    StringWriter stringWriter = new StringWriter();
+                    stringWriter.WriteLine("Previous execution information:");
+                    stringWriter.WriteLine(_existingContent);
+
+                    var lastTime = await GetBlobModifiedUtcTimeAsync(_outputBlob, cancellationToken);
+                    if (lastTime.HasValue)
+                    {
+                        var delta = DateTime.UtcNow - lastTime.Value;
+                        stringWriter.WriteLine("... Last write at {0}, {1} ago", lastTime, delta);
+                    }
+
+                    stringWriter.WriteLine("========================");
+                }
+                else
+                {
+                    _existingContent = string.Empty;
+                }
+            }
+
+            return _existingContent;
+        }
+
+        private async Task UpdateOutputBlob(CancellationToken cancellationToken, bool flushAndClose = false)
         {
             ThrowIfDisposed();
 
-            string finalSnapshot;
-
+            string snapshot;
             lock (_writerSyncLock)
             {
-                _synchronizedWriter.Flush();
-                finalSnapshot = _innerWriter.ToString();
-                _synchronizedWriter.Close();
-                _innerWriter.Close();
+                if (flushAndClose)
+                {
+                    _synchronizedWriter.Flush();
+                }
+
+                snapshot = _innerWriter.ToString();
+
+                if (flushAndClose)
+                {
+                    _synchronizedWriter.Close();
+                    _innerWriter.Close();
+                }
             }
 
-            return _uploadCommand.Invoke(finalSnapshot, cancellationToken);
+            // when we write the output blob, ensure that we always include
+            // any preexisting contents
+            string existingText = await GetExistingContent(cancellationToken);
+            StringBuilder sb = new StringBuilder(existingText);
+            sb.Append(snapshot);
+            snapshot = sb.ToString();
+
+            await _uploadCommand.Invoke(snapshot, cancellationToken);
         }
 
         private void ThrowIfDisposed()
@@ -145,23 +166,40 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        private static Task UploadTextAsync(IStorageBlockBlob outputBlob, string contents,
-            CancellationToken cancellationToken)
+        private static Task UploadTextAsync(IStorageBlockBlob outputBlob, string contents, CancellationToken cancellationToken)
         {
             return outputBlob.UploadTextAsync(contents, cancellationToken: cancellationToken);
         }
 
-        private static async Task<DateTime?> GetBlobModifiedUtcTimeAsync(IStorageBlob blob,
-            CancellationToken cancellaitonToken)
+        private static async Task<DateTime?> GetBlobModifiedUtcTimeAsync(IStorageBlob blob, CancellationToken cancellationToken)
         {
-            if (!await blob.ExistsAsync(cancellaitonToken))
+            if (!await blob.ExistsAsync(cancellationToken))
             {
                 return null; // no blob, no time.
             }
 
-            var props = blob.Properties;
-            var time = props.LastModified;
-            return time.HasValue ? (DateTime?)time.Value.UtcDateTime : null;
+            var lastModified = blob.Properties.LastModified;
+            return lastModified.HasValue ? (DateTime?)lastModified.Value.UtcDateTime : null;
+        }
+
+        [DebuggerNonUserCode]
+        private static async Task<string> ReadBlobAsync(IStorageBlob blob, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Beware! Blob.DownloadText does not strip the BOM!
+                using (var stream = await blob.OpenReadAsync(cancellationToken))
+                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string data = await sr.ReadToEndAsync();
+                    return data;
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

@@ -69,7 +69,8 @@
       <Word>MessagingProvider</Word>
       <Word>CloudBlobContainer</Word>
       <Word>SingletonAttribute</Word>
-	  </Recognized>
+      <Word>Prefetch</Word>
+	</Recognized>
     <Deprecated/>
     <Compound>
       <Term CompoundAlternate="CancellationToken">cancellationToken</Term>

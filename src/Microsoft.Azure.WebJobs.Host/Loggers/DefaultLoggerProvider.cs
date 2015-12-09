@@ -69,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {
                 // Create logging against a live Azure account.
                 IStorageBlobClient dashboardBlobClient = dashboardAccount.CreateBlobClient();
-                IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
-                    new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
+                IPersistentQueueWriter<PersistentQueueMessage> queueWriter = new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                 PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
                 _hostInstanceLogger = queueLogger;
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger, traceWriterFunctionLogger);

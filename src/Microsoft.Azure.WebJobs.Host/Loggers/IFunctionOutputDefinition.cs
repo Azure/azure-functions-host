@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -16,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         LocalBlobDescriptor ParameterLogBlob { get; }
 
-        Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken);
+        IFunctionOutput CreateOutput();
 
         IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace);
     }

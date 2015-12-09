@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private const string Queue1Name = TestArtifactsPrefix + "q1%rnd%";
         private const string Queue2Name = TestArtifactsPrefix + "q2%rnd%";
+        private const string TestQueueName = TestArtifactsPrefix + "q3%rnd%";
 
         private static CloudStorageAccount _storageAccount;
 
@@ -43,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private static string _finalBlobContent;
         private static TimeSpan _timeoutJobDelay;
+
+        private readonly CloudQueue _testQueue;
 
         public AsyncChainEndToEndTests(TestFixture fixture)
         {
@@ -57,6 +60,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             _storageAccount = fixture.StorageAccount;
             _timeoutJobDelay = TimeSpan.FromMinutes(5);
+
+            CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
+            string queueName = _resolver.ResolveInString(TestQueueName);
+            _testQueue = queueClient.GetQueueReference(queueName);
+            if (!_testQueue.CreateIfNotExists())
+            {
+                _testQueue.Clear();
+            }
         }
 
         [Fact]
@@ -82,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.AlwaysFailJob",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.DisabledJob",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.TimeoutJob",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
@@ -126,17 +138,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 await AsyncChainEndToEndInternal();
 
-                Assert.Equal(2, queueProcessorFactory.CustomQueueProcessors.Count);
+                Assert.Equal(3, queueProcessorFactory.CustomQueueProcessors.Count);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.All(p => p.Context.Queue.Name.StartsWith("asynce2eq")));
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
                 Assert.Equal(13, storageClientFactory.TotalBlobClientCount);
-                Assert.Equal(7, storageClientFactory.TotalQueueClientCount);
+                Assert.Equal(8, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
                 Assert.Equal(5, storageClientFactory.ParameterBlobClientCount);
-                Assert.Equal(5, storageClientFactory.ParameterQueueClientCount);
+                Assert.Equal(6, storageClientFactory.ParameterQueueClientCount);
                 Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
         }
@@ -173,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(20, consoleOutputLines.Length);
+                    Assert.Equal(21, consoleOutputLines.Length);
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
                 }
@@ -245,6 +257,109 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.Equal(0, traceErrors.Length);
         }
 
+        [Fact]
+        public async Task FunctionTraceLevelOverride_ProducesExpectedOutput()
+        {
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            _hostConfig.Tracing.Tracers.Add(trace);
+            JobHost host = new JobHost(_hostConfig);
+
+            try
+            {
+                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+                {
+                    await host.StartAsync();
+
+                    CloudQueueMessage message = new CloudQueueMessage("test message");
+                    _testQueue.AddMessage(message);
+
+                    _functionCompletedEvent.WaitOne();
+
+                    // wait for logs to flush
+                    await Task.Delay(3000);
+
+                    // expect minimal output
+                    TraceEvent[] traces = trace.Traces.ToArray();
+                    Assert.Equal(4, traces.Length);
+
+                    // Any logs written explicitly to the console by the function
+                    // will be written to console (but not to Dashboard)
+                    Assert.Equal("test message", traces[3].Message.Trim());
+                }
+            }
+            finally
+            {
+                await host.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task FunctionTraceLevelOverride_Failure_ProducesExpectedOutput()
+        {
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            _hostConfig.Tracing.Tracers.Add(trace);
+            _hostConfig.Queues.MaxDequeueCount = 1;
+            JobHost host = new JobHost(_hostConfig);
+
+            try
+            {
+                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+                {
+                    await host.StartAsync();
+
+                    CloudQueueMessage message = new CloudQueueMessage("throw_message");
+                    _testQueue.AddMessage(message);
+
+                    _functionCompletedEvent.WaitOne();
+
+                    // wait for logs to flush
+                    await Task.Delay(3000);
+
+                    // expect normal logs to be written (TraceLevel override is ignored)
+                    TraceEvent[] traces = trace.Traces.ToArray();
+                    Assert.Equal(9, traces.Length);
+
+                    string output = string.Join("\r\n", traces.Select(p => p.Message));
+                    Assert.True(output.Contains("throw_message"));
+                    Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride'"));
+                    Assert.True(output.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride"));
+                    Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed)"));
+                    Assert.True(output.Contains("Message has reached MaxDequeueCount of 1"));
+                }
+            }
+            finally
+            {
+                await host.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task FunctionTraceLevelOverride_DirectInvocation_ProducesExpectedOutput()
+        {
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            _hostConfig.Tracing.Tracers.Add(trace);
+            JobHost host = new JobHost(_hostConfig);
+
+            using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+            {
+                MethodInfo methodInfo = GetType().GetMethod("QueueTrigger_TraceLevelOverride");
+                host.Call(methodInfo, new { message = "test message" });
+
+                _functionCompletedEvent.WaitOne();
+
+                // wait for logs to flush
+                await Task.Delay(3000);
+
+                TraceEvent[] traces = trace.Traces.ToArray();
+                Assert.Equal(4, traces.Length);
+
+                string output = string.Join("\r\n", traces.Select(p => p.Message));
+                Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' - Reason: 'This function was programmatically called via the host APIs.'"));
+                Assert.True(output.Contains("test message"));
+                Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Succeeded)"));
+            }
+        }
+
         [NoAutomaticTrigger]
         public static async Task WriteStartDataMessageToQueue(
             [Queue(Queue1Name)] ICollector<string> queueMessages,
@@ -275,6 +390,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             log.WriteLine("Started");
             await Task.Delay(_timeoutJobDelay, cancellationToken);
             log.WriteLine("Completed");
+        }
+
+        [TraceLevel(TraceLevel.Error)]
+        public static void QueueTrigger_TraceLevelOverride(
+            [QueueTrigger(TestQueueName)] string message, TextWriter log)
+        {
+            log.WriteLine(message);
+
+            _functionCompletedEvent.Set();
+
+            if (message == "throw_message")
+            {
+                throw new Exception("Kaboom!");
+            }
         }
 
         public static async Task QueueToQueueAsync(

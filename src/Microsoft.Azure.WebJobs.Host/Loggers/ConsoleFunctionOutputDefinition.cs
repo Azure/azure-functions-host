@@ -26,10 +26,9 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         }
 
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
+        public IFunctionOutput CreateOutput()
         {
-            IFunctionOutput output = new ConsoleFunctionOutputLog();
-            return Task.FromResult(output);
+            return new ConsoleFunctionOutputLog();
         }
 
         public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)

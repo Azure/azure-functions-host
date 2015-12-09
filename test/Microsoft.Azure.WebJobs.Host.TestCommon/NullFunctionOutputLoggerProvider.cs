@@ -23,8 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         private class NullFunctionOutputLogger : IFunctionOutputLogger
         {
-            public Task<IFunctionOutputDefinition> CreateAsync(IFunctionInstance instance,
-                CancellationToken cancellationToken)
+            public Task<IFunctionOutputDefinition> CreateAsync(IFunctionInstance instance, CancellationToken cancellationToken)
             {
                 IFunctionOutputDefinition outputDefinition = new NullFunctionOutputDefinition();
                 return Task.FromResult(outputDefinition);
@@ -43,10 +42,9 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 get { return null; }
             }
 
-            public Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
+            public IFunctionOutput CreateOutput()
             {
-                IFunctionOutput output = new NullFunctionOutput();
-                return Task.FromResult(output);
+                return new NullFunctionOutput();
             }
 
             public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)

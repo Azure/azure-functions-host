@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
     internal sealed class ServiceBusListener : IListener
     {
+        private readonly MessagingProvider _messagingProvider;
         private readonly MessagingFactory _messagingFactory;
         private readonly string _entityPath;
         private readonly ServiceBusTriggerExecutor _triggerExecutor;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _entityPath = entityPath;
             _triggerExecutor = triggerExecutor;
             _cancellationTokenSource = new CancellationTokenSource();
+            _messagingProvider = config.MessagingProvider;
             _messageProcessor = config.MessagingProvider.CreateMessageProcessor(entityPath);
         }
 
@@ -44,12 +46,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             return StartAsyncCore(cancellationToken);
         }
 
-        private async Task StartAsyncCore(CancellationToken cancellationToken)
+        private Task StartAsyncCore(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _receiver = await _messagingFactory.CreateMessageReceiverAsync(_entityPath);
+            _receiver = _messagingProvider.CreateMessageReceiver(_messagingFactory, _entityPath);
             _receiver.OnMessageAsync(ProcessMessageAsync, _messageProcessor.MessageOptions);
+
+            return Task.FromResult(0);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    functionInstanceLogger = (IFunctionInstanceLogger)(await((IFunctionInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
+                    functionInstanceLogger = await((IFunctionInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
                 }
 
                 IFunctionOutputLogger functionOutputLogger = null;
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    functionOutputLogger = (IFunctionOutputLogger)(await((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
+                    functionOutputLogger = await((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
                 }
 
                 if (functionExecutor == null)

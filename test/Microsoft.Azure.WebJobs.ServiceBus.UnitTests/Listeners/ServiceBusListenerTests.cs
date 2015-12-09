@@ -15,8 +15,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
 {
     public class ServiceBusListenerTests
     {
+        private readonly MessagingFactory _messagingFactory;
         private readonly ServiceBusListener _listener;
         private readonly Mock<ITriggeredFunctionExecutor> _mockExecutor;
+        private readonly Mock<MessagingProvider> _mockMessagingProvider;
         private readonly Mock<MessageProcessor> _mockMessageProcessor;
         private readonly string _entityPath = "test-entity-path";
 
@@ -25,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
             _mockExecutor = new Mock<ITriggeredFunctionExecutor>(MockBehavior.Strict);
 
             string testConnection = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123=";
-            MessagingFactory messagingFactory = MessagingFactory.CreateFromConnectionString(testConnection);
+            _messagingFactory = MessagingFactory.CreateFromConnectionString(testConnection);
             OnMessageOptions messageOptions = new OnMessageOptions();
             _mockMessageProcessor = new Mock<MessageProcessor>(MockBehavior.Strict, messageOptions);
             
@@ -33,14 +35,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
             {
                 MessageOptions = messageOptions
             };
-            Mock<MessagingProvider> mockMessagingProvider = new Mock<MessagingProvider>(MockBehavior.Strict, config);
-            config.MessagingProvider = mockMessagingProvider.Object;
+            _mockMessagingProvider = new Mock<MessagingProvider>(MockBehavior.Strict, config);
+            config.MessagingProvider = _mockMessagingProvider.Object;
 
-            mockMessagingProvider.Setup(p => p.CreateMessageProcessor(_entityPath))
+            _mockMessagingProvider.Setup(p => p.CreateMessageProcessor(_entityPath))
                 .Returns(_mockMessageProcessor.Object);
 
             ServiceBusTriggerExecutor triggerExecutor = new ServiceBusTriggerExecutor(_mockExecutor.Object);
-            _listener = new ServiceBusListener(messagingFactory, _entityPath, triggerExecutor, config);
+            _listener = new ServiceBusListener(_messagingFactory, _entityPath, triggerExecutor, config);
         }
 
         [Fact]
@@ -72,6 +74,21 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
             await _listener.ProcessMessageAsync(message, CancellationToken.None);
 
             _mockMessageProcessor.VerifyAll();
+        }
+
+        [Fact]
+        public async Task StartAsync_CallsMessagingProviderToCreateReceiver()
+        {
+            MessageReceiver receiver = _messagingFactory.CreateMessageReceiver(_entityPath);
+            _mockMessagingProvider.Setup(p => p.CreateMessageReceiver(_messagingFactory, _entityPath)).Returns(receiver);
+
+            MessagingCommunicationException ex = await Assert.ThrowsAsync<MessagingCommunicationException>(async () => 
+                {
+                    await _listener.StartAsync(CancellationToken.None);
+                });
+            Assert.Equal("No such host is known", ex.Message);
+
+            _mockMessagingProvider.VerifyAll();
         }
     }
 }

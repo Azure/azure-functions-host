@@ -22,6 +22,7 @@
       <Value>eTag</Value>
       <Value>bindable</Value>
 	  <Value>dequeue</Value>
+	  <Value>Prefetch</Value>
     </CollectionProperty>
   </GlobalSettings>
   <Parsers>

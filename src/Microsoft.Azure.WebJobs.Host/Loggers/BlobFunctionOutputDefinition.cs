@@ -23,8 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         private readonly LocalBlobDescriptor _outputBlob;
         private readonly LocalBlobDescriptor _parameterLogBlob;
 
-        public BlobFunctionOutputDefinition(IStorageBlobClient client, LocalBlobDescriptor outputBlob,
-            LocalBlobDescriptor parameterLogBlob)
+        public BlobFunctionOutputDefinition(IStorageBlobClient client, LocalBlobDescriptor outputBlob, LocalBlobDescriptor parameterLogBlob)
         {
             _client = client;
             _outputBlob = outputBlob;
@@ -41,11 +40,10 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             get { return _parameterLogBlob; }
         }
 
-        public async Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
+        public IFunctionOutput CreateOutput()
         {
             IStorageBlockBlob blob = GetBlockBlobReference(_outputBlob);
-            string existingContents = await ReadBlobAsync(blob, cancellationToken);
-            return await UpdateOutputLogCommand.CreateAsync(blob, existingContents, cancellationToken);
+            return UpdateOutputLogCommand.Create(blob);
         }
 
         public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)
@@ -57,27 +55,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         {
             IStorageBlobContainer container = _client.GetContainerReference(descriptor.ContainerName);
             return container.GetBlockBlobReference(descriptor.BlobName);
-        }
-
-        // Return Null if doesn't exist
-        [DebuggerNonUserCode]
-        private static async Task<string> ReadBlobAsync(IStorageBlob blob, CancellationToken cancellationToken)
-        {
-            // Beware! Blob.DownloadText does not strip the BOM!
-            try
-            {
-                using (var stream = await blob.OpenReadAsync(cancellationToken))
-                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string data = await sr.ReadToEndAsync();
-                    return data;
-                }
-            }
-            catch
-            {
-                return null;
-            }
         }
     }
 }

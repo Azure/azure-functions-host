@@ -51,9 +51,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         /// <summary>
         /// Gets or sets the default <see cref="OnMessageOptions"/> that will be used by
-        /// message receivers.
+        /// <see cref="MessageReceiver"/>s.
         /// </summary>
         public OnMessageOptions MessageOptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default PrefetchCount that will be used by <see cref="MessageReceiver"/>s.
+        /// </summary>
+        public int PrefetchCount { get; set; }
 
         /// <summary>
         /// Gets or sets the <see cref="MessagingProvider"/> that will be used to create

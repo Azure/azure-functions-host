@@ -15,8 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         private readonly IStorageBlobDirectory _outputLogDirectory;
 
         public BlobFunctionOutputLogger(IStorageBlobClient client)
-            : this(client.GetContainerReference(
-                HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.OutputLogs))
+            : this(client.GetContainerReference(HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.OutputLogs))
         {
         }
 
@@ -25,13 +24,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             _outputLogDirectory = outputLogDirectory;
         }
 
-        public async Task<IFunctionOutputDefinition> CreateAsync(IFunctionInstance instance,
-            CancellationToken cancellationToken)
+        public async Task<IFunctionOutputDefinition> CreateAsync(IFunctionInstance instance, CancellationToken cancellationToken)
         {
             await _outputLogDirectory.Container.CreateIfNotExistsAsync(cancellationToken);
 
             string namePrefix = instance.Id.ToString("N");
-
             LocalBlobDescriptor outputBlob = CreateDescriptor(_outputLogDirectory, namePrefix + ".txt");
             LocalBlobDescriptor parameterLogBlob = CreateDescriptor(_outputLogDirectory, namePrefix + ".params.txt");
 
