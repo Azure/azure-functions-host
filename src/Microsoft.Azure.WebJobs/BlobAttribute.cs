@@ -25,7 +25,12 @@ namespace Microsoft.Azure.WebJobs
     /// <item><description><see cref="TextWriter"/></description></item>
     /// <item><description>
     /// <see cref="string"/> (normally for reading, or as an out parameter for writing)
-    /// </description></item>
+    /// </description>
+    /// </item>
+    /// <item><description>
+    /// <see cref="T:byte[]"/> (normally for reading, or as an out parameter for writing)
+    /// </description>
+    /// </item>
     /// <item><description>
     /// A custom type implementing <see cref="ICloudBlobStreamBinder{T}"/> (normally for reading, or as an out parameter for
     /// writing)

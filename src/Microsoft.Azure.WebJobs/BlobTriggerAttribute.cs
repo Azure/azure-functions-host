@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs
     /// <item><description><see cref="Stream"/></description></item>
     /// <item><description><see cref="TextReader"/></description></item>
     /// <item><description><see cref="string"/></description></item>
+    /// <item><description><see cref="T:byte[]"/></description></item>
     /// <item><description>A custom type implementing <see cref="ICloudBlobStreamBinder{T}"/></description></item>
     /// </list>
     /// </remarks>
