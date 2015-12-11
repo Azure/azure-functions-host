@@ -364,7 +364,9 @@
     <Compile Include="Blobs\Bindings\CloudBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\CloudBlobDirectoryArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\CloudBlobEnumerableArgumentBindingProvider.cs" />
+    <Compile Include="Blobs\Bindings\OutByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Blobs\BlobContainerOutputConverter.cs" />
+    <Compile Include="Blobs\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Blobs\CompositeBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="Blobs\IBlobContainerArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />

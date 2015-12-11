@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
     {
         private const string TestArtifactPrefix = "e2etestbindings";
         private const string ContainerName = TestArtifactPrefix + "-%rnd%";
+        private const string OutputContainerName = TestArtifactPrefix + "-out%rnd%";
         private const string PageBlobContainerName = TestArtifactPrefix + "pageblobs-%rnd%";
         private const string HierarchicalBlobContainerName = TestArtifactPrefix + "subblobs-%rnd%";
         private const string TestData = "TestData";
@@ -148,6 +149,45 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("IEnumerableICloudBlobBinding"));
 
             Assert.Equal(5, NumBlobsRead);
+        }
+
+        [Fact]
+        public async Task BindToByteArray()
+        {
+            await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("ByteArrayBinding"));
+
+            Assert.Equal(1, NumBlobsRead);
+        }
+
+        [Fact]
+        public async Task BindToByteArray_Output()
+        {
+            // if the function sets the output binding to null, no blob
+            // should be written
+            var arguments = new { input = "null" };
+            var method = typeof(BlobBindingEndToEndTests).GetMethod("ByteArrayOutputBinding");
+            await _fixture.Host.CallAsync(method, arguments);
+
+            CloudBlockBlob blob = _fixture.OutputBlobContainer.GetBlockBlobReference("blob1");
+            Assert.False(blob.Exists());
+           
+            // if the function sets a value, the blob should be written
+            arguments = new { input = TestData };
+            await _fixture.Host.CallAsync(method, arguments);
+
+            Assert.True(blob.Exists());
+            string result = blob.DownloadText();
+            Assert.Equal(TestData, result);
+        }
+
+        [Fact]
+        public async Task BindToByteArray_Trigger()
+        {
+            var arguments = new { blob = string.Format("{0}/{1}", _fixture.Config.NameResolver.ResolveWholeString(ContainerName), "blob1") };
+
+            await _fixture.Host.CallAsync(typeof(BlobBindingEndToEndTests).GetMethod("ByteArrayTriggerBinding"), arguments);
+
+            Assert.Equal(1, NumBlobsRead);
         }
 
         [NoAutomaticTrigger]
@@ -318,10 +358,40 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             NumBlobsRead = blobs.Count();
         }
 
+        [NoAutomaticTrigger]
+        public static void ByteArrayBinding(
+            [Blob(ContainerName + "/blob1")] byte[] blob)
+        {
+            string result = Encoding.UTF8.GetString(blob);
+            Assert.Equal(TestData, result);
+            NumBlobsRead = 1;
+        }
+
+        [NoAutomaticTrigger]
+        public static void ByteArrayOutputBinding(string input,
+            [Blob(OutputContainerName + "/blob1")] out byte[] output)
+        {
+            if (input == "null")
+            {
+                output = null;
+            }
+            else
+            {
+                output = Encoding.UTF8.GetBytes(input);
+            }
+        }
+
+        [NoAutomaticTrigger]
+        public static void ByteArrayTriggerBinding(
+            [BlobTrigger(ContainerName)] byte[] blob)
+        {
+            string result = Encoding.UTF8.GetString(blob);
+            Assert.Equal(TestData, result);
+            NumBlobsRead = 1;
+        }
+
         public class TestFixture : IDisposable
         {
-            private readonly CloudStorageAccount _storageAccount;
-
             public TestFixture()
             {
                 RandomNameResolver nameResolver = new RandomNameResolver();
@@ -332,12 +402,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 };
                 Config = hostConfiguration;
 
-                _storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
-                CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
+                StorageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
 
-                CloudBlobContainer blobContainer = blobClient.GetContainerReference(nameResolver.ResolveInString(ContainerName));
-                Assert.False(blobContainer.Exists());
-                blobContainer.Create();
+                BlobContainer = blobClient.GetContainerReference(nameResolver.ResolveInString(ContainerName));
+                Assert.False(BlobContainer.Exists());
+                BlobContainer.Create();
+
+                OutputBlobContainer = blobClient.GetContainerReference(nameResolver.ResolveInString(OutputContainerName));
 
                 CloudBlobContainer pageBlobContainer = blobClient.GetContainerReference(nameResolver.ResolveInString(PageBlobContainerName));
                 Assert.False(pageBlobContainer.Exists());
@@ -351,15 +423,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Host.Start();
 
                 // upload some test blobs
-                CloudBlockBlob blob = blobContainer.GetBlockBlobReference("blob1");
+                CloudBlockBlob blob = BlobContainer.GetBlockBlobReference("blob1");
                 blob.UploadText(TestData);
-                blob = blobContainer.GetBlockBlobReference("blob2");
+                blob = BlobContainer.GetBlockBlobReference("blob2");
                 blob.UploadText(TestData);
-                blob = blobContainer.GetBlockBlobReference("blob3");
+                blob = BlobContainer.GetBlockBlobReference("blob3");
                 blob.UploadText(TestData);
-                blob = blobContainer.GetBlockBlobReference("file1");
+                blob = BlobContainer.GetBlockBlobReference("file1");
                 blob.UploadText(TestData);
-                blob = blobContainer.GetBlockBlobReference("file2");
+                blob = BlobContainer.GetBlockBlobReference("file2");
                 blob.UploadText(TestData);
 
                 // add a couple hierarchical blob paths
@@ -396,11 +468,29 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 private set;
             }
 
+            public CloudStorageAccount StorageAccount
+            {
+                get;
+                private set;
+            }
+
+            public CloudBlobContainer BlobContainer
+            {
+                get;
+                private set;
+            }
+
+            public CloudBlobContainer OutputBlobContainer
+            {
+                get;
+                private set;
+            }
+
             public void Dispose()
             {
                 Host.Stop();
 
-                CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
                 foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))
                 {
                     testContainer.Delete();

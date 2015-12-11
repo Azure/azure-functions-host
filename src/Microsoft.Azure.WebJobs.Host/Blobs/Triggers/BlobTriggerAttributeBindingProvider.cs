@@ -112,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: FileAccess.Read));
             innerProviders.Add(new TextReaderArgumentBindingProvider());
             innerProviders.Add(new StringArgumentBindingProvider());
+            innerProviders.Add(new ByteArrayArgumentBindingProvider());
 
             if (cloudBlobStreamBinderTypes != null)
             {

@@ -114,7 +114,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             innerProviders.Add(new TextReaderArgumentBindingProvider());
             innerProviders.Add(new TextWriterArgumentBindingProvider(blobWrittenWatcherGetter));
             innerProviders.Add(new StringArgumentBindingProvider());
+            innerProviders.Add(new ByteArrayArgumentBindingProvider());
             innerProviders.Add(new OutStringArgumentBindingProvider(blobWrittenWatcherGetter));
+            innerProviders.Add(new OutByteArrayArgumentBindingProvider(blobWrittenWatcherGetter));
 
             if (cloudBlobStreamBinderTypes != null)
             {
