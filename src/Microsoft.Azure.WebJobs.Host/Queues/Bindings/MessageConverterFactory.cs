@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
             else
             {
+                if (typeof(TInput).IsPrimitive)
+                {
+                    throw new NotSupportedException("Primitive types are not supported.");
+                }
+
                 if (typeof(IEnumerable).IsAssignableFrom(typeof(TInput)))
                 {
                     throw new InvalidOperationException("Nested collections are not supported.");

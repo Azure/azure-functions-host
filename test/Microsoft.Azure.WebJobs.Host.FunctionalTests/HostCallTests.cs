@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
@@ -443,16 +444,71 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [Fact]
         public void Queue_IfBoundToICollectorPoco_CanCall()
         {
-            TestEnqueueMultipleMessages("BindToICollectorPoco");
+            TestEnqueueMultiplePocoMessages("BindToICollectorPoco");
         }
 
         [Fact]
         public void Queue_IfBoundToIAsyncCollectorPoco_CanCall()
         {
-            TestEnqueueMultipleMessages("BindToIAsyncCollectorPoco");
+            TestEnqueueMultiplePocoMessages("BindToIAsyncCollectorPoco");
         }
 
-        private static void TestEnqueueMultipleMessages(string methodName)
+        [Fact]
+        public void Queue_IfBoundToIAsyncCollectorByteArray_CanCall()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(QueueProgram), "BindToIAsyncCollectorByteArray");
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            IEnumerable<IStorageQueueMessage> messages = queue.GetMessages(messageCount: int.MaxValue);
+            Assert.NotNull(messages);
+            Assert.Equal(3, messages.Count());
+            IStorageQueueMessage[] sortedMessages = messages.OrderBy((m) => m.AsString).ToArray();
+
+            Assert.Equal(Encoding.UTF8.GetBytes("test1"), sortedMessages[0].AsBytes);
+            Assert.Equal(Encoding.UTF8.GetBytes("test2"), sortedMessages[1].AsBytes);
+            Assert.Equal(Encoding.UTF8.GetBytes("test3"), sortedMessages[2].AsBytes);
+        }
+
+        [Fact]
+        public void Queue_IfBoundToICollectorByteArray_CanCall()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(QueueProgram), "BindToICollectorByteArray");
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            IEnumerable<IStorageQueueMessage> messages = queue.GetMessages(messageCount: int.MaxValue);
+            Assert.NotNull(messages);
+            Assert.Equal(3, messages.Count());
+            IStorageQueueMessage[] sortedMessages = messages.OrderBy((m) => m.AsString).ToArray();
+
+            Assert.Equal(Encoding.UTF8.GetBytes("test1"), sortedMessages[0].AsBytes);
+            Assert.Equal(Encoding.UTF8.GetBytes("test2"), sortedMessages[1].AsBytes);
+            Assert.Equal(Encoding.UTF8.GetBytes("test3"), sortedMessages[2].AsBytes);
+        }
+
+        [Fact]
+        public void Queue_IfBoundToIAsyncCollectorInt_NotSupported()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            FunctionIndexingException ex = Assert.Throws<FunctionIndexingException>(() =>
+            {
+                Call(account, typeof(QueueNotSupportedProgram), "BindToICollectorInt");
+            });
+
+            // Assert
+            Assert.Equal("Primitive types are not supported.", ex.InnerException.Message);
+        }
+
+        private static void TestEnqueueMultiplePocoMessages(string methodName)
         {
             IStorageAccount account = CreateFakeStorageAccount();
 
@@ -1391,6 +1447,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private class QueueNotSupportedProgram
+        {
+            public static void BindToICollectorInt(
+                [Queue(OutputQueueName)] ICollector<int> output)
+            {
+                // not supported
+            }
+        }
+
         private class QueueProgram
         {
             public static void BindToOutPoco([Queue(OutputQueueName)] out PocoMessage output)
@@ -1411,6 +1476,22 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 await output.AddAsync(new PocoMessage { Value = "10" });
                 await output.AddAsync(new PocoMessage { Value = "20" });
                 await output.AddAsync(new PocoMessage { Value = "30" });
+            }
+
+            public static async Task BindToIAsyncCollectorByteArray(
+                [Queue(OutputQueueName)] IAsyncCollector<byte[]> output)
+            {
+                await output.AddAsync(Encoding.UTF8.GetBytes("test1"));
+                await output.AddAsync(Encoding.UTF8.GetBytes("test2"));
+                await output.AddAsync(Encoding.UTF8.GetBytes("test3"));
+            }
+
+            public static void BindToICollectorByteArray(
+                [Queue(OutputQueueName)] ICollector<byte[]> output)
+            {
+                output.Add(Encoding.UTF8.GetBytes("test1"));
+                output.Add(Encoding.UTF8.GetBytes("test2"));
+                output.Add(Encoding.UTF8.GetBytes("test3"));
             }
 
             public static async Task BindToIAsyncCollectorEnqueuesImmediately(
