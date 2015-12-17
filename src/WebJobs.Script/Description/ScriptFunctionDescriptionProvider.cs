@@ -42,8 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, inputBindings, outputBindings);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
-            string triggerType = (string)trigger["type"];
 
+            if (IsDisabled(functionFolderInfo.Name, trigger))
+            {
+                return false;
+            }
+
+            string triggerType = (string)trigger["type"];
             string parameterName = (string)trigger["name"];
             if (string.IsNullOrEmpty(parameterName))
             {
