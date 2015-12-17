@@ -1,12 +1,3 @@
 ﻿{
-  "id": "5a709861cab44e68bfed5d2c2fe7fc0c",
-  "queues": {
-    "maxPollingInterval": 2000
-  },
-  "tracing": {
-    "consoleLevel": "Verbose"
-  },
-  "singleton": {
-    "listenerLockPeriod": "00:00:15"
-  }
+  "id": "5a709861cab44e68bfed5d2c2fe7fc0c"
 }
