@@ -19,11 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script
     // TODO: make this internal
     public class NodeFunctionInvoker : IFunctionInvoker
     {
-        private readonly Func<object, Task<object>> _scriptFunc;
+        private Func<object, Task<object>> _scriptFunc;
         private static string FunctionTemplate;
         private readonly Collection<Binding> _inputBindings;
         private readonly Collection<Binding> _outputBindings;
         private readonly string _triggerParameterName;
+        private readonly string _script;
 
         static NodeFunctionInvoker()
         {
@@ -34,13 +35,26 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        private Func<object, Task<object>> ScriptFunc
+        {
+            get
+            {
+                if (_scriptFunc == null)
+                {
+                    // We delay create the script function so any syntax errors in
+                    // the function will be reported to the Dashboard as an invocation
+                    // error rather than a host startup error
+                    _scriptFunc = Edge.Func(_script);
+                }
+                return _scriptFunc;
+            }
+        }
+
         internal NodeFunctionInvoker(string triggerParameterName, string scriptFilePath, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _triggerParameterName = triggerParameterName;
             scriptFilePath = scriptFilePath.Replace('\\', '/');
-            string script = string.Format(FunctionTemplate, scriptFilePath);
-            _scriptFunc = Edge.Func(script);
-
+            _script = string.Format(FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
         }
@@ -87,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 context["output"] = output;
             }
 
-            await _scriptFunc(context);
+            await ScriptFunc(context);
 
             // process output bindings
             if (functionOutput != null)
