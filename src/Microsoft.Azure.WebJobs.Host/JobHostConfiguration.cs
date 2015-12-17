@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Threading;
+using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -65,7 +65,21 @@ namespace Microsoft.Azure.WebJobs
             AddService<INameResolver>(new DefaultNameResolver());
             AddService<IJobActivator>(DefaultJobActivator.Instance);
             AddService<ITypeLocator>(typeLocator);
+
+            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
+            IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
+
+        /// <summary>
+        /// Gets a value indicating whether the <see cref="JobHost"/> is running in a Development environment.
+        /// You can use this property in conjunction with <see cref="UseDevelopmentSettings"/> to default
+        /// configuration settings to values optimized for local development.
+        /// <Remarks>
+        /// The environment is determined by the value of the "AzureWebJobsEnv" environment variable. When this
+        /// is set to "Development", this property will return true.
+        /// </Remarks>
+        /// </summary>
+        public bool IsDevelopment { get; private set; }
 
         /// <summary>Gets or sets the host ID.</summary>
         /// <remarks>
@@ -265,6 +279,17 @@ namespace Microsoft.Azure.WebJobs
                 }
                 AddService<StorageClientFactory>(value);
             }
+        }
+
+        /// <summary>
+        /// Configures various configuration settings on this <see cref="JobHostConfiguration"/> to 
+        /// optimize for local development.
+        /// </summary>
+        public void UseDevelopmentSettings()
+        {
+            Tracing.ConsoleLevel = TraceLevel.Verbose;
+            Queues.MaxPollingInterval = TimeSpan.FromSeconds(2);
+            Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
         }
 
         /// <summary>Gets the service object of the specified type.</summary>

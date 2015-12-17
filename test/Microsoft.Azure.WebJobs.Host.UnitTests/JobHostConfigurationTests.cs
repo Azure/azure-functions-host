@@ -273,6 +273,39 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Same(customFactory, configuration.GetService<StorageClientFactory>());
         }
 
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("Blah", false)]
+        [InlineData("Development", true)]
+        [InlineData("development", true)]
+        public void IsDevelopment_ReturnsCorrectValue(string settingValue, bool expected)
+        {
+            string prev = Environment.GetEnvironmentVariable(Constants.EnvironmentSettingName);
+            Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, settingValue);
+
+            JobHostConfiguration config = new JobHostConfiguration();
+            Assert.Equal(config.IsDevelopment, expected);
+
+            Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, prev);
+        }
+
+        public void UseDevelopmentSettings_ConfiguresCorrectValues()
+        {
+            string prev = Environment.GetEnvironmentVariable(Constants.EnvironmentSettingName);
+            Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, "Development");
+
+            JobHostConfiguration config = new JobHostConfiguration();
+            if (config.IsDevelopment)
+            {
+                config.UseDevelopmentSettings();
+            }
+            Assert.Equal(TraceLevel.Verbose, config.Tracing.ConsoleLevel);
+            Assert.Equal(TimeSpan.FromSeconds(2), config.Queues.MaxPollingInterval);
+            Assert.Equal(TimeSpan.FromSeconds(15), config.Singleton.ListenerLockPeriod);
+
+            Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, prev);
+        }
+
         private static void TestHostIdThrows(string hostId)
         {
             // Arrange
