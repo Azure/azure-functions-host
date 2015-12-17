@@ -18,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const string TestArtifactPrefix = "e2etestmultiaccount";
         private const string Input = TestArtifactPrefix + "-input-%rnd%";
         private const string Output = TestArtifactPrefix + "-output-%rnd%";
-        private const string InputTableName = TestArtifactPrefix + "tableinput";
-        private const string OutputTableName = TestArtifactPrefix + "tableinput";
+        private const string InputTableName = TestArtifactPrefix + "tableinput%rnd%";
+        private const string OutputTableName = TestArtifactPrefix + "tableinput%rnd%";
         private const string TestData = "﻿TestData";
         private const string Secondary = "SecondaryStorage";
         private static CloudStorageAccount PrimaryAccountResult;
