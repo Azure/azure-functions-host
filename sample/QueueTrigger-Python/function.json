@@ -11,7 +11,7 @@
         "tableName": "samples",
         "partitionKey": "samples",
         "take": 5,
-        "filter": "status eq 1"
+        "filter": "status eq '0'"
       }
     ],
     "output": [
