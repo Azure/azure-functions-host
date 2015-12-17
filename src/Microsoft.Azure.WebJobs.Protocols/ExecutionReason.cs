@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         HostCall,
 
         /// <summary>Indicates a function executed because of a request from a dashboard user.</summary>
-        Dashboard
+        Dashboard,
+
+        /// <summary>Indicates a function executed because of a request from an Azure Portal user.</summary>
+        Portal
     }
 }

@@ -153,6 +153,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStartedMessageExtensions.cs">
       <Link>Protocols\FunctionStartedMessageExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStatusMessage.cs">
+      <Link>Protocols\FunctionStatusMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HeartbeatCommand.cs">
       <Link>Protocols\HeartbeatCommand.cs</Link>
     </Compile>
@@ -474,6 +477,7 @@
     <Compile Include="Listeners\ListenerFactoryContext.cs" />
     <Compile Include="Loggers\DefaultConsoleProvider.cs" />
     <Compile Include="Loggers\DefaultLoggerProvider.cs" />
+    <Compile Include="Loggers\FunctionStatusLogger.cs" />
     <Compile Include="Loggers\IFunctionOutputLoggerProvider.cs" />
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />

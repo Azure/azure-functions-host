@@ -153,6 +153,7 @@
     <Compile Include="FunctionIndexerFactory.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
     <Compile Include="Listeners\HostListenerFactoryTests.cs" />
+    <Compile Include="Loggers\FunctionStatusLoggerTests.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="Protocols\FunctionStartedMessageExtensionsTests.cs" />
