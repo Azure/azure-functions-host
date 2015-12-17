@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 new NodeFunctionDescriptorProvider(HostConfig, ScriptConfig.RootPath)
             };
 
+            if (HostConfig.IsDevelopment)
+            {
+                HostConfig.UseDevelopmentSettings();
+            }
+
             // read host.json and apply to JobHostConfiguration
             string hostConfigFilePath = Path.Combine(ScriptConfig.RootPath, "host.json");
             Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
