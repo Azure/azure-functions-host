@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -40,8 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
-            string triggerType = (string)trigger["type"];
 
+            if (IsDisabled(functionFolderInfo.Name, trigger))
+            {
+                return false;
+            }
+
+            string triggerType = (string)trigger["type"];
             string triggerParameterName = (string)trigger["name"];
             if (string.IsNullOrEmpty(triggerParameterName))
             {

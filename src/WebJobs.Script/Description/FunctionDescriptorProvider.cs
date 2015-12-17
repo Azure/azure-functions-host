@@ -14,6 +14,37 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public abstract bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor);
 
+        protected bool IsDisabled(string functionName, JObject trigger)
+        {
+            bool isDisabled = false;
+            JToken isDisabledValue = trigger["disabled"];
+            if (isDisabledValue != null)
+            {
+                if (isDisabledValue.Type == JTokenType.Boolean && (bool)isDisabledValue)
+                {
+                    isDisabled = true;
+                }
+                else
+                {
+                    string settingName = (string)isDisabledValue;
+                    string value = Environment.GetEnvironmentVariable(settingName);
+                    if (!string.IsNullOrEmpty(value) &&
+                        (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
+                         string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
+                    {
+                        isDisabled = true;
+                    }
+                }
+            }
+
+            if (isDisabled)
+            {
+                Console.WriteLine(string.Format("Function '{0}' is disabled", functionName));
+            }
+
+            return isDisabled;
+        }
+
         protected ParameterDescriptor ParseQueueTrigger(JObject trigger, Type triggerParameterType = null)
         {
             if (triggerParameterType == null)
