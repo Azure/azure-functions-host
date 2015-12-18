@@ -99,6 +99,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{446135
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusQueueTrigger", "ServiceBusQueueTrigger", "{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ServiceBusQueueTrigger\function.json = sample\ServiceBusQueueTrigger\function.json
+		sample\ServiceBusQueueTrigger\index.js = sample\ServiceBusQueueTrigger\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -142,5 +148,6 @@ Global
 		{644AFFC7-46C5-483A-812E-F5C9B93CBA86} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{1B6E0EA1-DB38-431C-864A-2A553DACB8DA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
+		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

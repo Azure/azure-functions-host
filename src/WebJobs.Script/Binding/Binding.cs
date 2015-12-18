@@ -67,6 +67,15 @@ namespace Microsoft.Azure.WebJobs.Script
                         string queueName = (string)binding["queueName"];
                         bindings.Add(new QueueBinding(config, name, queueName, fileAccess, isTrigger: false));
                     }
+                    else if (type == "serviceBus")
+                    {
+                        if (fileAccess != FileAccess.Write)
+                        {
+                            throw new InvalidOperationException("ServiceBus binding can only be used for output.");
+                        }
+                        string queueOrTopicName = (string)(binding["queueName"] ?? binding["topicName"]);
+                        bindings.Add(new ServiceBusBinding(config, name, queueOrTopicName, fileAccess, isTrigger: false));
+                    }
                     else if (type == "queueTrigger")
                     {
                         string queueName = (string)binding["queueName"];

@@ -12,7 +12,7 @@ module.exports = function (context) {
     };
     context.output({
         message: JSON.stringify(message)
-    })
+    });
 
     logger.log(timeStamp, context.done);
 }
