@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobBinding(JobHostConfiguration config, string name, string path, FileAccess fileAccess, bool isTrigger) : base(config, name, "blob", fileAccess, isTrigger)
+        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess fileAccess, bool isTrigger) : base(config, name, "blob", fileAccess, isTrigger)
         {
             Path = path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);

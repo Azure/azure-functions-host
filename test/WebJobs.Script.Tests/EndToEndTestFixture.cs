@@ -25,7 +25,7 @@ namespace WebJobs.Script.Tests
 
             Host = ScriptHost.Create(config);
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            Host.HostConfig.Tracing.Tracers.Add(TraceWriter);
+            Host.ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
             Host.Start();
         }
 

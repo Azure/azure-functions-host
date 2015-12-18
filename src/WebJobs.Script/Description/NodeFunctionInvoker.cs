@@ -20,11 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script
     public class NodeFunctionInvoker : IFunctionInvoker
     {
         private Func<object, Task<object>> _scriptFunc;
+        private Func<object, Task<object>> _clearRequireCache;
         private static string FunctionTemplate;
+        private static string ClearRequireCacheScript;
         private readonly Collection<Binding> _inputBindings;
         private readonly Collection<Binding> _outputBindings;
         private readonly string _triggerParameterName;
         private readonly string _script;
+        private readonly FileSystemWatcher _fileWatcher;
+        private readonly string _functionName;
+        private readonly ScriptHost _host;
 
         static NodeFunctionInvoker()
         {
@@ -32,6 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script
             using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.functionTemplate.js")))
             {
                 FunctionTemplate = reader.ReadToEnd();
+            }
+            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.clearRequireCache.js")))
+            {
+                ClearRequireCacheScript = reader.ReadToEnd();
             }
         }
 
@@ -50,13 +59,31 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal NodeFunctionInvoker(string triggerParameterName, string scriptFilePath, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, FunctionFolderInfo folderInfo, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
+            _host = host;
             _triggerParameterName = triggerParameterName;
-            scriptFilePath = scriptFilePath.Replace('\\', '/');
+            string scriptFilePath = folderInfo.Source.Replace('\\', '/');
             _script = string.Format(FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
+            _functionName = folderInfo.Name;
+
+            _clearRequireCache = Edge.Func(ClearRequireCacheScript);
+
+            if (host.ScriptConfig.WatchFiles)
+            {
+                string functionDirectory = Path.GetDirectoryName(scriptFilePath);
+                _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true
+                };
+                _fileWatcher.Changed += OnScriptFileChanged;
+                _fileWatcher.Created += OnScriptFileChanged;
+                _fileWatcher.Deleted += OnScriptFileChanged;
+                _fileWatcher.Renamed += OnScriptFileChanged;
+            } 
         }
 
         public async Task Invoke(object[] parameters)
@@ -124,6 +151,29 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
                 }
+            }
+        }
+
+        private void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (_scriptFunc == null)
+            {
+                // we're not loaded yet, so nothing to reload
+                return;
+            }
+
+            // The ScriptHost is already monitoring for changes to function.json, so we skip those
+            string fileName = Path.GetFileName(e.Name);
+            if (string.Compare(fileName, "function.json") != 0)
+            {
+                // one of the script files for this function changed
+                // force a reload on next execution
+                _scriptFunc = null;
+
+                // clear the node module cache
+                _clearRequireCache(null).Wait();
+
+                Console.WriteLine(string.Format("Script function '{0}' changed. Reloading function.", _functionName));
             }
         }
 

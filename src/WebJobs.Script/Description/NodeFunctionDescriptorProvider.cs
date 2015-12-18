@@ -12,13 +12,15 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private readonly JobHostConfiguration _config;
+        private ScriptHost _host;
+        private readonly ScriptHostConfiguration _config;
         private readonly string _rootPath;
 
-        public NodeFunctionDescriptorProvider(JobHostConfiguration config, string rootPath)
+        public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
+            _host = host;
             _config = config;
-            _rootPath = rootPath;
+            _rootPath = config.RootPath;
         }
 
         public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
@@ -42,7 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 
-            if (IsDisabled(functionFolderInfo.Name, trigger))
+            // A function can be disabled at the trigger or function level
+            if (IsDisabled(functionFolderInfo.Name, trigger) ||
+                IsDisabled(functionFolderInfo.Name, functionFolderInfo.Configuration))
             {
                 return false;
             }
@@ -55,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 trigger["name"] = triggerParameterName = "input";
             }
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(triggerParameterName, functionFolderInfo.Source, inputBindings, outputBindings);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, functionFolderInfo, inputBindings, outputBindings);
 
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
