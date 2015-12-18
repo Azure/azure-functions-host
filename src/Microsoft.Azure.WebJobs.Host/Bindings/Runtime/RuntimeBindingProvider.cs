@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
                 return Task.FromResult<IBinding>(null);
             }
 
-            IBinding binding = new RuntimeBinding(parameter.Name, _bindingProviderGetter);
+            IBinding binding = new RuntimeBinding(context.Parameter, _bindingProviderGetter);
             return Task.FromResult(binding);
         }
     }

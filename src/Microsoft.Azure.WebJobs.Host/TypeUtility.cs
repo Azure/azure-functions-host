@@ -3,7 +3,6 @@
 
 using System;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -16,8 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <param name="parameter">The parameter to check.</param>
         internal static T GetHierarchicalAttributeOrNull<T>(ParameterInfo parameter) where T : Attribute
         {
-            if (parameter == null ||
-                parameter.GetType() == typeof(AttributeBindingSource.FakeParameterInfo))
+            if (parameter == null)
             {
                 return null;
             }

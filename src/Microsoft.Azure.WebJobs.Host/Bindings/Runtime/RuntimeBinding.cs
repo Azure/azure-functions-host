@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
@@ -10,17 +11,23 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal class RuntimeBinding : IBinding
     {
+        private readonly MemberInfo _memberInfo;
         private readonly string _parameterName;
         private readonly IContextGetter<IBindingProvider> _bindingProviderGetter;
 
-        public RuntimeBinding(string parameterName, IContextGetter<IBindingProvider> bindingProviderGetter)
+        public RuntimeBinding(ParameterInfo parameter, IContextGetter<IBindingProvider> bindingProviderGetter)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException("parameter");
+            }
             if (bindingProviderGetter == null)
             {
                 throw new ArgumentNullException("bindingProviderGetter");
             }
 
-            _parameterName = parameterName;
+            _memberInfo = parameter.Member;
+            _parameterName = parameter.Name;
             _bindingProviderGetter = bindingProviderGetter;
         }
 
@@ -57,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
                 throw new ArgumentNullException("context");
             }
 
-            AttributeBindingSource bindingSource = new AttributeBindingSource(_bindingProviderGetter.Value, context.AmbientContext);
+            AttributeBindingSource bindingSource = new AttributeBindingSource(_memberInfo, _bindingProviderGetter.Value, context.AmbientContext);
 
             return BindAsync(bindingSource, context.ValueContext);
         }
