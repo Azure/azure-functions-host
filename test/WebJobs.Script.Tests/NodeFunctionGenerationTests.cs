@@ -144,9 +144,10 @@ namespace WebJobs.Script.Tests
 
         private static MethodInfo GenerateMethod(JObject trigger)
         {
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts");
             FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
             functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\Common\test.js");
+            functionFolderInfo.Source = Path.Combine(rootPath, @"Node\Common\test.js");
 
             JArray inputs = new JArray(trigger);
             functionFolderInfo.Configuration = new JObject();
@@ -156,10 +157,14 @@ namespace WebJobs.Script.Tests
             List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
             functionFolderInfos.Add(functionFolderInfo);
 
-            JobHostConfiguration config = new JobHostConfiguration();
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
+            {
+                RootPath = rootPath
+            };
+            ScriptHost host = ScriptHost.Create(scriptConfig);
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
-                new NodeFunctionDescriptorProvider(config, Environment.CurrentDirectory)
+                new NodeFunctionDescriptorProvider(host, scriptConfig)
             };
             var functionDescriptors = ScriptHost.ReadFunctions(functionFolderInfos, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly BindingTemplate _rowKeyBindingTemplate;
         private readonly TableQuery _tableQuery;
 
-        public TableBinding(JobHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess fileAccess, TableQuery tableQuery = null) : base(config, name, "queue", fileAccess, false)
+        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess fileAccess, TableQuery tableQuery = null) : base(config, name, "queue", fileAccess, false)
         {
             TableName = tableName;
             PartitionKey = partitionKey;

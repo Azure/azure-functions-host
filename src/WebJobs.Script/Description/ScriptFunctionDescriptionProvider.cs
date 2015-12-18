@@ -11,13 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class ScriptFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private readonly JobHostConfiguration _config;
+        private readonly ScriptHostConfiguration _config;
         private readonly string _rootPath;
 
-        public ScriptFunctionDescriptorProvider(JobHostConfiguration config, string rootPath)
+        public ScriptFunctionDescriptorProvider(ScriptHostConfiguration config)
         {
             _config = config;
-            _rootPath = rootPath;
+            _rootPath = config.RootPath;
         }
 
         public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
@@ -43,7 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 
-            if (IsDisabled(functionFolderInfo.Name, trigger))
+            // A function can be disabled at the trigger or function level
+            if (IsDisabled(functionFolderInfo.Name, trigger) ||
+                IsDisabled(functionFolderInfo.Name, functionFolderInfo.Configuration))
             {
                 return false;
             }

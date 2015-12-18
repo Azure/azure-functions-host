@@ -16,29 +16,29 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
+        private FileSystemWatcher _fileWatcher;
 
-        protected ScriptHost(JobHostConfiguration config, ScriptHostConfiguration scriptConfig) 
-            : base(config)
+        protected ScriptHost(ScriptHostConfiguration scriptConfig) 
+            : base(scriptConfig.HostConfig)
         {
-            HostConfig = config;
             ScriptConfig = scriptConfig;
         }
 
-        public JobHostConfiguration HostConfig { get; private set; }
-
         public ScriptHostConfiguration ScriptConfig { get; private set; }
+
+        public bool Restart { get; private set; }
 
         protected virtual void Initialize()
         {
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                new ScriptFunctionDescriptorProvider(HostConfig, ScriptConfig.RootPath),
-                new NodeFunctionDescriptorProvider(HostConfig, ScriptConfig.RootPath)
+                new ScriptFunctionDescriptorProvider(ScriptConfig),
+                new NodeFunctionDescriptorProvider(this, ScriptConfig)
             };
 
-            if (HostConfig.IsDevelopment)
+            if (ScriptConfig.HostConfig.IsDevelopment)
             {
-                HostConfig.UseDevelopmentSettings();
+                ScriptConfig.HostConfig.UseDevelopmentSettings();
             }
 
             // read host.json and apply to JobHostConfiguration
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
-            ApplyConfiguration(hostConfig, HostConfig);
+            ApplyConfiguration(hostConfig, ScriptConfig);
 
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
@@ -57,8 +57,33 @@ namespace Microsoft.Azure.WebJobs.Script
             List<Type> types = new List<Type>();
             types.Add(type);
 
-            HostConfig.TypeLocator = new TypeLocator(types);
-            HostConfig.NameResolver = new NameResolver();
+            ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
+            ScriptConfig.HostConfig.NameResolver = new NameResolver();
+
+            if (ScriptConfig.WatchFiles)
+            {
+                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootPath, "*.json")
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true
+                };
+                _fileWatcher.Changed += OnConfigurationFileChanged;
+            }
+        }
+
+        private void StopAndRestart()
+        {
+            if (Restart)
+            {
+                // we've already received a restart call
+                return;
+            }
+
+            Console.WriteLine("The host configuration file has changed. Restarting.");
+
+            // Flag for restart and stop the host.
+            Restart = true;
+            Stop();
         }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
@@ -76,8 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig.RootPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootPath);
             }
 
-            JobHostConfiguration config = new JobHostConfiguration();
-            ScriptHost scriptHost = new ScriptHost(config, scriptConfig);
+            ScriptHost scriptHost = new ScriptHost(scriptConfig);
             scriptHost.Initialize();
 
             return scriptHost;
@@ -180,14 +204,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        internal static void ApplyConfiguration(JObject config, JobHostConfiguration jobHostConfig)
+        internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
         {
+            JobHostConfiguration hostConfig = scriptConfig.HostConfig;
+
             JToken hostId = (JToken)config["id"];
             if (hostId == null)
             {
                 throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
             }
-            jobHostConfig.HostId = (string)hostId;
+            hostConfig.HostId = (string)hostId;
+
+            JToken watchFiles = (JToken)config["watchFiles"];
+            if (watchFiles != null && watchFiles.Type == JTokenType.Boolean)
+            {
+                scriptConfig.WatchFiles = (bool)watchFiles;
+            }
 
             // Apply Queues configuration
             JObject configSection = (JObject)config["queues"];
@@ -196,19 +228,19 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (configSection.TryGetValue("maxPollingInterval", out value))
                 {
-                    jobHostConfig.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
+                    hostConfig.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
                 }
                 if (configSection.TryGetValue("batchSize", out value))
                 {
-                    jobHostConfig.Queues.BatchSize = (int)value;
+                    hostConfig.Queues.BatchSize = (int)value;
                 }
                 if (configSection.TryGetValue("maxDequeueCount", out value))
                 {
-                    jobHostConfig.Queues.MaxDequeueCount = (int)value;
+                    hostConfig.Queues.MaxDequeueCount = (int)value;
                 }
                 if (configSection.TryGetValue("newBatchThreshold", out value))
                 {
-                    jobHostConfig.Queues.NewBatchThreshold = (int)value;
+                    hostConfig.Queues.NewBatchThreshold = (int)value;
                 }
             }
 
@@ -219,23 +251,23 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (configSection.TryGetValue("lockPeriod", out value))
                 {
-                    jobHostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value);
                 }
                 if (configSection.TryGetValue("listenerLockPeriod", out value))
                 {
-                    jobHostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value);
                 }
                 if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
                 {
-                    jobHostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value);
                 }
                 if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
                 {
-                    jobHostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value);
                 }
                 if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
                 {
-                    jobHostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value);
                 }
             }
 
@@ -250,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     sbConfig.MessageOptions.MaxConcurrentCalls = (int)value;
                 }
             }
-            jobHostConfig.UseServiceBus(sbConfig);
+            hostConfig.UseServiceBus(sbConfig);
 
             // Apply Tracing configuration
             configSection = (JObject)config["tracing"];
@@ -259,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceLevel consoleLevel;
                 if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
                 {
-                    jobHostConfig.Tracing.ConsoleLevel = consoleLevel;
+                    hostConfig.Tracing.ConsoleLevel = consoleLevel;
                 }
             }
 
@@ -270,9 +302,33 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 webHooksConfig = new WebHooksConfiguration((int)value);
             }
-            jobHostConfig.UseWebHooks(webHooksConfig);
+            hostConfig.UseWebHooks(webHooksConfig);
 
-            jobHostConfig.UseTimers();
+            hostConfig.UseTimers();
+        }
+
+        private void OnConfigurationFileChanged(object sender, FileSystemEventArgs e)
+        {
+            string fileName = Path.GetFileName(e.Name);
+
+            if (!Restart &&
+                ((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0))
+            {
+                StopAndRestart();
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_fileWatcher != null)
+                {
+                    _fileWatcher.Dispose();
+                }
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

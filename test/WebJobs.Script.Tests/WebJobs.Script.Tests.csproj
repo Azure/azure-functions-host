@@ -203,6 +203,9 @@
     <None Include="TestScripts\FSharp\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal abstract class Binding
     {
-        private readonly JobHostConfiguration _config;
+        private readonly ScriptHostConfiguration _config;
 
-        protected Binding(JobHostConfiguration config, string name, string type, FileAccess fileAccess, bool isTrigger)
+        protected Binding(ScriptHostConfiguration config, string name, string type, FileAccess fileAccess, bool isTrigger)
         {
             _config = config;
             Name = name;
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public abstract Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData);
 
-        internal static Collection<Binding> GetBindings(JobHostConfiguration config, JArray bindingArray, FileAccess fileAccess)
+        internal static Collection<Binding> GetBindings(ScriptHostConfiguration config, JArray bindingArray, FileAccess fileAccess)
         {
             Collection<Binding> bindings = new Collection<Binding>();
 
@@ -103,12 +103,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected string Resolve(string name)
         {
-            if (_config.NameResolver == null)
+            if (_config.HostConfig.NameResolver == null)
             {
                 return name;
             }
 
-            return _config.NameResolver.ResolveWholeString(name);
+            return _config.HostConfig.NameResolver.ResolveWholeString(name);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BindingTemplate _queueOrTopicNameBindingTemplate;
 
-        public ServiceBusBinding(JobHostConfiguration config, string name, string queueOrTopicName, FileAccess fileAccess, bool isTrigger) : base(config, name, "serviceBus", fileAccess, isTrigger)
+        public ServiceBusBinding(ScriptHostConfiguration config, string name, string queueOrTopicName, FileAccess fileAccess, bool isTrigger) : base(config, name, "serviceBus", fileAccess, isTrigger)
         {
             QueueOrTopicName = queueOrTopicName;
             _queueOrTopicNameBindingTemplate = BindingTemplate.FromString(QueueOrTopicName);

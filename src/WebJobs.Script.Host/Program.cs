@@ -22,8 +22,14 @@ namespace WebJobs.Script.Host
                 RootPath = rootPath
             };
 
-            ScriptHost host = ScriptHost.Create(config);
-            host.RunAndBlock();
+            // Start the host and restart it if requested
+            ScriptHost host = null;
+            do
+            {
+                host = ScriptHost.Create(config);
+                host.RunAndBlock();
+            }
+            while (host.Restart);    
         }
     }
 }

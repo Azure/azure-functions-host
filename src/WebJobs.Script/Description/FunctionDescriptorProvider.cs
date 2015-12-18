@@ -14,15 +14,24 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public abstract bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor);
 
-        protected bool IsDisabled(string functionName, JObject trigger)
+        protected bool IsDisabled(string functionName, JObject value)
         {
-            bool isDisabled = false;
-            JToken isDisabledValue = trigger["disabled"];
+            if (value != null && IsDisabled(value["disabled"]))
+            {
+                Console.WriteLine(string.Format("Function '{0}' is disabled", functionName));
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsDisabled(JToken isDisabledValue)
+        {
             if (isDisabledValue != null)
             {
                 if (isDisabledValue.Type == JTokenType.Boolean && (bool)isDisabledValue)
                 {
-                    isDisabled = true;
+                    return true;
                 }
                 else
                 {
@@ -32,17 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script
                         (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
                          string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
                     {
-                        isDisabled = true;
+                        return true;
                     }
                 }
             }
 
-            if (isDisabled)
-            {
-                Console.WriteLine(string.Format("Function '{0}' is disabled", functionName));
-            }
-
-            return isDisabled;
+            return false;
         }
 
         protected ParameterDescriptor ParseQueueTrigger(JObject trigger, Type triggerParameterType = null)
