@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Dictionary<string, object> CreateContext(object input, TraceWriter traceWriter, IBinder binder)
         {
             Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(string))
+            if (triggerParameterType == typeof(string) && IsJson((string)input))
             {
                 // convert string into Dictionary (recursively) which Edge will convert into an object
                 // before invoking the function
@@ -154,6 +154,13 @@ namespace Microsoft.Azure.WebJobs.Script
             };
 
             return context;
+        }
+
+        public static bool IsJson(string input)
+        {
+            input = input.Trim();
+            return (input.StartsWith("{") && input.EndsWith("}"))
+                   || (input.StartsWith("[") && input.EndsWith("]"));
         }
     }
 }

@@ -6,7 +6,7 @@ module.exports = function (context) {
 
     context.output({
         output: json
-    })
+    });
 
     context.done();
 }

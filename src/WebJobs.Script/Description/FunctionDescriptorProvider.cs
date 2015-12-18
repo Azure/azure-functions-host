@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                throw new InvalidOperationException("Invalid servicebus trigger configuration.");
+                throw new InvalidOperationException("Invalid ServiceBus trigger configuration.");
             }
 
             string parameterName = (string)trigger["name"];
