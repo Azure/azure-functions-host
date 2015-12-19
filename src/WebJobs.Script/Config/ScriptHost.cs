@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string HostAssemblyName = "ScriptHost";
         private FileSystemWatcher _fileWatcher;
+        private int _directoryCountSnapshot;
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig) 
             : base(scriptConfig.HostConfig)
@@ -62,13 +63,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (ScriptConfig.WatchFiles)
             {
-                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootPath, "*.json")
+                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootPath)
                 {
                     IncludeSubdirectories = true,
                     EnableRaisingEvents = true
                 };
                 _fileWatcher.Changed += OnConfigurationFileChanged;
+                _fileWatcher.Created += OnConfigurationFileChanged;
+                _fileWatcher.Deleted += OnConfigurationFileChanged;
             }
+
+            // take a snapshot so we can detect function additions/removals
+            _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootPath).Count();
         }
 
         private void StopAndRestart()
@@ -79,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            Console.WriteLine("The host configuration file has changed. Restarting.");
+            Console.WriteLine("Host configuration has changed. Restarting.");
 
             // Flag for restart and stop the host.
             Restart = true;
@@ -310,9 +316,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private void OnConfigurationFileChanged(object sender, FileSystemEventArgs e)
         {
             string fileName = Path.GetFileName(e.Name);
-
-            if (!Restart &&
-                ((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0))
+            if (!Restart && 
+                ((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
+                ((Directory.EnumerateDirectories(ScriptConfig.RootPath).Count() != _directoryCountSnapshot)))
             {
                 StopAndRestart();
             }
