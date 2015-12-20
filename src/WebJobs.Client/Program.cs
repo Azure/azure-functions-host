@@ -12,6 +12,7 @@ namespace WebJobs.Client
             if (client == null)
             {
                 Console.ReadKey();
+                return;
             }
 
             do
