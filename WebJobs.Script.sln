@@ -105,6 +105,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusQueueTrigger", "S
 		sample\ServiceBusQueueTrigger\index.js = sample\ServiceBusQueueTrigger\index.js
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Client", "src\WebJobs.Client\WebJobs.Client.csproj", "{D08D44C2-DF21-48B7-A354-5492423749EC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -127,6 +129,10 @@ Global
 		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D08D44C2-DF21-48B7-A354-5492423749EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D08D44C2-DF21-48B7-A354-5492423749EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D08D44C2-DF21-48B7-A354-5492423749EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D08D44C2-DF21-48B7-A354-5492423749EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -149,5 +155,6 @@ Global
 		{1B6E0EA1-DB38-431C-864A-2A553DACB8DA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{D08D44C2-DF21-48B7-A354-5492423749EC} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal
