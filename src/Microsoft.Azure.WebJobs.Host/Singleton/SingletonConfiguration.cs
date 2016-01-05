@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             _lockPeriod = MinimumLeasePeriod;
             _listenerLockPeriod = MaximumLeasePeriod;
-            _lockAcquisitionTimeout = TimeSpan.FromMinutes(1);
-            _lockAcquisitionPollingInterval = TimeSpan.FromSeconds(3);
+            _lockAcquisitionTimeout = Timeout.InfiniteTimeSpan;
+            _lockAcquisitionPollingInterval = TimeSpan.FromSeconds(10);
             _listenerLockRecoveryPollingInterval = TimeSpan.FromMinutes(1);
         }
 
