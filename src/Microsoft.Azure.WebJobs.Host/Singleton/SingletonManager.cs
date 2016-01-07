@@ -34,19 +34,22 @@ namespace Microsoft.Azure.WebJobs.Host
         private ConcurrentDictionary<string, IStorageBlobDirectory> _lockDirectoryMap = new ConcurrentDictionary<string, IStorageBlobDirectory>(StringComparer.OrdinalIgnoreCase);
         private TimeSpan _minimumLeaseRenewalInterval = TimeSpan.FromSeconds(1);
         private TraceWriter _trace;
+        private IHostIdProvider _hostIdProvider;
+        private string _hostId;
 
         // For mock testing only
         internal SingletonManager()
         {
         }
 
-        public SingletonManager(IStorageAccountProvider accountProvider, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace, INameResolver nameResolver = null)
+        public SingletonManager(IStorageAccountProvider accountProvider, IBackgroundExceptionDispatcher backgroundExceptionDispatcher, SingletonConfiguration config, TraceWriter trace, IHostIdProvider hostIdProvider, INameResolver nameResolver = null)
         {
             _accountProvider = accountProvider;
             _nameResolver = nameResolver;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _config = config;
             _trace = trace;
+            _hostIdProvider = hostIdProvider;
         }
 
         internal virtual SingletonConfiguration Config
@@ -54,6 +57,18 @@ namespace Microsoft.Azure.WebJobs.Host
             get
             {
                 return _config;
+            }
+        }
+
+        internal string HostId
+        {
+            get
+            {
+                if (_hostId == null)
+                {
+                    _hostId = _hostIdProvider.GetHostIdAsync(CancellationToken.None).Result;
+                }
+                return _hostId;
             }
         }
 
@@ -153,32 +168,54 @@ namespace Microsoft.Azure.WebJobs.Host
             _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Singleton lock released ({0})", singletonLockHandle.LockId), source: TraceSource.Execution);
         }
 
-        public static string FormatLockId(MethodInfo method, string scope)
+        public string FormatLockId(MethodInfo method, SingletonScope scope, string scopeId)
         {
-            string lockId = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name);
-            if (!string.IsNullOrEmpty(scope))
+            return FormatLockId(method, scope, HostId, scopeId);
+        }
+
+        public static string FormatLockId(MethodInfo method, SingletonScope scope, string hostId, string scopeId)
+        {
+            if (string.IsNullOrEmpty(hostId))
             {
-                lockId += "." + scope;
+                throw new ArgumentNullException("hostId");
             }
+
+            string lockId = string.Empty;
+            if (scope == SingletonScope.Function)
+            {
+                lockId += string.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name);
+            }
+
+            if (!string.IsNullOrEmpty(scopeId))
+            {
+                if (!string.IsNullOrEmpty(lockId))
+                {
+                    lockId += ".";
+                }
+                lockId += scopeId;
+            }
+
+            lockId = string.Format(CultureInfo.InvariantCulture, "{0}/{1}", hostId, lockId);
+
             return lockId;
         }
 
-        public string GetBoundScope(string scope, IReadOnlyDictionary<string, object> bindingData = null)
+        public string GetBoundScopeId(string scopeId, IReadOnlyDictionary<string, object> bindingData = null)
         {
             if (_nameResolver != null)
             {
-                scope = _nameResolver.ResolveWholeString(scope);
+                scopeId = _nameResolver.ResolveWholeString(scopeId);
             }
 
             if (bindingData != null)
             {
-                BindingTemplate bindingTemplate = BindingTemplate.FromString(scope);
+                BindingTemplate bindingTemplate = BindingTemplate.FromString(scopeId);
                 IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
                 return bindingTemplate.Bind(parameters);
             }
             else
             {
-                return scope;
+                return scopeId;
             }
         }
 
@@ -191,15 +228,18 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             SingletonAttribute[] singletonAttributes = method.GetCustomAttributes<SingletonAttribute>().Where(p => p.Mode == SingletonMode.Function).ToArray();
+            SingletonAttribute singletonAttribute = null;
             if (singletonAttributes.Length > 1)
             {
                 throw new NotSupportedException("Only one SingletonAttribute using mode 'Function' is allowed.");
             }
             else if (singletonAttributes.Length == 1)
             {
-                return singletonAttributes[0];
+                singletonAttribute = singletonAttributes[0];
+                ValidateSingletonAttribute(singletonAttribute, SingletonMode.Function);
             }
-            return null;
+
+            return singletonAttribute;
         }
 
         public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, MethodInfo method)
@@ -221,7 +261,25 @@ namespace Microsoft.Azure.WebJobs.Host
                 singletonAttribute = listenerType.GetCustomAttributes<SingletonAttribute>().SingleOrDefault(p => p.Mode == SingletonMode.Listener);
             }
 
+            if (singletonAttribute != null)
+            {
+                ValidateSingletonAttribute(singletonAttribute, SingletonMode.Listener);
+            }
+
             return singletonAttribute;
+        }
+
+        internal static void ValidateSingletonAttribute(SingletonAttribute attribute, SingletonMode mode)
+        {
+            if (attribute.Scope == SingletonScope.Host && string.IsNullOrEmpty(attribute.ScopeId))
+            {
+                throw new InvalidOperationException("A ScopeId value must be provided when using scope 'Host'.");
+            }
+
+            if (mode == SingletonMode.Listener && attribute.Scope == SingletonScope.Host)
+            {
+                throw new InvalidOperationException("Scope 'Host' cannot be used when the mode is set to 'Listener'.");
+            }
         }
 
         public async virtual Task<string> GetLockOwnerAsync(SingletonAttribute attribute, string lockId, CancellationToken cancellationToken)

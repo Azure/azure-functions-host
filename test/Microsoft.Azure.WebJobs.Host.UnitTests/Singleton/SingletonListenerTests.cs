@@ -8,11 +8,13 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
     public class SingletonListenerTests
     {
+        private readonly string TestHostId = "testhostid";
         private readonly SingletonConfiguration _config;
         private readonly Mock<SingletonManager> _mockSingletonManager;
         private readonly Mock<IListener> _mockInnerListener;
@@ -28,11 +30,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             {
                 LockPeriod = TimeSpan.FromSeconds(20)
             };
-            _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
+            _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
             _mockSingletonManager.SetupGet(p => p.Config).Returns(_config);
             _mockInnerListener = new Mock<IListener>(MockBehavior.Strict);
             _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object);
-            _lockId = SingletonManager.FormatLockId(methodInfo, _attribute.Scope) + ".Listener";
+            _lockId = SingletonManager.FormatLockId(methodInfo, SingletonScope.Function, TestHostId, _attribute.ScopeId) + ".Listener";
         }
 
         [Fact]

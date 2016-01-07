@@ -385,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 SBTopicListener1Impl(message);
             }
 
-            // Second listerner for the topic
+            // Second listener for the topic
             // Just sprinkling Singleton here because previously we had a bug where this didn't work
             // for ServiceBus.
             [Singleton]

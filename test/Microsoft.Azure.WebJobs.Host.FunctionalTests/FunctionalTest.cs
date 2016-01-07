@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             SingletonConfiguration singletonConfig = new SingletonConfiguration();
             TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, singletonConfig, trace);
+            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, singletonConfig, trace, hostIdProvider);
 
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(

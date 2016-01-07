@@ -70,6 +70,7 @@
       <Word>CloudBlobContainer</Word>
       <Word>SingletonAttribute</Word>
       <Word>Prefetch</Word>
+      <Word>ScopeId</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>
@@ -87,6 +88,7 @@
 		<Term>ConnectionString</Term>
 		<Term>MessagingProvider</Term>
 		<Term>SingletonAttribute</Term>
+		<Term>ScopeId</Term>
     </DiscreteExceptions>
   </Words>
   <Acronyms>

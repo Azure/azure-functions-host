@@ -31,20 +31,37 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Constructs a new instance using the specified scope.
+        /// Constructs a new instance using the specified scope settings.
         /// </summary>
-        /// <param name="scope">The scope for the singleton lock. When applied to triggered
-        /// job functions, this value can include binding parameters.</param>
-        public SingletonAttribute(string scope)
+        /// <param name="scopeId">The scope value for the singleton lock. This value can be used to implement
+        /// finer grained locks by including binding parameters that bind to function input data.</param>
+        /// <param name="scope">The <see cref="SingletonScope"/> to use. When set to <see cref="SingletonScope.Function"/>, the lock
+        /// is only scoped to the specific function, meaning invocations of that function will be serialized. To implement locking across
+        /// multiple functions, you can use <see cref="SingletonScope.Host"/> and apply the same attribute to multiple functions.
+        /// Each function will then use the same lock, and invocations of all the functions will be serialized.
+        /// The default value is <see cref="SingletonScope.Function"/>.
+        /// </param>
+        public SingletonAttribute(string scopeId, SingletonScope scope = SingletonScope.Function)
         {
-            Scope = scope;
+            ScopeId = scopeId;
             Mode = SingletonMode.Function;
+            Scope = scope;
         }
 
         /// <summary>
         /// Gets the scope identifier for the singleton lock.
         /// </summary>
-        public string Scope
+        public string ScopeId
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="SingletonScope"/> this singleton should use.
+        /// Defaults to <see cref="SingletonScope.Function"/> if not explicitly specified.
+        /// </summary>
+        public SingletonScope Scope
         {
             get;
             private set;

@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (singletonManager == null)
             {
-                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, config.NameResolver);
+                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, hostIdProvider, config.NameResolver);
             }
             
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))

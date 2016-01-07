@@ -31,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: false);
             if (singletonAttribute != null)
             {
-                string boundScope = _singletonManager.GetBoundScope(singletonAttribute.Scope);
-                IValueProvider singletonValueProvider = new SingletonValueProvider(_descriptor.Method, boundScope, context.FunctionInstanceId.ToString(), singletonAttribute, _singletonManager);
+                string boundScopeId = _singletonManager.GetBoundScopeId(singletonAttribute.ScopeId);
+                IValueProvider singletonValueProvider = new SingletonValueProvider(_descriptor.Method, boundScopeId, context.FunctionInstanceId.ToString(), singletonAttribute, _singletonManager);
                 results.Add(SingletonValueProvider.SingletonParameterName, singletonValueProvider);
             }
 

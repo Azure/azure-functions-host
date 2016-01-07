@@ -7,11 +7,13 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
     public class SingletonValueProviderTests
     {
+        private const string TestHostId = "testhost";
         private const string TestInstanceId = "testinstance";
         private readonly string _lockId;
         private readonly SingletonValueProvider _valueProvider;
@@ -21,9 +23,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public SingletonValueProviderTests()
         {
             _attribute = new SingletonAttribute("TestScope");
-            SingletonManager singletonManager = new SingletonManager();
+            SingletonManager singletonManager = new SingletonManager(null, null, null, null, new FixedHostIdProvider(TestHostId));
             _method = GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.Public);
-            _lockId = SingletonManager.FormatLockId(_method, _attribute.Scope);
+            _lockId = SingletonManager.FormatLockId(_method, SingletonScope.Function, TestHostId, _attribute.ScopeId);
             _valueProvider = new SingletonValueProvider(_method, "TestScope", TestInstanceId, _attribute, singletonManager);
         }
 
@@ -51,23 +53,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [Fact]
         public void ToInvokeString_ReturnsExpectedValue()
         {
+            SingletonManager singletonManager = new SingletonManager(null, null, null, null, new FixedHostIdProvider(TestHostId));
             SingletonAttribute attribute = new SingletonAttribute();
-            SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, attribute.Scope, TestInstanceId, attribute, new SingletonManager());
+            SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, attribute.ScopeId, TestInstanceId, attribute, singletonManager);
             SingletonLock singletonLock = (SingletonLock)localValueProvider.GetValue();
-            Assert.Equal("Scope: default", localValueProvider.ToInvokeString());
+            Assert.Equal("ScopeId: default", localValueProvider.ToInvokeString());
 
             attribute = new SingletonAttribute(@"{Region}\{Zone}");
-            localValueProvider = new SingletonValueProvider(_method, @"Central\3", TestInstanceId, attribute, new SingletonManager());
+            localValueProvider = new SingletonValueProvider(_method, @"Central\3", TestInstanceId, attribute, singletonManager);
             singletonLock = (SingletonLock)localValueProvider.GetValue();
-            Assert.Equal(@"Scope: Central\3", localValueProvider.ToInvokeString());
+            Assert.Equal(@"ScopeId: Central\3", localValueProvider.ToInvokeString());
         }
 
         [Fact]
         public void SingletonWatcher_GetStatus_ReturnsExpectedValue()
         {
-            Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
+            Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
             mockSingletonManager.Setup(p => p.GetLockOwnerAsync(_attribute, _lockId, CancellationToken.None)).ReturnsAsync("someotherguy");
-            SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.Scope, TestInstanceId, _attribute, mockSingletonManager.Object);
+            SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.ScopeId, TestInstanceId, _attribute, mockSingletonManager.Object);
             SingletonLock localSingletonLock = (SingletonLock)localValueProvider.GetValue();
 
             DateTime startTime = DateTime.Now;

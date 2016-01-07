@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "TableAttribute",
                 "SingletonAttribute",
                 "SingletonMode",
+                "SingletonScope",
                 "StorageAccountAttribute",
                 "DisableAttribute",
                 "TimeoutAttribute",

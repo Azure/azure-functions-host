@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _singletonConfig = _singletonManager.Config;
             _innerListener = innerListener;
 
-            string boundScope = _singletonManager.GetBoundScope(_attribute.Scope);
-            _lockId = SingletonManager.FormatLockId(_method, boundScope);
+            string boundScopeId = _singletonManager.GetBoundScopeId(_attribute.ScopeId);
+            _lockId = singletonManager.FormatLockId(_method, _attribute.Scope, boundScopeId);
             _lockId += ".Listener";
         }
 
