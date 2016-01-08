@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             Assert.Equal(TimeSpan.FromSeconds(15), config.LockPeriod);
             Assert.Equal(TimeSpan.FromSeconds(60), config.ListenerLockPeriod);
             Assert.Equal(Timeout.InfiniteTimeSpan, config.LockAcquisitionTimeout);
-            Assert.Equal(TimeSpan.FromSeconds(10), config.LockAcquisitionPollingInterval);
+            Assert.Equal(TimeSpan.FromSeconds(5), config.LockAcquisitionPollingInterval);
         }
 
         [Fact]
