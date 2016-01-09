@@ -95,11 +95,44 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
+        public async Task TryLockAsync_CreatesBlob_WhenItDoesNotExist()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            RequestResult storageResult = new RequestResult
+            {
+                HttpStatusCode = 404
+            };
+            StorageException storageException = new StorageException(storageResult, null, null);
+
+            int count = 0;
+            _mockStorageBlob.Setup(p => p.AcquireLeaseAsync(_singletonConfig.LockPeriod, null, cancellationToken)).Returns(() =>
+            {
+                if (count++ == 0)
+                {
+                    throw storageException;
+                }
+                return Task.FromResult(TestLeaseId);
+            });
+
+            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, null, null, null, cancellationToken)).Returns(Task.FromResult(true));
+            _mockStorageBlob.SetupGet(p => p.Metadata).Returns(_mockBlobMetadata);
+            _mockStorageBlob.Setup(p => p.SetMetadataAsync(It.Is<AccessCondition>(q => q.LeaseId == TestLeaseId), null, null, cancellationToken)).Returns(Task.FromResult(true));
+            _mockStorageBlob.Setup(p => p.ReleaseLeaseAsync(It.Is<AccessCondition>(q => q.LeaseId == TestLeaseId), null, null, cancellationToken)).Returns(Task.FromResult(true));
+
+            SingletonAttribute attribute = new SingletonAttribute();
+            SingletonManager.SingletonLockHandle lockHandle = (SingletonManager.SingletonLockHandle)await _singletonManager.TryLockAsync(TestLockId, TestInstanceId, attribute, cancellationToken);
+
+            Assert.Same(_mockStorageBlob.Object, lockHandle.Blob);
+            Assert.Equal(TestLeaseId, lockHandle.LeaseId);
+            Assert.Equal(1, _mockStorageBlob.Object.Metadata.Keys.Count);
+            Assert.Equal(_mockStorageBlob.Object.Metadata[SingletonManager.FunctionInstanceMetadataKey], TestInstanceId);
+        }
+
+        [Fact]
         public async Task TryLockAsync_CreatesBlobLease_WithAutoRenewal()
         {
             CancellationToken cancellationToken = new CancellationToken();
             _mockStorageBlob.SetupGet(p => p.Metadata).Returns(_mockBlobMetadata);
-            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, It.Is<AccessCondition>(q => q.IfNoneMatchETag == "*"), null, null, cancellationToken)).Returns(Task.FromResult(true));
             _mockStorageBlob.Setup(p => p.AcquireLeaseAsync(_singletonConfig.LockPeriod, null, cancellationToken)).ReturnsAsync(TestLeaseId);
             _mockStorageBlob.Setup(p => p.SetMetadataAsync(It.Is<AccessCondition>(q => q.LeaseId == TestLeaseId), null, null, cancellationToken)).Returns(Task.FromResult(true));
             _mockStorageBlob.Setup(p => p.ReleaseLeaseAsync(It.Is<AccessCondition>(q => q.LeaseId == TestLeaseId), null, null, cancellationToken)).Returns(Task.FromResult(true));
@@ -149,7 +182,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             CancellationToken cancellationToken = new CancellationToken();
             _mockStorageBlob.SetupGet(p => p.Metadata).Returns(_mockBlobMetadata);
-            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, It.Is<AccessCondition>(q => q.IfNoneMatchETag == "*"), null, null, cancellationToken)).Returns(Task.FromResult(true));
             _mockStorageBlob.Setup(p => p.SetMetadataAsync(It.Is<AccessCondition>(q => q.LeaseId == TestLeaseId), null, null, cancellationToken)).Returns(Task.FromResult(true));
 
             int numRetries = 3;
@@ -175,7 +207,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public async Task TryLockAsync_WithContention_NoRetry_DoesNotPollForLease()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, It.Is<AccessCondition>(q => q.IfNoneMatchETag == "*"), null, null, cancellationToken)).Returns(Task.FromResult(true));
 
             int count = 0;
             _mockStorageBlob.Setup(p => p.AcquireLeaseAsync(_singletonConfig.LockPeriod, null, cancellationToken))
@@ -199,7 +230,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public async Task LockAsync_WithContention_AcquisitionTimeoutExpires_Throws()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            _mockStorageBlob.Setup(p => p.UploadTextAsync(string.Empty, null, It.Is<AccessCondition>(q => q.IfNoneMatchETag == "*"), null, null, cancellationToken)).Returns(Task.FromResult(true));
 
             int count = 0;
             _mockStorageBlob.Setup(p => p.AcquireLeaseAsync(_singletonConfig.LockPeriod, null, cancellationToken))

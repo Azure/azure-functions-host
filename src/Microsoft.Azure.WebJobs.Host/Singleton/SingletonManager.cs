@@ -102,12 +102,10 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public async virtual Task<object> TryLockAsync(string lockId, string functionInstanceId, SingletonAttribute attribute, CancellationToken cancellationToken, bool retry = true)
         {
-            IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
-            IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
-            await TryCreateAsync(lockBlob, cancellationToken);
-
             _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Waiting for Singleton lock ({0})", lockId), source: TraceSource.Execution);
 
+            IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
+            IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
             TimeSpan lockPeriod = GetLockPeriod(attribute, _config);
             string leaseId = await TryAcquireLeaseAsync(lockBlob, lockPeriod, cancellationToken);
             if (string.IsNullOrEmpty(leaseId) && retry)
@@ -343,26 +341,59 @@ namespace Microsoft.Azure.WebJobs.Host
 
         private async Task<string> TryAcquireLeaseAsync(IStorageBlockBlob blob, TimeSpan leasePeriod, CancellationToken cancellationToken)
         {
+            bool blobDoesNotExist = false;
             try
             {
+                // Optimistically try to acquire the lease. The blob may not yet
+                // exist. If it doesn't we handle the 404, create it, and retry below
                 return await blob.AcquireLeaseAsync(leasePeriod, null, cancellationToken);
             }
             catch (StorageException exception)
             {
-                if (exception.IsConflictLeaseAlreadyPresent())
+                if (exception.RequestInformation != null)
                 {
-                    return null;
-                }
-                else if (exception.IsNotFoundBlobOrContainerNotFound())
-                {
-                    // If someone deleted the receipt, there's no lease to acquire.
-                    return null;
+                    if (exception.RequestInformation.HttpStatusCode == 409)
+                    {
+                        return null;
+                    }
+                    else if (exception.RequestInformation.HttpStatusCode == 404)
+                    {
+                        blobDoesNotExist = true;
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
                 else
                 {
                     throw;
                 }
             }
+
+            if (blobDoesNotExist)
+            {
+                await TryCreateAsync(blob, cancellationToken);
+
+                try
+                {
+                    return await blob.AcquireLeaseAsync(leasePeriod, null, cancellationToken);
+                }
+                catch (StorageException exception)
+                {
+                    if (exception.RequestInformation != null &&
+                        exception.RequestInformation.HttpStatusCode == 409)
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            return null;
         }
 
         private async Task ReleaseLeaseAsync(IStorageBlockBlob blob, string leaseId, CancellationToken cancellationToken)
@@ -379,13 +410,19 @@ namespace Microsoft.Azure.WebJobs.Host
             }
             catch (StorageException exception)
             {
-                if (exception.IsNotFoundBlobOrContainerNotFound())
+                if (exception.RequestInformation != null)
                 {
-                    // The user deleted the receipt or its container; nothing to release at this point.
-                }
-                else if (exception.IsConflictLeaseIdMismatchWithLeaseOperation())
-                {
-                    // Another lease is active; nothing for this lease to release at this point.
+                    if (exception.RequestInformation.HttpStatusCode == 404 ||
+                        exception.RequestInformation.HttpStatusCode == 409)
+                    {
+                        // if the blob no longer exists, or there is another lease
+                        // now active, there is nothing for us to release so we can
+                        // ignore
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
                 else
                 {
@@ -396,32 +433,31 @@ namespace Microsoft.Azure.WebJobs.Host
 
         private async Task<bool> TryCreateAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
-            AccessCondition accessCondition = new AccessCondition { IfNoneMatchETag = "*" };
             bool isContainerNotFoundException = false;
 
             try
             {
-                await blob.UploadTextAsync(String.Empty,
-                    encoding: null,
-                    accessCondition: accessCondition,
-                    options: null,
-                    operationContext: null,
-                    cancellationToken: cancellationToken);
+                await blob.UploadTextAsync(string.Empty, cancellationToken: cancellationToken);
                 return true;
             }
             catch (StorageException exception)
             {
-                if (exception.IsNotFoundContainerNotFound())
+                if (exception.RequestInformation != null)
                 {
-                    isContainerNotFoundException = true;
-                }
-                else if (exception.IsConflictBlobAlreadyExists())
-                {
-                    return false;
-                }
-                else if (exception.IsPreconditionFailedLeaseIdMissing())
-                {
-                    return false;
+                    if (exception.RequestInformation.HttpStatusCode == 404)
+                    {
+                        isContainerNotFoundException = true;
+                    }
+                    else if (exception.RequestInformation.HttpStatusCode == 409 || 
+                             exception.RequestInformation.HttpStatusCode == 412)
+                    {
+                        // The blob already exists, or is leased by someone else
+                        return false;
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
                 else
                 {
@@ -434,22 +470,15 @@ namespace Microsoft.Azure.WebJobs.Host
 
             try
             {
-                await blob.UploadTextAsync(String.Empty,
-                    encoding: null,
-                    accessCondition: accessCondition,
-                    options: null,
-                    operationContext: null,
-                    cancellationToken: cancellationToken);
+                await blob.UploadTextAsync(string.Empty, cancellationToken: cancellationToken);
                 return true;
             }
             catch (StorageException exception)
             {
-                if (exception.IsConflictBlobAlreadyExists())
+                if (exception.RequestInformation != null &&
+                    (exception.RequestInformation.HttpStatusCode == 409 || exception.RequestInformation.HttpStatusCode == 412))
                 {
-                    return false;
-                }
-                else if (exception.IsPreconditionFailedLeaseIdMissing())
-                {
+                    // The blob already exists, or is leased by someone else
                     return false;
                 }
                 else
@@ -463,29 +492,11 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             blob.Metadata.Add(FunctionInstanceMetadataKey, functionInstanceId);
 
-            try
-            {
-                await blob.SetMetadataAsync(
-                    accessCondition: new AccessCondition { LeaseId = leaseId },
-                    options: null,
-                    operationContext: null,
-                    cancellationToken: cancellationToken);
-            }
-            catch (StorageException exception)
-            {
-                if (exception.IsNotFoundBlobOrContainerNotFound())
-                {
-                    // The user deleted the receipt or its container;
-                }
-                else if (exception.IsPreconditionFailedLeaseLost())
-                {
-                    // The lease expired;
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await blob.SetMetadataAsync(
+                accessCondition: new AccessCondition { LeaseId = leaseId },
+                options: null,
+                operationContext: null,
+                cancellationToken: cancellationToken);
         }
 
         private async Task ReadLeaseBlobMetadata(IStorageBlockBlob blob, CancellationToken cancellationToken)
@@ -496,9 +507,10 @@ namespace Microsoft.Azure.WebJobs.Host
             }
             catch (StorageException exception)
             {
-                if (exception.IsNotFoundBlobOrContainerNotFound())
+                if (exception.RequestInformation != null &&
+                    exception.RequestInformation.HttpStatusCode == 404)
                 {
-                    // The user deleted the receipt or its container;
+                    // the blob no longer exists
                 }
                 else
                 {
