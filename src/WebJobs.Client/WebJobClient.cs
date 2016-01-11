@@ -48,7 +48,7 @@ namespace WebJobs.Client
                 { "Id", functionInstanceId },
                 { "FunctionId", functionId.ToString() },
                 { "Arguments", argumentsObject },
-                { "Reason", "Portal" }
+                { "LogLevel", "Verbose" }
             };
 
             CloudQueueMessage queueMessage = new CloudQueueMessage(message.ToString(Formatting.None));
