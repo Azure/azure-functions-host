@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -85,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         }
 
         [Fact]
-        public async Task LogFunctionStartedAsync_Portal_WritesExpectedBlob()
+        public async Task LogFunctionStartedAsync_LogLevelVerbose_WritesExpectedBlob()
         {
             FunctionStartedMessage startMessage = new FunctionStartedMessage
             {
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 StartTime = DateTime.Now,
                 OutputBlob = new LocalBlobDescriptor(),
                 ParameterLogBlob = new LocalBlobDescriptor(),
-                Reason = ExecutionReason.Portal
+                LogLevel = TraceLevel.Verbose
             };
             FunctionStatusMessage statusMessage = FunctionStatusLogger.CreateFunctionStatusMessage(startMessage);
 
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         }
 
         [Fact]
-        public async Task LogFunctionStartedAsync_NonPortal_DoesNotWriteBlob()
+        public async Task LogFunctionStartedAsync_LogLevelDefault_DoesNotWriteBlob()
         {
             FunctionStartedMessage startMessage = new FunctionStartedMessage
             {
@@ -143,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 EndTime = DateTime.Now,
                 OutputBlob = new LocalBlobDescriptor(),
                 ParameterLogBlob = new LocalBlobDescriptor(),
-                Reason = ExecutionReason.Portal
+                LogLevel = TraceLevel.Verbose
             };
             FunctionStatusMessage statusMessage = FunctionStatusLogger.CreateFunctionStatusMessage(completedMessage);
 

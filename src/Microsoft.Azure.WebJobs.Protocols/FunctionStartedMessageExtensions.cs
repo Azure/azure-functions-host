@@ -45,8 +45,6 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                     return "This function was programmatically called via the host APIs.";
                 case ExecutionReason.Dashboard:
                     return message.ParentId.HasValue ? "Replayed from Dashboard." : "Ran from Dashboard.";
-                case ExecutionReason.Portal:
-                    return message.ParentId.HasValue ? "Replayed from Portal." : "Ran from Portal.";
                 default:
                     return null;
             }

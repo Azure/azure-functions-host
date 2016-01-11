@@ -157,6 +157,7 @@
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="Protocols\FunctionStartedMessageExtensionsTests.cs" />
+    <Compile Include="Protocols\FunctionStartedMessageTests.cs" />
     <Compile Include="Protocols\ProtocolSerializationTests.cs" />
     <Compile Include="Queues\QueueListenerTests.cs" />
     <Compile Include="Queues\QueueProcessorFactoryContextTests.cs" />

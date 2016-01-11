@@ -59,17 +59,5 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
             string result = message.FormatReason();
             Assert.Equal("The trigger fired!", result);
         }
-
-        [Fact]
-        public void FormatReason_Portal_ReturnsExpectedReason()
-        {
-            FunctionStartedMessage message = new FunctionStartedMessage();
-            message.Reason = ExecutionReason.Portal;
-
-            Assert.Equal("Ran from Portal.", message.FormatReason());
-
-            message.ParentId = Guid.NewGuid();
-            Assert.Equal("Replayed from Portal.", message.FormatReason());
-        }
     }
 }

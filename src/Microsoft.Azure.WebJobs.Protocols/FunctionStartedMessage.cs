@@ -3,6 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -20,6 +23,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     {
         /// <summary>The name of the key used to store the function instance ID in metadata.</summary>
         protected const string FunctionInstanceIdKey = "FunctionInstanceId";
+
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        public FunctionStartedMessage()
+        {
+            LogLevel = TraceLevel.Info;
+        }
 
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
@@ -47,6 +58,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         /// <summary>Gets or sets the path of the blob containing per-parameter logging data.</summary>
         public LocalBlobDescriptor ParameterLogBlob { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="TraceLevel"/> for the function invocation. The default
+        /// is <see cref="TraceLevel.Info"/>. When set to <see cref="TraceLevel.Verbose"/> additional
+        /// logging information will be written to storage.
+        /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
+        public TraceLevel LogLevel { get; set; }
 
         internal override void AddMetadata(IDictionary<string, string> metadata)
         {

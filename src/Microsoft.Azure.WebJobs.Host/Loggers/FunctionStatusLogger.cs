@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 throw new ArgumentNullException("message");
             }
 
-            if (message.Reason == ExecutionReason.Portal)
+            if (message.LogLevel == TraceLevel.Verbose)
             {
                 FunctionStatusMessage statusMessage = CreateFunctionStatusMessage(message);
                 await LogFunctionStatusAsync(statusMessage, cancellationToken);
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 throw new ArgumentNullException("message");
             }
 
-            if (message.Reason == ExecutionReason.Portal)
+            if (message.LogLevel == TraceLevel.Verbose)
             {
                 FunctionStatusMessage statusMessage = CreateFunctionStatusMessage(message);
                 await LogFunctionStatusAsync(statusMessage, cancellationToken);
