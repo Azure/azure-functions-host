@@ -289,16 +289,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, prev);
         }
 
+        [Fact]
         public void UseDevelopmentSettings_ConfiguresCorrectValues()
         {
             string prev = Environment.GetEnvironmentVariable(Constants.EnvironmentSettingName);
             Environment.SetEnvironmentVariable(Constants.EnvironmentSettingName, "Development");
 
             JobHostConfiguration config = new JobHostConfiguration();
+            Assert.False(config.UsingDevelopmentSettings);
+
             if (config.IsDevelopment)
             {
                 config.UseDevelopmentSettings();
             }
+
+            Assert.True(config.UsingDevelopmentSettings);
             Assert.Equal(TraceLevel.Verbose, config.Tracing.ConsoleLevel);
             Assert.Equal(TimeSpan.FromSeconds(2), config.Queues.MaxPollingInterval);
             Assert.Equal(TimeSpan.FromSeconds(15), config.Singleton.ListenerLockPeriod);

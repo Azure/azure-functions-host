@@ -81,6 +81,11 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         public bool IsDevelopment { get; private set; }
 
+        /// <summary>
+        /// Returns true if <see cref="UseDevelopmentSettings"/> has been called on this instance.
+        /// </summary>
+        internal bool UsingDevelopmentSettings { get; set; }
+
         /// <summary>Gets or sets the host ID.</summary>
         /// <remarks>
         /// <para>
@@ -290,6 +295,8 @@ namespace Microsoft.Azure.WebJobs
             Tracing.ConsoleLevel = TraceLevel.Verbose;
             Queues.MaxPollingInterval = TimeSpan.FromSeconds(2);
             Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
+
+            UsingDevelopmentSettings = true;
         }
 
         /// <summary>Gets the service object of the specified type.</summary>

@@ -243,6 +243,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IEnumerable<FunctionDescriptor> descriptors = functions.ReadAllDescriptors();
                 int descriptorsCount = descriptors.Count();
 
+                if (config.UsingDevelopmentSettings)
+                {
+                    trace.Verbose(string.Format("Development settings applied"));
+                }
+
                 if (descriptorsCount == 0)
                 {
                     trace.Warning(string.Format("No job functions found. Try making your job classes and methods public. {0}", 
