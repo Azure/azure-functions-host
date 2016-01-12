@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             SingletonAttribute attribute = new SingletonAttribute();
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, attribute.ScopeId, TestInstanceId, attribute, singletonManager);
             SingletonLock singletonLock = (SingletonLock)localValueProvider.GetValue();
-            Assert.Equal("ScopeId: default", localValueProvider.ToInvokeString());
+            Assert.Equal("ScopeId: (null)", localValueProvider.ToInvokeString());
 
             attribute = new SingletonAttribute(@"{Region}\{Zone}");
             localValueProvider = new SingletonValueProvider(_method, @"Central\3", TestInstanceId, attribute, singletonManager);

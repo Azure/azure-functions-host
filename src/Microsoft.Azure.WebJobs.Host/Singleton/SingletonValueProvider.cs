@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public SingletonValueProvider(MethodInfo method, string scopeId, string functionInstanceId, SingletonAttribute attribute, SingletonManager singletonManager)
         {
-            _scopeId = string.IsNullOrEmpty(scopeId) ? "default" : scopeId;
+            _scopeId = string.IsNullOrEmpty(scopeId) ? "(null)" : scopeId;
             string lockId = singletonManager.FormatLockId(method, attribute.Scope, scopeId);
             _singletonLock = new SingletonLock(lockId, functionInstanceId, attribute, singletonManager);
             _watcher = new SingletonWatcher(_singletonLock);
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         public string ToInvokeString()
-        {       
+        {
             return string.Format(CultureInfo.InvariantCulture, "ScopeId: {0}", _scopeId);
         }
 
