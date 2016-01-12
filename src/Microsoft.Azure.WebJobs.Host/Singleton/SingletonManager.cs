@@ -115,12 +115,13 @@ namespace Microsoft.Azure.WebJobs.Host
                 TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout != null
                     ? TimeSpan.FromSeconds(attribute.LockAcquisitionTimeout.Value) :
                     _config.LockAcquisitionTimeout;
-                double remainingWaitTime = acquisitionTimeout.TotalMilliseconds;
-                while (string.IsNullOrEmpty(leaseId) && remainingWaitTime > 0)
+
+                TimeSpan timeWaited = TimeSpan.Zero;
+                while (string.IsNullOrEmpty(leaseId) && (timeWaited < acquisitionTimeout))
                 {
                     await Task.Delay(_config.LockAcquisitionPollingInterval);
+                    timeWaited += _config.LockAcquisitionPollingInterval;
                     leaseId = await TryAcquireLeaseAsync(lockBlob, lockPeriod, cancellationToken);
-                    remainingWaitTime -= _config.LockAcquisitionPollingInterval.TotalMilliseconds;
                 }
             }
 

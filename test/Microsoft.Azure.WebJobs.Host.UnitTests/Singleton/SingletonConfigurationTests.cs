@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             Assert.Equal(TimeSpan.FromSeconds(15), config.LockPeriod);
             Assert.Equal(TimeSpan.FromSeconds(60), config.ListenerLockPeriod);
-            Assert.Equal(Timeout.InfiniteTimeSpan, config.LockAcquisitionTimeout);
+            Assert.Equal(TimeSpan.MaxValue, config.LockAcquisitionTimeout);
             Assert.Equal(TimeSpan.FromSeconds(5), config.LockAcquisitionPollingInterval);
         }
 
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             TimeSpan[] validValues = new TimeSpan[]
             {
-                Timeout.InfiniteTimeSpan,
+                TimeSpan.MaxValue,
                 TimeSpan.FromSeconds(15),
                 TimeSpan.FromMinutes(5)
             };

@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             _lockPeriod = MinimumLeasePeriod;
             _listenerLockPeriod = MaximumLeasePeriod;
-            _lockAcquisitionTimeout = Timeout.InfiniteTimeSpan;
+            _lockAcquisitionTimeout = TimeSpan.MaxValue;
             _lockAcquisitionPollingInterval = TimeSpan.FromSeconds(5);
             _listenerLockRecoveryPollingInterval = TimeSpan.FromMinutes(1);
         }
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Host
         /// their locks. If unable to acquire the lock (e.g. if another instance has it) the listener
         /// won't start (and the triggered function won't be running). However, the listener will
         /// periodically reattempt to acquire the lock based on this value. To disable this behavior
-        /// set the value to <see cref="Timeout.InfiniteTimeSpan"/>.
+        /// set the value to <see cref="TimeSpan.MaxValue"/>.
         /// </remarks>
         public TimeSpan ListenerLockRecoveryPollingInterval
         {
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
             set
             {
-                if (value != Timeout.InfiniteTimeSpan &&
+                if (value != TimeSpan.MaxValue &&
                     value < MinimumLeasePeriod)
                 {
                     throw new ArgumentOutOfRangeException("value");

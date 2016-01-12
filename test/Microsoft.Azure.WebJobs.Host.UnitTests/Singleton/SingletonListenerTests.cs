@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             // we expect the "retry" parameter passed to TryLockAync to be "true"
             // when recovery polling is turned off
-            _config.ListenerLockRecoveryPollingInterval = Timeout.InfiniteTimeSpan;
+            _config.ListenerLockRecoveryPollingInterval = TimeSpan.MaxValue;
 
             CancellationToken cancellationToken = new CancellationToken();
             _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken, true))

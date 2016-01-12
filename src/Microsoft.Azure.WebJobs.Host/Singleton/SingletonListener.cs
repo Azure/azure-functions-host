@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         {
             // When recovery is enabled, we don't do retries on the individual lock attempts,
             // since retries are being done outside
-            bool recoveryEnabled = _singletonConfig.ListenerLockRecoveryPollingInterval != Timeout.InfiniteTimeSpan;
+            bool recoveryEnabled = _singletonConfig.ListenerLockRecoveryPollingInterval != TimeSpan.MaxValue;
             _lockHandle = await _singletonManager.TryLockAsync(_lockId, null, _attribute, cancellationToken, retry: !recoveryEnabled);
 
             if (_lockHandle == null)

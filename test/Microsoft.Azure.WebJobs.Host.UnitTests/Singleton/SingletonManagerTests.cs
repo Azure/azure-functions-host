@@ -196,6 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             SingletonAttribute attribute = new SingletonAttribute();
             SingletonManager.SingletonLockHandle lockHandle = (SingletonManager.SingletonLockHandle)await _singletonManager.TryLockAsync(TestLockId, TestInstanceId, attribute, cancellationToken);
 
+            Assert.NotNull(lockHandle);
             Assert.Equal(TestLeaseId, lockHandle.LeaseId);
             Assert.Equal(numRetries, count - 1);
             Assert.NotNull(lockHandle.LeaseRenewalTimer);
