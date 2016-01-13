@@ -1,2 +1,2 @@
-read input
-printf "Bash script processed queue message '$input'"
+read -r input
+printf "Bash script processed queue message: $input"

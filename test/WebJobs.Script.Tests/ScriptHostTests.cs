@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
@@ -70,8 +71,8 @@ namespace WebJobs.Script.Tests
             Assert.Equal(15, scriptConfig.HostConfig.Singleton.LockPeriod.TotalSeconds);
             Assert.Equal(1, scriptConfig.HostConfig.Singleton.ListenerLockPeriod.TotalMinutes);
             Assert.Equal(1, scriptConfig.HostConfig.Singleton.ListenerLockRecoveryPollingInterval.TotalMinutes);
-            Assert.Equal(1, scriptConfig.HostConfig.Singleton.LockAcquisitionTimeout.TotalMinutes);
-            Assert.Equal(3, scriptConfig.HostConfig.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
+            Assert.Equal(TimeSpan.MaxValue, scriptConfig.HostConfig.Singleton.LockAcquisitionTimeout);
+            Assert.Equal(5, scriptConfig.HostConfig.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
 
             singleton["lockPeriod"] = "00:00:17";
             singleton["listenerLockPeriod"] = "00:00:22";

@@ -44,8 +44,10 @@ namespace WebJobs.Script.Tests
 
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
             Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
-            string expected = RemoveWhitespace(string.Format("script processed queue message '{0}'", messageContent));
-            Assert.True(RemoveWhitespace(scriptTrace.Message).Contains(expected));
+
+            string trace = RemoveWhitespace(scriptTrace.Message);
+            Assert.True(trace.Contains(RemoveWhitespace("script processed queue message")));
+            Assert.True(trace.Contains(RemoveWhitespace(messageContent)));
         }
 
         protected static string RemoveWhitespace(string s)
