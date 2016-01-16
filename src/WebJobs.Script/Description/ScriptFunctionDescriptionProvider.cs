@@ -4,6 +4,8 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
@@ -51,13 +53,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string triggerType = (string)trigger["type"];
-            string parameterName = (string)trigger["name"];
-            if (string.IsNullOrEmpty(parameterName))
+            string triggerParameterName = (string)trigger["name"];
+            bool triggerNameSpecified = true;
+            if (string.IsNullOrEmpty(triggerParameterName))
             {
                 // default the name to simply 'input'
                 trigger["name"] = "input";
+                triggerNameSpecified = false;
             }
 
+            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
             {
@@ -73,6 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "timerTrigger":
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
+                case "httpTrigger":
+                    if (!triggerNameSpecified)
+                    {
+                        trigger["name"] = triggerParameterName = "req";
+                    }
+                    triggerParameter = ParseHttpTrigger(trigger, methodAttributes, typeof(HttpRequestMessage));
+                    break;
             }
 
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
@@ -84,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support output bindings
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
-            functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters);
+            functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;
         }

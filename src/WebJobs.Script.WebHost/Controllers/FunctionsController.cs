@@ -26,10 +26,18 @@ namespace WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            // TODO: we're assuming the parameter is named "res" - fix this
+            // TODO: we're assuming the parameter is named "req" - fix this
             // TODO: make "HttpResponse" key name a constant
-            await _scriptHostManager.Instance.CallAsync(function, new { req = request }, cancellationToken);
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["HttpResponse"];
+            HttpResponseMessage response = null;
+            try
+            {
+                await _scriptHostManager.Instance.CallAsync(function, new { req = request }, cancellationToken);
+                response = (HttpResponseMessage)request.Properties["HttpResponse"];
+            }
+            catch
+            {
+                response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            }
 
             return response;
         }

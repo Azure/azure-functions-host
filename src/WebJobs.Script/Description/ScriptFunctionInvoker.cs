@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task Invoke(object[] parameters)
         {
-            string input = parameters[0].ToString();
+            object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
 
@@ -76,8 +77,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal async Task ExecuteScriptAsync(string path, string arguments, TraceWriter traceWriter, IBinder binder, string stdin = null)
+        internal async Task ExecuteScriptAsync(string path, string arguments, TraceWriter traceWriter, IBinder binder, object input = null)
         {
+            // perform any required input conversions
+            string stdin = null;
+            if (input != null)
+            {
+                if (input.GetType() == typeof(HttpRequestMessage))
+                {
+                    stdin = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                }
+                else
+                {
+                    stdin = input.ToString();
+                }
+            }
+            
             string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
             string rootOutputPath = Path.Combine(Path.GetTempPath(), "webjobs", "output");
@@ -170,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         BindingContext bindingContext = new BindingContext
                         {
+                            Input = input,
                             Binder = binder,
                             BindingData = bindingData,
                             Value = stream
