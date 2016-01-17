@@ -29,21 +29,21 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(BindingContext context)
         {
             string boundQueueName = QueueOrTopicName;
-            if (bindingData != null)
+            if (context.BindingData != null)
             {
-                boundQueueName = _queueOrTopicNameBindingTemplate.Bind(bindingData);
+                boundQueueName = _queueOrTopicNameBindingTemplate.Bind(context.BindingData);
             }
 
             boundQueueName = Resolve(boundQueueName);
 
             // only an output binding is supported
-            using (StreamReader reader = new StreamReader(stream))
+            using (StreamReader reader = new StreamReader(context.Value))
             {
                 // TODO: only string supported currently - need to support other types
-                IAsyncCollector<string> collector = binder.Bind<IAsyncCollector<string>>(new ServiceBusAttribute(boundQueueName));
+                IAsyncCollector<string> collector = context.Binder.Bind<IAsyncCollector<string>>(new ServiceBusAttribute(boundQueueName));
                 string data = reader.ReadToEnd();
                 await collector.AddAsync(data);
             }

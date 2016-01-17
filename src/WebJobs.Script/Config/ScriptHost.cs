@@ -7,7 +7,9 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Extensions.WebHooks;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -27,7 +29,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
+        public Collection<FunctionDescriptor> Functions { get; private set; }
+
         public bool Restart { get; private set; }
+
+        public async Task CallAsync(string method, object arguments, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // TODO: Don't hardcode Functions Type name
+            // TODO: Validate inputs
+            // TODO: Cache this lookup result
+            string typeName = "Functions";
+            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == typeName);
+            MethodInfo methodInfo = type.GetMethod(method);
+
+            await CallAsync(methodInfo, arguments, cancellationToken);
+        }
 
         protected virtual void Initialize()
         {
@@ -75,6 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootPath).Count();
+
+            Functions = functions;
         }
 
         private void StopAndRestart()
@@ -116,10 +134,10 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
             string scriptRootPath = config.RootPath;
-            List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
+            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
-                FunctionFolderInfo functionInfo = new FunctionFolderInfo();
+                FunctionMetadata metadata = new FunctionMetadata();
 
                 // read the function config
                 string functionConfigPath = Path.Combine(scriptDir, "function.json");
@@ -129,14 +147,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     continue;
                 }
                 string json = File.ReadAllText(functionConfigPath);
-                functionInfo.Configuration = JObject.Parse(json);
+                metadata.Configuration = JObject.Parse(json);
 
                 // unless the name is explicitly set in the config,
                 // default it to the function folder name
-                string name = (string)functionInfo.Configuration["name"];
+                string name = (string)metadata.Configuration["name"];
                 if (string.IsNullOrEmpty(name))
                 {
-                    functionInfo.Name = Path.GetFileNameWithoutExtension(scriptDir);
+                    metadata.Name = Path.GetFileNameWithoutExtension(scriptDir);
                 }
 
                 // determine the primary script
@@ -148,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else if (functionFiles.Length == 1)
                 {
                     // if there is only a single file, that file is primary
-                    functionInfo.Source = functionFiles[0];
+                    metadata.Source = functionFiles[0];
                 }
                 else
                 {
@@ -163,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // finally, if there is an explicit primary file indicated
                             // in config, use it
-                            JToken token = functionInfo.Configuration["source"];
+                            JToken token = metadata.Configuration["source"];
                             if (token != null)
                             {
                                 string sourceFileName = (string)token;
@@ -177,25 +195,25 @@ namespace Microsoft.Azure.WebJobs.Script
                         // TODO: should this be an error?
                         continue;
                     }
-                    functionInfo.Source = functionPrimary;
+                    metadata.Source = functionPrimary;
                 }
 
-                functionFolderInfos.Add(functionInfo);
+                metadatas.Add(metadata);
             }
 
-            var functions = ReadFunctions(functionFolderInfos, descriptionProviders);
+            var functions = ReadFunctions(metadatas, descriptionProviders);
             return functions;
         }
 
-        internal static Collection<FunctionDescriptor> ReadFunctions(List<FunctionFolderInfo> functionFolderInfos, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal static Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            foreach (FunctionFolderInfo functionFolderInfo in functionFolderInfos)
+            foreach (FunctionMetadata metadata in metadatas)
             {
                 FunctionDescriptor descriptor = null;
                 foreach (var provider in descriptorProviders)
                 {
-                    if (provider.TryCreate(functionFolderInfo, out descriptor))
+                    if (provider.TryCreate(metadata, out descriptor))
                     {
                         break;
                     }
@@ -300,15 +318,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.Tracing.ConsoleLevel = consoleLevel;
                 }
             }
-
-            // Apply WebHooks configuration
-            WebHooksConfiguration webHooksConfig = new WebHooksConfiguration();
-            configSection = (JObject)config["webhooks"];
-            if (configSection != null && configSection.TryGetValue("port", out value))
-            {
-                webHooksConfig = new WebHooksConfiguration((int)value);
-            }
-            hostConfig.UseWebHooks(webHooksConfig);
 
             hostConfig.UseTimers();
         }

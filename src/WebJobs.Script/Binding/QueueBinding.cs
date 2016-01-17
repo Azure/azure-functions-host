@@ -29,22 +29,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(BindingContext context)
         {
             string boundQueueName = QueueName;
-            if (bindingData != null)
+            if (context.BindingData != null)
             {
-                boundQueueName = _queueNameBindingTemplate.Bind(bindingData);
+                boundQueueName = _queueNameBindingTemplate.Bind(context.BindingData);
             }
 
             boundQueueName = Resolve(boundQueueName);
 
             // only an output binding is supported
-            IAsyncCollector<byte[]> collector = binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
+            IAsyncCollector<byte[]> collector = context.Binder.Bind<IAsyncCollector<byte[]>>(new QueueAttribute(boundQueueName));
             byte[] bytes;
             using (MemoryStream ms = new MemoryStream())
             {
-                stream.CopyTo(ms);
+                context.Value.CopyTo(ms);
                 bytes = ms.ToArray();
             }
             await collector.AddAsync(bytes);

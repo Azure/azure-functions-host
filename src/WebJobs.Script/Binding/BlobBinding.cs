@@ -29,24 +29,24 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(BindingContext context)
         {
             string boundBlobPath = Path;
-            if (bindingData != null)
+            if (context.BindingData != null)
             {
-                boundBlobPath = _pathBindingTemplate.Bind(bindingData);
+                boundBlobPath = _pathBindingTemplate.Bind(context.BindingData);
             }
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            Stream blobStream = binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
+            Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
             if (FileAccess == FileAccess.Write)
             {
-                await stream.CopyToAsync(blobStream);
+                await context.Value.CopyToAsync(blobStream);
             }
             else
             {
-                await blobStream.CopyToAsync(stream);
+                await blobStream.CopyToAsync(context.Value);
             }
         }
     }

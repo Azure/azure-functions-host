@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public abstract class FunctionDescriptorProvider
     {
-        public abstract bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor);
+        public abstract bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor);
 
         protected bool IsDisabled(string functionName, JObject value)
         {
@@ -162,23 +162,19 @@ namespace Microsoft.Azure.WebJobs.Script
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseWebHookTrigger(JObject trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseHttpTrigger(JObject trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
         {
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
             }
 
-            ConstructorInfo ctorInfo = typeof(WebHookTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string route = (string)trigger["route"];
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { route });
+            ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
+            methodAttributes.Add(attributeBuilder);
 
             string parameterName = (string)trigger["name"];
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
+            return new ParameterDescriptor(parameterName, triggerParameterType);
         }
     }
 }

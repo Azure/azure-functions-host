@@ -32,8 +32,9 @@ namespace WebJobs.Script.Tests
             parameters.Add(parameter);
 
             // create the FunctionDefinition
+            FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, parameters);
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 

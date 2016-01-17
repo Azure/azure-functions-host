@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -59,15 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, FunctionFolderInfo folderInfo, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _host = host;
             _triggerParameterName = triggerParameterName;
-            string scriptFilePath = folderInfo.Source.Replace('\\', '/');
+            string scriptFilePath = metadata.Source.Replace('\\', '/');
             _script = string.Format(FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _functionName = folderInfo.Name;
+            _functionName = metadata.Name;
 
             _clearRequireCache = Edge.Func(ClearRequireCacheScript);
 
@@ -139,6 +141,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     object value = null;
                     if (functionOutput.TryGetValue(binding.Name, out value))
                     {
+                        if (value.GetType() == typeof(ExpandoObject))
+                        {
+                            value = JsonConvert.SerializeObject(value);
+                        }
+
                         byte[] bytes = null;
                         if (value.GetType() == typeof(string))
                         {
@@ -147,7 +154,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         using (MemoryStream ms = new MemoryStream(bytes))
                         {
-                            await binding.BindAsync(binder, ms, bindingData);
+                            BindingContext bindingContext = new BindingContext
+                            {
+                                Input = input,
+                                Binder = binder,
+                                BindingData = bindingData,
+                                Value = ms
+                            };
+                            await binding.BindAsync(bindingContext);
                         }
                     }
                 }
@@ -186,6 +200,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 // before invoking the function
                 input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
                     (string)input, new DictionaryJsonConverter());
+            }
+            else if (triggerParameterType == typeof(HttpRequestMessage))
+            {
+                HttpRequestMessage request = (HttpRequestMessage)input;
+
+                // convert the request to a json object
+                // TODO: need to provide access to cookies as well
+                Dictionary<string, object> inputDictionary = new Dictionary<string, object>();
+                inputDictionary["originalUrl"] = request.RequestUri.ToString();
+                inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
+                inputDictionary["body"] = request.Content.ReadAsStringAsync().Result;
+
+                input = inputDictionary;
             }
 
             // create a TraceWriter wrapper that can be exposed to Node.js

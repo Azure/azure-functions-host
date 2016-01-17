@@ -5,6 +5,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection;
+using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
@@ -23,19 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script
             _rootPath = config.RootPath;
         }
 
-        public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
+        public override bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor)
         {
             functionDescriptor = null;
 
             // name might point to a single file, or a module
-            string extension = Path.GetExtension(functionFolderInfo.Source).ToLower();
+            string extension = Path.GetExtension(metadata.Source).ToLower();
             if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
             {
                 return false;
             }
 
             // parse the bindings
-            JObject bindings = (JObject)functionFolderInfo.Configuration["bindings"];
+            JObject bindings = (JObject)metadata.Configuration["bindings"];
             JArray inputs = (JArray)bindings["input"];
             Collection<Binding> inputBindings = Binding.GetBindings(_config, inputs, FileAccess.Read);
 
@@ -45,22 +48,23 @@ namespace Microsoft.Azure.WebJobs.Script
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(functionFolderInfo.Name, trigger) ||
-                IsDisabled(functionFolderInfo.Name, functionFolderInfo.Configuration))
+            if (IsDisabled(metadata.Name, trigger) ||
+                IsDisabled(metadata.Name, metadata.Configuration))
             {
                 return false;
             }
 
             string triggerType = (string)trigger["type"];
             string triggerParameterName = (string)trigger["name"];
+            bool triggerNameSpecified = true;
             if (string.IsNullOrEmpty(triggerParameterName))
             {
                 // default the name to simply 'input'
                 trigger["name"] = triggerParameterName = "input";
+                triggerNameSpecified = false;
             }
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, functionFolderInfo, inputBindings, outputBindings);
-
+            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             ParameterDescriptor triggerParameter = null;
             switch (triggerType)
             {
@@ -76,8 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "timerTrigger":
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
-                case "webHookTrigger":
-                    triggerParameter = ParseWebHookTrigger(trigger);
+                case "httpTrigger":
+                    if (!triggerNameSpecified)
+                    {
+                        trigger["name"] = triggerParameterName = "req";
+                    }
+                    triggerParameter = ParseHttpTrigger(trigger, methodAttributes, typeof(HttpRequestMessage));
                     break;
             }
 
@@ -90,7 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support the binding programming model
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
-            functionDescriptor = new FunctionDescriptor(functionFolderInfo.Name, invoker, parameters);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, metadata, inputBindings, outputBindings);
+            functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;
         }

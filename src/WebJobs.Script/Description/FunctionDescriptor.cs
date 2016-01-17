@@ -8,14 +8,15 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionDescriptor
     {
-        public FunctionDescriptor(string name, IFunctionInvoker invoker, Collection<ParameterDescriptor> parameters)
-            : this(name, invoker, parameters, new Collection<CustomAttributeBuilder>())
+        public FunctionDescriptor(string name, IFunctionInvoker invoker, FunctionMetadata metadata, Collection<ParameterDescriptor> parameters)
+            : this(name, invoker, metadata, parameters, new Collection<CustomAttributeBuilder>())
         {
         }
 
         public FunctionDescriptor(
             string name, 
-            IFunctionInvoker invoker, 
+            IFunctionInvoker invoker,
+            FunctionMetadata metadata,
             Collection<ParameterDescriptor> parameters, 
             Collection<CustomAttributeBuilder> attributes)
         {
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Invoker = invoker;
             Parameters = parameters;
             CustomAttributes = attributes;
+            Metadata = metadata;
         }
 
         public string Name { get; private set; }
@@ -32,5 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public Collection<CustomAttributeBuilder> CustomAttributes { get; private set; }
 
         public IFunctionInvoker Invoker { get; private set; }
+
+        public FunctionMetadata Metadata { get; private set; }
     }
 }

@@ -53,16 +53,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override async Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData)
+        public override async Task BindAsync(BindingContext context)
         {
             string boundPartitionKey = PartitionKey;
             string boundRowKey = RowKey;
-            if (bindingData != null)
+            if (context.BindingData != null)
             {
-                boundPartitionKey = _partitionKeyBindingTemplate.Bind(bindingData);
+                boundPartitionKey = _partitionKeyBindingTemplate.Bind(context.BindingData);
                 if (_rowKeyBindingTemplate != null)
                 {
-                    boundRowKey = _rowKeyBindingTemplate.Bind(bindingData);
+                    boundRowKey = _rowKeyBindingTemplate.Bind(context.BindingData);
                 }
             }
 
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // read the content as a JObject
                 JObject jsonObject = null;
-                using (StreamReader streamReader = new StreamReader(stream))
+                using (StreamReader streamReader = new StreamReader(context.Value))
                 {
                     string content = await streamReader.ReadToEndAsync();
                     jsonObject = JObject.Parse(content);
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // TODO: If RowKey has not been specified in the binding, try to
                 // derive from the object properties (e.g. "rowKey" or "id" properties);
 
-                IAsyncCollector<DynamicTableEntity> collector = binder.Bind<IAsyncCollector<DynamicTableEntity>>(new TableAttribute(TableName));
+                IAsyncCollector<DynamicTableEntity> collector = context.Binder.Bind<IAsyncCollector<DynamicTableEntity>>(new TableAttribute(TableName));
                 DynamicTableEntity tableEntity = new DynamicTableEntity(boundPartitionKey, boundRowKey);
                 foreach (JProperty property in jsonObject.Properties())
                 {
@@ -101,11 +101,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     !string.IsNullOrEmpty(boundRowKey))
                 {
                     // singleton
-                    DynamicTableEntity tableEntity = binder.Bind<DynamicTableEntity>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    DynamicTableEntity tableEntity = context.Binder.Bind<DynamicTableEntity>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
                     if (tableEntity != null)
                     {
                         string json = ConvertEntityToJObject(tableEntity).ToString();
-                        using (StreamWriter sw = new StreamWriter(stream))
+                        using (StreamWriter sw = new StreamWriter(context.Value))
                         {
                             await sw.WriteAsync(json);
                         }
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     // binding to entire table (query multiple table entities)
-                    CloudTable table = binder.Bind<CloudTable>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    CloudTable table = context.Binder.Bind<CloudTable>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
                     var entities = table.ExecuteQuery(_tableQuery);
 
                     JArray entityArray = new JArray();
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     string json = entityArray.ToString(Formatting.None);
-                    using (StreamWriter sw = new StreamWriter(stream))
+                    using (StreamWriter sw = new StreamWriter(context.Value))
                     {
                         await sw.WriteAsync(json);
                     }

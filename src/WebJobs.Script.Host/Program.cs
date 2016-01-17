@@ -22,14 +22,8 @@ namespace WebJobs.Script.Host
                 RootPath = rootPath
             };
 
-            // Start the host and restart it if requested
-            ScriptHost host = null;
-            do
-            {
-                host = ScriptHost.Create(config);
-                host.RunAndBlock();
-            }
-            while (host.Restart);    
+            ScriptHostManager scriptHostManager = new ScriptHostManager(config);
+            scriptHostManager.StartAsync();
         }
     }
 }

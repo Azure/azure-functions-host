@@ -18,16 +18,23 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task WebHookTest()
+        public async Task HttpTest()
         {
-            string expectedValue = Guid.NewGuid().ToString();
-            string testData = string.Format("{{ \"test\": \"{0}\" }}", expectedValue);
-            HttpResponseMessage response = await Fixture.Client.PostAsync("Functions/WebHookTrigger", new StringContent(testData));
+            string testData = Guid.NewGuid().ToString();
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/functions/httptrigger")),
+                Method = HttpMethod.Get,
+                Content = new StringContent(testData)
+            };
+
+            await Fixture.Host.CallAsync("HttpTrigger", new { req = request });
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["HttpResponse"];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            string json = File.ReadAllText("test.txt");
-            string result = (string)JObject.Parse(json)["test"];
-            Assert.Equal(expectedValue, result);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(testData, body);
         }
 
         [Fact]

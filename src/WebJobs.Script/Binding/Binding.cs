@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
@@ -35,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public abstract bool HasBindingParameters { get; }
 
-        public abstract Task BindAsync(IBinder binder, Stream stream, IReadOnlyDictionary<string, string> bindingData);
+        public abstract Task BindAsync(BindingContext context);
 
         internal static Collection<Binding> GetBindings(ScriptHostConfiguration config, JArray bindingArray, FileAccess fileAccess)
         {
@@ -94,6 +93,15 @@ namespace Microsoft.Azure.WebJobs.Script
                         };
 
                         bindings.Add(new TableBinding(config, name, tableName, partitionKey, rowKey, fileAccess, tableQuery));
+                    }
+                    else if (type == "http")
+                    {
+                        if (fileAccess != FileAccess.Write)
+                        {
+                            throw new InvalidOperationException("Http binding can only be used for output.");
+                        }
+                        name = name ?? "res";
+                        bindings.Add(new HttpBinding(config, name, FileAccess.Write, false));
                     }
                 }
             }

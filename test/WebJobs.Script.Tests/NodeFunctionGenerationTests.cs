@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
@@ -81,11 +82,11 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GenerateWebHookTriggerFunction()
+        public void GenerateHttpTriggerFunction()
         {
             JObject trigger = new JObject
             {
-                { "type", "webHookTrigger" }
+                { "type", "httpTrigger" }
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -93,9 +94,9 @@ namespace WebJobs.Script.Tests
 
             // verify trigger parameter
             ParameterInfo parameter = method.GetParameters()[0];
-            Assert.Equal("input", parameter.Name);
-            Assert.Equal(typeof(string), parameter.ParameterType);
-            WebHookTriggerAttribute attribute = parameter.GetCustomAttribute<WebHookTriggerAttribute>();
+            Assert.Equal("req", parameter.Name);
+            Assert.Equal(typeof(HttpRequestMessage), parameter.ParameterType);
+            NoAutomaticTriggerAttribute attribute = method.GetCustomAttribute<NoAutomaticTriggerAttribute>();
             Assert.NotNull(attribute);
         }
 
@@ -145,17 +146,17 @@ namespace WebJobs.Script.Tests
         private static MethodInfo GenerateMethod(JObject trigger)
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts");
-            FunctionFolderInfo functionFolderInfo = new FunctionFolderInfo();
-            functionFolderInfo.Name = "Test";
-            functionFolderInfo.Source = Path.Combine(rootPath, @"Node\Common\test.js");
+            FunctionMetadata metadata = new FunctionMetadata();
+            metadata.Name = "Test";
+            metadata.Source = Path.Combine(rootPath, @"Node\Common\test.js");
 
             JArray inputs = new JArray(trigger);
-            functionFolderInfo.Configuration = new JObject();
-            functionFolderInfo.Configuration["bindings"] = new JObject();
-            functionFolderInfo.Configuration["bindings"]["input"] = inputs;
+            metadata.Configuration = new JObject();
+            metadata.Configuration["bindings"] = new JObject();
+            metadata.Configuration["bindings"]["input"] = inputs;
 
-            List<FunctionFolderInfo> functionFolderInfos = new List<FunctionFolderInfo>();
-            functionFolderInfos.Add(functionFolderInfo);
+            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
+            metadatas.Add(metadata);
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
@@ -166,7 +167,7 @@ namespace WebJobs.Script.Tests
             {
                 new NodeFunctionDescriptorProvider(host, scriptConfig)
             };
-            var functionDescriptors = ScriptHost.ReadFunctions(functionFolderInfos, descriptorProviders);
+            var functionDescriptors = ScriptHost.ReadFunctions(metadatas, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();

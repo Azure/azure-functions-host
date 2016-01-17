@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -37,12 +37,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger", "TimerTrigge
 		sample\TimerTrigger\function.json = sample\TimerTrigger\function.json
 		sample\TimerTrigger\index.js = sample\TimerTrigger\index.js
 		sample\TimerTrigger\logger.js = sample\TimerTrigger\logger.js
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHookTrigger", "WebHookTrigger", "{C73851D5-6F25-43FA-8E6B-32C3D89D973B}"
-	ProjectSection(SolutionItems) = preProject
-		sample\WebHookTrigger\function.json = sample\WebHookTrigger\function.json
-		sample\WebHookTrigger\index.js = sample\WebHookTrigger\index.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Batch", "QueueTrigger-Batch", "{639CC8E5-E9C1-4AB5-A171-7DD12046390D}"
@@ -107,6 +101,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusQueueTrigger", "S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Client", "src\WebJobs.Client\WebJobs.Client.csproj", "{D08D44C2-DF21-48B7-A354-5492423749EC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{7091449A-ADE8-47FE-985C-E9FADCCC49C4}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger\function.json = sample\HttpTrigger\function.json
+		sample\HttpTrigger\index.js = sample\HttpTrigger\index.js
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.WebHost", "src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -133,6 +135,10 @@ Global
 		{D08D44C2-DF21-48B7-A354-5492423749EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D08D44C2-DF21-48B7-A354-5492423749EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D08D44C2-DF21-48B7-A354-5492423749EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -145,7 +151,6 @@ Global
 		{46A0C17F-80F3-4621-B12D-918D5DADA039} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BBC61846-A33D-4D82-9749-D381D176EE67} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8706290C-D46A-4D44-AD4C-5F51FA928D1A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{C73851D5-6F25-43FA-8E6B-32C3D89D973B} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{639CC8E5-E9C1-4AB5-A171-7DD12046390D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{D397B63C-6877-4D00-B384-FB6FD928CF46} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C9E1FA6F-B62F-4CC6-B4AB-B1E3D46EF23A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -156,5 +161,7 @@ Global
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{D08D44C2-DF21-48B7-A354-5492423749EC} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{7091449A-ADE8-47FE-985C-E9FADCCC49C4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

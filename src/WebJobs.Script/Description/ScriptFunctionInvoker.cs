@@ -118,7 +118,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
                 using (FileStream stream = File.OpenWrite(filePath))
                 {
-                    await inputBinding.BindAsync(binder, stream, bindingData);
+                    BindingContext bindingContext = new BindingContext
+                    {
+                        Binder = binder,
+                        BindingData = bindingData,
+                        Value = stream
+                    };
+                    await inputBinding.BindAsync(bindingContext);
                 }
 
                 environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
@@ -162,7 +168,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     using (FileStream stream = File.OpenRead(filePath))
                     {
-                        await outputBinding.BindAsync(binder, stream, bindingData);
+                        BindingContext bindingContext = new BindingContext
+                        {
+                            Binder = binder,
+                            BindingData = bindingData,
+                            Value = stream
+                        };
+                        await outputBinding.BindAsync(bindingContext);
                     }
                 }
             }

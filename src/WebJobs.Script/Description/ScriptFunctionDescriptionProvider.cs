@@ -20,32 +20,32 @@ namespace Microsoft.Azure.WebJobs.Script
             _rootPath = config.RootPath;
         }
 
-        public override bool TryCreate(FunctionFolderInfo functionFolderInfo, out FunctionDescriptor functionDescriptor)
+        public override bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor)
         {
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(functionFolderInfo.Source).ToLower();
+            string extension = Path.GetExtension(metadata.Source).ToLower();
             if (!ScriptFunctionInvoker.IsSupportedScriptType(extension))
             {
                 return false;
             }
 
             // parse the bindings
-            JObject bindings = (JObject)functionFolderInfo.Configuration["bindings"];
+            JObject bindings = (JObject)metadata.Configuration["bindings"];
             JArray inputs = (JArray)bindings["input"];
             Collection<Binding> inputBindings = Binding.GetBindings(_config, inputs, FileAccess.Read);
 
             JArray outputs = (JArray)bindings["output"];
             Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
-            string scriptFilePath = Path.Combine(_rootPath, functionFolderInfo.Source);
+            string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, inputBindings, outputBindings);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(functionFolderInfo.Name, trigger) ||
-                IsDisabled(functionFolderInfo.Name, functionFolderInfo.Configuration))
+            if (IsDisabled(metadata.Name, trigger) ||
+                IsDisabled(metadata.Name, metadata.Configuration))
             {
                 return false;
             }
@@ -73,9 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "timerTrigger":
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
-                case "webHookTrigger":
-                    triggerParameter = ParseWebHookTrigger(trigger);
-                    break;
             }
 
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
@@ -87,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support output bindings
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
-            functionDescriptor = new FunctionDescriptor(functionFolderInfo.Name, invoker, parameters);
+            functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters);
 
             return true;
         }

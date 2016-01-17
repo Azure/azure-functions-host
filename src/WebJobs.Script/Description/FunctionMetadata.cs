@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FunctionFolderInfo
+    public class FunctionMetadata
     {
         public string Name { get; set; }
         public string Source { get; set; }

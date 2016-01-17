@@ -1,9 +1,0 @@
-﻿{
-  "bindings": {
-    "input": [
-      {
-        "type": "webHookTrigger"
-      }
-    ]
-  }
-}
