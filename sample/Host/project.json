@@ -1,0 +1,31 @@
+{
+    "version": "1.0.0-*",
+    "description": "Host Console Application",
+    "authors": [ "mathewc" ],
+    "tags": [ "" ],
+    "projectUrl": "",
+    "licenseUrl": "",
+
+    "dependencies": {
+        "EntityFramework": "6.1.3",
+        "Microsoft.AspNet.WebApi.Client": "5.2.3",
+        "Microsoft.Azure.WebJobs": "1.1.0-alpha2-10109",
+        "Microsoft.Framework.Runtime.Abstractions": "1.0.0-beta6"
+    },
+
+    "commands": {
+        "Host": "Host"
+    },
+
+    "frameworks": {
+        "dnx451": {
+            "dependencies": {
+                "System.Collections": "4.0.10-beta-23019",
+                "System.Linq": "4.0.0-beta-23019",
+                "System.Threading": "4.0.10-beta-23019",
+                "Microsoft.CSharp": "4.0.0-beta-23019",
+                "Microsoft.Azure.WebJobs.Script": "1.0.0-*"
+            }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "functions": [
+    {
+      "name": "ProcessPost",
+      "type": "csharp",
+      "source": "ProcessPost.cs",
+      "trigger": {
+        "type": "queue",
+        "name": "post",
+        "queueName": "samples-posts"
+      }
+    },
+    {
+      "name": "WebHook",
+      "type": "csharp",
+      "source": "WebHook.cs",
+      "trigger": {
+        "type": "webhook",
+        "name": "request",
+        "route": "functions/webhook"
+      }
+    }
+  ]
+}

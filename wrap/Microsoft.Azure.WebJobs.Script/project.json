@@ -1,0 +1,57 @@
+{
+  "version": "1.0.0-*",
+  "frameworks": {
+    "net452": {
+      "wrappedProject": "../../src/WebJobs.Script/WebJobs.Script.csproj",
+      "bin": {
+        "assembly": "../../src/WebJobs.Script/obj/{configuration}/Microsoft.Azure.WebJobs.Script.dll",
+        "pdb": "../../src/WebJobs.Script/obj/{configuration}/Microsoft.Azure.WebJobs.Script.pdb"
+      },
+      "dependencies": {
+        "FSharp.Core": "3.1.2.5",
+        "FsPickler": "1.2.5",
+        "Microsoft.Azure.WebJobs": "1.1.0-alpha2",
+        "Microsoft.Azure.WebJobs.Core": "1.1.0-alpha2",
+        "Microsoft.Azure.WebJobs.Extensions": "1.0.0-alpha2",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks": "1.0.0-alpha2-10112",
+        "Microsoft.Data.Edm": "5.6.0",
+        "Microsoft.Data.OData": "5.6.0",
+        "Microsoft.Data.Services.Client": "5.6.0",
+        "Microsoft.Tpl.Dataflow": "4.5.24",
+        "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+        "ncrontab": "2.0.0",
+        "Newtonsoft.Json": "6.0.4",
+        "Suave": "0.31.2",
+        "SuaveServerWrapper": "0.0.2",
+        "System.Spatial": "5.6.0",
+        "WindowsAzure.Storage": "4.0.1"
+      }
+    },
+    "net451": {
+      "wrappedProject": "../../src/WebJobs.Script/WebJobs.Script.csproj",
+      "bin": {
+        "assembly": "../../src/WebJobs.Script/obj/{configuration}/Microsoft.Azure.WebJobs.Script.dll",
+        "pdb": "../../src/WebJobs.Script/obj/{configuration}/Microsoft.Azure.WebJobs.Script.pdb"
+      },
+      "dependencies": {
+        "FSharp.Core": "3.1.2.5",
+        "FsPickler": "1.2.5",
+        "Microsoft.Azure.WebJobs": "1.1.0-alpha2",
+        "Microsoft.Azure.WebJobs.Core": "1.1.0-alpha2",
+        "Microsoft.Azure.WebJobs.Extensions": "1.0.0-alpha2",
+        "Microsoft.Azure.WebJobs.Extensions.WebHooks": "1.0.0-alpha2-10112",
+        "Microsoft.Data.Edm": "5.6.0",
+        "Microsoft.Data.OData": "5.6.0",
+        "Microsoft.Data.Services.Client": "5.6.0",
+        "Microsoft.Tpl.Dataflow": "4.5.24",
+        "Microsoft.WindowsAzure.ConfigurationManager": "1.8.0.0",
+        "ncrontab": "2.0.0",
+        "Newtonsoft.Json": "6.0.8",
+        "Suave": "0.31.2",
+        "SuaveServerWrapper": "0.0.2",
+        "System.Spatial": "5.6.0",
+        "WindowsAzure.Storage": "4.0.1"
+      }
+    }
+  }
+}

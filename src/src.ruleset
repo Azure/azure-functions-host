@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="WebJobs SDK" Description="This rule set contains the rules that applies to sources" ToolsVersion="12.0">
+  <IncludeAll Action="Error" />
+  <Rules AnalyzerId="Microsoft.Analyzers.ManagedCodeAnalysis" RuleNamespace="Microsoft.Rules.Managed">
+    <Rule Id="CA1006" Action="None" />
+    <Rule Id="CA1020" Action="None" />
+    <Rule Id="CA1024" Action="None" />
+    <Rule Id="CA1026" Action="None" />
+    <Rule Id="CA1031" Action="None" />
+    <Rule Id="CA1033" Action="None" />
+    <Rule Id="CA1308" Action="None" />
+    <Rule Id="CA1506" Action="None" />
+    <Rule Id="CA1726" Action="None" />
+    <Rule Id="CA2210" Action="None" />
+    <Rule Id="CA2243" Action="None" />
+    <Rule Id="CA904" Action="None" />
+    <Rule Id="CA905" Action="None" />
+    <Rule Id="CA908" Action="None" />
+    <Rule Id="CA1303" Action="None" /> <!-- Enable when we move literals to resx -->
+  </Rules>
+</RuleSet>
