@@ -10,14 +10,14 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.WebJobs.Script
 {
     // TODO: make this internal
-    public class ScriptInvoker : IFunctionInvoker
+    public class ScriptFunctionInvoker : IFunctionInvoker
     {
         // TODO: Add support for php, sh
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
 
-        public ScriptInvoker(string scriptFilePath)
+        public ScriptFunctionInvoker(string scriptFilePath)
         {
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');

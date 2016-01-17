@@ -150,10 +150,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.Node\WebJobs.Script.Node.csproj">
-      <Project>{b1b3dc38-a276-45a6-b56f-3724ccac2ff3}</Project>
-      <Name>WebJobs.Script.Node</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>

@@ -12,7 +12,7 @@
     <projectUrl>https://azure.microsoft.com/en-us/documentation/articles/websites-webjobs-resources</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <tags>Microsoft Azure WebJobs Jobs Script Node.js CSharp DNX</tags>
+    <tags>Microsoft Azure WebJobs Jobs Script Node.js</tags>
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs" version="1.1.0-rc1" />
       <dependency id="Microsoft.Azure.WebJobs.ServiceBus" version="1.1.0-rc1" />
