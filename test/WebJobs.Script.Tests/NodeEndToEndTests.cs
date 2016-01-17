@@ -54,7 +54,7 @@ namespace WebJobs.Script.Tests
             {
                 File.Delete("joblog.txt");
 
-                BaseUrl = "http://localhost:46000/";
+                BaseUrl = "http://localhost:46002/";
                 Client = new HttpClient();
                 Client.BaseAddress = new Uri(BaseUrl);
 
