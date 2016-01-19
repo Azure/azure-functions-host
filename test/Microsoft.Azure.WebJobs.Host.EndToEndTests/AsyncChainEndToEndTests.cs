@@ -333,33 +333,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
-        [Fact]
-        public async Task FunctionTraceLevelOverride_DirectInvocation_ProducesExpectedOutput()
-        {
-            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            _hostConfig.Tracing.Tracers.Add(trace);
-            JobHost host = new JobHost(_hostConfig);
-
-            using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
-            {
-                MethodInfo methodInfo = GetType().GetMethod("QueueTrigger_TraceLevelOverride");
-                host.Call(methodInfo, new { message = "test message" });
-
-                _functionCompletedEvent.WaitOne();
-
-                // wait for logs to flush
-                await Task.Delay(3000);
-
-                TraceEvent[] traces = trace.Traces.ToArray();
-                Assert.Equal(4, traces.Length);
-
-                string output = string.Join("\r\n", traces.Select(p => p.Message));
-                Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' - Reason: 'This function was programmatically called via the host APIs.'"));
-                Assert.True(output.Contains("test message"));
-                Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Succeeded)"));
-            }
-        }
-
         [NoAutomaticTrigger]
         public static async Task WriteStartDataMessageToQueue(
             [Queue(Queue1Name)] ICollector<string> queueMessages,
