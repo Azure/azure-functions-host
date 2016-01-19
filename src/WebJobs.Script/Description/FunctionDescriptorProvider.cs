@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.ServiceBus.Messaging;
@@ -171,6 +172,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
+            methodAttributes.Add(attributeBuilder);
+
+            ctorInfo = typeof(TraceLevelAttribute).GetConstructor(new Type[] { typeof(TraceLevel) });
+            attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { TraceLevel.Off });
             methodAttributes.Add(attributeBuilder);
 
             string parameterName = (string)trigger["name"];
