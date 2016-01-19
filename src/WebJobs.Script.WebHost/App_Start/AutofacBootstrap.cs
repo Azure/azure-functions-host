@@ -19,7 +19,7 @@ namespace WebJobs.Script.WebHost.App_Start
             if (!string.IsNullOrEmpty(home))
             {
                 // we're running in Azure
-                scriptRootPath = Path.Combine(home, @"site\wwwroot\Functions");
+                scriptRootPath = Path.Combine(home, @"site\wwwroot");
                 logFilePath = Path.Combine(home, @"LogFiles\Application\Functions");
             }
             else
