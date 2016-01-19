@@ -61,6 +61,18 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        private Func<object, Task<object>> ClearRequireCacheFunc
+        {
+            get
+            {
+                if (_clearRequireCache == null)
+                {
+                    _clearRequireCache = Edge.Func(ClearRequireCacheScript);
+                }
+                return _clearRequireCache;
+            }
+        }
+
         internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _host = host;
@@ -70,8 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _functionName = metadata.Name;
-
-            _clearRequireCache = Edge.Func(ClearRequireCacheScript);
 
             if (host.ScriptConfig.WatchFiles)
             {
@@ -185,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _scriptFunc = null;
 
                 // clear the node module cache
-                _clearRequireCache(null).Wait();
+                ClearRequireCacheFunc(null).Wait();
 
                 Console.WriteLine(string.Format("Script function '{0}' changed. Reloading function.", _functionName));
             }
