@@ -134,15 +134,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             TraceLevel functionTraceLevel = TraceLevel.Verbose;
 
             // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
-            // Note that for manual invocations (e.g. from Dashboard or via HostCall) we ignore the function logging
-            // specification.
-            if (functionInstance.Reason == ExecutionReason.AutomaticTrigger)
+            TraceLevelAttribute attribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(functionInstance.FunctionDescriptor.Method);
+            if (attribute != null)
             {
-                TraceLevelAttribute attribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(functionInstance.FunctionDescriptor.Method);
-                if (attribute != null)
-                {
-                    functionTraceLevel = attribute.Level;
-                }
+                functionTraceLevel = attribute.Level;
             }
 
             return functionTraceLevel;

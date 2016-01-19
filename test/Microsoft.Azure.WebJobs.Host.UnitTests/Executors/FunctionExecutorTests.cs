@@ -128,8 +128,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         [Fact]
         public void GetFunctionTraceLevel_ReturnsExpectedLevel()
         {
-            _mockFunctionInstance.SetupGet(p => p.Reason).Returns(ExecutionReason.AutomaticTrigger);
-
             _descriptor.Method = typeof(Functions).GetMethod("MethodLevel", BindingFlags.Static | BindingFlags.Public);
             TraceLevel result = FunctionExecutor.GetFunctionTraceLevel(_mockFunctionInstance.Object);
             Assert.Equal(TraceLevel.Verbose, result);
@@ -141,14 +139,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             _descriptor.Method = typeof(Functions).GetMethod("TraceLevelOverride_Error", BindingFlags.Static | BindingFlags.Public);
             result = FunctionExecutor.GetFunctionTraceLevel(_mockFunctionInstance.Object);
             Assert.Equal(TraceLevel.Error, result);
-
-            _mockFunctionInstance.SetupGet(p => p.Reason).Returns(ExecutionReason.Dashboard);
-            result = FunctionExecutor.GetFunctionTraceLevel(_mockFunctionInstance.Object);
-            Assert.Equal(TraceLevel.Verbose, result);
-
-            _mockFunctionInstance.SetupGet(p => p.Reason).Returns(ExecutionReason.HostCall);
-            result = FunctionExecutor.GetFunctionTraceLevel(_mockFunctionInstance.Object);
-            Assert.Equal(TraceLevel.Verbose, result);
         }
 
         public static void GlobalLevel(CancellationToken cancellationToken)
