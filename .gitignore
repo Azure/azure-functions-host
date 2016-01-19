@@ -2,6 +2,7 @@ bin
 obj
 csx
 .vs
+edge
 
 *.user
 *.suo

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Hosting;
 using Autofac;
 using Microsoft.Azure.WebJobs.Host;
@@ -40,7 +41,7 @@ namespace WebJobs.Script.WebHost.App_Start
 
             // When using Task.Run, We're getting occasional memory AccessViolationException
             // exceptions from Edge.js. Could this be an IISExpress issue only?
-            HostingEnvironment.QueueBackgroundWorkItem((c) => scriptHostManager.StartAsync(CancellationToken.None));
+            Task.Run(() => scriptHostManager.StartAsync(CancellationToken.None));
         }
     }
 }
