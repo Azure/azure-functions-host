@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    // TODO: Make this type internal
+    // TODO: Make this type internal - it has to be public currently due to the
+    // public GetInvoker helper which we need to remove (IL genned code calls into it)
     public static class FunctionGenerator
     {
         private static Dictionary<string, IFunctionInvoker> _invokerMap = new Dictionary<string, IFunctionInvoker>();

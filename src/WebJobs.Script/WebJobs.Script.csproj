@@ -175,6 +175,7 @@
     <Compile Include="Description\FunctionDescriptor.cs" />
     <Compile Include="CodeGen\FunctionGenerator.cs" />
     <Compile Include="Description\ParameterDescriptor.cs" />
+    <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\ScriptFunctionDescriptionProvider.cs" />
     <Compile Include="Description\ScriptFunctionInvoker.cs" />
     <Compile Include="Description\NodeFunctionDescriptorProvider.cs" />

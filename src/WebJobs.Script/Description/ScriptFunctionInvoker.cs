@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script
 {
     // TODO: make this internal
-    public class ScriptFunctionInvoker : IFunctionInvoker
+    public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
     {
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _supportedScriptTypes.Contains(scriptType);
         }
 
-        public async Task Invoke(object[] parameters)
+        public override async Task Invoke(object[] parameters)
         {
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
@@ -102,22 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script
             // if there are any parameters in the bindings,
             // parse the input as json to get the binding data
             Dictionary<string, string> bindingData = new Dictionary<string, string>();
-            bindingData["InstanceId"] = instanceId;
             if (_outputBindings.Any(p => p.HasBindingParameters) ||
                 _inputBindings.Any(p => p.HasBindingParameters))
             {
-                try
-                {
-                    JObject parsed = JObject.Parse(stdin);
-                    bindingData = parsed.ToObject<Dictionary<string, string>>();
-                }
-                catch
-                {
-                    // it's not an error if the incoming message isn't JSON
-                    // there are cases where there will be output binding parameters
-                    // that don't bind to JSON properties
-                }
+                bindingData = GetBindingData(stdin);
             }
+            bindingData["InstanceId"] = instanceId;
 
             // if there are any input or output bindings declared, set up the temporary
             // output directory
@@ -155,7 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // TODO
             // - put a timeout on how long we wait?
             // - need to periodically flush the standard out to the TraceWriter
-            // - need to handle stderr as well
             Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
             process.Start();
             if (stdin != null)
