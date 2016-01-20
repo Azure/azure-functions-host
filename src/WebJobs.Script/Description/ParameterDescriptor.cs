@@ -29,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ParameterAttributes Attributes { get; set; }
 
+        public bool IsTrigger { get; set; }
+
         public Collection<CustomAttributeBuilder> CustomAttributes { get; private set; }
     }
 }

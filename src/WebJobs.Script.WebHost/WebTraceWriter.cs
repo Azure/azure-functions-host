@@ -21,6 +21,7 @@ namespace WebJobs.Script.WebHost
 
         public override void Trace(TraceEvent traceEvent)
         {
+            // TODO: figure out the right log file format
             // TODO: buffer logs and write only periodically
             string traceLine = string.Format("{0} {1} {2}\r\n", DateTime.Now.ToString("s"), traceEvent.Level, traceEvent.Message);
             if (traceEvent.Exception != null)

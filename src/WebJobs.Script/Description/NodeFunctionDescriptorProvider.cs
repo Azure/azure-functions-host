@@ -90,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+            triggerParameter.IsTrigger = true;
             parameters.Add(triggerParameter);
 
             // Add a TraceWriter for logging

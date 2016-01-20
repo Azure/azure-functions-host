@@ -30,7 +30,7 @@ namespace WebJobs.Script.Tests
 
             await Fixture.Host.CallAsync("HttpTrigger", new { req = request });
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["HttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["AzureWebJobs_HttpResponse"];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();

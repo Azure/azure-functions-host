@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class HttpBinding : Binding
     {
-        internal const string HttpResponsePropertyKey = "HttpResponse";
+        internal const string HttpResponsePropertyKey = "AzureWebJobs_HttpResponse";
 
         public HttpBinding(ScriptHostConfiguration config, string name, FileAccess fileAccess, bool isTrigger) : base(config, name, "http", fileAccess, isTrigger)
         {

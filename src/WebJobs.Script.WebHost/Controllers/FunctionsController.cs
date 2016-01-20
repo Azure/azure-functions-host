@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -7,6 +6,10 @@ using System.Web.Http.Controllers;
 
 namespace WebJobs.Script.WebHost.Controllers
 {
+    /// <summary>
+    /// Controller responsible for handling all http function invocations
+    /// on route /functions
+    /// </summary>
     public class FunctionsController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
@@ -18,18 +21,9 @@ namespace WebJobs.Script.WebHost.Controllers
 
         public override async Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
         {
-            HttpRequestMessage request = controllerContext.Request;
+            // TODO: Need to add authentication filters to the request pipeline
 
-            string function = _scriptHostManager.GetMappedHttpFunction(request.RequestUri);
-            if (string.IsNullOrEmpty(function))
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-
-            // TODO: we're assuming the parameter is named "req" - fix this
-            // TODO: make "HttpResponse" key name a constant
-            await _scriptHostManager.Instance.CallAsync(function, new { req = request }, cancellationToken);
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["HttpResponse"];
+            HttpResponseMessage response = await _scriptHostManager.HandleRequestAsync(controllerContext.Request, cancellationToken);
 
             return response;
         }
