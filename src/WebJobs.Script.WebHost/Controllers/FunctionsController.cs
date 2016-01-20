@@ -28,16 +28,8 @@ namespace WebJobs.Script.WebHost.Controllers
 
             // TODO: we're assuming the parameter is named "req" - fix this
             // TODO: make "HttpResponse" key name a constant
-            HttpResponseMessage response = null;
-            try
-            {
-                await _scriptHostManager.Instance.CallAsync(function, new { req = request }, cancellationToken);
-                response = (HttpResponseMessage)request.Properties["HttpResponse"];
-            }
-            catch
-            {
-                response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
-            }
+            await _scriptHostManager.Instance.CallAsync(function, new { req = request }, cancellationToken);
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["HttpResponse"];
 
             return response;
         }

@@ -36,7 +36,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger", "TimerTrigge
 	ProjectSection(SolutionItems) = preProject
 		sample\TimerTrigger\function.json = sample\TimerTrigger\function.json
 		sample\TimerTrigger\index.js = sample\TimerTrigger\index.js
-		sample\TimerTrigger\logger.js = sample\TimerTrigger\logger.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Batch", "QueueTrigger-Batch", "{639CC8E5-E9C1-4AB5-A171-7DD12046390D}"

@@ -128,28 +128,41 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            IDictionary<string, object> functionOutput = null;
-            if (_outputBindings.Count > 0)
+            object functionResult = null;
+            try
             {
-                var output = (Func<object, Task<object>>)((binding) =>
-                {
-                    // cache the output value for the bind step below
-                    functionOutput = binding as IDictionary<string, object>;
-                    return Task.FromResult<object>(null);
-                });
-                context["output"] = output;
+                 functionResult = await ScriptFunc(context);
+            }
+            catch (Exception ex)
+            {
+                traceWriter.Error(ex.ToString());
+                return;
             }
 
-            await ScriptFunc(context);
+            IDictionary<string, object> outputBindingData = null;
+            if (functionResult != null && _outputBindings.Count == 1)
+            {
+                // if there is only a single output binding allow that binding value
+                // to be specified directly (i.e. normalize output format)
+                var binding = _outputBindings.Single();
+                outputBindingData = functionResult as IDictionary<string, object>;
+                if (outputBindingData == null || !outputBindingData.ContainsKey(binding.Name))
+                {
+                    outputBindingData = new Dictionary<string, object>()
+                        {
+                            { binding.Name, functionResult }
+                        };
+                }
+            }
 
             // process output bindings
-            if (functionOutput != null)
+            if (outputBindingData != null)
             {
                 foreach (Binding binding in _outputBindings)
                 {
                     // get the output value from the script
                     object value = null;
-                    if (functionOutput.TryGetValue(binding.Name, out value))
+                    if (outputBindingData.TryGetValue(binding.Name, out value))
                     {
                         if (value.GetType() == typeof(ExpandoObject))
                         {

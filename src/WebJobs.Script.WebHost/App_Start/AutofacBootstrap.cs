@@ -39,8 +39,6 @@ namespace WebJobs.Script.WebHost.App_Start
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig, traceWriter);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
-            // When using Task.Run, We're getting occasional memory AccessViolationException
-            // exceptions from Edge.js. Could this be an IISExpress issue only?
             Task.Run(() => scriptHostManager.StartAsync(CancellationToken.None));
         }
     }

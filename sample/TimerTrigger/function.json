@@ -3,8 +3,8 @@
     "input": [
       {
         "type": "timerTrigger",
-        "schedule": "0 * * * * *",
-        "runOnStartup": true
+        "schedule": "0 * * * * *"
+
       }
     ],
     "output": [
