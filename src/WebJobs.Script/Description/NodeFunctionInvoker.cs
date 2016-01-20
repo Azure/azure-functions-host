@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
             catch (Exception ex)
             {
                 traceWriter.Error(ex.ToString());
-                return;
+                throw;
             }
 
             // normalize output binding results
