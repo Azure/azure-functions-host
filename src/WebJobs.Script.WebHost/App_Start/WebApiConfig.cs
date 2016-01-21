@@ -22,8 +22,9 @@ namespace WebJobs.Script.WebHost
             config.MapHttpAttributeRoutes();
 
             config.Routes.MapHttpRoute(
-                name: "DefaultApi",
-                routeTemplate: "{controller}/{*uri}"
+                name: "Functions",
+                routeTemplate: "{*uri}",
+                defaults: new { controller = "Functions" }
             );
 
             // Initialize WebHook Receivers

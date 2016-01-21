@@ -23,7 +23,7 @@ namespace WebJobs.Script.Tests
             string testData = Guid.NewGuid().ToString();
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/functions/httptrigger")),
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
                 Method = HttpMethod.Get,
                 Content = new StringContent(testData)
             };

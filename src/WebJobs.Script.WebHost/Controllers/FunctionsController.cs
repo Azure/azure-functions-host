@@ -11,7 +11,7 @@ namespace WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for handling all http function invocations
-    /// on route /functions
+    /// on route /api
     /// </summary>
     public class FunctionsController : ApiController
     {

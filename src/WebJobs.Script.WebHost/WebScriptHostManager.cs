@@ -49,10 +49,10 @@ namespace WebJobs.Script.WebHost
                 return null;
             }
 
-            // Parse the route (e.g. "functions/myfunc") to get 'myfunc"
-            // including any path after "functions/"
+            // Parse the route (e.g. "api/myfunc") to get 'myfunc"
+            // including any path after "api/"
             string route = uri.AbsolutePath;
-            int idx = route.ToLowerInvariant().IndexOf("functions");
+            int idx = route.ToLowerInvariant().IndexOf("api");
             if (idx > 0)
             {
                 idx = route.IndexOf('/', idx);
