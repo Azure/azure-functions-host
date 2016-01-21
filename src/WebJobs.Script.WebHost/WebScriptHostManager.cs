@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,37 +19,30 @@ namespace WebJobs.Script.WebHost
             _traceWriter = traceWriter;
         }
 
-        private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
+        private IDictionary<string, HttpFunctionInfo> HttpFunctions { get; set; }
 
-        public async Task<HttpResponseMessage> HandleRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public async Task<HttpResponseMessage> HandleRequestAsync(HttpFunctionInfo functionInfo, HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
 
-            // First see if the URI maps to a function
-            FunctionDescriptor function = GetHttpFunctionOrNull(request.RequestUri);
-            if (function == null)
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-
             // Invoke the function
-            ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
+            ParameterDescriptor triggerParameter = functionInfo.Function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
                 { triggerParameter.Name, request }
             };
-            await Instance.CallAsync(function.Name, arguments, cancellationToken);
+            await Instance.CallAsync(functionInfo.Function.Name, arguments, cancellationToken);
 
             // Get the response
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["AzureWebJobs_HttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
 
             return response;
         }
 
-        private FunctionDescriptor GetHttpFunctionOrNull(Uri uri)
+        public HttpFunctionInfo GetHttpFunctionOrNull(Uri uri)
         {
-            FunctionDescriptor function = null;
+            HttpFunctionInfo function = null;
 
             if (HttpFunctions == null || HttpFunctions.Count == 0)
             {
@@ -66,7 +58,7 @@ namespace WebJobs.Script.WebHost
                 idx = route.IndexOf('/', idx);
                 route = route.Substring(idx + 1).Trim('/');
 
-                HttpFunctions.TryGetValue(route, out function);
+                HttpFunctions.TryGetValue(route.ToLowerInvariant(), out function);
             }
 
             return function;
@@ -83,7 +75,7 @@ namespace WebJobs.Script.WebHost
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
-            HttpFunctions = new Dictionary<string, FunctionDescriptor>();
+            HttpFunctions = new Dictionary<string, HttpFunctionInfo>();
             foreach (var function in Instance.Functions)
             {
                 JObject functionConfig = function.Metadata.Configuration;
@@ -108,7 +100,20 @@ namespace WebJobs.Script.WebHost
                         route += "/";
                     }
                     route += function.Name;
-                    HttpFunctions.Add(route.ToLowerInvariant(), function);
+
+                    HttpFunctionInfo functionInfo = new HttpFunctionInfo
+                    {
+                        Function = function
+                    };
+
+                    JObject webHookConfig = (JObject)httpTriggerBinding["webHook"];
+                    if (webHookConfig != null)
+                    {
+                        functionInfo.WebHookReceiver = (string)webHookConfig["receiver"];
+                        functionInfo.WebHookReceiverId = (string)webHookConfig["receiverId"];
+                    }
+
+                    HttpFunctions.Add(route.ToLowerInvariant(), functionInfo);
                 }
             }
         }

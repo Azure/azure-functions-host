@@ -1,0 +1,18 @@
+﻿{
+  "bindings": {
+    "input": [
+      {
+        "type": "httpTrigger",
+        "webHook": {
+          "receiver": "genericjson",
+          "receiverId": "iftt"
+        }
+      }
+    ],
+    "output": [
+      {
+        "type": "http"
+      }
+    ]
+  }
+}

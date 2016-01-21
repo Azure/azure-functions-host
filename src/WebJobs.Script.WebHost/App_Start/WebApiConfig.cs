@@ -25,6 +25,10 @@ namespace WebJobs.Script.WebHost
                 name: "DefaultApi",
                 routeTemplate: "{controller}/{*uri}"
             );
+
+            // Initialize WebHook Receivers
+            config.InitializeReceiveGenericJsonWebHooks();
+            config.InitializeReceiveGitHubWebHooks();
         }
     }
 }

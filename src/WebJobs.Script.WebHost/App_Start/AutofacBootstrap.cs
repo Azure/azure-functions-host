@@ -6,6 +6,7 @@ using System.Web.Hosting;
 using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
+using WebJobs.Script.WebHost.WebHooks;
 
 namespace WebJobs.Script.WebHost.App_Start
 {
@@ -38,6 +39,9 @@ namespace WebJobs.Script.WebHost.App_Start
             };
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig, traceWriter);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
+
+            WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(traceWriter);
+            builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
 
             Task.Run(() => scriptHostManager.StartAsync(CancellationToken.None));
         }
