@@ -1,0 +1,15 @@
+{
+  "bindings": {
+    "input": [
+      {
+        "type": "httpTrigger",
+        "webHookReceiver": "github"
+      }
+    ],
+    "output": [
+      {
+        "type": "http"
+      }
+    ]
+  }
+}
