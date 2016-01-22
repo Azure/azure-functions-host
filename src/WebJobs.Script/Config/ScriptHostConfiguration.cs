@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -16,12 +16,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets the <see cref="JobHostConfiguration"/>.
         /// </summary>
-        public JobHostConfiguration HostConfig { get; private set; }
+        public JobHostConfiguration HostConfig { get; set; }
 
         /// <summary>
         /// Gets or sets the path to the script function directory.
         /// </summary>
         public string RootPath { get; set; }
+
+        /// <summary>
+        /// Custom TraceWriter to add to the trace pipeline
+        /// </summary>
+        public TraceWriter TraceWriter { get; set; }
 
         /// <summary>
         /// Gets or sets a value dicating whether the <see cref="ScriptHost"/> should

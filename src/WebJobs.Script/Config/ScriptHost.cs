@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -18,20 +19,18 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        private FileSystemWatcher _fileWatcher;
-        private int _directoryCountSnapshot;
+        private readonly TraceWriter _traceWriter;
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig) 
             : base(scriptConfig.HostConfig)
         {
             ScriptConfig = scriptConfig;
+            _traceWriter = scriptConfig.TraceWriter;
         }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
         public Collection<FunctionDescriptor> Functions { get; private set; }
-
-        public bool Restart { get; private set; }
 
         public async Task CallAsync(string method, object arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -60,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // read host.json and apply to JobHostConfiguration
             string hostConfigFilePath = Path.Combine(ScriptConfig.RootPath, "host.json");
-            Console.WriteLine(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
+            _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -69,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
-            Console.WriteLine(string.Format("Generating {0} job function(s)", functions.Count));
+            _traceWriter.Verbose(string.Format("Generating {0} job function(s)", functions.Count));
             Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
@@ -77,38 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
             ScriptConfig.HostConfig.NameResolver = new NameResolver();
 
-            if (ScriptConfig.WatchFiles)
-            {
-                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootPath)
-                {
-                    IncludeSubdirectories = true,
-                    EnableRaisingEvents = true
-                };
-                _fileWatcher.Changed += OnConfigurationFileChanged;
-                _fileWatcher.Created += OnConfigurationFileChanged;
-                _fileWatcher.Deleted += OnConfigurationFileChanged;
-            }
-
-            // take a snapshot so we can detect function additions/removals
-            _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootPath).Count();
-
             Functions = functions;
         }
 
-        private void StopAndRestart()
-        {
-            if (Restart)
-            {
-                // we've already received a restart call
-                return;
-            }
-
-            Console.WriteLine("Host configuration has changed. Restarting.");
-
-            // Flag for restart and stop the host.
-            Restart = true;
-            Stop();
-        }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
         {
@@ -320,30 +290,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             hostConfig.UseTimers();
-        }
 
-        private void OnConfigurationFileChanged(object sender, FileSystemEventArgs e)
-        {
-            string fileName = Path.GetFileName(e.Name);
-            if (!Restart && 
-                ((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
-                ((Directory.EnumerateDirectories(ScriptConfig.RootPath).Count() != _directoryCountSnapshot)))
+            if (scriptConfig.TraceWriter != null)
             {
-                StopAndRestart();
+                hostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
             }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_fileWatcher != null)
-                {
-                    _fileWatcher.Dispose();
-                }
-            }
-
-            base.Dispose(disposing);
         }
     }
 }

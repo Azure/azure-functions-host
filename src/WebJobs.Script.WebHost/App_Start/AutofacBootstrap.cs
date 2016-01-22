@@ -40,9 +40,10 @@ namespace WebJobs.Script.WebHost.App_Start
 
             ScriptHostConfiguration scriptHostConfig = new ScriptHostConfiguration()
             {
-                RootPath = scriptRootPath
+                RootPath = scriptRootPath,
+                TraceWriter = traceWriter
             };
-            WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig, traceWriter);
+            WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
             SecretsManager secretsManager = new SecretsManager(secretsPath);

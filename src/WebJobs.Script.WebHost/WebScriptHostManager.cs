@@ -15,9 +15,9 @@ namespace WebJobs.Script.WebHost
     {
         private TraceWriter _traceWriter;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, TraceWriter traceWriter) : base (config)
+        public WebScriptHostManager(ScriptHostConfiguration config) : base (config)
         {
-            _traceWriter = traceWriter;
+            _traceWriter = config.TraceWriter;
         }
 
         private IDictionary<string, HttpFunctionInfo> HttpFunctions { get; set; }
@@ -73,11 +73,6 @@ namespace WebJobs.Script.WebHost
         protected override void OnHostCreated()
         {
             base.OnHostCreated();
-
-            if (_traceWriter != null)
-            {
-                Instance.ScriptConfig.HostConfig.Tracing.Tracers.Add(_traceWriter);
-            }
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
