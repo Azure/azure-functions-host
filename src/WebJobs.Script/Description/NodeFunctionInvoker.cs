@@ -257,6 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 inputDictionary["originalUrl"] = request.RequestUri.ToString();
                 inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
                 inputDictionary["body"] = request.Content.ReadAsStringAsync().Result;
+                inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
                 input = inputDictionary;
             }
