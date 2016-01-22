@@ -27,7 +27,7 @@ namespace WebJobs.Script.WebHost.WebHooks
         private HttpConfiguration _httpConfiguration;
         private bool disposedValue = false;
 
-        public WebHookReceiverManager(TraceWriter trace)
+        public WebHookReceiverManager(SecretsManager secretsManager, TraceWriter trace)
         {
             _trace = trace;
             _httpConfiguration = new HttpConfiguration();
@@ -36,6 +36,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             ILogger logger = new WebHookLogger(_trace);
             builder.RegisterInstance<ILogger>(logger);
             builder.RegisterInstance<IWebHookHandler>(new DelegatingWebHookHandler());
+            builder.RegisterInstance<IWebHookReceiverConfig>(new DynamicWebHookReceiverConfig(secretsManager));
             var container = builder.Build();
 
             WebHooksConfig.Initialize(_httpConfiguration);
@@ -71,7 +72,8 @@ namespace WebJobs.Script.WebHost.WebHooks
             // times, so this forces it to buffer
             await request.Content.ReadAsStringAsync();
 
-            return await receiver.ReceiveAsync(functionInfo.WebHookReceiverId, context, request);
+            string receiverId = functionInfo.Function.Name.ToLowerInvariant();
+            return await receiver.ReceiveAsync(receiverId, context, request);
         }
 
         protected virtual void Dispose(bool disposing)

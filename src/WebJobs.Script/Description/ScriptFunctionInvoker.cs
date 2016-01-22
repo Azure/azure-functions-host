@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
             
             string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-            string rootOutputPath = Path.Combine(Path.GetTempPath(), "webjobs", "output");
+            string rootOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "output");
             string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 

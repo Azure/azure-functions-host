@@ -8,14 +8,11 @@ namespace WebJobs.Script.WebHost
 
         public string WebHookReceiver { get; set; }
 
-        public string WebHookReceiverId { get; set; }
-
         public bool IsWebHook
         {
             get
             {
-                return !string.IsNullOrEmpty(WebHookReceiver) &&
-                       !string.IsNullOrEmpty(WebHookReceiverId);
+                return !string.IsNullOrEmpty(WebHookReceiver);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,7 +36,12 @@ namespace WebJobs.Script.WebHost
             await Instance.CallAsync(functionInfo.Function.Name, arguments, cancellationToken);
 
             // Get the response
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = null;
+            if (!request.Properties.TryGetValue<HttpResponseMessage>("MS_AzureFunctionsHttpResponse", out response))
+            {
+                // the function was successful but did not write an explicit response
+                response = new HttpResponseMessage(HttpStatusCode.OK);
+            }
 
             return response;
         }
@@ -106,12 +112,7 @@ namespace WebJobs.Script.WebHost
                         Function = function
                     };
 
-                    JObject webHookConfig = (JObject)httpTriggerBinding["webHook"];
-                    if (webHookConfig != null)
-                    {
-                        functionInfo.WebHookReceiver = (string)webHookConfig["receiver"];
-                        functionInfo.WebHookReceiverId = (string)webHookConfig["receiverId"];
-                    }
+                    functionInfo.WebHookReceiver = (string)httpTriggerBinding["webHookReceiver"];
 
                     HttpFunctions.Add(route.ToLowerInvariant(), functionInfo);
                 }

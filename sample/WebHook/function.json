@@ -3,10 +3,7 @@
     "input": [
       {
         "type": "httpTrigger",
-        "webHook": {
-          "receiver": "genericjson",
-          "receiverId": "iftt"
-        }
+        "webHookReceiver": "genericJson"
       }
     ],
     "output": [
