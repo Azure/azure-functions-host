@@ -37,18 +37,33 @@ namespace Microsoft.Azure.WebJobs.Script
                 content = await streamReader.ReadToEndAsync();
             }
 
-            HttpResponseMessage response;
+            HttpResponseMessage response = null;
             try
             {
                 // attempt to read the content as a JObject
                 JObject jsonObject = JObject.Parse(content);
-                response = new HttpResponseMessage();
-                response.StatusCode = (HttpStatusCode)Enum.Parse(typeof(HttpStatusCode), (string)jsonObject["status"]);
-                response.Content = new StringContent((string)jsonObject["body"]);
+
+                // TODO: This logic needs to be made more robust
+                // E.g. we might decide to use a Regex to determine if
+                // the json is a response body or not
+                if (jsonObject["status"] != null && jsonObject["body"] != null)
+                {
+                    HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                    string body = jsonObject.Value<string>("body");
+
+                    response = new HttpResponseMessage(statusCode);
+                    response.Content = new StringContent(body);
+                }
             }
             catch (JsonException)
             {
-                // if not json, then send the raw content as the body
+                // not a json response
+            }
+
+            if (response == null)
+            {
+                // if unable to parse a json response just send
+                // the raw content
                 response = new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,

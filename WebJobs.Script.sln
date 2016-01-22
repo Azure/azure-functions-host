@@ -114,10 +114,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Batch", "HttpTr
 		sample\HttpTrigger-Batch\run.bat = sample\HttpTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook", "WebHook", "{08F97FA9-3D24-4C3D-AE6B-18C5132549AB}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic", "WebHook-Generic", "{08F97FA9-3D24-4C3D-AE6B-18C5132549AB}"
 	ProjectSection(SolutionItems) = preProject
-		sample\WebHook\function.json = sample\WebHook\function.json
-		sample\WebHook\index.js = sample\WebHook\index.js
+		sample\WebHook-Generic\function.json = sample\WebHook-Generic\function.json
+		sample\WebHook-Generic\index.js = sample\WebHook-Generic\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-GitHub", "WebHook-GitHub", "{5A089F10-FC0E-4FA6-AC5C-1A76FC468359}"
+	ProjectSection(SolutionItems) = preProject
+		sample\WebHook-GitHub\function.json = sample\WebHook-GitHub\function.json
+		sample\WebHook-GitHub\index.js = sample\WebHook-GitHub\index.js
 	EndProjectSection
 EndProject
 Global
@@ -176,5 +182,6 @@ Global
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{A7F93CF8-01D8-483E-A04C-A46026DEA1E6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{08F97FA9-3D24-4C3D-AE6B-18C5132549AB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
