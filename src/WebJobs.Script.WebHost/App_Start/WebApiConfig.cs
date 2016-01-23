@@ -29,7 +29,19 @@ namespace WebJobs.Script.WebHost
 
             // Initialize WebHook Receivers
             config.InitializeReceiveGenericJsonWebHooks();
+            config.InitializeReceiveAzureAlertWebHooks();
+            config.InitializeReceiveKuduWebHooks();
+            config.InitializeReceivePusherWebHooks();
+            config.InitializeReceiveStripeWebHooks();
+            config.InitializeReceiveTrelloWebHooks();
+            config.InitializeReceiveDynamicsCrmWebHooks();
+            config.InitializeReceiveMailChimpWebHooks();
+            config.InitializeReceiveSlackWebHooks();
+            config.InitializeReceiveBitbucketWebHooks();
+            config.InitializeReceiveDropboxWebHooks();
+            config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
+            config.InitializeReceiveSalesforceWebHooks();
         }
     }
 }

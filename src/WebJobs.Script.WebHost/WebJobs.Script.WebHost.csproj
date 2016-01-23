@@ -60,12 +60,60 @@
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Azure, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Azure.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Azure.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Bitbucket, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Dropbox, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Dropbox.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Dropbox.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Generic, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Generic.1.2.0-beta5\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Generic.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Generic.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Generic.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.GitHub, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.GitHub.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.GitHub.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Instagram, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Instagram.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Instagram.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.MailChimp, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.MailChimp.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.MailChimp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Pusher, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Pusher.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Pusher.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Salesforce, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Salesforce.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Salesforce.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Slack, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Slack.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Slack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Stripe, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Stripe.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Stripe.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Trello, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Trello.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Trello.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.WebHooks.Receivers.WordPress, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.WordPress.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.WordPress.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=1.1.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
