@@ -46,10 +46,10 @@ namespace WebJobs.Script.WebHost.App_Start
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
-            SecretsManager secretsManager = new SecretsManager(secretsPath);
-            builder.RegisterInstance<SecretsManager>(secretsManager);
+            SecretManager secretManager = new SecretManager(secretsPath);
+            builder.RegisterInstance<SecretManager>(secretManager);
 
-            WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretsManager, traceWriter);
+            WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager, traceWriter);
             builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
 
             Task.Run(() => scriptHostManager.StartAsync(CancellationToken.None));

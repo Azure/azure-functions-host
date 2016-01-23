@@ -5,11 +5,11 @@ namespace WebJobs.Script.WebHost.WebHooks
 {
     public class DynamicWebHookReceiverConfig : IWebHookReceiverConfig
     {
-        private readonly SecretsManager _secretsManager;
+        private readonly SecretManager _secretManager;
 
-        public DynamicWebHookReceiverConfig(SecretsManager secretsManager)
+        public DynamicWebHookReceiverConfig(SecretManager secretManager)
         {
-            _secretsManager = secretsManager;
+            _secretManager = secretManager;
         }
 
         public Task<string> GetReceiverConfigAsync(string name, string id)
@@ -17,7 +17,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             // "id" will be the function name
             // we ignore the "name" parameter since we only allow a function
             // to be mapped to a single receiver
-            FunctionSecrets secrets = _secretsManager.GetFunctionSecrets(id);
+            FunctionSecrets secrets = _secretManager.GetFunctionSecrets(id);
             if (secrets != null)
             {
                 return Task.FromResult(secrets.WebHookReceiverKey);

@@ -233,7 +233,7 @@
     </Compile>
     <Compile Include="HttpFunctionInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SecretsManager.cs" />
+    <Compile Include="SecretManager.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfig.cs" />
     <Compile Include="WebHooks\WebHookLogger.cs" />
     <Compile Include="WebHooks\WebHookReceiverManager.cs" />

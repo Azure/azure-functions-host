@@ -4,13 +4,13 @@ using Newtonsoft.Json;
 
 namespace WebJobs.Script.WebHost
 {
-    public class SecretsManager
+    public class SecretManager
     {
         private readonly string _secretsPath;
         private readonly ConcurrentDictionary<string, FunctionSecrets> _secretsMap = new ConcurrentDictionary<string, FunctionSecrets>();
         private readonly FileSystemWatcher _fileWatcher;
 
-        public SecretsManager(string secretsPath)
+        public SecretManager(string secretsPath)
         {
             _secretsPath = secretsPath;
 

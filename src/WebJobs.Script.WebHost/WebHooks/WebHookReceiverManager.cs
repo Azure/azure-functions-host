@@ -27,7 +27,7 @@ namespace WebJobs.Script.WebHost.WebHooks
         private HttpConfiguration _httpConfiguration;
         private bool disposedValue = false;
 
-        public WebHookReceiverManager(SecretsManager secretsManager, TraceWriter trace)
+        public WebHookReceiverManager(SecretManager secretManager, TraceWriter trace)
         {
             _trace = trace;
             _httpConfiguration = new HttpConfiguration();
@@ -36,7 +36,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             ILogger logger = new WebHookLogger(_trace);
             builder.RegisterInstance<ILogger>(logger);
             builder.RegisterInstance<IWebHookHandler>(new DelegatingWebHookHandler());
-            builder.RegisterInstance<IWebHookReceiverConfig>(new DynamicWebHookReceiverConfig(secretsManager));
+            builder.RegisterInstance<IWebHookReceiverConfig>(new DynamicWebHookReceiverConfig(secretManager));
             var container = builder.Build();
 
             WebHooksConfig.Initialize(_httpConfiguration);
