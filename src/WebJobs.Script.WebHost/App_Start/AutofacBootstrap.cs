@@ -52,7 +52,7 @@ namespace WebJobs.Script.WebHost.App_Start
             WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager, traceWriter);
             builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
 
-            Task.Run(() => scriptHostManager.StartAsync(CancellationToken.None));
+            Task.Run(() => scriptHostManager.RunAndBlock(CancellationToken.None));
         }
     }
 }

@@ -17,15 +17,15 @@ namespace WebJobs.Script.Tests
         protected EndToEndTestFixture(string rootPath)
         {
             CreateTestStorageEntities();
+            TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootPath = rootPath
+                RootPath = rootPath,
+                TraceWriter = TraceWriter
             };
 
             Host = ScriptHost.Create(config);
-            TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            Host.ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
             Host.Start();
         }
 

@@ -12,16 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public class ScriptHostManager : IDisposable
     {
+        private static AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
         private readonly ScriptHostConfiguration _config;
         private readonly TraceWriter _traceWriter;
         private ScriptHost _instance;
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
-        private bool _restarting;
+        private Action<FileSystemEventArgs> _restart;
 
         public ScriptHostManager(ScriptHostConfiguration config)
         {
             _config = config;
+            _config.TraceWriter = _config.TraceWriter ?? new NullTraceWriter();
             _traceWriter = config.TraceWriter;
 
             if (_config.WatchFiles)
@@ -36,6 +38,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 _fileWatcher.Deleted += OnConfigurationFileChanged;
                 _fileWatcher.Renamed += OnConfigurationFileChanged;
             }
+
+            // If a file change should result in a restart, we debounce the event to
+            // ensure that only a single restart is triggered within a specific time window.
+            // This allows us to deal with a large set of file change events that might
+            // result from a bulk copy/unzip operation. In such cases, we only want to
+            // restart after ALL the operations are complete and there is a quiet period.
+            _restart = (e) =>
+            {
+                _traceWriter.Verbose(string.Format("File change of type '{0}' detected for file '{1}'", e.ChangeType, e.FullPath));
+                _traceWriter.Verbose("Host configuration has changed. Restarting.");
+
+                // signal host restart
+                _autoResetEvent.Set();
+            };
+            _restart = _restart.Debounce(500);
         }
 
         public ScriptHost Instance
@@ -46,67 +63,50 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public void StartAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Start the host and restart it if requested. Restarts will happen when
-            // script files change, configuration changes, etc.
-            _instance = null;
+            // Start the host and restart it if requested. Host Restarts will happen when
+            // host level configuration files change
             do
             {
                 _traceWriter.Verbose("Starting Host...");
 
                 _config.HostConfig = new JobHostConfiguration();
-                _instance = ScriptHost.Create(_config);
-
-                OnHostCreated();
+                ScriptHost newInstance = ScriptHost.Create(_config);
 
                 // take a snapshot so we can detect function additions/removals
                 _directoryCountSnapshot = Directory.EnumerateDirectories(_config.RootPath).Count();
-                _restarting = false;
 
-                _instance.RunAndBlock();
+                newInstance.Start();
+                _instance = newInstance;
+                OnHostStarted();
 
-                if (_restarting)
-                {
-                    // When restarting due to file changes, often this will be due to a short
-                    // burst of file events (e.g. adding a new function directory with multiple files).
-                    // We want to allow those to finish so we only restart once after all the operations
-                    // are complete
-                    Thread.Sleep(500);
-                }
+                // Wait for a restart signal. This event will automatically reset.
+                // While we're restarting, it is possible for another restart to be
+                // signaled. That is fine - the restart will be processed immediately
+                // once we get to this line again. The important thing is that these
+                // restarts are only happening on a single thread.
+                _autoResetEvent.WaitOne();
+
+                // stop the host fully
+                _instance.Stop();
             }
             while (true);
         }
 
-        protected virtual void OnHostCreated()
+        protected virtual void OnHostStarted()
         {
         }
 
         private void OnConfigurationFileChanged(object sender, FileSystemEventArgs e)
         {
             string fileName = Path.GetFileName(e.Name);
-            if (!_restarting &&
-                ((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
+
+            if (((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
                 ((Directory.EnumerateDirectories(_config.RootPath).Count() != _directoryCountSnapshot)))
             {
-                _traceWriter.Verbose(string.Format("File change of type '{0}' detected for file '{1}'", e.ChangeType, e.FullPath));
-                StopAndRestart();
+                _restart(e);
             }
-        }
-
-        private void StopAndRestart()
-        {
-            if (_restarting)
-            {
-                // we've already received a restart call
-                return;
-            }
-
-            _traceWriter.Verbose("Host configuration has changed. Restarting.");
-
-            // Flag for restart and stop the host.
-            _restarting = true;
-            Instance.Stop();
         }
 
         public void Dispose()

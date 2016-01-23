@@ -59,10 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // read host.json and apply to JobHostConfiguration
             string hostConfigFilePath = Path.Combine(ScriptConfig.RootPath, "host.json");
-            if (_traceWriter != null)
-            {
-                _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
-            }
+            _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -71,10 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
-            if (_traceWriter != null)
-            {
-                _traceWriter.Verbose(string.Format("Generating {0} job function(s)", functions.Count));
-            }
+            _traceWriter.Verbose(string.Format("Generating {0} job function(s)", functions.Count));
             Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
@@ -95,6 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     RootPath = Environment.CurrentDirectory
                 };
             }
+
+            scriptConfig.TraceWriter = scriptConfig.TraceWriter ?? new NullTraceWriter();
 
             if (!Path.IsPathRooted(scriptConfig.RootPath))
             {

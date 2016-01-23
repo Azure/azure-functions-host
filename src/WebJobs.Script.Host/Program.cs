@@ -23,7 +23,7 @@ namespace WebJobs.Script.Host
             };
 
             ScriptHostManager scriptHostManager = new ScriptHostManager(config);
-            scriptHostManager.StartAsync();
+            scriptHostManager.RunAndBlock();
         }
     }
 }

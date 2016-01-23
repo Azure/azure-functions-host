@@ -70,9 +70,9 @@ namespace WebJobs.Script.WebHost
             return function;
         }
 
-        protected override void OnHostCreated()
+        protected override void OnHostStarted()
         {
-            base.OnHostCreated();
+            base.OnHostStarted();
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
