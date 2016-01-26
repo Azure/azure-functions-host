@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.Tests
@@ -18,7 +20,7 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ManualTest()
+        public async Task ManualTrigger()
         {
             string testData = Guid.NewGuid().ToString();
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -29,13 +31,37 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTest()
+        public async Task HttpTrigger_Get()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                Method = HttpMethod.Get,
+            };
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal((string)resultObject["type"], "undefined");
+            Assert.Null((string)resultObject["body"]);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Post_PlainText()
         {
             string testData = Guid.NewGuid().ToString();
             HttpRequestMessage request = new HttpRequestMessage
             {
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
-                Method = HttpMethod.Get,
+                Method = HttpMethod.Post,
                 Content = new StringContent(testData)
             };
 
@@ -49,11 +75,44 @@ namespace WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal(testData, body);
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal((string)resultObject["type"], "string");
+            Assert.Equal((string)resultObject["body"], testData);
         }
 
         [Fact]
-        public async Task TimerJobTest()
+        public async Task HttpTrigger_Post_Json()
+        {
+            string testData = Guid.NewGuid().ToString();
+            JObject testObject = new JObject
+            {
+                { "testData", testData }
+            };
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(testObject.ToString())
+            };
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal((string)resultObject["type"], "object");
+            Assert.Equal((string)resultObject["body"]["testData"], testData);
+        }
+
+        [Fact]
+        public async Task TimerTrigger()
         {
             // job is running every second, so give it a few seconds to
             // generate some output

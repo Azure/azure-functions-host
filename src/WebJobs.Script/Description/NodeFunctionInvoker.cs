@@ -259,18 +259,23 @@ namespace Microsoft.Azure.WebJobs.Script
                 inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
                 inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
-                // if the content-type of the request is json, deserialize into an
-                // object 
-                string body = request.Content.ReadAsStringAsync().Result;
-                if (request.Content.Headers.ContentType.MediaType == "application/json")
+                // if the request includes a body, add it to the request object 
+                if (request.Content != null && 
+                    request.Content.Headers.ContentLength > 0)
                 {
-                    input = JsonConvert.DeserializeObject<Dictionary<string, object>>(body, _dictionaryJsonConverter);
+                    string body = request.Content.ReadAsStringAsync().Result;
+                    MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
+                    if (contentType != null && contentType.MediaType == "application/json")
+                    {
+                        // if the content - type of the request is json, deserialize into an object
+                        input = JsonConvert.DeserializeObject<Dictionary<string, object>>(body, _dictionaryJsonConverter);
+                    }
+                    else
+                    {
+                        input = body;
+                    }
+                    inputDictionary["body"] = input;
                 }
-                else
-                {
-                    input = body;
-                }
-                inputDictionary["body"] = input;
 
                 input = inputDictionary;
             }

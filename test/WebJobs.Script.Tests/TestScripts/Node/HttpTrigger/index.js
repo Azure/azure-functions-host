@@ -1,8 +1,6 @@
 ﻿module.exports = function (context) {
-    context.log('Node.js HTTP trigger function processed request ' + context.req.body);
-
     var res = {
-        status: 200,
+        type: typeof context.req.body,
         body: context.req.body
     };
 
