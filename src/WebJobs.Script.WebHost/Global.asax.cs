@@ -19,17 +19,9 @@ namespace WebJobs.Script.WebHost
         void Application_End(object sender, EventArgs e)
         {
             WebScriptHostManager webScriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));
-            if (webScriptHostManager != null && 
-                webScriptHostManager.Instance != null)
+            if (webScriptHostManager != null)
             {
-                try
-                {
-                    webScriptHostManager.Instance.Stop();
-                }
-                catch
-                {
-                    // best effort
-                }
+                webScriptHostManager.Stop();
             }
         }
     }

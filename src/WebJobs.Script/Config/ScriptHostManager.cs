@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
         private Action<FileSystemEventArgs> _restart;
+        private bool _stopped;
 
         public ScriptHostManager(ScriptHostConfiguration config)
         {
@@ -55,6 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script
             _restart = _restart.Debounce(500);
         }
 
+        /// <summary>
+        /// Returns true if the <see cref="ScriptHost"/> is up and running and ready to
+        /// process requests.
+        /// </summary>
+        public bool IsRunning { get; private set; }
+
         public ScriptHost Instance
         {
             get
@@ -69,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // host level configuration files change
             do
             {
+                IsRunning = false;
                 _traceWriter.Verbose("Starting Host...");
 
                 _config.HostConfig = new JobHostConfiguration();
@@ -81,6 +89,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 _instance = newInstance;
                 OnHostStarted();
 
+                // only after ALL initialization is complete do we set this flag
+                IsRunning = true;
+
                 // Wait for a restart signal. This event will automatically reset.
                 // While we're restarting, it is possible for another restart to be
                 // signaled. That is fine - the restart will be processed immediately
@@ -90,8 +101,27 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // stop the host fully
                 _instance.Stop();
+                _instance.Dispose();
             }
-            while (true);
+            while (!_stopped);
+        }
+
+        public void Stop()
+        {
+            _stopped = true;
+
+            try
+            {
+                if (_instance != null)
+                {
+                    _instance.Stop();
+                    _instance.Dispose();
+                }
+            }
+            catch
+            {
+                // best effort
+            }  
         }
 
         protected virtual void OnHostStarted()

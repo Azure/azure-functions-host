@@ -3,6 +3,7 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using WebJobs.Script.WebHost.App_Start;
 using WebJobs.Script.WebHost.Controllers;
+using WebJobs.Script.WebHost.Handlers;
 
 namespace WebJobs.Script.WebHost
 {
@@ -15,6 +16,8 @@ namespace WebJobs.Script.WebHost
             AutofacBootstrap.Initialize(builder);
             var container = builder.Build();
             GlobalConfiguration.Configuration.DependencyResolver = new AutofacWebApiDependencyResolver(container);
+
+            config.MessageHandlers.Add(new EnsureHostRunningHandler()); 
 
             // Web API configuration and services
 

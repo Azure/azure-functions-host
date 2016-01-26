@@ -1,0 +1,43 @@
+﻿using System;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
+
+namespace WebJobs.Script.WebHost.Handlers
+{
+    public class EnsureHostRunningHandler : DelegatingHandler
+    {
+        private WebScriptHostManager _scriptHostManager;
+        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 10);
+        private readonly int _hostRunningPollIntervalMs = 500;
+
+        public EnsureHostRunningHandler()
+        {
+            _scriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            // If the host is not running, we'll wait a bit for it to fully
+            // initialize. This might happen if http requests come in while the
+            // host is starting up for the first time, or if it is restarting.
+            TimeSpan timeWaited = TimeSpan.Zero;
+            while (!_scriptHostManager.IsRunning && (timeWaited < _hostTimeout))
+            {
+                await Task.Delay(_hostRunningPollIntervalMs);
+                timeWaited += TimeSpan.FromMilliseconds(_hostRunningPollIntervalMs);
+            }
+
+            // if the host is not running after or wait time has expired
+            // return a 503
+            if (!_scriptHostManager.IsRunning)
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+
+            return await base.SendAsync(request, cancellationToken);
+        }
+    }
+}
