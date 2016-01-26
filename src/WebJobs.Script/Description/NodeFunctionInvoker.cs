@@ -8,6 +8,7 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly FileSystemWatcher _fileWatcher;
         private readonly string _functionName;
         private readonly ScriptHost _host;
+        private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
 
         static NodeFunctionInvoker()
         {
@@ -244,20 +246,31 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // convert string into Dictionary (recursively) which Edge will convert into an object
                 // before invoking the function
-                input = JsonConvert.DeserializeObject<Dictionary<string, object>>(
-                    (string)input, new DictionaryJsonConverter());
+                input = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)input, _dictionaryJsonConverter);
             }
             else if (triggerParameterType == typeof(HttpRequestMessage))
             {
                 HttpRequestMessage request = (HttpRequestMessage)input;
 
                 // convert the request to a json object
-                // TODO: need to provide access to cookies as well
+                // TODO: need to provide access to remaining request properties
                 Dictionary<string, object> inputDictionary = new Dictionary<string, object>();
                 inputDictionary["originalUrl"] = request.RequestUri.ToString();
                 inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
-                inputDictionary["body"] = request.Content.ReadAsStringAsync().Result;
                 inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
+                // if the content-type of the request is json, deserialize into an
+                // object 
+                string body = request.Content.ReadAsStringAsync().Result;
+                if (request.Content.Headers.ContentType.MediaType == "application/json")
+                {
+                    input = JsonConvert.DeserializeObject<Dictionary<string, object>>(body, _dictionaryJsonConverter);
+                }
+                else
+                {
+                    input = body;
+                }
+                inputDictionary["body"] = input;
 
                 input = inputDictionary;
             }
