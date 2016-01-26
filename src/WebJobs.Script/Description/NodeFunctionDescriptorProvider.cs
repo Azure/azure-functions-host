@@ -87,6 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     triggerParameter = ParseHttpTrigger(trigger, methodAttributes, typeof(HttpRequestMessage));
                     break;
+                case "manualTrigger":
+                    triggerParameter = ParseManualTrigger(trigger, methodAttributes);
+                    break;
             }
 
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();

@@ -101,6 +101,25 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public void GenerateManualTriggerFunction()
+        {
+            JObject trigger = new JObject
+            {
+                { "type", "manualTrigger" }
+            };
+            MethodInfo method = GenerateMethod(trigger);
+
+            VerifyCommonProperties(method);
+
+            // verify trigger parameter
+            ParameterInfo parameter = method.GetParameters()[0];
+            Assert.Equal("input", parameter.Name);
+            Assert.Equal(typeof(string), parameter.ParameterType);
+            NoAutomaticTriggerAttribute attribute = method.GetCustomAttribute<NoAutomaticTriggerAttribute>();
+            Assert.NotNull(attribute);
+        }
+
+        [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
             JObject trigger = new JObject

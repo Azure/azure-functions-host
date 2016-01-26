@@ -10,8 +10,7 @@ using WebJobs.Script.WebHost.WebHooks;
 namespace WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
-    /// Controller responsible for handling all http function invocations
-    /// on route /api
+    /// Controller responsible for handling all http function invocations.
     /// </summary>
     public class FunctionsController : ApiController
     {
@@ -28,7 +27,7 @@ namespace WebJobs.Script.WebHost.Controllers
         {
             HttpRequestMessage request = controllerContext.Request;
 
-            // First see if the request maps to a function
+            // First see if the request maps to an HTTP function
             HttpFunctionInfo function = _scriptHostManager.GetHttpFunctionOrNull(request.RequestUri);
             if (function == null)
             {

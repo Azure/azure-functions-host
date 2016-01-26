@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Web.Hosting;
 using Autofac;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.WebHost.WebHooks;
@@ -51,6 +52,10 @@ namespace WebJobs.Script.WebHost.App_Start
 
             WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager, traceWriter);
             builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
+
+            string storageConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            FunctionInvocationManager functionInvocationManager = new FunctionInvocationManager(scriptHostManager, storageConnectionString, traceWriter);
+            builder.RegisterInstance<FunctionInvocationManager>(functionInvocationManager);
 
             Task.Run(() => scriptHostManager.RunAndBlock(CancellationToken.None));
         }

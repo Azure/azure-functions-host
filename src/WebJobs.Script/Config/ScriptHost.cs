@@ -32,14 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Collection<FunctionDescriptor> Functions { get; private set; }
 
-        public async Task CallAsync(string method, object arguments, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
             // TODO: Don't hardcode Functions Type name
             // TODO: Validate inputs
             // TODO: Cache this lookup result
             string typeName = "Functions";
+            method = method.ToLowerInvariant();
             Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == typeName);
-            MethodInfo methodInfo = type.GetMethod(method);
+            MethodInfo methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
 
             await CallAsync(methodInfo, arguments, cancellationToken);
         }

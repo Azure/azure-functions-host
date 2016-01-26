@@ -226,7 +226,9 @@
   <ItemGroup>
     <Compile Include="App_Start\AutofacBootstrap.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
+    <Compile Include="FunctionInvocationManager.cs" />
     <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>

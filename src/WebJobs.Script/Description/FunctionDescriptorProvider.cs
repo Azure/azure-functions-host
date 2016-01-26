@@ -181,5 +181,20 @@ namespace Microsoft.Azure.WebJobs.Script
             string parameterName = (string)trigger["name"];
             return new ParameterDescriptor(parameterName, triggerParameterType);
         }
+
+        protected ParameterDescriptor ParseManualTrigger(JObject trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
+        {
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
+            methodAttributes.Add(attributeBuilder);
+
+            string parameterName = (string)trigger["name"];
+            return new ParameterDescriptor(parameterName, triggerParameterType);
+        }
     }
 }

@@ -2,11 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.Tests
@@ -15,6 +15,17 @@ namespace WebJobs.Script.Tests
     {
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
+        }
+
+        [Fact]
+        public async Task ManualTest()
+        {
+            string testData = Guid.NewGuid().ToString();
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", testData }
+            };
+            await Fixture.Host.CallAsync("ManualTrigger", arguments);
         }
 
         [Fact]
@@ -28,7 +39,11 @@ namespace WebJobs.Script.Tests
                 Content = new StringContent(testData)
             };
 
-            await Fixture.Host.CallAsync("HttpTrigger", new { req = request });
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -53,15 +68,7 @@ namespace WebJobs.Script.Tests
             public TestFixture() : base(@"TestScripts\Node")
             {
                 File.Delete("joblog.txt");
-
-                BaseUrl = "http://localhost:46002/";
-                Client = new HttpClient();
-                Client.BaseAddress = new Uri(BaseUrl);
             }
-
-            public HttpClient Client { get; private set; }
-
-            public string BaseUrl { get; private set; }
         }
     }
 }
