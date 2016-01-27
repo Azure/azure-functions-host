@@ -19,7 +19,7 @@ namespace WebJobs.Script.Host
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootPath = rootPath
+                RootScriptPath = rootPath
             };
 
             ScriptHostManager scriptHostManager = new ScriptHostManager(config);

@@ -118,17 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             await ProcessInputBindingsAsync(binder, executionContext, bindingData);
 
-            // invoke the user code
-            object functionResult = null;
-            try
-            {
-                 functionResult = await ScriptFunc(executionContext);
-            }
-            catch (Exception ex)
-            {
-                traceWriter.Error(ex.ToString());
-                throw;
-            }
+            object functionResult = await ScriptFunc(executionContext);
 
             // normalize output binding results
             IDictionary<string, object> functionOutputs = null;
@@ -141,9 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (functionOutputs == null || !functionOutputs.ContainsKey(binding.Name))
                 {
                     functionOutputs = new Dictionary<string, object>()
-                        {
-                            { binding.Name, functionResult }
-                        };
+                    {
+                        { binding.Name, functionResult }
+                    };
                 }
             }
 

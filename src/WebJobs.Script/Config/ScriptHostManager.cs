@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_config.WatchFiles)
             {
-                _fileWatcher = new FileSystemWatcher(_config.RootPath)
+                _fileWatcher = new FileSystemWatcher(_config.RootScriptPath)
                 {
                     IncludeSubdirectories = true,
                     EnableRaisingEvents = true
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptHost newInstance = ScriptHost.Create(_config);
 
                 // take a snapshot so we can detect function additions/removals
-                _directoryCountSnapshot = Directory.EnumerateDirectories(_config.RootPath).Count();
+                _directoryCountSnapshot = Directory.EnumerateDirectories(_config.RootScriptPath).Count();
 
                 newInstance.Start();
                 _instance = newInstance;
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string fileName = Path.GetFileName(e.Name);
 
             if (((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
-                ((Directory.EnumerateDirectories(_config.RootPath).Count() != _directoryCountSnapshot)))
+                ((Directory.EnumerateDirectories(_config.RootScriptPath).Count() != _directoryCountSnapshot)))
             {
                 _restart(e);
             }

@@ -1,12 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
@@ -23,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _host = host;
             _config = config;
-            _rootPath = config.RootPath;
+            _rootPath = config.RootScriptPath;
         }
 
         public override bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor)

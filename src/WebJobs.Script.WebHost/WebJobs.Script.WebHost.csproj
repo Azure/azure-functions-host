@@ -228,20 +228,20 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
-    <Compile Include="FunctionInvocationManager.cs" />
     <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Handlers\EnsureHostRunningHandler.cs" />
     <Compile Include="HttpFunctionInfo.cs" />
+    <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SecretManager.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfig.cs" />
     <Compile Include="WebHooks\WebHookLogger.cs" />
     <Compile Include="WebHooks\WebHookReceiverManager.cs" />
     <Compile Include="WebScriptHostManager.cs" />
-    <Compile Include="WebTraceWriter.cs" />
+    <Compile Include="HostTraceWriter.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />

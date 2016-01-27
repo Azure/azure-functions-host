@@ -5,18 +5,19 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.WebHost
 {
-    public class WebTraceWriter : TraceWriter
+    public class HostTraceWriter : TraceWriter
     {
         private object _syncLock = new object();
-        private readonly string _logFilePath;
+        private readonly string _rootLogPath;
+        private readonly string _hostLogFilePath;
 
-        public WebTraceWriter(string logFilePath) : base (TraceLevel.Verbose)
+        public HostTraceWriter(string logFilePath) : base (TraceLevel.Verbose)
         {
-            _logFilePath = logFilePath;
+            _rootLogPath = logFilePath;
 
             // TODO: figure out the correct path + file name structure
-            Directory.CreateDirectory(_logFilePath);
-            _logFilePath = Path.Combine(_logFilePath, "log.txt");
+            Directory.CreateDirectory(_rootLogPath);
+            _hostLogFilePath = Path.Combine(_rootLogPath, "host.log");
         }
 
         public override void Trace(TraceEvent traceEvent)
@@ -32,7 +33,7 @@ namespace WebJobs.Script.WebHost
             // TODO: fix this locking issue
             lock (_syncLock)
             {
-                File.AppendAllText(_logFilePath, traceLine);
+                File.AppendAllText(_hostLogFilePath, traceLine);
             }
         }
     }

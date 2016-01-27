@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptFunctionDescriptorProvider(ScriptHostConfiguration config)
         {
             _config = config;
-            _rootPath = config.RootPath;
+            _rootPath = config.RootScriptPath;
         }
 
         public override bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor)
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
             string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, inputBindings, outputBindings);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, inputBindings, outputBindings);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 

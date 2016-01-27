@@ -1,11 +1,11 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script;
-using Newtonsoft.Json.Linq;
+using WebJobs.Script.WebHost.Models;
 
 namespace WebJobs.Script.WebHost.Controllers
 {
@@ -16,17 +16,15 @@ namespace WebJobs.Script.WebHost.Controllers
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
-        private readonly FunctionInvocationManager _invocationManager;
 
-        public AdminController(WebScriptHostManager scriptHostManager, FunctionInvocationManager invocationManager)
+        public AdminController(WebScriptHostManager scriptHostManager)
         {
             _scriptHostManager = scriptHostManager;
-            _invocationManager = invocationManager;
         }
 
         [HttpPost]
         [Route("admin/functions/{name}")]
-        public async Task<HttpResponseMessage> RunAsync(string name)
+        public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             // TODO: This entire controller will need to be locked down once the
             // admin auth model is in place
@@ -37,25 +35,15 @@ namespace WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            // Enqueue an invoke message for asynchronous processing
-            // While we could also do a direct invocation here on the host via
-            // JobHost.CallAsync, enqueueing a message allows us to control the
-            // invocation ID (so we can return it for deep linking to Dashboard),
-            // and we also get the benefits of scale out if multiple hosts are running.
-            Guid id = Guid.NewGuid();
-            string input = await this.ControllerContext.Request.Content.ReadAsStringAsync();
+            string input = invocation.Input;
             ParameterDescriptor inputParameter = function.Parameters.First();
-            _invocationManager.Enqueue(id, function.Name, input, inputParameter);
-
-            // return a successfull status code indicating the request is in progress
-            HttpResponseMessage response = new HttpResponseMessage(HttpStatusCode.Accepted);
-            JObject result = new JObject()
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
-                { "id", id }
+                { inputParameter.Name, invocation.Input }
             };
-            response.Content = new StringContent(result.ToString());
+            Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
 
-            return response;
+            return new HttpResponseMessage(HttpStatusCode.Accepted);
         }
     }
 }

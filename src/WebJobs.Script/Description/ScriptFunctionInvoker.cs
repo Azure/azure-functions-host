@@ -22,12 +22,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
+        private readonly ScriptHostConfiguration _config;
         private readonly Collection<Binding> _inputBindings;
         private readonly Collection<Binding> _outputBindings;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
+            _config = config;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -95,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
             
             string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-            string rootOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "output");
+            string rootOutputPath = Path.Combine(_config.RootLogPath, "output");
             string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 
@@ -109,31 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             bindingData["InstanceId"] = instanceId;
 
-            // if there are any input or output bindings declared, set up the temporary
-            // output directory
-            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
-            if (_outputBindings.Count > 0 || nonTriggerInputBindings.Any())
-            {
-                Directory.CreateDirectory(functionInstanceOutputPath);
-            }
-
-            // process input bindings
-            foreach (var inputBinding in nonTriggerInputBindings)
-            {
-                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
-                using (FileStream stream = File.OpenWrite(filePath))
-                {
-                    BindingContext bindingContext = new BindingContext
-                    {
-                        Binder = binder,
-                        BindingData = bindingData,
-                        Value = stream
-                    };
-                    await inputBinding.BindAsync(bindingContext);
-                }
-
-                environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
-            }
+            await ProcessInputBindingsAsync(functionInstanceOutputPath, binder, bindingData, environmentVariables);
 
             // setup the script execution environment
             environmentVariables["InstanceId"] = instanceId;
@@ -160,12 +138,50 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ApplicationException(error);
             }
 
-            // write the results to the Dashboard
             string output = process.StandardOutput.ReadToEnd();
             traceWriter.Verbose(output);
 
-            // process output bindings
-            foreach (var outputBinding in _outputBindings)
+            await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
+        }
+
+        private async Task ProcessInputBindingsAsync(string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
+        {
+            // if there are any input or output bindings declared, set up the temporary
+            // output directory
+            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
+            if (_outputBindings.Count > 0 || nonTriggerInputBindings.Any())
+            {
+                Directory.CreateDirectory(functionInstanceOutputPath);
+            }
+
+            // process input bindings
+            foreach (var inputBinding in nonTriggerInputBindings)
+            {
+                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+                using (FileStream stream = File.OpenWrite(filePath))
+                {
+                    BindingContext bindingContext = new BindingContext
+                    {
+                        Binder = binder,
+                        BindingData = bindingData,
+                        Value = stream
+                    };
+                    await inputBinding.BindAsync(bindingContext);
+                }
+
+                environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+            }
+        }
+
+        private static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<Binding> outputBindings,
+            object input, IBinder binder, Dictionary<string, string> bindingData)
+        {
+            if (outputBindings == null)
+            {
+                return;
+            }
+
+            foreach (var outputBinding in outputBindings)
             {
                 string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
                 if (File.Exists(filePath))
@@ -185,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // clean up the output directory
-            if (_outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
+            if (outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
             {
                 Directory.Delete(functionInstanceOutputPath, recursive: true);
             }

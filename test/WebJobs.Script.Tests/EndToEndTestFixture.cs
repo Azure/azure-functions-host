@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
@@ -21,7 +22,7 @@ namespace WebJobs.Script.Tests
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootPath = rootPath,
+                RootScriptPath = rootPath,
                 TraceWriter = TraceWriter
             };
 

@@ -179,7 +179,7 @@ namespace WebJobs.Script.Tests
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
-                RootPath = rootPath
+                RootScriptPath = rootPath
             };
             ScriptHost host = ScriptHost.Create(scriptConfig);
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
