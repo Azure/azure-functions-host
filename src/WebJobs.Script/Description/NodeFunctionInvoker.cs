@@ -232,42 +232,20 @@ namespace Microsoft.Azure.WebJobs.Script
         private Dictionary<string, object> CreateExecutionContext(object input, TraceWriter traceWriter, IBinder binder)
         {
             Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(string) && IsJson((string)input))
+            if (triggerParameterType == typeof(string))
             {
-                // convert string into Dictionary (recursively) which Edge will convert into an object
-                // before invoking the function
-                input = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)input, _dictionaryJsonConverter);
+                // if the input is json, convert to a json object
+                Dictionary<string, object> jsonObject;
+                if (TryDeserializeJsonObject((string)input, out jsonObject))
+                {
+                    input = jsonObject;
+                }
             }
             else if (triggerParameterType == typeof(HttpRequestMessage))
             {
-                HttpRequestMessage request = (HttpRequestMessage)input;
-
                 // convert the request to a json object
-                // TODO: need to provide access to remaining request properties
-                Dictionary<string, object> inputDictionary = new Dictionary<string, object>();
-                inputDictionary["originalUrl"] = request.RequestUri.ToString();
-                inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
-                inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
-
-                // if the request includes a body, add it to the request object 
-                if (request.Content != null && 
-                    request.Content.Headers.ContentLength > 0)
-                {
-                    string body = request.Content.ReadAsStringAsync().Result;
-                    MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
-                    if (contentType != null && contentType.MediaType == "application/json")
-                    {
-                        // if the content - type of the request is json, deserialize into an object
-                        input = JsonConvert.DeserializeObject<Dictionary<string, object>>(body, _dictionaryJsonConverter);
-                    }
-                    else
-                    {
-                        input = body;
-                    }
-                    inputDictionary["body"] = input;
-                }
-
-                input = inputDictionary;
+                HttpRequestMessage request = (HttpRequestMessage)input;
+                input = CreateRequestObject(request);
             }
 
             // create a TraceWriter wrapper that can be exposed to Node.js
@@ -288,7 +266,56 @@ namespace Microsoft.Azure.WebJobs.Script
             return context;
         }
 
-        public static bool IsJson(string input)
+        private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request)
+        {
+            // TODO: need to provide access to remaining request properties
+            Dictionary<string, object> inputDictionary = new Dictionary<string, object>();
+            inputDictionary["originalUrl"] = request.RequestUri.ToString();
+            inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
+            inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
+            // if the request includes a body, add it to the request object 
+            if (request.Content != null && request.Content.Headers.ContentLength > 0)
+            {
+                string body = request.Content.ReadAsStringAsync().Result;
+                MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
+                Dictionary<string, object> jsonObject;
+                if (contentType != null && contentType.MediaType == "application/json" &&
+                    TryDeserializeJsonObject(body, out jsonObject))
+                {
+                    // if the content - type of the request is json, deserialize into an object
+                    inputDictionary["body"] = jsonObject;
+                }
+                else
+                {
+                    inputDictionary["body"] = body;
+                }
+            }
+
+            return inputDictionary;
+        }
+
+        private bool TryDeserializeJsonObject(string json, out Dictionary<string, object> result)
+        {
+            result = null;
+
+            if (!IsJson(json))
+            {
+                return false;
+            }
+
+            try
+            {
+                result = JsonConvert.DeserializeObject<Dictionary<string, object>>(json, _dictionaryJsonConverter);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsJson(string input)
         {
             input = input.Trim();
             return (input.StartsWith("{") && input.EndsWith("}"))
