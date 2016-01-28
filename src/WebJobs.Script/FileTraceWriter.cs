@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -9,13 +10,28 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private object _syncLock = new object();
         private readonly string _logFilePath;
-        private readonly string _logFileName;
+        private const long _maxLogFileSizeBytes = 5 * 1024 * 1024;
+        private FileInfo _currentLogFileInfo;
 
         public FileTraceWriter(string logFilePath, TraceLevel level): base (level)
         {
             _logFilePath = logFilePath;
-            Directory.CreateDirectory(logFilePath);
-            _logFileName = Path.Combine(_logFilePath, string.Format("{0}.log", Guid.NewGuid()));
+
+            DirectoryInfo directory = new DirectoryInfo(logFilePath);
+            if (!directory.Exists)
+            {
+                Directory.CreateDirectory(logFilePath);
+            }
+            else
+            {
+                // get the last log file written to (or null)
+                _currentLogFileInfo = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+            }
+
+            if (_currentLogFileInfo == null)
+            {
+                SetNewLogFile();
+            }
         }
 
         public override void Trace(TraceEvent traceEvent)
@@ -47,15 +63,27 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void AppendLine(string line)
         {
-            // TODO: Once the log file exceeds a certain size, we want to create a new one
-
             line = string.Format("{0} {1}\r\n", DateTime.Now.ToString("s"), line.Trim());
 
             // TODO: fix this locking issue
             lock (_syncLock)
             {
-                File.AppendAllText(_logFileName, line);
+                File.AppendAllText(_currentLogFileInfo.FullName, line);
             }
+
+            // TODO: Need to optimize this, so we only do the check every
+            // so often
+            _currentLogFileInfo.Refresh();
+            if (_currentLogFileInfo.Length > _maxLogFileSizeBytes)
+            {
+                SetNewLogFile();
+            }
+        }
+
+        private void SetNewLogFile()
+        {
+            string filePath = Path.Combine(_logFilePath, string.Format("{0}.log", Guid.NewGuid()));
+            _currentLogFileInfo = new FileInfo(filePath);
         }
     }
 }
