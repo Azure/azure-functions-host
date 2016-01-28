@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileTraceWriter(string logFilePath, TraceLevel level): base (level)
         {
             _logFilePath = logFilePath;
+            Directory.CreateDirectory(logFilePath);
             _logFileName = Path.Combine(_logFilePath, string.Format("{0}.log", Guid.NewGuid()));
         }
 
@@ -51,20 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script
             line = string.Format("{0} {1}\r\n", DateTime.Now.ToString("s"), line.Trim());
 
             // TODO: fix this locking issue
-            try
+            lock (_syncLock)
             {
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_logFileName, line);
-                }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(_logFileName));
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_logFileName, line);
-                }
+                File.AppendAllText(_logFileName, line);
             }
         }
     }
