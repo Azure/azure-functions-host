@@ -20,17 +20,79 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string HostAssemblyName = "ScriptHost";
         private readonly TraceWriter _traceWriter;
-
+        private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
+        private Action<FileSystemEventArgs> _restart;
+        private FileSystemWatcher _fileWatcher;
+        private int _directoryCountSnapshot;
+        
         protected ScriptHost(ScriptHostConfiguration scriptConfig) 
             : base(scriptConfig.HostConfig)
         {
             ScriptConfig = scriptConfig;
-            _traceWriter = scriptConfig.TraceWriter;
+
+            if (scriptConfig.FileLoggingEnabled)
+            {
+                string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
+                _traceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose, echoToConsole: true);
+                scriptConfig.HostConfig.Tracing.Tracers.Add(_traceWriter);
+            }
+            else
+            {
+                _traceWriter = NullTraceWriter.Instance;
+            }
+
+            if (scriptConfig.TraceWriter != null)
+            {
+                scriptConfig.HostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
+            }
+            else
+            {
+                scriptConfig.TraceWriter = NullTraceWriter.Instance;
+            }
+
+            if (scriptConfig.FileWatchingEnabled)
+            {
+                _fileWatcher = new FileSystemWatcher(scriptConfig.RootScriptPath)
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true
+                };
+                _fileWatcher.Changed += OnFileChanged;
+                _fileWatcher.Created += OnFileChanged;
+                _fileWatcher.Deleted += OnFileChanged;
+                _fileWatcher.Renamed += OnFileChanged;
+            }
+
+            // If a file change should result in a restart, we debounce the event to
+            // ensure that only a single restart is triggered within a specific time window.
+            // This allows us to deal with a large set of file change events that might
+            // result from a bulk copy/unzip operation. In such cases, we only want to
+            // restart after ALL the operations are complete and there is a quiet period.
+            _restart = (e) =>
+            {
+                _traceWriter.Verbose(string.Format("File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
+                _traceWriter.Verbose("Host configuration has changed. Signaling restart.");
+
+                // signal host restart
+                _restartEvent.Set();
+            };
+            _restart = _restart.Debounce(500);
+
+            // take a snapshot so we can detect function additions/removals
+            _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
         }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
         public Collection<FunctionDescriptor> Functions { get; private set; }
+
+        public AutoResetEvent RestartEvent
+        {
+            get
+            {
+                return _restartEvent;
+            }
+        }
 
         public async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -86,21 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script
             if (scriptConfig == null)
             {
                 scriptConfig = new ScriptHostConfiguration();
-            }
-
-            if (scriptConfig.FileLoggingEnabled)
-            {
-                string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
-                scriptConfig.HostConfig.Tracing.Tracers.Add(new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose));
-            }
-            
-            if (scriptConfig.TraceWriter != null)
-            {
-                scriptConfig.HostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
-            }
-            else
-            {
-                scriptConfig.TraceWriter = NullTraceWriter.Instance;
             }
 
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
@@ -303,6 +350,32 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             hostConfig.UseTimers();
+        }
+
+        private void OnFileChanged(object sender, FileSystemEventArgs e)
+        {
+            string fileName = Path.GetFileName(e.Name);
+
+            if (((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
+                ((Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot)))
+            {
+                // a host level configuration change has been made which requires a
+                // host restart
+                _restart(e);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                if (_fileWatcher != null)
+                {
+                    _fileWatcher.Dispose();
+                }
+            }
         }
     }
 }

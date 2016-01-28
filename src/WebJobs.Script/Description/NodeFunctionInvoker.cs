@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // clear the node module cache
                 ClearRequireCacheFunc(null).Wait();
 
-                Console.WriteLine(string.Format("Script function '{0}' changed. Reloading function.", _functionName));
+                _fileTraceWriter.Verbose(string.Format("Script for function '{0}' changed. Reloading.", _functionName));
             }
         }
 
