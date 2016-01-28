@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;PackageWebHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
@@ -12,11 +12,11 @@
 
   <ItemGroup>
     <!-- The Assembly items below MUST be kept in dependency order. -->
-	<Build Include="src\WebJobs.Script\WebJobs.Script.csproj">
+    <Build Include="src\WebJobs.Script\WebJobs.Script.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
-	<Build Include="src\WebJobs.Script.Host\WebJobs.Script.Host.csproj">
+    <Build Include="src\WebJobs.Script.Host\WebJobs.Script.Host.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
@@ -80,21 +80,30 @@
     <MSBuild Projects="@(Binplace)"
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
-  
+
   <Target Name="PackageScriptHost" DependsOnTargets="Build">
     <PropertyGroup>
-		<ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
-	</PropertyGroup>
-	<ItemGroup>
-		<ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
-		<EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
-	</ItemGroup>
+      <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
+    </PropertyGroup>
+    <ItemGroup>
+      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
+      <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
+    </ItemGroup>
     <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
-	<Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
-	<Zip
-		InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
-		OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"
-		OverwriteExistingFile="true"
+    <Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Zip
+      InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
+      OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"
+      OverwriteExistingFile="true"
+	/>
+  </Target>
+
+  <Target Name="PackageWebHost" DependsOnTargets="Build">
+    <Exec Command='msbuild src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj /p:DeployOnBuild=true /p:PublishProfile=FileSystem' />
+    <Zip
+      InputPath=".\src\WebJobs.Script.WebHost\Publish"
+      OutputFileName="$(PublishPath)\Packages\AzureFunctions.zip"
+      OverwriteExistingFile="true"
 	/>
   </Target>
 
@@ -102,7 +111,7 @@
 
   <Target Name="UnitTest" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
-        <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
+      <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"
@@ -206,7 +215,7 @@
       </Code>
     </Task>
   </UsingTask>
-  
+
   <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
     <ParameterGroup>
       <InputPath ParameterType="System.String" Required="true" />
@@ -217,7 +226,7 @@
       <Reference Include="System.IO.Compression" />
       <Using Namespace="System.IO.Compression" />
       <Code Type="Fragment" Language="cs">
-      <![CDATA[        
+        <![CDATA[        
         const int BufferSize = 64 * 1024;
  
         var buffer = new byte[BufferSize];
@@ -252,5 +261,5 @@
       </Code>
     </Task>
   </UsingTask>
-  
+
 </Project>
