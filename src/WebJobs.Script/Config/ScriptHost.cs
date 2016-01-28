@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (scriptConfig.FileLoggingEnabled)
             {
                 string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
-                _traceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose, echoToConsole: true);
+                _traceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose);
                 scriptConfig.HostConfig.Tracing.Tracers.Add(_traceWriter);
             }
             else
