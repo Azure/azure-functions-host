@@ -10,7 +10,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -25,14 +24,27 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ScriptHostConfiguration _config;
         private readonly Collection<Binding> _inputBindings;
         private readonly Collection<Binding> _outputBindings;
+        private readonly string _functionName;
+        private readonly TraceWriter _fileTraceWriter;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _config = config;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
+            _functionName = functionMetadata.Name;
+
+            if (config.FileLoggingEnabled)
+            {
+                string logFilePath = Path.Combine(_config.RootLogPath, "Function", _functionName);
+                _fileTraceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+            }
+            else
+            {
+                _fileTraceWriter = NullTraceWriter.Instance;
+            }
         }
 
         public static bool IsSupportedScriptType(string extension)
@@ -94,10 +106,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     stdin = input.ToString();
                 }
             }
-            
+
+            _fileTraceWriter.Verbose(string.Format("Function started"));
+
             string instanceId = Guid.NewGuid().ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-            string rootOutputPath = Path.Combine(_config.RootLogPath, "output");
+            string rootOutputPath = Path.Combine(_config.RootLogPath, "Binding");
             string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 
@@ -135,13 +149,17 @@ namespace Microsoft.Azure.WebJobs.Script
             if (process.ExitCode != 0)
             {
                 string error = process.StandardError.ReadToEnd();
+                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw new ApplicationException(error);
             }
 
             string output = process.StandardOutput.ReadToEnd();
+            _fileTraceWriter.Verbose(output);
             traceWriter.Verbose(output);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
+
+            _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
         }
 
         private async Task ProcessInputBindingsAsync(string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)

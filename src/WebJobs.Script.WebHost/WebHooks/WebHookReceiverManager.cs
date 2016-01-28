@@ -9,8 +9,6 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
-using Microsoft.AspNet.WebHooks.Diagnostics;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.WebHost.WebHooks
 {
@@ -23,18 +21,14 @@ namespace WebJobs.Script.WebHost.WebHooks
         internal const string AzureFunctionsCallbackKey = "MS_AzureFunctionsCallback";
 
         private readonly Dictionary<string, IWebHookReceiver> _receiverLookup;
-        private readonly TraceWriter _trace;
         private HttpConfiguration _httpConfiguration;
         private bool disposedValue = false;
 
-        public WebHookReceiverManager(SecretManager secretManager, TraceWriter trace)
+        public WebHookReceiverManager(SecretManager secretManager)
         {
-            _trace = trace;
             _httpConfiguration = new HttpConfiguration();
 
             var builder = new ContainerBuilder();
-            ILogger logger = new WebHookLogger(_trace);
-            builder.RegisterInstance<ILogger>(logger);
             builder.RegisterInstance<IWebHookHandler>(new DelegatingWebHookHandler());
             builder.RegisterInstance<IWebHookReceiverConfig>(new DynamicWebHookReceiverConfig(secretManager));
             var container = builder.Build();

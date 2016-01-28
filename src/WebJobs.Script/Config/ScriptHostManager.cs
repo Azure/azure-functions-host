@@ -24,10 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptHostManager(ScriptHostConfiguration config)
         {
             _config = config;
-            _config.TraceWriter = _config.TraceWriter ?? new NullTraceWriter();
+            _config.TraceWriter = _config.TraceWriter ?? NullTraceWriter.Instance;
             _traceWriter = config.TraceWriter;
 
-            if (_config.WatchFiles)
+            if (_config.FileWatchingEnabled)
             {
                 _fileWatcher = new FileSystemWatcher(_config.RootScriptPath)
                 {

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Web.Hosting;
 using Autofac;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.WebHost.WebHooks;
 
@@ -35,14 +34,11 @@ namespace WebJobs.Script.WebHost.App_Start
                 secretsPath = Path.Combine(home, @"data\Functions\secrets");
             }
 
-            TraceWriter traceWriter = new HostTraceWriter(logFilePath);
-            builder.RegisterInstance<TraceWriter>(traceWriter);
-
             ScriptHostConfiguration scriptHostConfig = new ScriptHostConfiguration()
             {
                 RootScriptPath = scriptRootPath,
                 RootLogPath = logFilePath,
-                TraceWriter = traceWriter
+                FileLoggingEnabled = true
             };
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
@@ -50,7 +46,7 @@ namespace WebJobs.Script.WebHost.App_Start
             SecretManager secretManager = new SecretManager(secretsPath);
             builder.RegisterInstance<SecretManager>(secretManager);
 
-            WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager, traceWriter);
+            WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager);
             builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
 
             Task.Run(() => scriptHostManager.RunAndBlock(CancellationToken.None));

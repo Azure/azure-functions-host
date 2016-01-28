@@ -5,8 +5,18 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class NullTraceWriter : TraceWriter
     {
-        public NullTraceWriter() : base (TraceLevel.Off)
+        private static NullTraceWriter _instance = new NullTraceWriter();
+
+        private NullTraceWriter() : base (TraceLevel.Off)
         {
+        }
+
+        public static NullTraceWriter Instance
+        {
+            get
+            {
+                return _instance;
+            }
         }
 
         public override void Trace(TraceEvent traceEvent)

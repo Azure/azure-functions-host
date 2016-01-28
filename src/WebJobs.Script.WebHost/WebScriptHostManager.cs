@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using Newtonsoft.Json.Linq;
 
@@ -13,11 +12,8 @@ namespace WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
-        private TraceWriter _traceWriter;
-
         public WebScriptHostManager(ScriptHostConfiguration config) : base (config)
         {
-            _traceWriter = config.TraceWriter;
         }
 
         private IDictionary<string, HttpFunctionInfo> HttpFunctions { get; set; }

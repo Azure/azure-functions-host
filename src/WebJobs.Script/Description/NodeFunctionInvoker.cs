@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _functionName;
         private readonly ScriptHost _host;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
+        private readonly TraceWriter _fileTraceWriter;
 
         static NodeFunctionInvoker()
         {
@@ -84,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _outputBindings = outputBindings;
             _functionName = metadata.Name;
 
-            if (host.ScriptConfig.WatchFiles)
+            if (host.ScriptConfig.FileWatchingEnabled)
             {
                 string functionDirectory = Path.GetDirectoryName(scriptFilePath);
                 _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
@@ -96,7 +98,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 _fileWatcher.Created += OnScriptFileChanged;
                 _fileWatcher.Deleted += OnScriptFileChanged;
                 _fileWatcher.Renamed += OnScriptFileChanged;
-            } 
+            }
+
+            if (_host.ScriptConfig.FileLoggingEnabled)
+            {
+                string logFilePath = Path.Combine(_host.ScriptConfig.RootLogPath, "Function", _functionName);
+                _fileTraceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+            }
+            else
+            {
+                _fileTraceWriter = NullTraceWriter.Instance;
+            }
         }
 
         public override async Task Invoke(object[] parameters)
@@ -105,39 +117,52 @@ namespace Microsoft.Azure.WebJobs.Script
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
 
-            var executionContext = CreateExecutionContext(input, traceWriter, binder);
-
-            // if there are any binding parameters in the output bindings,
-            // parse the input as json to get the binding data
-            Dictionary<string, string> bindingData = null;
-            if (_outputBindings.Any(p => p.HasBindingParameters) ||
-                _inputBindings.Any(p => p.HasBindingParameters))
+            try
             {
-                bindingData = GetBindingData(input);
-            }
+                _fileTraceWriter.Verbose(string.Format("Function started"));
 
-            await ProcessInputBindingsAsync(binder, executionContext, bindingData);
+                var executionContext = CreateExecutionContext(input, traceWriter, _fileTraceWriter, binder);
 
-            object functionResult = await ScriptFunc(executionContext);
-
-            // normalize output binding results
-            IDictionary<string, object> functionOutputs = null;
-            if (functionResult != null && _outputBindings.Count == 1)
-            {
-                // if there is only a single output binding allow that binding value
-                // to be specified directly (i.e. normalize output format)
-                var binding = _outputBindings.Single();
-                functionOutputs = functionResult as IDictionary<string, object>;
-                if (functionOutputs == null || !functionOutputs.ContainsKey(binding.Name))
+                // if there are any binding parameters in the output bindings,
+                // parse the input as json to get the binding data
+                Dictionary<string, string> bindingData = null;
+                if (_outputBindings.Any(p => p.HasBindingParameters) ||
+                    _inputBindings.Any(p => p.HasBindingParameters))
                 {
-                    functionOutputs = new Dictionary<string, object>()
-                    {
-                        { binding.Name, functionResult }
-                    };
+                    bindingData = GetBindingData(input);
                 }
-            }
 
-            await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, functionOutputs);
+                await ProcessInputBindingsAsync(binder, executionContext, bindingData);
+
+                object functionResult = await ScriptFunc(executionContext);
+
+                // normalize output binding results
+                IDictionary<string, object> functionOutputs = null;
+                if (functionResult != null && _outputBindings.Count == 1)
+                {
+                    // if there is only a single output binding allow that binding value
+                    // to be specified directly (i.e. normalize output format)
+                    var binding = _outputBindings.Single();
+                    functionOutputs = functionResult as IDictionary<string, object>;
+                    if (functionOutputs == null || !functionOutputs.ContainsKey(binding.Name))
+                    {
+                        functionOutputs = new Dictionary<string, object>()
+                        {
+                            { binding.Name, functionResult }
+                        };
+                    }
+                }
+
+                await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, functionOutputs);
+
+                _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
+            }
+            catch (Exception ex)
+            {
+                _fileTraceWriter.Error(ex.Message, ex);
+                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                throw;
+            }
         }
 
         private async Task ProcessInputBindingsAsync(IBinder binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
@@ -229,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private Dictionary<string, object> CreateExecutionContext(object input, TraceWriter traceWriter, IBinder binder)
+        private Dictionary<string, object> CreateExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder)
         {
             Type triggerParameterType = input.GetType();
             if (triggerParameterType == typeof(string))
@@ -252,6 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var log = (Func<object, Task<object>>)((text) =>
             {
                 traceWriter.Verbose((string)text);
+                fileTraceWriter.Verbose((string)text);
                 return Task.FromResult<object>(null);
             });
 

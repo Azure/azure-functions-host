@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
 
             string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, inputBindings, outputBindings);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, metadata, inputBindings, outputBindings);
 
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 

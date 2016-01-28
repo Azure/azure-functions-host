@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptHostConfiguration()
         {
             HostConfig = new JobHostConfiguration();
-            WatchFiles = true;
+            FileWatchingEnabled = true;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
         }
@@ -43,6 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// automatically react to source/config file changes. When set to false no file
         /// monitoring will be performed.
         /// </summary>
-        public bool WatchFiles { get; set; }
+        public bool FileWatchingEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether logs should be written to disk.
+        /// The default is false. When set to true, logs will be written to the directory
+        /// specified by <see cref="RootLogPath"/>.
+        /// </summary>
+        public bool FileLoggingEnabled { get; set; }
     }
 }

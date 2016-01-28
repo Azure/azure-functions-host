@@ -88,7 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig = new ScriptHostConfiguration();
             }
 
-            scriptConfig.TraceWriter = scriptConfig.TraceWriter ?? new NullTraceWriter();
+            if (scriptConfig.FileLoggingEnabled)
+            {
+                string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
+                scriptConfig.HostConfig.Tracing.Tracers.Add(new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose));
+            }
+            
+            if (scriptConfig.TraceWriter != null)
+            {
+                scriptConfig.HostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
+            }
+            else
+            {
+                scriptConfig.TraceWriter = NullTraceWriter.Instance;
+            }
 
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
@@ -212,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script
             JToken watchFiles = (JToken)config["watchFiles"];
             if (watchFiles != null && watchFiles.Type == JTokenType.Boolean)
             {
-                scriptConfig.WatchFiles = (bool)watchFiles;
+                scriptConfig.FileWatchingEnabled = (bool)watchFiles;
             }
 
             // Apply Queues configuration
@@ -290,11 +303,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             hostConfig.UseTimers();
-
-            if (scriptConfig.TraceWriter != null)
-            {
-                hostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
-            }
         }
     }
 }
