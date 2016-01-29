@@ -99,7 +99,7 @@
   </Target>
 
   <Target Name="PackageWebHost" DependsOnTargets="Build">
-    <Exec Command='msbuild src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj /p:DeployOnBuild=true /p:PublishProfile=FileSystem' />
+    <Exec Command='msbuild "$(SolutionDir)src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" /p:DeployOnBuild=true /p:PublishProfile=FileSystem' />
     <Zip
       InputPath=".\src\WebJobs.Script.WebHost\Publish"
       OutputFileName="$(PublishPath)\Packages\AzureFunctions.zip"
