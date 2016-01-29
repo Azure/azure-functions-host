@@ -99,12 +99,13 @@
   </Target>
 
   <Target Name="PackageWebHost" DependsOnTargets="Build">
-    <Exec Command='msbuild "$(SolutionDir)src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" /p:DeployOnBuild=true /p:PublishProfile=FileSystem' />
+    <MSBuild Projects="src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
+             Properties="DeployOnBuild=true; PublishProfile=FileSystem">
+    </MSBuild>
     <Zip
       InputPath=".\src\WebJobs.Script.WebHost\Publish"
       OutputFileName="$(PublishPath)\Packages\AzureFunctions.zip"
-      OverwriteExistingFile="true"
-	/>
+      OverwriteExistingFile="true"/>
   </Target>
 
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
