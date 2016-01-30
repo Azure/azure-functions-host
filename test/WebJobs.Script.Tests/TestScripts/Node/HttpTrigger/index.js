@@ -1,9 +1,9 @@
-﻿module.exports = function (context) {
+﻿module.exports = function (req, context) {
     context.log('Node.js HttpTrigger function invoked.');
 
     var res = {
-        type: typeof context.req.body,
-        body: context.req.body
+        type: typeof req.body,
+        body: req.body
     };
 
     context.done(null, res);

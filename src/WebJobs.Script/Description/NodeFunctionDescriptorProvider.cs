@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             ParameterDescriptor triggerParameter = null;
+            bool omitInputParameter = false;
             switch (triggerType)
             {
                 case "queueTrigger":
@@ -76,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     triggerParameter = ParseServiceBusTrigger(trigger);
                     break;
                 case "timerTrigger":
+                    omitInputParameter = true;
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
                 case "httpTrigger":
@@ -100,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support the binding programming model
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, metadata, inputBindings, outputBindings);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, omitInputParameter, metadata, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;

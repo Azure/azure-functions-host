@@ -1,5 +1,4 @@
-﻿module.exports = function (context) {
-    var message = context.message;
+﻿module.exports = function (message, context) {
     context.log("Node.js ServiceBus queue trigger function processed message '" + JSON.stringify(message) + "'");
 
     var output = null;

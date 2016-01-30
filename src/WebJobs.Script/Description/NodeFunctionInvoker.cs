@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Collection<Binding> _inputBindings;
         private readonly Collection<Binding> _outputBindings;
         private readonly string _triggerParameterName;
+        private readonly bool _omitInputParameter;
         private readonly string _script;
         private readonly FileSystemWatcher _fileWatcher;
         private readonly string _functionName;
@@ -76,10 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, bool omitInputParameter, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _host = host;
             _triggerParameterName = triggerParameterName;
+            _omitInputParameter = omitInputParameter;
             string scriptFilePath = metadata.Source.Replace('\\', '/');
             _script = string.Format(FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
@@ -285,9 +287,13 @@ namespace Microsoft.Azure.WebJobs.Script
             var context = new Dictionary<string, object>()
             {
                 { "instanceId", instanceId },
-                { _triggerParameterName, input },
                 { "log", log }
             };
+
+            if (!_omitInputParameter)
+            {
+                context["input"] = input;
+            }
 
             return context;
         }

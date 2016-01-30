@@ -1,4 +1,4 @@
-﻿module.exports = function (context) {
+﻿module.exports = function (req, context) {
     context.log('Webhook was triggered!');
-    context.done(null, 'WebHook processed successfully! ' + context.req.body.a);
+    context.done(null, 'WebHook processed successfully! ' + req.body.a);
 }

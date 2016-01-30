@@ -29,6 +29,11 @@ namespace WebJobs.Script.WebHost.Controllers
             // TODO: This entire controller will need to be locked down once the
             // admin auth model is in place
 
+            if (invocation == null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+
             FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
             if (function == null)
             {

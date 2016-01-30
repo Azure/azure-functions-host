@@ -26,8 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Collection<Binding> _outputBindings;
         private readonly string _functionName;
         private readonly TraceWriter _fileTraceWriter;
+        private readonly bool _omitInputParameter;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _config = config;
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _functionName = functionMetadata.Name;
+            _omitInputParameter = omitInputParameter;
 
             if (config.FileLoggingEnabled)
             {
@@ -55,7 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public override async Task Invoke(object[] parameters)
         {
-            object input = parameters[0];
+            object input = null;
+            if (!_omitInputParameter)
+            {
+                input = parameters[0];
+            }
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
 

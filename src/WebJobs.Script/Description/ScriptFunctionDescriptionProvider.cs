@@ -39,10 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             JArray outputs = (JArray)bindings["output"];
             Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
-
-            string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, metadata, inputBindings, outputBindings);
-
             JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
 
             // A function can be disabled at the trigger or function level
@@ -64,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             ParameterDescriptor triggerParameter = null;
+            bool omitInputParameter = false;
             switch (triggerType)
             {
                 case "queueTrigger":
@@ -76,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     triggerParameter = ParseServiceBusTrigger(trigger);
                     break;
                 case "timerTrigger":
+                    omitInputParameter = true;
                     triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
                     break;
                 case "httpTrigger":
@@ -100,6 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support output bindings
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
+            string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, metadata, omitInputParameter, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;

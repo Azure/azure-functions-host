@@ -3,7 +3,6 @@
     "input": [
       {
         "type": "serviceBusTrigger",
-        "name": "message",
         "queueName": "samples-input"
       }
     ],

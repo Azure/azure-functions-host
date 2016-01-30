@@ -3,7 +3,6 @@
     "input": [
       {
         "type": "queueTrigger",
-        "name": "workItem",
         "queueName": "samples-workitems"
       }
     ],
