@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
             string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, metadata, omitInputParameter, inputBindings, outputBindings);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, trigger, metadata, omitInputParameter, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;

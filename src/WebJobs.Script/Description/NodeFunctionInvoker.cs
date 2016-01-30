@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -32,10 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly bool _omitInputParameter;
         private readonly string _script;
         private readonly FileSystemWatcher _fileWatcher;
-        private readonly string _functionName;
         private readonly ScriptHost _host;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly TraceWriter _fileTraceWriter;
+        private readonly FunctionMetadata _functionMetadata;
+        private readonly JObject _trigger;
 
         static NodeFunctionInvoker()
         {
@@ -77,16 +79,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, string triggerParameterName, bool omitInputParameter, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, JObject trigger, bool omitInputParameter, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _host = host;
-            _triggerParameterName = triggerParameterName;
+            _trigger = trigger;
+            _triggerParameterName = (string)trigger["name"];
             _omitInputParameter = omitInputParameter;
             string scriptFilePath = metadata.Source.Replace('\\', '/');
             _script = string.Format(FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _functionName = metadata.Name;
+            _functionMetadata = metadata;
 
             if (host.ScriptConfig.FileWatchingEnabled)
             {
@@ -104,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_host.ScriptConfig.FileLoggingEnabled)
             {
-                string logFilePath = Path.Combine(_host.ScriptConfig.RootLogPath, "Function", _functionName);
+                string logFilePath = Path.Combine(_host.ScriptConfig.RootLogPath, "Function", _functionMetadata.Name);
                 _fileTraceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
             }
             else
@@ -252,29 +255,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 // clear the node module cache
                 ClearRequireCacheFunc(null).Wait();
 
-                _fileTraceWriter.Verbose(string.Format("Script for function '{0}' changed. Reloading.", _functionName));
+                _fileTraceWriter.Verbose(string.Format("Script for function '{0}' changed. Reloading.", _functionMetadata.Name));
             }
         }
 
         private Dictionary<string, object> CreateExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder)
         {
-            Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(string))
-            {
-                // if the input is json, convert to a json object
-                Dictionary<string, object> jsonObject;
-                if (TryDeserializeJsonObject((string)input, out jsonObject))
-                {
-                    input = jsonObject;
-                }
-            }
-            else if (triggerParameterType == typeof(HttpRequestMessage))
-            {
-                // convert the request to a json object
-                HttpRequestMessage request = (HttpRequestMessage)input;
-                input = CreateRequestObject(request);
-            }
-
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)((text) =>
             {
@@ -289,6 +275,37 @@ namespace Microsoft.Azure.WebJobs.Script
                 { "instanceId", instanceId },
                 { "log", log }
             };
+
+            Type triggerParameterType = input.GetType();
+            if (triggerParameterType == typeof(string))
+            {
+                // if the input is json, convert to a json object
+                Dictionary<string, object> jsonObject;
+                if (TryDeserializeJsonObject((string)input, out jsonObject))
+                {
+                    input = jsonObject;
+                }
+            }
+            else if (triggerParameterType == typeof(HttpRequestMessage))
+            {
+                // convert the request to a json object
+                HttpRequestMessage request = (HttpRequestMessage)input;
+                var requestObject = CreateRequestObject(request);
+                input = requestObject;
+
+                // If this is a WebHook function, the input should be the
+                // request body
+                bool isWebHook = 
+                    ((string)_trigger["type"] == "httpTrigger") && 
+                    (_trigger["webHookReceiver"] != null);
+                if (isWebHook)
+                {
+                    input = requestObject["body"];
+
+                    // make the entire request object available as well
+                    context["req"] = requestObject;
+                }
+            }
 
             if (!_omitInputParameter)
             {

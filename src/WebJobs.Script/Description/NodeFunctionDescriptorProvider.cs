@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support the binding programming model
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
-            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, triggerParameterName, omitInputParameter, metadata, inputBindings, outputBindings);
+            NodeFunctionInvoker invoker = new NodeFunctionInvoker(_host, trigger, omitInputParameter, metadata, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;

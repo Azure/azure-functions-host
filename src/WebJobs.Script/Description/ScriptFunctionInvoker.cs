@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -27,8 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _functionName;
         private readonly TraceWriter _fileTraceWriter;
         private readonly bool _omitInputParameter;
+        private readonly JObject _trigger;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, JObject trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _config = config;
@@ -37,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _outputBindings = outputBindings;
             _functionName = functionMetadata.Name;
             _omitInputParameter = omitInputParameter;
+            _trigger = trigger;
 
             if (config.FileLoggingEnabled)
             {
