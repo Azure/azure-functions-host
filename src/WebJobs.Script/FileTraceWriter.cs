@@ -66,9 +66,22 @@ namespace Microsoft.Azure.WebJobs.Script
             line = string.Format("{0} {1}\r\n", DateTime.Now.ToString("s"), line.Trim());
 
             // TODO: fix this locking issue
-            lock (_syncLock)
+            try
             {
-                File.AppendAllText(_currentLogFileInfo.FullName, line);
+                lock (_syncLock)
+                {
+                    File.AppendAllText(_currentLogFileInfo.FullName, line);
+                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // need to handle cases where log file directories might
+                // have been deleted from underneath us
+                Directory.CreateDirectory(_logFilePath);
+                lock (_syncLock)
+                {
+                    File.AppendAllText(_currentLogFileInfo.FullName, line);
+                }
             }
 
             // TODO: Need to optimize this, so we only do the check every
