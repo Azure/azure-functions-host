@@ -60,48 +60,49 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public override async Task Invoke(object[] parameters)
         {
-            object input = null;
-            if (!_omitInputParameter)
-            {
-                input = parameters[0];
-            }
-            TraceWriter traceWriter = (TraceWriter)parameters[1];
-            IBinder binder = (IBinder)parameters[2];
-
             string scriptHostArguments;
             switch (_scriptType)
             {
                 case "ps1":
                     scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
-                    await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, parameters);
                     break;
                 case "cmd":
                 case "bat":
                     scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
-                    await ExecuteScriptAsync("cmd", scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;
                 case "py":
                     scriptHostArguments = string.Format("{0}", _scriptFilePath);
-                    await ExecuteScriptAsync("python.exe", scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync("python.exe", scriptHostArguments, parameters);
                     break;
                 case "php":
                     scriptHostArguments = string.Format("{0}", _scriptFilePath);
-                    await ExecuteScriptAsync("php.exe", scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync("php.exe", scriptHostArguments, parameters);
                     break;
                 case "sh":
                     scriptHostArguments = string.Format("{0}", _scriptFilePath);
                     string bashPath = ResolveBashPath();
-                    await ExecuteScriptAsync(bashPath, scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
                     break;
                 case "fsx":
                     scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
-                    await ExecuteScriptAsync("cmd", scriptHostArguments, traceWriter, binder, input);
+                    await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;
             }
         }
 
-        internal async Task ExecuteScriptAsync(string path, string arguments, TraceWriter traceWriter, IBinder binder, object input = null)
+        internal async Task ExecuteScriptAsync(string path, string arguments, object[] invocationParameters)
         {
+            object input = null;
+            if (!_omitInputParameter)
+            {
+                input = invocationParameters[0];
+            }
+            TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
+            IBinder binder = (IBinder)invocationParameters[2];
+            ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
+
             // perform any required input conversions
             string stdin = null;
             if (input != null)
@@ -118,10 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _fileTraceWriter.Verbose(string.Format("Function started"));
 
-            string instanceId = Guid.NewGuid().ToString();
+            string invocationId = functionExecutionContext.InvocationId.ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
             string rootOutputPath = Path.Combine(_config.RootLogPath, "Binding");
-            string functionInstanceOutputPath = Path.Combine(rootOutputPath, instanceId);
+            string functionInstanceOutputPath = Path.Combine(rootOutputPath, invocationId);
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 
             // if there are any parameters in the bindings,
@@ -132,12 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 bindingData = GetBindingData(stdin);
             }
-            bindingData["InstanceId"] = instanceId;
+            bindingData["InvocationId"] = invocationId;
 
             await ProcessInputBindingsAsync(functionInstanceOutputPath, binder, bindingData, environmentVariables);
 
             // setup the script execution environment
-            environmentVariables["InstanceId"] = instanceId;
+            environmentVariables["InvocationId"] = invocationId;
             foreach (var outputBinding in _outputBindings)
             {
                 environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
@@ -208,29 +209,34 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            foreach (var outputBinding in outputBindings)
+            try
             {
-                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
-                if (File.Exists(filePath))
+                foreach (var outputBinding in outputBindings)
                 {
-                    using (FileStream stream = File.OpenRead(filePath))
+                    string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+                    if (File.Exists(filePath))
                     {
-                        BindingContext bindingContext = new BindingContext
+                        using (FileStream stream = File.OpenRead(filePath))
                         {
-                            Input = input,
-                            Binder = binder,
-                            BindingData = bindingData,
-                            Value = stream
-                        };
-                        await outputBinding.BindAsync(bindingContext);
+                            BindingContext bindingContext = new BindingContext
+                            {
+                                Input = input,
+                                Binder = binder,
+                                BindingData = bindingData,
+                                Value = stream
+                            };
+                            await outputBinding.BindAsync(bindingContext);
+                        }
                     }
                 }
             }
-
-            // clean up the output directory
-            if (outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
+            finally
             {
-                Directory.Delete(functionInstanceOutputPath, recursive: true);
+                // clean up the output directory
+                if (outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
+                {
+                    Directory.Delete(functionInstanceOutputPath, recursive: true);
+                }
             }
         }
 

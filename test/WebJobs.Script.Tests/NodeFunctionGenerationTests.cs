@@ -148,7 +148,7 @@ namespace WebJobs.Script.Tests
         {
             Assert.Equal("Test", method.Name);
             ParameterInfo[] parameters = method.GetParameters();
-            Assert.Equal(3, parameters.Length);
+            Assert.Equal(4, parameters.Length);
             Assert.Equal(typeof(Task), method.ReturnType);
 
             // verify TextWriter parameter
@@ -160,6 +160,11 @@ namespace WebJobs.Script.Tests
             parameter = parameters[2];
             Assert.Equal("binder", parameter.Name);
             Assert.Equal(typeof(IBinder), parameter.ParameterType);
+
+            // verify ExecutionContext parameter
+            parameter = parameters[3];
+            Assert.Equal("context", parameter.Name);
+            Assert.Equal(typeof(ExecutionContext), parameter.ParameterType);
         }
 
         private static MethodInfo GenerateMethod(JObject trigger)

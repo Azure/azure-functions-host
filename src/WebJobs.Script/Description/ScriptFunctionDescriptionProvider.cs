@@ -98,6 +98,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add an IBinder to support output bindings
             parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
 
+            // Add ExecutionContext to provide access to InvocationId, etc.
+            parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
+
             string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
             ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, trigger, metadata, omitInputParameter, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);

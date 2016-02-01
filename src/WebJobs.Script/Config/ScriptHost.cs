@@ -350,6 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             hostConfig.UseTimers();
+            hostConfig.UseCore();
         }
 
         private void OnFileChanged(object sender, FileSystemEventArgs e)

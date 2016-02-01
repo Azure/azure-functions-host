@@ -121,12 +121,13 @@ namespace Microsoft.Azure.WebJobs.Script
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
+            ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
 
             try
             {
                 _fileTraceWriter.Verbose(string.Format("Function started"));
 
-                var executionContext = CreateExecutionContext(input, traceWriter, _fileTraceWriter, binder);
+                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, _fileTraceWriter, binder, functionExecutionContext);
 
                 // if there are any binding parameters in the output bindings,
                 // parse the input as json to get the binding data
@@ -137,9 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     bindingData = GetBindingData(input);
                 }
 
-                await ProcessInputBindingsAsync(binder, executionContext, bindingData);
+                await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
 
-                object functionResult = await ScriptFunc(executionContext);
+                object functionResult = await ScriptFunc(scriptExecutionContext);
 
                 // normalize output binding results
                 IDictionary<string, object> functionOutputs = null;
@@ -259,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private Dictionary<string, object> CreateExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder, ExecutionContext functionExecutionContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)((text) =>
@@ -269,10 +270,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 return Task.FromResult<object>(null);
             });
 
-            string instanceId = Guid.NewGuid().ToString();
             var context = new Dictionary<string, object>()
             {
-                { "instanceId", instanceId },
+                { "invocationId", functionExecutionContext.InvocationId },
                 { "log", log }
             };
 
