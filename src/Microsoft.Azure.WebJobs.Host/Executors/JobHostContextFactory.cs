@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
 
-            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(hostIdProvider, storageAccountProvider, trace);
+            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
 
             if (singletonManager == null)
             {

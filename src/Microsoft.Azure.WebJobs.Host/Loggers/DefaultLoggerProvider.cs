@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     internal class DefaultLoggerProvider : IHostInstanceLoggerProvider, IFunctionInstanceLoggerProvider, IFunctionOutputLoggerProvider
     {
-        private readonly IHostIdProvider _hostIdProvider;
         private readonly IStorageAccountProvider _storageAccountProvider;
 
         private bool _loggersSet;
@@ -22,12 +21,8 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         private IFunctionOutputLogger _functionOutputLogger;
         private TraceWriter _trace;
 
-        public DefaultLoggerProvider(IHostIdProvider hostIdProvider, IStorageAccountProvider storageAccountProvider, TraceWriter trace)
+        public DefaultLoggerProvider(IStorageAccountProvider storageAccountProvider, TraceWriter trace)
         {
-            if (hostIdProvider == null)
-            {
-                throw new ArgumentNullException("hostIdProvider");
-            }
             if (storageAccountProvider == null)
             {
                 throw new ArgumentNullException("storageAccountProvider");
@@ -37,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 throw new ArgumentNullException("trace");
             }
 
-            _hostIdProvider = hostIdProvider;
             _storageAccountProvider = storageAccountProvider;
             _trace = trace;
         }
@@ -78,8 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 IPersistentQueueWriter<PersistentQueueMessage> queueWriter = new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                 PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
                 _hostInstanceLogger = queueLogger;
-                FunctionStatusLogger functionStatusLogger = new FunctionStatusLogger(_hostIdProvider, storageAccount.CreateBlobClient());
-                _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger, traceWriterFunctionLogger, functionStatusLogger);
+                _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger, traceWriterFunctionLogger);
                 _functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
             }
             else
