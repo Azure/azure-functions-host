@@ -107,9 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script
             string stdin = null;
             if (input != null)
             {
-                if (input.GetType() == typeof(HttpRequestMessage))
+                HttpRequestMessage request = input as HttpRequestMessage;
+                if (request != null)
                 {
-                    stdin = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                    if (request.Content != null && request.Content.Headers.ContentLength > 0)
+                    {
+                        stdin = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                    } 
                 }
                 else
                 {
@@ -123,7 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
             string rootOutputPath = Path.Combine(_config.RootLogPath, "Binding");
             string functionInstanceOutputPath = Path.Combine(rootOutputPath, invocationId);
+
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
+            InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
             // if there are any parameters in the bindings,
             // parse the input as json to get the binding data
@@ -136,13 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script
             bindingData["InvocationId"] = invocationId;
 
             await ProcessInputBindingsAsync(functionInstanceOutputPath, binder, bindingData, environmentVariables);
-
-            // setup the script execution environment
-            environmentVariables["InvocationId"] = invocationId;
-            foreach (var outputBinding in _outputBindings)
-            {
-                environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
-            }
 
             // TODO
             // - put a timeout on how long we wait?
@@ -170,6 +169,28 @@ namespace Microsoft.Azure.WebJobs.Script
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
             _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
+        }
+
+        private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<Binding> outputBindings, ExecutionContext context)
+        {
+            environmentVariables["InvocationId"] = context.InvocationId.ToString();
+
+            foreach (var outputBinding in _outputBindings)
+            {
+                environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+            }
+
+            Type triggerParameterType = input.GetType();
+            if (triggerParameterType == typeof(HttpRequestMessage))
+            {
+                HttpRequestMessage request = (HttpRequestMessage)input;
+                Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+                foreach (var queryParam in queryParams)
+                {
+                    string varName = string.Format("REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
+                    environmentVariables[varName] = queryParam.Value;
+                }
+            }
         }
 
         private async Task ProcessInputBindingsAsync(string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)

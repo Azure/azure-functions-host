@@ -1,4 +1,7 @@
 echo OFF
-SET /p req=
-echo Windows Batch script processed request message '%req%'
-echo Hello %req% > %res%
+
+IF DEFINED req_query_name (
+	echo Hello %req_query_name%! > %res%
+) ELSE (
+	echo Please pass a name on the query string > %res%
+)

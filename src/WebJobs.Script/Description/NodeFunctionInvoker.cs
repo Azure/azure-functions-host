@@ -131,12 +131,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // if there are any binding parameters in the output bindings,
                 // parse the input as json to get the binding data
-                Dictionary<string, string> bindingData = null;
+                Dictionary<string, string> bindingData = new Dictionary<string, string>();
                 if (_outputBindings.Any(p => p.HasBindingParameters) ||
                     _inputBindings.Any(p => p.HasBindingParameters))
                 {
                     bindingData = GetBindingData(input);
                 }
+                bindingData["InvocationId"] = functionExecutionContext.InvocationId.ToString();
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
 

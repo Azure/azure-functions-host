@@ -56,5 +56,36 @@ namespace WebJobs.Script.Tests
             string expected = string.Format("WebHook processed successfully! {0}", testObject.ToString(Formatting.None)).Trim();
             Assert.Equal(expected, body.Trim());
         }
+
+        [Fact]
+        public async Task HttpTrigger_Get()
+        {
+            string testData = Guid.NewGuid().ToString();
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?value={0}", testData)),
+                Method = HttpMethod.Get
+            };
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            string expected = string.Format("Value = {0}", testData);
+            Assert.Equal(expected, body.Trim());
+
+            request.RequestUri = new Uri(string.Format("http://localhost/api/httptrigger", testData));
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+            response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("Please pass a value on the query string", body.Trim());
+        }
     }
 }
