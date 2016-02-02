@@ -16,7 +16,7 @@
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs.Core" version="[$WebJobsPackageVersion$]" />
       <dependency id="Newtonsoft.Json" version="6.0.8"/>
-      <dependency id="WindowsAzure.Storage" version="[4.3.0, 5.0.2]"/>
+      <dependency id="WindowsAzure.Storage" version="[4.3.0, 6.2.0]"/>
     </dependencies>
   </metadata>
 </package>
