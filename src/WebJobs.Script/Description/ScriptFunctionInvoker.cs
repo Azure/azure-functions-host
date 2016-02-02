@@ -158,6 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (process.ExitCode != 0)
             {
                 string error = process.StandardError.ReadToEnd();
+                _fileTraceWriter.Error(error);
                 _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw new ApplicationException(error);
             }
