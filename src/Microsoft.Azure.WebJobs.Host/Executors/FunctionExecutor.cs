@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     // We create a new composite trace writer that will also forward
                     // output to the function output log (in addition to console, user TraceWriter, etc.).
-                    TraceWriter traceWriter = new CompositeTraceWriter(_trace, functionOutputTextWriter);
+                    TraceWriter traceWriter = new CompositeTraceWriter(_trace, functionOutputTextWriter, functionTraceLevel);
 
                     // Must bind before logging (bound invoke string is included in log message).
                     FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, functionCancellationTokenSource.Token, traceWriter);

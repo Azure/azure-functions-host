@@ -278,13 +278,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     // wait for logs to flush
                     await Task.Delay(3000);
 
-                    // expect minimal output
+                    // expect no function output
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(4, traces.Length);
-
-                    // Any logs written explicitly to the console by the function
-                    // will be written to console (but not to Dashboard)
-                    Assert.Equal("test message", traces[3].Message.Trim());
+                    Assert.Equal(3, traces.Length);
+                    Assert.False(traces.Any(p => p.Message.Contains("test message")));
                 }
             }
             finally
@@ -317,10 +314,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect normal logs to be written (TraceLevel override is ignored)
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(9, traces.Length);
+                    Assert.Equal(8, traces.Length);
 
                     string output = string.Join("\r\n", traces.Select(p => p.Message));
-                    Assert.True(output.Contains("throw_message"));
                     Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride'"));
                     Assert.True(output.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride"));
                     Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed)"));

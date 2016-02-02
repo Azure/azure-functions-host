@@ -24,6 +24,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
+        public void Trace_FiltersOnOwnLevel()
+        {
+            _traceWriter.Level = TraceLevel.Warning;
+
+            _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Warning && q.Source == "TestSource" && q.Message == "Test Warning" && q.Exception == null)));
+            _mockTextWriter.Setup(p => p.WriteLine("Test Warning"));
+
+            _traceWriter.Info("Test Information", source: "TestSource"); // don't expect this to be logged
+            _traceWriter.Warning("Test Warning", source: "TestSource");
+
+            _mockTextWriter.VerifyAll();
+            _mockTraceWriter.VerifyAll();
+        }
+
+        [Fact]
         public void Trace_DelegatesToInnerTraceWriterAndTextWriter()
         {
             _mockTraceWriter.Setup(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Warning && q.Source == "TestSource" && q.Message == "Test Warning" && q.Exception == null)));
