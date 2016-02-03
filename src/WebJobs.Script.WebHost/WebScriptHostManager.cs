@@ -16,20 +16,20 @@ namespace WebJobs.Script.WebHost
         {
         }
 
-        private IDictionary<string, HttpFunctionInfo> HttpFunctions { get; set; }
+        private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
 
-        public async Task<HttpResponseMessage> HandleRequestAsync(HttpFunctionInfo functionInfo, HttpRequestMessage request, CancellationToken cancellationToken)
+        public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
 
             // Invoke the function
-            ParameterDescriptor triggerParameter = functionInfo.Function.Parameters.First(p => p.IsTrigger);
+            ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
                 { triggerParameter.Name, request }
             };
-            await Instance.CallAsync(functionInfo.Function.Name, arguments, cancellationToken);
+            await Instance.CallAsync(function.Name, arguments, cancellationToken);
 
             // Get the response
             HttpResponseMessage response = null;
@@ -42,9 +42,9 @@ namespace WebJobs.Script.WebHost
             return response;
         }
 
-        public HttpFunctionInfo GetHttpFunctionOrNull(Uri uri)
+        public FunctionDescriptor GetHttpFunctionOrNull(Uri uri)
         {
-            HttpFunctionInfo function = null;
+            FunctionDescriptor function = null;
 
             if (HttpFunctions == null || HttpFunctions.Count == 0)
             {
@@ -72,7 +72,7 @@ namespace WebJobs.Script.WebHost
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
-            HttpFunctions = new Dictionary<string, HttpFunctionInfo>();
+            HttpFunctions = new Dictionary<string, FunctionDescriptor>();
             foreach (var function in Instance.Functions)
             {
                 HttpBindingMetadata httpTriggerBinding = (HttpBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
@@ -85,13 +85,7 @@ namespace WebJobs.Script.WebHost
                     }
                     route += function.Name;
 
-                    HttpFunctionInfo functionInfo = new HttpFunctionInfo
-                    {
-                        Function = function,
-                        WebHookReceiver = httpTriggerBinding.WebHookReceiver
-                    };
-
-                    HttpFunctions.Add(route.ToLowerInvariant(), functionInfo);
+                    HttpFunctions.Add(route.ToLowerInvariant(), function);
                 }
             }
         }

@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
+using Microsoft.Azure.WebJobs.Script.Description;
 using WebJobs.Script.WebHost.WebHooks;
 
 namespace WebJobs.Script.WebHost.Controllers
@@ -28,14 +30,15 @@ namespace WebJobs.Script.WebHost.Controllers
             HttpRequestMessage request = controllerContext.Request;
 
             // First see if the request maps to an HTTP function
-            HttpFunctionInfo function = _scriptHostManager.GetHttpFunctionOrNull(request.RequestUri);
+            FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request.RequestUri);
             if (function == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
             HttpResponseMessage response = null;
-            if (function.IsWebHook)
+            HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookReceiver))
             {
                 // This is a WebHook request so define a delegate for the user function.
                 // The WebHook Receiver pipeline will first validate the request fully

@@ -9,6 +9,7 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace WebJobs.Script.WebHost.WebHooks
 {
@@ -41,12 +42,14 @@ namespace WebJobs.Script.WebHost.WebHooks
             _receiverLookup = receivers.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
         }
 
-        public async Task<HttpResponseMessage> HandleRequestAsync(HttpFunctionInfo functionInfo, HttpRequestMessage request, Func<HttpRequestMessage, Task<HttpResponseMessage>> invokeFunction)
+        public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, Func<HttpRequestMessage, Task<HttpResponseMessage>> invokeFunction)
         {
             // First check if there is a registered WebHook Receiver for this request, and if
             // so use it
+            HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            string webHookReceiver = httpFunctionMetadata.WebHookReceiver;
             IWebHookReceiver receiver = null;
-            if (!functionInfo.IsWebHook || !_receiverLookup.TryGetValue(functionInfo.WebHookReceiver, out receiver))
+            if (!string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
             {
                 // If the function is a not a correctly configured WebHook return 500
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
@@ -66,7 +69,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             // times, so this forces it to buffer
             await request.Content.ReadAsStringAsync();
 
-            string receiverId = functionInfo.Function.Name.ToLowerInvariant();
+            string receiverId = function.Name.ToLowerInvariant();
             return await receiver.ReceiveAsync(receiverId, context, request);
         }
 

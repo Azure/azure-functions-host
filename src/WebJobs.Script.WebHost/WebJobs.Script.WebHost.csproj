@@ -233,7 +233,6 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Handlers\EnsureHostRunningHandler.cs" />
-    <Compile Include="HttpFunctionInfo.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SecretManager.cs" />
