@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class BindingContext
+    public class BindingContext
     {
         public IBinder Binder { get; set; }
 

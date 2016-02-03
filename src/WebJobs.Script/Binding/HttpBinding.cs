@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class HttpBinding : FunctionBinding
+    public class HttpBinding : FunctionBinding
     {
         internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
 

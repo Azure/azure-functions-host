@@ -12,7 +12,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal abstract class FunctionBinding
+    public abstract class FunctionBinding
     {
         private readonly ScriptHostConfiguration _config;
 

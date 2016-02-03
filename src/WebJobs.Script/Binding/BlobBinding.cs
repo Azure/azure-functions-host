@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class BlobBinding : FunctionBinding
+    public class BlobBinding : FunctionBinding
     {
         private readonly BindingTemplate _pathBindingTemplate;
 

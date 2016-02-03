@@ -49,7 +49,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
             string webHookReceiver = httpFunctionMetadata.WebHookReceiver;
             IWebHookReceiver receiver = null;
-            if (!string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
+            if (string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
             {
                 // If the function is a not a correctly configured WebHook return 500
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);

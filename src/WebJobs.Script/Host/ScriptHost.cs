@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                new ScriptFunctionDescriptorProvider(ScriptConfig),
+                new ScriptFunctionDescriptorProvider(this, ScriptConfig),
                 new NodeFunctionDescriptorProvider(this, ScriptConfig)
             };
 

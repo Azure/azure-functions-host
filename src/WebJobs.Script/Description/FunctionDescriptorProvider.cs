@@ -4,16 +4,104 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        public abstract bool TryCreate(FunctionMetadata metadata, out FunctionDescriptor functionDescriptor);
+        public FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
+        {
+            Host = host;
+            Config = config;
+        }
+
+        protected ScriptHost Host { get; private set; }
+
+        protected ScriptHostConfiguration Config { get; private set; }
+
+        public virtual bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
+        {
+            functionDescriptor = null;
+
+            if (functionMetadata.IsDisabled)
+            {
+                return false;
+            }
+
+            // parse the bindings
+            Collection<FunctionBinding> inputBindings = FunctionBinding.GetBindings(Config, functionMetadata.InputBindings, FileAccess.Read);
+            Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
+
+            BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
+            BindingType triggerType = triggerMetadata.Type;
+            string triggerParameterName = triggerMetadata.Name;
+            bool triggerNameSpecified = true;
+            if (string.IsNullOrEmpty(triggerParameterName))
+            {
+                // default the name to simply 'input'
+                triggerMetadata.Name = triggerParameterName = "input";
+                triggerNameSpecified = false;
+            }
+
+            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
+            ParameterDescriptor triggerParameter = null;
+            bool omitInputParameter = false;
+            switch (triggerType)
+            {
+                case BindingType.QueueTrigger:
+                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata);
+                    break;
+                case BindingType.BlobTrigger:
+                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata);
+                    break;
+                case BindingType.ServiceBusTrigger:
+                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata);
+                    break;
+                case BindingType.TimerTrigger:
+                    omitInputParameter = true;
+                    triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, typeof(TimerInfo));
+                    break;
+                case BindingType.HttpTrigger:
+                    if (!triggerNameSpecified)
+                    {
+                        triggerMetadata.Name = triggerParameterName = "req";
+                    }
+                    triggerParameter = ParseHttpTrigger((HttpBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
+                    break;
+                case BindingType.ManualTrigger:
+                    triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes);
+                    break;
+            }
+
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+            triggerParameter.IsTrigger = true;
+            parameters.Add(triggerParameter);
+
+            // Add a TraceWriter for logging
+            parameters.Add(new ParameterDescriptor("log", typeof(TraceWriter)));
+
+            // Add an IBinder to support the binding programming model
+            parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
+
+            // Add ExecutionContext to provide access to InvocationId, etc.
+            parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
+
+            string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.Source);
+            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+            functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+
+            return true;
+        }
+
+        protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
 
         protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType = null)
         {

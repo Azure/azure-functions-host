@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class QueueBinding : FunctionBinding
+    public class QueueBinding : FunctionBinding
     {
         private readonly BindingTemplate _queueNameBindingTemplate;
 

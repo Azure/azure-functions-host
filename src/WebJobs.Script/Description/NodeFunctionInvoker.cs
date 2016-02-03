@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, bool omitInputParameter, FunctionMetadata metadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata metadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             _host = host;
             _trigger = trigger;

@@ -12,7 +12,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class TableBinding : FunctionBinding
+    public class TableBinding : FunctionBinding
     {
         private readonly BindingTemplate _partitionKeyBindingTemplate;
         private readonly BindingTemplate _rowKeyBindingTemplate;
