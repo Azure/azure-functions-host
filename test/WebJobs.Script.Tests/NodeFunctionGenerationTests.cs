@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -22,11 +23,11 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
-            JObject trigger = new JObject
+            TimerBindingMetadata trigger = new TimerBindingMetadata
             {
-                { "type", "timerTrigger" },
-                { "schedule", "* * * * * *" },
-                { "runOnStartup", true }
+                Type = BindingType.TimerTrigger,
+                Schedule = "* * * * * *",
+                RunOnStartup = true
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -44,10 +45,10 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
-            JObject trigger = new JObject
+            QueueBindingMetadata trigger = new QueueBindingMetadata
             {
-                { "type", "queueTrigger" },
-                { "queueName", "test" }
+                Type = BindingType.QueueTrigger,
+                QueueName = "test"
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -64,10 +65,10 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
-            JObject trigger = new JObject
+            BlobBindingMetadata trigger = new BlobBindingMetadata
             {
-                { "type", "blobTrigger" },
-                { "path", "foo/bar" }
+                Type = BindingType.BlobTrigger,
+                Path = "foo/bar"
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -84,9 +85,9 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateHttpTriggerFunction()
         {
-            JObject trigger = new JObject
+            HttpBindingMetadata trigger = new HttpBindingMetadata
             {
-                { "type", "httpTrigger" }
+                Type = BindingType.HttpTrigger
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -103,9 +104,9 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateManualTriggerFunction()
         {
-            JObject trigger = new JObject
+            BindingMetadata trigger = new BindingMetadata
             {
-                { "type", "manualTrigger" }
+                Type = BindingType.ManualTrigger
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -122,12 +123,12 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
-            JObject trigger = new JObject
+            ServiceBusBindingMetadata trigger = new ServiceBusBindingMetadata
             {
-                { "type", "serviceBusTrigger" },
-                { "topicName", "testTopic" },
-                { "subscriptionName", "testSubscription" },
-                { "accessRights", "listen" }
+                Type = BindingType.ServiceBusTrigger,
+                TopicName = "testTopic",
+                SubscriptionName = "testSubscription",
+                AccessRights = AccessRights.Listen
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -167,17 +168,13 @@ namespace WebJobs.Script.Tests
             Assert.Equal(typeof(ExecutionContext), parameter.ParameterType);
         }
 
-        private static MethodInfo GenerateMethod(JObject trigger)
+        private static MethodInfo GenerateMethod(BindingMetadata trigger)
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts");
             FunctionMetadata metadata = new FunctionMetadata();
             metadata.Name = "Test";
             metadata.Source = Path.Combine(rootPath, @"Node\Common\test.js");
-
-            JArray inputs = new JArray(trigger);
-            metadata.Configuration = new JObject();
-            metadata.Configuration["bindings"] = new JObject();
-            metadata.Configuration["bindings"]["input"] = inputs;
+            metadata.InputBindings.Add(trigger);
 
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
             metadatas.Add(metadata);

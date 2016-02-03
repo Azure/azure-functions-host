@@ -11,6 +11,8 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -161,14 +163,110 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
+        private static bool TryParseFunctionMetadata(string functionName, JObject jObject, out FunctionMetadata functionMetadata)
+        {
+            functionMetadata = new FunctionMetadata
+            {
+                Name = functionName
+            };
+
+            JValue triggerDisabledValue = null;
+            JObject bindingsObject = (JObject)jObject["bindings"];
+            if (bindingsObject != null)
+            {
+                // parse input bindings
+                JArray bindingArray = (JArray)bindingsObject["input"];
+                if (bindingArray != null)
+                {
+                    foreach (JObject binding in bindingArray)
+                    {
+                        BindingMetadata bindingMetadata = null;
+                        if (TryParseBindingMetadata(binding, out bindingMetadata))
+                        {
+                            functionMetadata.InputBindings.Add(bindingMetadata);
+                            if (bindingMetadata.IsTrigger)
+                            {
+                                triggerDisabledValue = (JValue)binding["disabled"];
+                            }
+                        }
+                    }
+                }
+
+                // parse output bindings
+                bindingArray = (JArray)bindingsObject["output"];
+                if (bindingArray != null)
+                {
+                    foreach (JObject binding in bindingArray)
+                    {
+                        BindingMetadata bindingMetadata = null;
+                        if (TryParseBindingMetadata(binding, out bindingMetadata))
+                        {
+                            functionMetadata.OutputBindings.Add(bindingMetadata);
+                        }
+                    }
+                }
+            }
+
+            // A function can be disabled at the trigger or function level
+            if (IsDisabled(functionName, triggerDisabledValue) ||
+                IsDisabled(functionName, (JValue)jObject["disabled"]))
+            {
+                functionMetadata.IsDisabled = true;
+            }
+
+            return true;
+        }
+
+        private static bool TryParseBindingMetadata(JObject binding, out BindingMetadata bindingMetadata)
+        {
+            bindingMetadata = null;
+            string bindingTypeValue = (string)binding["type"];
+            BindingType bindingType;
+            if (!string.IsNullOrEmpty(bindingTypeValue) && Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
+            {
+                switch (bindingType)
+                {
+                    case BindingType.QueueTrigger:
+                    case BindingType.Queue:
+                        bindingMetadata = binding.ToObject<QueueBindingMetadata>();
+                        break;
+                    case BindingType.BlobTrigger:
+                    case BindingType.Blob:
+                        bindingMetadata = binding.ToObject<BlobBindingMetadata>();
+                        break;
+                    case BindingType.ServiceBusTrigger:
+                    case BindingType.ServiceBus:
+                        bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
+                        break;
+                    case BindingType.HttpTrigger:
+                    case BindingType.Http:
+                        bindingMetadata = binding.ToObject<HttpBindingMetadata>();
+                        break;
+                    case BindingType.Table:
+                        bindingMetadata = binding.ToObject<TableBindingMetadata>();
+                        break;
+                    case BindingType.ManualTrigger:
+                        bindingMetadata = binding.ToObject<BindingMetadata>();
+                        break;
+                    case BindingType.TimerTrigger:
+                        bindingMetadata = binding.ToObject<TimerBindingMetadata>();
+                        break;
+                };
+
+                bindingMetadata.Type = bindingType;
+
+                return true;
+            }
+
+            return false;
+        }
+
         internal static Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
         {
             string scriptRootPath = config.RootScriptPath;
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
-                FunctionMetadata metadata = new FunctionMetadata();
-
                 // read the function config
                 string functionConfigPath = Path.Combine(scriptDir, "function.json");
                 if (!File.Exists(functionConfigPath))
@@ -176,15 +274,23 @@ namespace Microsoft.Azure.WebJobs.Script
                     // not a function directory
                     continue;
                 }
+
                 string json = File.ReadAllText(functionConfigPath);
-                metadata.Configuration = JObject.Parse(json);
+                JObject jObject = JObject.Parse(json);
+                FunctionMetadata metadata = null;
 
                 // unless the name is explicitly set in the config,
                 // default it to the function folder name
-                string name = (string)metadata.Configuration["name"];
+                string name = (string)jObject["name"];
                 if (string.IsNullOrEmpty(name))
                 {
-                    metadata.Name = Path.GetFileNameWithoutExtension(scriptDir);
+                    name = Path.GetFileNameWithoutExtension(scriptDir);
+                }
+
+                if (!TryParseFunctionMetadata(name, jObject, out metadata))
+                {
+                    // TODO: Handle error
+                    continue;
                 }
 
                 // determine the primary script
@@ -211,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // finally, if there is an explicit primary file indicated
                             // in config, use it
-                            JToken token = metadata.Configuration["source"];
+                            JToken token = jObject["source"];
                             if (token != null)
                             {
                                 string sourceFileName = (string)token;
@@ -364,6 +470,43 @@ namespace Microsoft.Azure.WebJobs.Script
                 // host restart
                 _restart(e);
             }
+        }
+
+        private static bool IsDisabled(string functionName, JValue disabledValue)
+        {
+            if (disabledValue != null && IsDisabled(disabledValue))
+            {
+                // TODO: this needs to be written to the TraceWriter, not
+                // Console
+                Console.WriteLine(string.Format("Function '{0}' is disabled", functionName));
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsDisabled(JToken isDisabledValue)
+        {
+            if (isDisabledValue != null)
+            {
+                if (isDisabledValue.Type == JTokenType.Boolean && (bool)isDisabledValue)
+                {
+                    return true;
+                }
+                else
+                {
+                    string settingName = (string)isDisabledValue;
+                    string value = Environment.GetEnvironmentVariable(settingName);
+                    if (!string.IsNullOrEmpty(value) &&
+                        (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
+                         string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         protected override void Dispose(bool disposing)

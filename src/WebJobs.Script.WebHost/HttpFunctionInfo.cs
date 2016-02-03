@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.WebJobs.Script;
+﻿using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace WebJobs.Script.WebHost
 {

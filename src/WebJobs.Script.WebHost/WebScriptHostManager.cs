@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
-using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace WebJobs.Script.WebHost
 {
@@ -75,23 +75,10 @@ namespace WebJobs.Script.WebHost
             HttpFunctions = new Dictionary<string, HttpFunctionInfo>();
             foreach (var function in Instance.Functions)
             {
-                JObject functionConfig = function.Metadata.Configuration;
-                JObject bindings = (JObject)functionConfig["bindings"];
-                if (bindings == null)
-                {
-                    return;
-                }
-
-                JArray inputs = (JArray)bindings["input"];
-                if (inputs == null)
-                {
-                    return;
-                }
-
-                JObject httpTriggerBinding = (JObject)inputs.FirstOrDefault(p => (string)p["type"] == "httpTrigger");
+                HttpBindingMetadata httpTriggerBinding = (HttpBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
                 if (httpTriggerBinding != null)
                 {
-                    string route = (string)httpTriggerBinding["route"];
+                    string route = httpTriggerBinding.Route;
                     if (!string.IsNullOrEmpty(route))
                     {
                         route += "/";
@@ -100,10 +87,9 @@ namespace WebJobs.Script.WebHost
 
                     HttpFunctionInfo functionInfo = new HttpFunctionInfo
                     {
-                        Function = function
+                        Function = function,
+                        WebHookReceiver = httpTriggerBinding.WebHookReceiver
                     };
-
-                    functionInfo.WebHookReceiver = (string)httpTriggerBinding["webHookReceiver"];
 
                     HttpFunctions.Add(route.ToLowerInvariant(), functionInfo);
                 }

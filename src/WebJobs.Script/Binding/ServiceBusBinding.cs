@@ -6,9 +6,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    internal class ServiceBusBinding : Binding
+    internal class ServiceBusBinding : FunctionBinding
     {
         private readonly BindingTemplate _queueOrTopicNameBindingTemplate;
 

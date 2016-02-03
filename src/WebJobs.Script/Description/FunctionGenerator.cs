@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: Make this type internal - it has to be public currently due to the
     // public GetInvoker helper which we need to remove (IL genned code calls into it)

@@ -10,9 +10,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
     public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
@@ -23,14 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
         private readonly ScriptHostConfiguration _config;
-        private readonly Collection<Binding> _inputBindings;
-        private readonly Collection<Binding> _outputBindings;
+        private readonly Collection<FunctionBinding> _inputBindings;
+        private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _functionName;
         private readonly TraceWriter _fileTraceWriter;
         private readonly bool _omitInputParameter;
-        private readonly JObject _trigger;
+        private readonly BindingMetadata _trigger;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, JObject trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _config = config;
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
         }
 
-        private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<Binding> outputBindings, ExecutionContext context)
+        private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext context)
         {
             environmentVariables["InvocationId"] = context.InvocationId.ToString();
 
@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<Binding> outputBindings,
+        private static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
             object input, IBinder binder, Dictionary<string, string> bindingData)
         {
             if (outputBindings == null)

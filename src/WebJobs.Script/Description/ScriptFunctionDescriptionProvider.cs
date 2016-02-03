@@ -7,9 +7,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class ScriptFunctionDescriptorProvider : FunctionDescriptorProvider
     {
@@ -32,29 +32,23 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            // parse the bindings
-            JObject bindings = (JObject)metadata.Configuration["bindings"];
-            JArray inputs = (JArray)bindings["input"];
-            Collection<Binding> inputBindings = Binding.GetBindings(_config, inputs, FileAccess.Read);
-
-            JArray outputs = (JArray)bindings["output"];
-            Collection<Binding> outputBindings = Binding.GetBindings(_config, outputs, FileAccess.Write);
-            JObject trigger = (JObject)inputs.FirstOrDefault(p => ((string)p["type"]).ToLowerInvariant().EndsWith("trigger"));
-
-            // A function can be disabled at the trigger or function level
-            if (IsDisabled(metadata.Name, trigger) ||
-                IsDisabled(metadata.Name, metadata.Configuration))
+            if (metadata.IsDisabled)
             {
                 return false;
             }
 
-            string triggerType = (string)trigger["type"];
-            string triggerParameterName = (string)trigger["name"];
+            // parse the bindings
+            Collection<FunctionBinding> inputBindings = FunctionBinding.GetBindings(_config, metadata.InputBindings, FileAccess.Read);
+            Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(_config, metadata.OutputBindings, FileAccess.Write);
+
+            BindingMetadata triggerMetadata = metadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
+            BindingType triggerType = triggerMetadata.Type;
+            string triggerParameterName = triggerMetadata.Name;
             bool triggerNameSpecified = true;
             if (string.IsNullOrEmpty(triggerParameterName))
             {
                 // default the name to simply 'input'
-                trigger["name"] = "input";
+                triggerMetadata.Name = "input";
                 triggerNameSpecified = false;
             }
 
@@ -63,28 +57,28 @@ namespace Microsoft.Azure.WebJobs.Script
             bool omitInputParameter = false;
             switch (triggerType)
             {
-                case "queueTrigger":
-                    triggerParameter = ParseQueueTrigger(trigger);
+                case BindingType.QueueTrigger:
+                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata);
                     break;
-                case "blobTrigger":
-                    triggerParameter = ParseBlobTrigger(trigger);
+                case BindingType.BlobTrigger:
+                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata);
                     break;
-                case "serviceBusTrigger":
-                    triggerParameter = ParseServiceBusTrigger(trigger);
+                case BindingType.ServiceBusTrigger:
+                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata);
                     break;
-                case "timerTrigger":
+                case BindingType.TimerTrigger:
                     omitInputParameter = true;
-                    triggerParameter = ParseTimerTrigger(trigger, typeof(TimerInfo));
+                    triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, typeof(TimerInfo));
                     break;
-                case "httpTrigger":
+                case BindingType.HttpTrigger:
                     if (!triggerNameSpecified)
                     {
-                        trigger["name"] = triggerParameterName = "req";
+                        triggerMetadata.Name = triggerParameterName = "req";
                     }
-                    triggerParameter = ParseHttpTrigger(trigger, methodAttributes, typeof(HttpRequestMessage));
+                    triggerParameter = ParseHttpTrigger((HttpBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
                     break;
-                case "manualTrigger":
-                    triggerParameter = ParseManualTrigger(trigger, methodAttributes);
+                case BindingType.ManualTrigger:
+                    triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes);
                     break;
             }
 
@@ -102,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
             parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
 
             string scriptFilePath = Path.Combine(_rootPath, metadata.Source);
-            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, trigger, metadata, omitInputParameter, inputBindings, outputBindings);
+            ScriptFunctionInvoker invoker = new ScriptFunctionInvoker(scriptFilePath, _config, triggerMetadata, metadata, omitInputParameter, inputBindings, outputBindings);
             functionDescriptor = new FunctionDescriptor(metadata.Name, invoker, metadata, parameters, methodAttributes);
 
             return true;

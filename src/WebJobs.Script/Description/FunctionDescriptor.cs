@@ -4,7 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Reflection.Emit;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class FunctionDescriptor
     {

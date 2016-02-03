@@ -15,10 +15,10 @@ using System.Text;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
     public class NodeFunctionInvoker : ScriptFunctionInvokerBase
@@ -27,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private Func<object, Task<object>> _clearRequireCache;
         private static string FunctionTemplate;
         private static string ClearRequireCacheScript;
-        private readonly Collection<Binding> _inputBindings;
-        private readonly Collection<Binding> _outputBindings;
+        private readonly Collection<FunctionBinding> _inputBindings;
+        private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _triggerParameterName;
         private readonly bool _omitInputParameter;
         private readonly string _script;
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly TraceWriter _fileTraceWriter;
         private readonly FunctionMetadata _functionMetadata;
-        private readonly JObject _trigger;
+        private readonly BindingMetadata _trigger;
 
         static NodeFunctionInvoker()
         {
@@ -79,11 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, JObject trigger, bool omitInputParameter, FunctionMetadata metadata, Collection<Binding> inputBindings, Collection<Binding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, bool omitInputParameter, FunctionMetadata metadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             _host = host;
             _trigger = trigger;
-            _triggerParameterName = (string)trigger["name"];
+            _triggerParameterName = trigger.Name;
             _omitInputParameter = omitInputParameter;
             string scriptFilePath = metadata.Source.Replace('\\', '/');
             _script = string.Format(FunctionTemplate, scriptFilePath);
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         private static async Task ProcessOutputBindingsAsync(
-            Collection<Binding> outputBindings, object input, IBinder binder, Dictionary<string, string> bindingData, 
+            Collection<FunctionBinding> outputBindings, object input, IBinder binder, Dictionary<string, string> bindingData, 
             IDictionary<string, object> functionOutputs)
         {
             if (outputBindings == null || functionOutputs == null)
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            foreach (Binding binding in outputBindings)
+            foreach (FunctionBinding binding in outputBindings)
             {
                 // get the output value from the script
                 object value = null;
@@ -296,10 +296,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // If this is a WebHook function, the input should be the
                 // request body
-                bool isWebHook = 
-                    ((string)_trigger["type"] == "httpTrigger") && 
-                    (_trigger["webHookReceiver"] != null);
-                if (isWebHook)
+                HttpBindingMetadata httpBinding = _trigger as HttpBindingMetadata;
+                if (httpBinding != null &&
+                    !string.IsNullOrEmpty(httpBinding.WebHookReceiver))
                 {
                     input = requestObject["body"];
 
