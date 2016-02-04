@@ -1,4 +1,7 @@
-﻿var f = require('{0}');
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+var f = require('{0}');
 
 return function (context, callback) {{
     context.done = callback;
