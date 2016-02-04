@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using System.Diagnostics;
 
 namespace WebJobs.Script.Tests
 {
@@ -143,12 +144,32 @@ namespace WebJobs.Script.Tests
         [Fact]
         public async Task TimerTrigger()
         {
-            // job is running every second, so give it a few seconds to
-            // generate some output
-            await Task.Delay(4000);
+            var stopwatch = Stopwatch.StartNew();
 
-            string[] lines = File.ReadAllLines("joblog.txt");
-            Assert.True(lines.Length > 2);
+            while (true)
+            {
+                // Time will write to this file. 
+                try
+                {
+                    string[] lines = File.ReadAllLines("joblog.txt");
+                    if (lines.Length > 2)
+                    {
+                        return;
+                    }
+                }
+                catch
+                {
+                    // File may be missing if timer hasn't written yet. 
+                }
+
+                if (stopwatch.ElapsedMilliseconds > 6*1000)
+                {
+                    Assert.True(false, "Timeout waiting for timer to fire.");
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+
         }
 
         public class TestFixture : EndToEndTestFixture

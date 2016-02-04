@@ -178,6 +178,7 @@
     <Compile Include="PhpEndToEndTests.cs" />
     <Compile Include="PowershellEndToEndTests.cs" />
     <Compile Include="PythonEndToEndTests.cs" />
+    <Compile Include="ScriptHostManagerTests.cs" />
     <Compile Include="ScriptHostTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />
