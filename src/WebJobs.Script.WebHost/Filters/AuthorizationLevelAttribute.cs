@@ -12,7 +12,7 @@ namespace WebJobs.Script.WebHost.Filters
 {
     public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {
-        public const string MasterKeyHeaderName = "x-functions-key";
+        public const string FunctionsKeyHeaderName = "x-functions-key";
 
         public AuthorizationLevelAttribute(AuthorizationLevel level)
         {
@@ -42,14 +42,14 @@ namespace WebJobs.Script.WebHost.Filters
             return requestLevel >= level;
         }
 
-        private static AuthorizationLevel GetAuthorizationLevel(HttpRequestMessage request, SecretManager secretManager, string functionName = null)
+        internal static AuthorizationLevel GetAuthorizationLevel(HttpRequestMessage request, SecretManager secretManager, string functionName = null)
         {
             // TODO: Add support for validating "EasyAuth" headers
 
-            // first see if a key value is specified via headers or query string
+            // first see if a key value is specified via headers or query string (header takes precidence)
             IEnumerable<string> values;
             string keyValue = null;
-            if (request.Headers.TryGetValues(MasterKeyHeaderName, out values))
+            if (request.Headers.TryGetValues(FunctionsKeyHeaderName, out values))
             {
                 keyValue = values.FirstOrDefault();
             }
