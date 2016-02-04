@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -10,7 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHostManager : IDisposable
     {
         private readonly ScriptHostConfiguration _config;
-        private ScriptHost _instance;
+        private ScriptHost _currentInstance;
+
+        private HashSet<ScriptHost> _liveInstances = new HashSet<ScriptHost>();
+
         private bool _stopped;
 
         public ScriptHostManager(ScriptHostConfiguration config)
@@ -28,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _instance;
+                return _currentInstance;
             }
         }
 
@@ -36,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // Start the host and restart it if requested. Host Restarts will happen when
             // host level configuration files change
-            do
+            do 
             {
                 IsRunning = false;
 
@@ -44,7 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptHost newInstance = ScriptHost.Create(_config);
 
                 newInstance.Start();
-                _instance = newInstance;
+                lock (_liveInstances)
+                {
+                    _liveInstances.Add(newInstance);
+                }                
+                _currentInstance = newInstance;
                 OnHostStarted();
 
                 // only after ALL initialization is complete do we set this flag
@@ -55,13 +65,26 @@ namespace Microsoft.Azure.WebJobs.Script
                 // signaled. That is fine - the restart will be processed immediately
                 // once we get to this line again. The important thing is that these
                 // restarts are only happening on a single thread.
-                _instance.RestartEvent.WaitOne();
+                newInstance.RestartEvent.WaitOne();
 
-                // stop the host fully
-                _instance.Stop();
-                _instance.Dispose();
+                // Orphan the current host instance. We're stopping it, so it won't listen for nay new functions
+                // it will finish any currently executing functions and then clean itself up.
+                // Spin around and create a new host instance.
+                Task tIgnore = Orphan(newInstance);              
             }
             while (!_stopped);
+        }
+
+        // Let the existing host instance finsih currently executing functions.
+        private async Task Orphan(ScriptHost instance)
+        {
+            await instance.StopAsync();
+            instance.Dispose();
+
+            lock (_liveInstances)
+            {
+                _liveInstances.Remove(instance);
+            }
         }
 
         public void Stop()
@@ -70,10 +93,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             try
             {
-                if (_instance != null)
+                ScriptHost[] instances = GetLiveInstancesAndClear();
+
+                Task[] tasksStop = Array.ConvertAll(instances, instance => instance.StopAsync());
+                Task.WaitAll(tasksStop);
+
+                foreach (var instance in instances)
                 {
-                    _instance.Stop();
-                    _instance.Dispose();
+                    instance.Dispose();
                 }
             }
             catch
@@ -82,15 +109,28 @@ namespace Microsoft.Azure.WebJobs.Script
             }  
         }
 
+        private ScriptHost[] GetLiveInstancesAndClear()
+        {
+            ScriptHost[] instances;
+            lock (_liveInstances)
+            {
+                instances = _liveInstances.ToArray();
+                _liveInstances.Clear();
+            }
+
+            return instances;
+        }
+
         protected virtual void OnHostStarted()
         {
         }
 
         public void Dispose()
         {
-            if (_instance != null)
+            ScriptHost[] instances = GetLiveInstancesAndClear();
+            foreach (var instance in instances)
             {
-                _instance.Dispose();
+                instance.Dispose();
             }
         }
     }
