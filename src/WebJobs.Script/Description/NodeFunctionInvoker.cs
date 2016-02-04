@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // request body
                 HttpBindingMetadata httpBinding = _trigger as HttpBindingMetadata;
                 if (httpBinding != null &&
-                    !string.IsNullOrEmpty(httpBinding.WebHookReceiver))
+                    !string.IsNullOrEmpty(httpBinding.WebHookType))
                 {
                     input = requestObject["body"];
 

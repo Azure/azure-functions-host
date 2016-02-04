@@ -228,11 +228,13 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
+    <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
     <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Handlers\EnsureHostRunningHandler.cs" />
+    <Compile Include="HostSecrets.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SecretManager.cs" />
@@ -245,6 +247,8 @@
     <Content Include="applicationHost.xdt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="App_Data\secrets\host.json" />
+    <None Include="App_Data\secrets\HttpTrigger.json" />
     <None Include="App_Data\secrets\WebHook-Generic.json" />
     <None Include="Properties\PublishProfiles\FileSystem.pubxml" />
     <None Include="Web.Debug.config">

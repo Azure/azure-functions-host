@@ -2,6 +2,6 @@
 {
     public class FunctionSecrets
     {
-        public string WebHookReceiverKey { get; set; }
+        public string Key { get; set; }
     }
 }

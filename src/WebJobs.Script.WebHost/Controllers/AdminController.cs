@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using WebJobs.Script.WebHost.Filters;
 using WebJobs.Script.WebHost.Models;
 
 namespace WebJobs.Script.WebHost.Controllers
@@ -14,6 +15,7 @@ namespace WebJobs.Script.WebHost.Controllers
     /// Controller responsible for handling all administrative requests, for
     /// example enqueueing function invocations, etc.
     /// </summary>
+    [AuthorizationLevel(AuthorizationLevel.Admin)]
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
@@ -27,9 +29,6 @@ namespace WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}")]
         public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
-            // TODO: This entire controller will need to be locked down once the
-            // admin auth model is in place
-
             if (invocation == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);

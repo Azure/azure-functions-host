@@ -20,7 +20,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             FunctionSecrets secrets = _secretManager.GetFunctionSecrets(id);
             if (secrets != null)
             {
-                return Task.FromResult(secrets.WebHookReceiverKey);
+                return Task.FromResult(secrets.Key);
             }
 
             return null;

@@ -9,6 +9,12 @@ namespace WebJobs.Script.WebHost
         private readonly string _secretsPath;
         private readonly ConcurrentDictionary<string, FunctionSecrets> _secretsMap = new ConcurrentDictionary<string, FunctionSecrets>();
         private readonly FileSystemWatcher _fileWatcher;
+        private HostSecrets _hostSecrets;
+
+        // for testing
+        public SecretManager()
+        {
+        }
 
         public SecretManager(string secretsPath)
         {
@@ -28,7 +34,27 @@ namespace WebJobs.Script.WebHost
             _fileWatcher.Renamed += OnChanged;
         }
 
-        public FunctionSecrets GetFunctionSecrets(string functionName)
+        public virtual HostSecrets GetHostSecrets()
+        {
+            if (_hostSecrets == null)
+            {
+                string secretFilePath = Path.Combine(_secretsPath, "host.json");
+                if (File.Exists(secretFilePath))
+                {
+                    // load the secrets file
+                    string secretsJson = File.ReadAllText(secretFilePath);
+                    _hostSecrets = JsonConvert.DeserializeObject<HostSecrets>(secretsJson);
+                }
+                else
+                {
+                    // initialize with empty instance
+                    _hostSecrets = new HostSecrets();
+                }
+            }
+            return _hostSecrets;
+        }
+
+        public virtual FunctionSecrets GetFunctionSecrets(string functionName)
         {
             functionName = functionName.ToLowerInvariant();
 
@@ -58,9 +84,16 @@ namespace WebJobs.Script.WebHost
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
             // they are needed
-            string functionName = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
-            FunctionSecrets secrets;
-            _secretsMap.TryRemove(functionName, out secrets);
+            string name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
+            if (name == "host")
+            {
+                _hostSecrets = null;
+            }
+            else
+            {
+                FunctionSecrets secrets;
+                _secretsMap.TryRemove(name, out secrets);
+            }
         }
     }
 }

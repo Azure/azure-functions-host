@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
+using WebJobs.Script.WebHost.Filters;
 using WebJobs.Script.WebHost.WebHooks;
 
 namespace WebJobs.Script.WebHost.Controllers
@@ -36,9 +37,17 @@ namespace WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            HttpResponseMessage response = null;
+            // Authorize the request
+            SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
             HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
-            if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookReceiver))
+            bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
+            if (!isWebHook && !AuthorizationLevelAttribute.IsAuthorized(request, httpFunctionMetadata.AuthLevel, secretManager, functionName: function.Name))
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            HttpResponseMessage response = null;
+            if (isWebHook)
             {
                 // This is a WebHook request so define a delegate for the user function.
                 // The WebHook Receiver pipeline will first validate the request fully

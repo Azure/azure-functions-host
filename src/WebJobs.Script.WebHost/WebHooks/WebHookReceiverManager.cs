@@ -47,7 +47,7 @@ namespace WebJobs.Script.WebHost.WebHooks
             // First check if there is a registered WebHook Receiver for this request, and if
             // so use it
             HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
-            string webHookReceiver = httpFunctionMetadata.WebHookReceiver;
+            string webHookReceiver = httpFunctionMetadata.WebHookType;
             IWebHookReceiver receiver = null;
             if (string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
             {
