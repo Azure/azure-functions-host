@@ -440,7 +440,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             JobHost host = new JobHost(_hostConfig);
 
+            Assert.Null(_hostConfig.HostId);
+
             await host.StartAsync();
+
+            Assert.NotEmpty(_hostConfig.HostId);
+
             await host.CallAsync(typeof(AsyncChainEndToEndTests).GetMethod("WriteStartDataMessageToQueue"));
 
             _functionCompletedEvent.WaitOne();

@@ -95,8 +95,8 @@ namespace Microsoft.Azure.WebJobs
         /// to the dashboard indicating that an instance of the host running.
         /// </para>
         /// <para>
-        /// If this value is <see langword="null"/>, a host ID will automatically be generated based on the assembly
-        /// name of the first function.
+        /// If this value is <see langword="null"/> on startup, a host ID will automatically be generated based on the assembly
+        /// name of the first function, and that host ID will be made available via this property after the host has fully started.
         /// </para>
         /// <para>
         /// If non-homogeneous host instances share the same first function assembly,

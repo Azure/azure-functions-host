@@ -173,10 +173,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IListener listener;
                 HostOutputMessage hostOutputMessage;
 
+                string hostId = await hostIdProvider.GetHostIdAsync(cancellationToken);
+                if (string.Compare(config.HostId, hostId, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    // if this isn't a static host ID, provide the HostId on the config
+                    // so it is accessible
+                    config.HostId = hostId;
+                }
+
                 if (dashboardAccount != null)
                 {
-                    string hostId = await hostIdProvider.GetHostIdAsync(cancellationToken);
-
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);

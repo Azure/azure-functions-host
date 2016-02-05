@@ -79,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 FunctionIndexProvider = functionIndexProvider,
                 StorageAccountProvider = storageAccountProvider,
                 Queues = queueConfiguration,
-                SingletonManager = singletonManager
+                SingletonManager = singletonManager,
+                HostIdProvider = hostIdProvider
             };
 
             config.ContextFactory = contextFactory;
