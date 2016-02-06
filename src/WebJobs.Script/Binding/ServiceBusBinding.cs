@@ -38,8 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundQueueName = Resolve(boundQueueName);
 
+            // TODO: Need to handle Stream conversions properly
+            Stream valueStream = context.Value as Stream;
+
             // only an output binding is supported
-            using (StreamReader reader = new StreamReader(context.Value))
+            using (StreamReader reader = new StreamReader(valueStream))
             {
                 // TODO: only string supported currently - need to support other types
                 IAsyncCollector<string> collector = context.Binder.Bind<IAsyncCollector<string>>(new ServiceBusAttribute(boundQueueName));

@@ -171,6 +171,8 @@
     <Compile Include="Description\BindingMetadata.cs" />
     <Compile Include="Description\BindingType.cs" />
     <Compile Include="Description\BlobBindingMetadata.cs" />
+    <Compile Include="Description\CSharpFunctionDescriptionProvider.cs" />
+    <Compile Include="Description\CSharpFunctionInvoker.cs" />
     <Compile Include="Description\HttpBindingMetadata.cs" />
     <Compile Include="Description\QueueBindingMetadata.cs" />
     <Compile Include="Description\ServiceBusBindingMetadata.cs" />

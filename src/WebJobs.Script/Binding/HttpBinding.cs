@@ -31,44 +31,49 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             HttpRequestMessage request = (HttpRequestMessage)context.Input;
 
-            string content;
-            using (StreamReader streamReader = new StreamReader(context.Value))
-            {
-                content = await streamReader.ReadToEndAsync();
-            }
-
-            HttpResponseMessage response = null;
-            try
-            {
-                // attempt to read the content as a JObject
-                JObject jsonObject = JObject.Parse(content);
-
-                // TODO: This logic needs to be made more robust
-                // E.g. we might decide to use a Regex to determine if
-                // the json is a response body or not
-                if (jsonObject["status"] != null && jsonObject["body"] != null)
-                {
-                    HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
-                    string body = jsonObject.Value<string>("body");
-
-                    response = new HttpResponseMessage(statusCode);
-                    response.Content = new StringContent(body);
-                }
-            }
-            catch (JsonException)
-            {
-                // not a json response
-            }
-
+            HttpResponseMessage response = context.Value as HttpResponseMessage;
             if (response == null)
             {
-                // if unable to parse a json response just send
-                // the raw content
-                response = new HttpResponseMessage
+                // TODO: Need to handle Stream conversions properly
+                Stream valueStream = context.Value as Stream;
+                string content;
+                using (StreamReader streamReader = new StreamReader(valueStream))
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(content)
-                };
+                    content = await streamReader.ReadToEndAsync();
+                }
+
+                try
+                {
+                    // attempt to read the content as a JObject
+                    JObject jsonObject = JObject.Parse(content);
+
+                    // TODO: This logic needs to be made more robust
+                    // E.g. we might decide to use a Regex to determine if
+                    // the json is a response body or not
+                    if (jsonObject["status"] != null && jsonObject["body"] != null)
+                    {
+                        HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                        string body = jsonObject.Value<string>("body");
+
+                        response = new HttpResponseMessage(statusCode);
+                        response.Content = new StringContent(body);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // not a json response
+                }
+
+                if (response == null)
+                {
+                    // if unable to parse a json response just send
+                    // the raw content
+                    response = new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Content = new StringContent(content)
+                    };
+                }
             }
 
             request.Properties[HttpResponsePropertyKey] = response;
