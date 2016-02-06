@@ -130,6 +130,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManualTrigger", "ManualTrig
 		sample\ManualTrigger\index.js = sample\ManualTrigger\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp", "HttpTrigger-CSharp", "{2D715E69-F405-4F36-8B4E-8D6CC6D04D3A}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CSharp\function.json = sample\HttpTrigger-CSharp\function.json
+		sample\HttpTrigger-CSharp\run.cs = sample\HttpTrigger-CSharp\run.cs
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -183,5 +189,6 @@ Global
 		{08F97FA9-3D24-4C3D-AE6B-18C5132549AB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{844FBB84-D62F-49D4-A28B-BB900DA3C32B} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{2D715E69-F405-4F36-8B4E-8D6CC6D04D3A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
