@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 object functionResult = await ScriptFunc(scriptExecutionContext);
 
                 // normalize output binding results
-                IDictionary<string, object> functionOutputs = null;
+                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
                 if (functionResult != null && _outputBindings.Count == 1)
                 {
                     // if there is only a single output binding allow that binding value
