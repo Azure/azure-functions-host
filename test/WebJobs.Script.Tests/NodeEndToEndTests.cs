@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -10,12 +11,13 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using System.Diagnostics;
 
 namespace WebJobs.Script.Tests
 {
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
+        private const string JobLogTestFileName = "joblog.txt";
+
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -144,39 +146,27 @@ namespace WebJobs.Script.Tests
         [Fact]
         public async Task TimerTrigger()
         {
-            var stopwatch = Stopwatch.StartNew();
-
-            while (true)
+            // job is running every second, so give it a few seconds to
+            // generate some output
+            await TestHelpers.Await(() =>
             {
-                // Time will write to this file. 
-                try
+                if (File.Exists(JobLogTestFileName))
                 {
-                    string[] lines = File.ReadAllLines("joblog.txt");
-                    if (lines.Length > 2)
-                    {
-                        return;
-                    }
+                    string[] lines = File.ReadAllLines(JobLogTestFileName);
+                    return lines.Length > 2;
                 }
-                catch
+                else
                 {
-                    // File may be missing if timer hasn't written yet. 
+                    return false;
                 }
-
-                if (stopwatch.ElapsedMilliseconds > 6*1000)
-                {
-                    Assert.True(false, "Timeout waiting for timer to fire.");
-                }
-
-                await Task.Delay(TimeSpan.FromSeconds(1));
-            }
-
+            }, timeout: 10 * 1000);
         }
 
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node")
             {
-                File.Delete("joblog.txt");
+                File.Delete(JobLogTestFileName);
             }
         }
     }

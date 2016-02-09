@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script
             while (!_stopped);
         }
 
-        // Let the existing host instance finsih currently executing functions.
+        // Let the existing host instance finish currently executing functions.
         private async Task Orphan(ScriptHost instance)
         {
             lock (_liveInstances)

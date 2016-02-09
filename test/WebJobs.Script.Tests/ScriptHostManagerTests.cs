@@ -2,18 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using Xunit;
-using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Script;
 using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Xunit;
 
 namespace WebJobs.Script.Tests
 {
@@ -30,7 +24,7 @@ namespace WebJobs.Script.Tests
             CancellationTokenSource cts = new CancellationTokenSource();
 
             var fixture = new NodeEndToEndTests.TestFixture();
-            var blob1 = UpdateOutputName("outputblobname", "first", fixture);
+            var blob1 = UpdateOutputName("testblob", "first", fixture);
 
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;            
@@ -41,13 +35,19 @@ namespace WebJobs.Script.Tests
                 Thread t = new Thread(_ =>
                    {
                        // Wait for initial execution.
-                       Wait(blob1);
+                       TestHelpers.Await(() =>
+                       {
+                           return blob1.Exists();
+                       }, timeout: 10 * 1000).Wait();
 
                        // This changes the bindings so that we now write to blob2
                        var blob2 = UpdateOutputName("first", "second", fixture);
 
-                       // wait for newly executed 
-                       Wait(blob2);
+                       // wait for newly executed
+                       TestHelpers.Await(() =>
+                       {
+                           return blob2.Exists();
+                       }, timeout: 10 * 1000).Wait();
 
                        manager.Stop();
                    });
@@ -56,24 +56,6 @@ namespace WebJobs.Script.Tests
                 manager.RunAndBlock(cts.Token);
 
                 t.Join();
-            }
-        }
-
-        // For a blob to appear. This is evidence that the function ran. 
-        void Wait(CloudBlockBlob blob)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            const int timeoutMs = 10 * 1000; // 
-
-            while (!blob.Exists())
-            {
-                Thread.Sleep(500);
-                if (sw.ElapsedMilliseconds > timeoutMs)
-                {
-                    // If no blob appeared yet, then the function didn't run. 
-                    // It may have not picked up the new changes
-                    Assert.True(false, "Timeout waiting for blob to appear. " + timeoutMs + "ms");
-                }
             }
         }
 
@@ -92,7 +74,6 @@ namespace WebJobs.Script.Tests
             var blob = fixture.TestContainer.GetBlockBlobReference(name);
             blob.DeleteIfExists();
             return blob;
-
         }
     }
 }

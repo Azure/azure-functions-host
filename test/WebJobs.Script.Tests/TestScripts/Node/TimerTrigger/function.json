@@ -10,7 +10,7 @@
       {
         "type": "blob",
         "name": "output",
-        "path": "test-output/outputblobname"
+        "path": "test-output/testblob"
       }
     ]
   }
