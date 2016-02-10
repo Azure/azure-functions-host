@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
@@ -18,6 +19,16 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     throw new ApplicationException("Condition not reached within timeout.");
                 }
             }
+        }
+
+        public static void WaitOne(WaitHandle handle, int timeout = 60 * 1000)
+        {
+            bool ok = handle.WaitOne(timeout);
+            if (!ok)
+            {
+                // timeout. Event not signaled in time. 
+                throw new ApplicationException("Condition not reached within timeout.");
+            }         
         }
 
         public static void SetField(object target, string fieldName, object value)

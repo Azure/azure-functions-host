@@ -99,7 +99,9 @@
     </Compile>
     <Compile Include="AzureSdk\CloudQueueClientExtensions.cs" />
     <Compile Include="ExtensionTypeLocator.cs" />
+    <Compile Include="FakeActivator.cs" />
     <Compile Include="FakeExtensionTypeLocator.cs" />
+    <Compile Include="FakeNameResolver.cs" />
     <Compile Include="InvariantCultureFixture.cs" />
     <Compile Include="NullConsoleProvider.cs" />
     <Compile Include="NullFunctionInstanceLogger.cs" />

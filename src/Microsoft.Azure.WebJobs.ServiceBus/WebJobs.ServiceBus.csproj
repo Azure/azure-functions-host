@@ -65,6 +65,10 @@
       <HintPath>..\..\packages\WindowsAzure.ServiceBus.2.7.6\lib\net40-full\Microsoft.ServiceBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.ServiceBus.Messaging.EventProcessorHost, Version=0.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.ServiceBus.EventProcessorHost.1.4.0\lib\net45-full\Microsoft.ServiceBus.Messaging.EventProcessorHost.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.2.0.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
       <Private>True</Private>
@@ -151,11 +155,39 @@
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
     <Compile Include="Bindings\StringToBrokeredMessageConverter.cs" />
     <Compile Include="Bindings\UserTypeToBrokeredMessageConverter.cs" />
+    <Compile Include="Common\CommonCollectorBinding.cs" />
+    <Compile Include="Common\IConverterManager.cs" />
+    <Compile Include="Common\TriggerArgumentBinding\SimpleTriggerArgumentBinding.cs" />
+    <Compile Include="Common\ITriggerBindingStrategy.cs" />
+    <Compile Include="Common\SyncAsyncCollectorAdapter.cs" />
+    <Compile Include="Common\ConstantValueProvider.cs" />
+    <Compile Include="Common\IFlushCollector.cs" />
+    <Compile Include="Common\ConverterManager.cs" />
+    <Compile Include="Common\OutArgumentBinding\OutArrayValueProvider.cs" />
+    <Compile Include="Common\OutArgumentBinding\OutValueProvider.cs" />
+    <Compile Include="Common\OutArgumentBinding\CommonAsyncCollectorValueProvider.cs" />
+    <Compile Include="Common\CommonTriggerBinding.cs" />
+    <Compile Include="Common\GenericBinder.cs" />
+    <Compile Include="Common\TriggerArgumentBinding\ArraryTriggerArgumentBinding.cs" />
+    <Compile Include="Common\TriggerArgumentBinding\PocoTriggerArgumentBinding.cs" />
+    <Compile Include="Common\TriggerArgumentBinding\StringTriggerArgumentBinding.cs" />
+    <Compile Include="Common\TypedAsyncCollectorAdapter.cs" />
+    <Compile Include="EventHubs\EventHubAttribute.cs" />
+    <Compile Include="EventHubs\EventHubAttributeBindingProvider.cs" />
+    <Compile Include="EventHubs\EventHubTriggerAttribute.cs" />
+    <Compile Include="EventHubs\EventHubTriggerInput.cs" />
+    <Compile Include="EventHubs\EventHubAsyncCollector.cs" />
+    <Compile Include="EventHubs\EventHubConfiguration.cs" />
     <Compile Include="Config\ServiceBusJobHostConfigurationExtensions.cs" />
     <Compile Include="Config\ServiceBusConfiguration.cs" />
     <Compile Include="Config\ServiceBusExtensionConfig.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ContentTypes.cs" />
+    <Compile Include="EventHubs\EventHubJobHostConfigurationExtensions.cs" />
+    <Compile Include="EventHubs\EventHubListener.cs" />
+    <Compile Include="EventHubs\EventHubTriggerAttributeBindingProvider.cs" />
+    <Compile Include="EventHubs\EventHubTriggerInputBindingStrategy.cs" />
+    <Compile Include="EventHubs\IEventHubProvider.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="MessagingProvider.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
