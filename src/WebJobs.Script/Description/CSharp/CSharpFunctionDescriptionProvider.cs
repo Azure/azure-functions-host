@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             functionDescriptor = null;
 
             string extension = Path.GetExtension(functionMetadata.Source).ToLower();
-            if (!(extension == ".cs" || string.IsNullOrEmpty(extension)))
+            if (!(extension == ".cs" || extension == ".csx" || string.IsNullOrEmpty(extension)))
             {
                 return false;
             }
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new CSharpFunctionInvoker(Host, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+            return new CSharpFunctionInvoker(Host, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings, new FunctionEntryPointResolver());
         }
     }
 }
