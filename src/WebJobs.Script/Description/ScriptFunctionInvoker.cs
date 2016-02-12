@@ -64,24 +64,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             switch (_scriptType)
             {
                 case "ps1":
-                    scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File {0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, parameters);
                     break;
                 case "cmd":
                 case "bat":
-                    scriptHostArguments = string.Format("/c {0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("/c \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;
                 case "py":
-                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("python.exe", scriptHostArguments, parameters);
                     break;
                 case "php":
-                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("php.exe", scriptHostArguments, parameters);
                     break;
                 case "sh":
-                    scriptHostArguments = string.Format("{0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     string bashPath = ResolveBashPath();
                     await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
                     break;
