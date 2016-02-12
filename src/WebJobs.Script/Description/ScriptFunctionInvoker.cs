@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
                     break;
                 case "fsx":
-                    scriptHostArguments = string.Format("/c fsi.exe {0}", _scriptFilePath);
+                    scriptHostArguments = string.Format("/c fsi.exe \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;
             }
