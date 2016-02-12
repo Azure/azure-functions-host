@@ -43,14 +43,6 @@
       <HintPath>..\..\packages\Autofac.WebApi2.3.4.0\lib\net45\Autofac.Integration.WebApi.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="FSharp.Core, Version=4.3.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\FSharp.Core.3.1.2.5\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FsPickler, Version=1.2.5.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\FsPickler.1.2.5\lib\net45\FsPickler.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-beta4\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
       <Private>True</Private>
@@ -121,14 +113,6 @@
     </Reference>
     <Reference Include="SendGridMail, Version=6.1.0.0, Culture=neutral, PublicKeyToken=2ae73662c35d80e4, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Sendgrid.6.1.0\lib\SendGridMail.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Suave, Version=0.31.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Suave.0.31.2\lib\net40\Suave.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="SuaveServerWrapper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\SuaveServerWrapper.0.0.2\lib\net45\SuaveServerWrapper.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
