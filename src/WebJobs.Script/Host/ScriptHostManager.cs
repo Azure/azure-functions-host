@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 _config.HostConfig = new JobHostConfiguration();
                 ScriptHost newInstance = ScriptHost.Create(_config);
 
+                // TODO: consider using StartAsync here to speed up
+                // restarts.
                 newInstance.Start();
                 lock (_liveInstances)
                 {
