@@ -235,16 +235,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         bytes = Encoding.UTF8.GetBytes((string)value);
                     }
 
-                    using (MemoryStream ms = new MemoryStream(bytes))
+                    var bindingContext = new BindingContext
                     {
-                        BindingContext bindingContext = new BindingContext
-                        {
-                            Input = input,
-                            Binder = binder,
-                            BindingData = bindingData,
-                            Value = ms
-                        };
+                        Input = input,
+                        Binder = binder,
+                        BindingData = bindingData,
+                        Value = value
+                    };
 
+                    if (bytes != null)
+                    {
+                        using (MemoryStream ms = new MemoryStream(bytes))
+                        {
+                            bindingContext.Value = ms;
+                            await binding.BindAsync(bindingContext);
+                        }
+                    }
+                    else
+                    {
                         await binding.BindAsync(bindingContext);
                     }
                 }

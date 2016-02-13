@@ -1,15 +1,36 @@
-﻿using System;
+﻿#r "System.Web.Http"
+
+using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
 
-public static Task<HttpResponseMessage> HttpTrigger_CSharpScript(HttpRequestMessage req, TraceWriter log)
+public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
-    log.Verbose("CSharp HTTP trigger function processed a request.");
-    
-    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+    var queryParamms = req.GetQueryNameValuePairs()
+        .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+
+    log.Verbose(string.Format("CSharp HTTP trigger function processed a request. Name={0}", req.RequestUri));
+
+    HttpResponseMessage res = null;
+    string name;
+    if (queryParamms.TryGetValue("name", out name))
+    {
+        res = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("Hello " + name)
+        };
+    }
+    else
+    {
+        res = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("Please pass a name on the query string")
+        };
+    }
+
+    return Task.FromResult(res);
 }
-
-
