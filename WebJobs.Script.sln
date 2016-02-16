@@ -148,6 +148,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger-CSharp", "Time
 		sample\TimerTrigger-CSharp\run.csx = sample\TimerTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-CSharp", "BlobTrigger-CSharp", "{15BA01AE-580C-4FBB-A117-F3B112B4BD02}"
+	ProjectSection(SolutionItems) = preProject
+		sample\BlobTrigger-CSharp\function.json = sample\BlobTrigger-CSharp\function.json
+		sample\BlobTrigger-CSharp\run.csx = sample\BlobTrigger-CSharp\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -204,5 +210,6 @@ Global
 		{2D715E69-F405-4F36-8B4E-8D6CC6D04D3A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{4AE9E7EF-C992-4B44-AFBF-3671BD1D6107} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{9B95236B-987B-4928-B2CB-561823B38FA1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

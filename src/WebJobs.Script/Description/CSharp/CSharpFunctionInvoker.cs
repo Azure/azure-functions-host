@@ -8,16 +8,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -34,12 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly BindingMetadata _trigger;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
+        private readonly FileSystemWatcher _fileWatcher;
         private readonly string _triggerParameterName;
         private readonly bool _omitInputParameter;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private MethodInfo _function;
 
-        public CSharpFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata metadata, bool omitInputParameter, 
+        public CSharpFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata metadata, bool omitInputParameter,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionEntryPointResolver functionEntryPointResolver)
         {
             _host = host;
@@ -50,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionMetadata = metadata;
             _functionEntryPointResolver = functionEntryPointResolver;
+            _fileWatcher = InitializeFileWatcher(host);
 
             if (_host.ScriptConfig.FileLoggingEnabled)
             {
@@ -59,6 +57,66 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             else
             {
                 _fileTraceWriter = NullTraceWriter.Instance;
+            }
+        }
+
+        public static string[] DefaultAssemblyReferences
+            => new string[]
+            {
+                "System",
+                "System.Core",
+                "System.Xml",
+                "System.Net.Http",
+                "Microsoft.WindowsAzure.Storage"
+            };
+
+        public static Assembly[] DefaultAssemblies
+            => new Assembly[]
+            {
+                typeof(TraceWriter).Assembly,
+                typeof(object).Assembly,
+                typeof(TimerInfo).Assembly
+            };
+
+        private FileSystemWatcher InitializeFileWatcher(ScriptHost host)
+        {
+            FileSystemWatcher fileWatcher = null;
+            if (host.ScriptConfig.FileWatchingEnabled)
+            {
+                string functionDirectory = Path.GetDirectoryName(_functionMetadata.Source);
+                fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true
+                };
+                fileWatcher.Changed += OnScriptFileChanged;
+                fileWatcher.Created += OnScriptFileChanged;
+                fileWatcher.Deleted += OnScriptFileChanged;
+                fileWatcher.Renamed += OnScriptFileChanged;
+            }
+
+            return fileWatcher;
+        }
+
+        private void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        {
+            // The ScriptHost is already monitoring for changes to function.json, so we skip those
+            string fileName = Path.GetFileName(e.Name);
+            if (string.Compare(fileName, "function.json") != 0)
+            {
+                // Reset cached function
+                _function = null;
+                _fileTraceWriter.Verbose(string.Format("Script for function '{0}' changed. Reloading.", _functionMetadata.Name));
+
+                _fileTraceWriter.Verbose("Compiling function script.");
+                Script<object> script = CreateScript();
+                ImmutableArray<Diagnostic> compilationResult = script.Compile();
+                
+                foreach (var diagnostic in compilationResult)
+                {
+                    var traceEvent = new TraceEvent(GetTraceLevelFromDiagnostic(diagnostic), diagnostic.ToString());
+                    _fileTraceWriter.Trace(traceEvent);
+                }
             }
         }
 
@@ -87,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await ProcessInputBindingsAsync(binder, executionContext, bindingData);
 
-                MethodInfo function = CreateFunction();
+                MethodInfo function = GetFunctionTarget();
 
                 var functionArguments = function.GetParameters();
 
@@ -148,6 +206,44 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw;
             }
+        }
+
+        private MethodInfo GetFunctionTarget()
+        {
+            if (_function == null)
+            {
+                Script<object> script = CreateScript();
+                var compilation = script.GetCompilation();
+                
+                using (var assemblyStream = new MemoryStream())
+                {
+                    var result = compilation.Emit(assemblyStream);
+
+                    if (!result.Success)
+                    {
+                        throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
+                    }
+
+                    Assembly assembly = Assembly.Load(assemblyStream.GetBuffer());
+
+                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName) == 0);
+
+                    _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType?.DeclaredMethods.ToList());
+                }
+            }
+
+            return _function;
+        }
+
+        private Script<object> CreateScript()
+        {
+            string code = GetFunctionSource();
+
+            ScriptOptions options = ScriptOptions.Default
+                .WithReferences(DefaultAssemblyReferences)
+                .AddReferences(DefaultAssemblies);
+
+            return CSharpScript.Create(code, options: options);
         }
 
         private object GetTaskResult(Task task)
@@ -229,67 +325,37 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 object value = null;
                 if (functionOutputs.TryGetValue(binding.Name, out value))
                 {
-                    byte[] bytes = null;
-                    if (value.GetType() == typeof(string))
-                    {
-                        bytes = Encoding.UTF8.GetBytes((string)value);
-                    }
+                    object bindingValue = ConvertBindingValue(value);
+
 
                     var bindingContext = new BindingContext
                     {
                         Input = input,
                         Binder = binder,
                         BindingData = bindingData,
-                        Value = value
+                        Value = bindingValue
                     };
 
-                    if (bytes != null)
+                    await binding.BindAsync(bindingContext);
+
+                    if (bindingValue is MemoryStream)
                     {
-                        using (MemoryStream ms = new MemoryStream(bytes))
-                        {
-                            bindingContext.Value = ms;
-                            await binding.BindAsync(bindingContext);
-                        }
-                    }
-                    else
-                    {
-                        await binding.BindAsync(bindingContext);
+                        ((IDisposable)bindingValue).Dispose();
                     }
                 }
             }
         }
 
-        private MethodInfo CreateFunction()
+        private static object ConvertBindingValue(object value)
         {
-            if (_function == null)
+            if (value is string)
             {
-                string code = GetFunctionSource();
+                byte[] bytes = Encoding.UTF8.GetBytes((string)value);
 
-                ScriptOptions options = ScriptOptions.Default
-                    .WithReferences("System", "System.Xml", "System.Net.Http")
-                    .AddReferences(typeof(TraceWriter).Assembly, typeof(object).Assembly, typeof(TimerInfo).Assembly);
-
-                var script = CSharpScript.Create(code, options: options);
-                var compilation = script.GetCompilation();
-
-                using (var assemblyStream = new MemoryStream())
-                {
-                    var result = compilation.Emit(assemblyStream);
-
-                    if (!result.Success)
-                    {
-                        throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
-                    }
-
-                    Assembly assembly = Assembly.Load(assemblyStream.GetBuffer());
-
-                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName) == 0);
-
-                    _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType?.DeclaredMethods.ToList());
-                }
+                return new MemoryStream(bytes);
             }
 
-            return _function;
+            return value;
         }
 
         private string GetFunctionSource()
@@ -302,35 +368,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return code ?? string.Empty;
-        }
-
-        // TEMP
-        // Example function that would be compiled from script
-        public static Task<HttpResponseMessage> CSharpTest(HttpRequestMessage req, TraceWriter log)
-        {
-            var queryParamms = req.GetQueryNameValuePairs()
-                .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
-
-            log.Verbose(string.Format("CSharp HTTP trigger function processed a request. Name={0}", req.RequestUri));
-
-            HttpResponseMessage res = null;
-            string name;
-            if (queryParamms.TryGetValue("name", out name))
-            {
-                res = new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("Hello " + name)
-                };
-            }
-            else
-            {
-                res = new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = new StringContent("Please pass a name on the query string")
-                };
-            }
-
-            return Task.FromResult(res);
         }
     }
 }
