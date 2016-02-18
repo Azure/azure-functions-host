@@ -5,5 +5,5 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(string id, TraceWriter log)
 {
-    log.Verbose(string.Format("CSharp Queue trigger function processed a request. Name={0}", "tmp"));
+    log.Verbose(string.Format("CSharp Blob trigger function processed a request. Item Id={0}", id));
 }
