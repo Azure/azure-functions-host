@@ -38,14 +38,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
-            if (FileAccess == FileAccess.Write)
+            // TEMP: If the target type is set, use the binder logic to get a value of that type.
+            if (context.TargetType != null)
             {
-                await context.Value.CopyToAsync(blobStream);
+                context.Value = await context.Binder.BindAsync(context.TargetType, new BlobAttribute(boundBlobPath, FileAccess));
             }
             else
             {
-                await blobStream.CopyToAsync(context.Value);
+                // TODO: Need to handle Stream conversions properly
+                Stream valueStream = context.Value as Stream;
+
+                Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
+                if (FileAccess == FileAccess.Write)
+                {
+                    await valueStream.CopyToAsync(blobStream);
+                }
+                else
+                {
+                    await blobStream.CopyToAsync(valueStream);
+                }
             }
         }
     }
