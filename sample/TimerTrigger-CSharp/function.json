@@ -5,6 +5,11 @@
         "type": "timerTrigger",
         "schedule": "0/10 * * * * *",
         "runOnStartup": true
+      },
+      {
+        "type": "blob",
+        "name": "inputMessage",
+        "path": "samples-workitems/run.csx"
       }
     ],
     "output": [

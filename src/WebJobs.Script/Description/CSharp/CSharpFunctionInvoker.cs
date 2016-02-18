@@ -36,6 +36,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private MethodInfo _function;
 
+        private static readonly string[] _defaultAssemblyReferences =
+             {
+                "System",
+                "System.Core",
+                "System.Xml",
+                "System.Net.Http",
+                "Microsoft.WindowsAzure.Storage",
+                typeof(object).Assembly.Location,
+                typeof(TraceWriter).Assembly.Location,
+                typeof(TimerInfo).Assembly.Location
+            };
+
+        private static readonly string[] _defaultNamespaceImports =
+             {
+                "System",
+                "System.Collections.Generic",
+                "System.Linq",
+                "System.Net.Http"
+            };
+
         public CSharpFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata metadata, bool omitInputParameter,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionEntryPointResolver functionEntryPointResolver)
         {
@@ -59,24 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _fileTraceWriter = NullTraceWriter.Instance;
             }
         }
-
-        public static string[] DefaultAssemblyReferences
-            => new string[]
-            {
-                "System",
-                "System.Core",
-                "System.Xml",
-                "System.Net.Http",
-                "Microsoft.WindowsAzure.Storage"
-            };
-
-        public static Assembly[] DefaultAssemblies
-            => new Assembly[]
-            {
-                typeof(TraceWriter).Assembly,
-                typeof(object).Assembly,
-                typeof(TimerInfo).Assembly
-            };
 
         private FileSystemWatcher InitializeFileWatcher(ScriptHost host)
         {
@@ -111,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _fileTraceWriter.Verbose("Compiling function script.");
                 Script<object> script = CreateScript();
                 ImmutableArray<Diagnostic> compilationResult = script.Compile();
-                
+
                 foreach (var diagnostic in compilationResult)
                 {
                     var traceEvent = new TraceEvent(GetTraceLevelFromDiagnostic(diagnostic), diagnostic.ToString());
@@ -129,11 +131,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                _fileTraceWriter.Verbose(string.Format("Function started"));
+                _fileTraceWriter.Verbose("Function started");
 
                 // if there are any binding parameters in the output bindings,
                 // parse the input as json to get the binding data
-                Dictionary<string, string> bindingData = new Dictionary<string, string>();
+                var bindingData = new Dictionary<string, string>();
                 if (_outputBindings.Any(p => p.HasBindingParameters) ||
                     _inputBindings.Any(p => p.HasBindingParameters))
                 {
@@ -141,27 +143,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 bindingData["InvocationId"] = functionExecutionContext.InvocationId.ToString();
 
-                Dictionary<string, object> executionContext = new Dictionary<string, object>();
-
-                await ProcessInputBindingsAsync(binder, executionContext, bindingData);
-
                 MethodInfo function = GetFunctionTarget();
 
-                var functionArguments = function.GetParameters();
-
-                object[] arguments = functionArguments
-                    .Select(p => p.IsOut ? null : parameters.FirstOrDefault(param => p.ParameterType.IsAssignableFrom(param.GetType())))
-                    .ToArray();
+                object[] arguments = await BindArgumentsAsync(binder, function, bindingData, parameters);
 
                 object functionResult = function.Invoke(null, arguments);
 
                 if (functionResult is Task)
                 {
-                    await ((Task)functionResult)
-                        .ContinueWith(t => functionResult = GetTaskResult(t));
+                    functionResult = await ((Task)functionResult)
+                        .ContinueWith(t => GetTaskResult(t));
                 }
 
-                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
+                var functionOutputs = functionResult as IDictionary<string, object>;
 
                 // If we have a single output binding, directly specify its value
                 if (functionResult != null && _outputBindings.Count == 1)
@@ -178,13 +172,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 else if (functionOutputs == null)
                 {
-                    var output = functionArguments.Where(p => p.IsOut).ToList();
+                    var output = function.GetParameters().Where(p => p.IsOut).ToList();
                     functionOutputs = output.ToDictionary(o => o.Name, o => arguments[o.Position]);
                 }
 
                 await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, functionOutputs);
 
-                _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
+                _fileTraceWriter.Verbose("Function completed (Success)");
             }
             catch (CompilationErrorException ex)
             {
@@ -196,14 +190,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     _fileTraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
                 }
 
-                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                _fileTraceWriter.Verbose("Function completed (Failure)");
 
                 throw;
             }
             catch (Exception ex)
             {
                 _fileTraceWriter.Error(ex.Message, ex);
-                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                _fileTraceWriter.Verbose("Function completed (Failure)");
                 throw;
             }
         }
@@ -214,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 Script<object> script = CreateScript();
                 var compilation = script.GetCompilation();
-                
+
                 using (var assemblyStream = new MemoryStream())
                 {
                     var result = compilation.Emit(assemblyStream);
@@ -240,8 +234,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string code = GetFunctionSource();
 
             ScriptOptions options = ScriptOptions.Default
-                .WithReferences(DefaultAssemblyReferences)
-                .AddReferences(DefaultAssemblies);
+                .WithReferences(_defaultAssemblyReferences)
+                .WithImports(_defaultNamespaceImports);
 
             return CSharpScript.Create(code, options: options);
         }
@@ -285,29 +279,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return level;
         }
 
-        private async Task ProcessInputBindingsAsync(IBinder binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
+        private async Task<object[]> BindArgumentsAsync(IBinder binder, MethodInfo function, Dictionary<string, string> bindingData, object[] invocationParameters)
         {
-            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
-            foreach (var inputBinding in nonTriggerInputBindings)
-            {
-                string value = null;
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    BindingContext bindingContext = new BindingContext
-                    {
-                        Binder = binder,
-                        BindingData = bindingData,
-                        Value = stream
-                    };
-                    await inputBinding.BindAsync(bindingContext);
+            var functionArguments = function.GetParameters();
 
-                    stream.Seek(0, SeekOrigin.Begin);
-                    StreamReader sr = new StreamReader(stream);
-                    value = sr.ReadToEnd();
+            object[] inputList = new object[functionArguments.Length];
+
+            foreach (var argument in functionArguments)
+            {
+                object value = null;
+                if (!argument.IsOut)
+                {
+                    var argumentBinding = _inputBindings.FirstOrDefault(b => b.Name == argument.Name);
+
+                    if (argumentBinding != null)
+                    {
+                        BindingContext bindingContext = new BindingContext
+                        {
+                            Binder = binder,
+                            BindingData = bindingData,
+                            TargetType = argument.ParameterType
+                        };
+
+                        await argumentBinding.BindAsync(bindingContext);
+
+                        value = bindingContext.Value;
+                    }
+
+                    if (value == null)
+                    {
+                        value = invocationParameters.FirstOrDefault(p => argument.ParameterType.IsAssignableFrom(p.GetType()));
+                    }
                 }
 
-                executionContext[inputBinding.Name] = value;
+                inputList[argument.Position] = value;
             }
+
+            return inputList;
         }
 
         private static async Task ProcessOutputBindingsAsync(
