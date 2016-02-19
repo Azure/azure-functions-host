@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
             HostConfig = new JobHostConfiguration();
             FileWatchingEnabled = true;
             RootScriptPath = Environment.CurrentDirectory;
-            RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");            
         }
 
         /// <summary>
@@ -50,6 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// The default is false. When set to true, logs will be written to the directory
         /// specified by <see cref="RootLogPath"/>.
         /// </summary>
-        public bool FileLoggingEnabled { get; set; }
+        public bool FileLoggingEnabled { get; set; }    
     }
 }

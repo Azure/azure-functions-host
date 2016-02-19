@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Task BindAsync(BindingContext context);
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "EventHub")]
         internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
@@ -54,6 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         case BindingType.BlobTrigger:
                             BlobBindingMetadata blobBindingMetadata = (BlobBindingMetadata)bindingMetadata;
                             bindings.Add(new BlobBinding(config, name, blobBindingMetadata.Path, fileAccess, bindingMetadata.IsTrigger));
+                            break;
+                        case BindingType.EventHub:
+                        case BindingType.EventHubTrigger:
+                            EventHubBindingMetadata eventHubBindingMetadata = (EventHubBindingMetadata)bindingMetadata;
+                            if (!eventHubBindingMetadata.IsTrigger &&
+                                fileAccess != FileAccess.Write)
+                            {
+                                throw new InvalidOperationException("EventHub binding can only be used for output.");
+                            }
+                            bindings.Add(new EventHubBinding(config, name, eventHubBindingMetadata.Path, fileAccess, bindingMetadata.IsTrigger));
                             break;
                         case BindingType.Queue:
                         case BindingType.QueueTrigger:

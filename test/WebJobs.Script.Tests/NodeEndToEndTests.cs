@@ -11,6 +11,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Newtonsoft.Json;
 
 namespace WebJobs.Script.Tests
 {
@@ -20,6 +21,38 @@ namespace WebJobs.Script.Tests
 
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
+        }
+
+        [Fact]
+        public async Task EventHub()
+        {
+            // Event Hub needs the following environment vars:
+            // "AzureWebJobsEventHubSender" - the connection string for the send rule
+            // "AzureWebJobsEventHubReceiver"  - the connection string for the receiver rule
+            // "AzureWebJobsEventHubPath" - the path
+
+            // Test both sending and receiving from an EventHub.
+            // First, manually invoke a function that has an output binding to send EventDatas to an EventHub.
+            //  This tests the ability to queue eventhhubs
+            string testData = Guid.NewGuid().ToString();
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", testData }
+            };
+            await Fixture.Host.CallAsync("EventHubSender", arguments);
+
+            // Second, there's an EventHub trigger listener on the events which will write a blob. 
+            // Once the blob is written, we know both sender & listener are working. 
+            string result = await WaitForBlobAsync(testData);
+
+            var payload = JsonConvert.DeserializeObject<Payload>(result);
+            Assert.Equal(testData, payload.id);
+        }
+
+        class Payload
+        {
+            public string prop1 { get; set; }
+            public string id { get; set; }
         }
 
         [Fact]

@@ -18,9 +18,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     Type == BindingType.BlobTrigger ||
                     Type == BindingType.HttpTrigger ||
                     Type == BindingType.QueueTrigger ||
+                    Type == BindingType.EventHubTrigger ||
                     Type == BindingType.ServiceBusTrigger ||
                     Type == BindingType.ManualTrigger;
             }
         }
+
+
+        // Bindings can include information that drives the JobHostConfiguration. 
+        public virtual void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
+        {
+            // default is nop
+        }        
     }
 }

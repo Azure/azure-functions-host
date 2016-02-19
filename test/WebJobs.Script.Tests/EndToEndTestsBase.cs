@@ -32,14 +32,7 @@ namespace WebJobs.Script.Tests
 
             await Fixture.TestQueue.AddMessageAsync(message);
 
-            CloudBlockBlob resultBlob = null;
-            await TestHelpers.Await(() =>
-            {
-                resultBlob = Fixture.TestContainer.GetBlockBlobReference(id);
-                return resultBlob.Exists();
-            });
-
-            string result = await resultBlob.DownloadTextAsync();
+            string result = await WaitForBlobAsync(id);
             Assert.Equal(RemoveWhitespace(messageContent), RemoveWhitespace(result));
 
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
@@ -48,6 +41,19 @@ namespace WebJobs.Script.Tests
             string trace = RemoveWhitespace(scriptTrace.Message);
             Assert.True(trace.Contains(RemoveWhitespace("script processed queue message")));
             Assert.True(trace.Contains(RemoveWhitespace(messageContent)));
+        }
+
+        protected async Task<string> WaitForBlobAsync(string id)
+        {
+            CloudBlockBlob resultBlob = null;
+            await TestHelpers.Await(() =>
+            {
+                resultBlob = Fixture.TestContainer.GetBlockBlobReference(id);
+                return resultBlob.Exists();
+            });
+
+            string result = await resultBlob.DownloadTextAsync();
+            return result;
         }
 
         protected static string RemoveWhitespace(string s)
