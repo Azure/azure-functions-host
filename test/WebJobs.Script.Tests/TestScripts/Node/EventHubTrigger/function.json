@@ -1,0 +1,18 @@
+﻿{
+  "bindings": {
+    "input": [
+      {
+        "type": "eventHubTrigger",
+        "connectionString": "%AzureWebJobsEventHubReceiver%",
+        "path": "%AzureWebJobsEventHubPath%"
+      }
+    ],
+     "output": [
+      {
+        "type": "blob",
+        "name": "output",
+        "path": "test-output/{id}"
+      }
+    ]  
+  }
+}

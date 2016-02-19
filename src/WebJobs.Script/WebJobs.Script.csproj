@@ -78,6 +78,10 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.1.1.2-alpha-10251\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.ServiceBus.Messaging.EventProcessorHost, Version=0.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.ServiceBus.EventProcessorHost.1.4.0\lib\net45-full\Microsoft.ServiceBus.Messaging.EventProcessorHost.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.WindowsAzure.Storage, Version=4.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\WindowsAzure.Storage.4.3.0\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
       <Private>True</Private>
@@ -123,6 +127,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Net.Http.Formatting, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebApi.Client.5.2.3\lib\net45\System.Net.Http.Formatting.dll</HintPath>
@@ -153,21 +158,26 @@
     <Compile Include="AuthorizationLevel.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\BlobBinding.cs" />
+    <Compile Include="Binding\EventHubBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
     <Compile Include="Binding\QueueBinding.cs" />
     <Compile Include="Binding\ServiceBusBinding.cs" />
     <Compile Include="Binding\TableBinding.cs" />
+    <Compile Include="Config\JobHostConfigurationBuilder.cs" />
+    <Compile Include="Config\AllowNameResolutionAttribute.cs" />
     <Compile Include="Config\NameResolver.cs" />
     <Compile Include="Description\BindingMetadata.cs" />
     <Compile Include="Description\BindingType.cs" />
     <Compile Include="Description\BlobBindingMetadata.cs" />
+    <Compile Include="Description\EventHubBindingMetadata.cs" />
     <Compile Include="Description\HttpBindingMetadata.cs" />
     <Compile Include="Description\QueueBindingMetadata.cs" />
     <Compile Include="Description\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\TableBindingMetadata.cs" />
     <Compile Include="Description\TimerBindingMetadata.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\ScriptHost.cs" />
     <Compile Include="Host\ScriptHostManager.cs" />
     <Compile Include="Description\FunctionMetadata.cs" />

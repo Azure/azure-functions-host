@@ -55,6 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             BlobBindingMetadata blobBindingMetadata = (BlobBindingMetadata)bindingMetadata;
                             bindings.Add(new BlobBinding(config, name, blobBindingMetadata.Path, fileAccess, bindingMetadata.IsTrigger));
                             break;
+                        case BindingType.EventHub:
+                        case BindingType.EventHubTrigger:
+                            EventHubBindingMetadata eventHubBindingMetadata = (EventHubBindingMetadata)bindingMetadata;
+                            if (!eventHubBindingMetadata.IsTrigger &&
+                                fileAccess != FileAccess.Write)
+                            {
+                                throw new InvalidOperationException("EventHub binding can only be used for output.");
+                            }
+                            bindings.Add(new EventHubBinding(config, name, eventHubBindingMetadata.Path, fileAccess, bindingMetadata.IsTrigger));
+                            break;
                         case BindingType.Queue:
                         case BindingType.QueueTrigger:
                             QueueBindingMetadata queueBindingMetadata = (QueueBindingMetadata)bindingMetadata;

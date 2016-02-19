@@ -64,6 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 case BindingType.QueueTrigger:
                     triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata);
                     break;
+                case BindingType.EventHubTrigger:
+                    triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata);
+                    break;
                 case BindingType.BlobTrigger:
                     triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata);
                     break;
@@ -107,6 +110,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
+
+        protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType = null)
+        {
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            ConstructorInfo ctorInfo = typeof(ServiceBus.EventHubTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
+            string queueName = trigger.Path;
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName });
+
+            string parameterName = trigger.Name;
+            var attributes = new Collection<CustomAttributeBuilder>
+            {
+                attributeBuilder
+            };
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
+        }
 
         protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType = null)
         {

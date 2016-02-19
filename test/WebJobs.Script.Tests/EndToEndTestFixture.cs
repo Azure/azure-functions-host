@@ -16,7 +16,7 @@ namespace WebJobs.Script.Tests
     public abstract class EndToEndTestFixture : IDisposable
     {
         protected EndToEndTestFixture(string rootPath)
-        {
+        {         
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 

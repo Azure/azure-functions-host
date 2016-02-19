@@ -7,6 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         Queue,
         QueueTrigger,
+        EventHub,
+        EventHubTrigger,
         Blob,
         BlobTrigger,
         ServiceBus,
