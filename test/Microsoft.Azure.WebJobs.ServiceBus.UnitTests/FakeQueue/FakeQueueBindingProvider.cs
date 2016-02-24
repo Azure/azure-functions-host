@@ -36,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             IBinding binding = GenericBinder.BindCollector<FakeQueueData, FakeQueueClient>(
                 parameter,
                 _converterManager,
-                _client,
                 (client, valueBindingContext) => client,
                 resolvedName,
                 invokeStringBinder

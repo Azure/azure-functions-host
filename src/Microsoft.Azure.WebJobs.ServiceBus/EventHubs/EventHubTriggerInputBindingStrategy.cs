@@ -1,40 +1,35 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.ServiceBus.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // Binding strategy for an event hub triggers. 
-    class EventHubTriggerBindingStrategy : ITriggerBindingStrategy<EventData, EventHubTriggerInput>
+    internal class EventHubTriggerBindingStrategy : ITriggerBindingStrategy<EventData, EventHubTriggerInput>
     {
+        private const string DataContractPartitionContext = "partitionContext";
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public EventHubTriggerInput ConvertFromString(string x)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(x);
+            EventData eventData = new EventData(bytes);
 
             // Return a single event. Doesn't support multiple dispatch 
-            return new EventHubTriggerInput
-            {
-                 _context = null,
-                  _events = new EventData[] {
-                      new EventData(bytes)
-                  },
-                 _selector = 0,
-            };
+            return EventHubTriggerInput.New(eventData);            
         }
-
-        const string DataContract_PartitionContext = "partitionContext";
 
         // Get the static binding contract
         //  - gets augmented 
         public Dictionary<string, Type> GetStaticBindingContract()
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>();
-            contract[DataContract_PartitionContext] = typeof(PartitionContext);
+            contract[DataContractPartitionContext] = typeof(PartitionContext);
             return contract;
         }
 
@@ -45,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("value");
             }
-            EventData eventData = value._events[value._selector];
+            EventData eventData = value.GetSingleEventData();
             return eventData;
         }
 
@@ -55,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("value");
             }
-            return value._events;
+            return value.Events;
         }
 
         // GEt runtime instance of binding contract 
@@ -66,12 +61,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("value");
             }
-            if (value._context == null)
+            if (value.Context == null)
             {
                 throw new InvalidOperationException("Missing PartitionContext");
             }
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            bindingData[DataContract_PartitionContext] = value._context;
+            bindingData[DataContractPartitionContext] = value.Context;
             return bindingData;
         }
     }

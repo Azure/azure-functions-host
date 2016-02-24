@@ -1,9 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     // 
     // For example, a single EventHubTriggerInput -->  can bind to 
     //  EventData, EventData[], string, string[], Poco, Poco[]    
-    interface ITriggerBindingStrategy<TMessage, TTriggerValue>
+    internal interface ITriggerBindingStrategy<TMessage, TTriggerValue>
     {        
         // Given a raw string, convert to a TTriggerValue.
         // This is primarily used in the "invoke from dashboard" path. 

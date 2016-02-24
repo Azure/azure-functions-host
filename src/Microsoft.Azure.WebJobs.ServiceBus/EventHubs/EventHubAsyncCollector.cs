@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.ServiceBus.Messaging;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -15,8 +15,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     {
         private readonly EventHubClient _client;
 
-        List<EventData> _list = new List<EventData>();
-        const int BatchSize = 100;
+        private List<EventData> _list = new List<EventData>();
+        private const int BatchSize = 100;
 
         public EventHubAsyncCollector(EventHubClient client)
         {
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             lock (_list)
             {
                 _list.Add(eventData);
-                flush = (_list.Count > BatchSize);
+                flush = _list.Count > BatchSize;
             }
 
             if (flush)

@@ -1,20 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Text;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
-using Microsoft.ServiceBus.Messaging;
-using Microsoft.Azure.WebJobs.Host.Protocols;
-using System.Globalization;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -25,10 +19,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     public class EventHubConfiguration : IExtensionConfigProvider, IEventHubProvider
     {
         // Event Hub Names are case-insensitive
-        Dictionary<string, EventHubClient> _senders = new Dictionary<string, EventHubClient>(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, EventProcessorHost> _listeners  = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, EventHubClient> _senders = new Dictionary<string, EventHubClient>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, EventProcessorHost> _listeners  = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
 
-        private List<Action<JobHostConfiguration>> _deferredWork = new List<Action<JobHostConfiguration>>();
+        private readonly List<Action<JobHostConfiguration>> _deferredWork = new List<Action<JobHostConfiguration>>();
 
         /// <summary>
         /// Add an existing client for sending messages to an event hub.  Infer the eventHub name from client.path
@@ -85,12 +79,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <summary>
         /// Add a connection for listening on events from an event hub. 
         /// </summary>
-        /// <param name="eventHubName">Name of hte event hub</param>
+        /// <param name="eventHubName">Name of the event hub</param>
         /// <param name="listener">initialized listener object</param>
         /// <remarks>The EventProcessorHost type is from the ServiceBus SDK. 
         /// Allow callers to bind to EventHubConfiguration without needing to have a direct assembly reference to the ServiceBus SDK. 
         /// The compiler needs to resolve all types in all overloads, so give methods that use the ServiceBus SDK types unique non-overloaded names
-        /// to avoid eager comiler resolution. 
+        /// to avoid eager compiler resolution. 
         /// </remarks>
         public void AddEventProcessorHost(string eventHubName, EventProcessorHost listener)
         {
@@ -163,8 +157,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             this.AddEventProcessorHost(eventHubName, eventProcessorHost);
         }
-
-
+        
         EventHubClient IEventHubProvider.GetEventHubClient(string eventHubName)
         {
             EventHubClient client;
@@ -225,8 +218,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             var bindingProvider = new EventHubAttributeBindingProvider(nameResolver, cm, this);
             extensions.RegisterExtension<IBindingProvider>(bindingProvider);
         }
-
-
+        
         // EventData --> String
         private static string ConvertEventData2String(EventData x)
         {
@@ -245,5 +237,4 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return eventData;
         }
     }
-
 }

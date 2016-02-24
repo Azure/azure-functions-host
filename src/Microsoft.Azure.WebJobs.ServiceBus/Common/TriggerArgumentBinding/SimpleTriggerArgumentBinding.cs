@@ -1,38 +1,45 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // Bind EventData to itself 
-    class SimpleTriggerArgumentBinding<TMessage, TTriggerValue> : ITriggerDataArgumentBinding<TTriggerValue>
+    internal class SimpleTriggerArgumentBinding<TMessage, TTriggerValue> : ITriggerDataArgumentBinding<TTriggerValue>
     {
-        protected ITriggerBindingStrategy<TMessage, TTriggerValue> _hooks;
-        protected readonly IConverterManager _converterManager;
-
-        // Caller can set it
-        protected Dictionary<string, Type> _contract;
-        protected internal Type _elementType;
-        
+        private readonly ITriggerBindingStrategy<TMessage, TTriggerValue> _hooks;
+        private readonly IConverterManager _converterManager;
 
         public SimpleTriggerArgumentBinding(ITriggerBindingStrategy<TMessage, TTriggerValue> hooks, IConverterManager converterManager)
         {
-            _hooks = hooks;
-            _contract = _hooks.GetStaticBindingContract();
-            this._elementType = typeof(TMessage);
+            this._hooks = hooks;
+            this.Contract = Hooks.GetStaticBindingContract();
+            this.ElementType = typeof(TMessage);
             _converterManager = converterManager;
+        }
+
+        // Caller can set it
+        protected Dictionary<string, Type> Contract { get; set; }
+        protected internal Type ElementType { get; set; }
+
+        protected ITriggerBindingStrategy<TMessage, TTriggerValue> Hooks
+        {
+            get
+            {
+                return _hooks;
+            }
         }
 
         IReadOnlyDictionary<string, Type> ITriggerDataArgumentBinding<TTriggerValue>.BindingDataContract
         {
             get
             {
-                return _contract;
+                return Contract;
             }
         }
 
@@ -58,15 +65,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         public virtual Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context)
         {
-            Dictionary<string, object> bindingData = _hooks.GetContractInstance(value);
+            Dictionary<string, object> bindingData = Hooks.GetContractInstance(value);
 
-            TMessage eventData = _hooks.BindMessage(value, context);
+            TMessage eventData = Hooks.BindMessage(value, context);
 
             object userValue = this.Convert(eventData, bindingData);
 
             string invokeString = ConvertToString(eventData);
 
-            IValueProvider valueProvider = new ConstantValueProvider(userValue, this._elementType, invokeString);
+            IValueProvider valueProvider = new ConstantValueProvider(userValue, this.ElementType, invokeString);
             var triggerData = new TriggerData(valueProvider, bindingData);
 
             return Task.FromResult<ITriggerData>(triggerData);

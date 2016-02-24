@@ -1,15 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
-    static class ExtensionConfigContextConverterManagerExtensions
+    internal static class ExtensionConfigContextConverterManagerExtensions
     {
         public static IConverterManager GetOrCreateConverterManager(this JobHostConfiguration config)
         {
@@ -26,14 +26,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         internal class ConverterManager : IConverterManager
         {
             // Map from <TSrc,TDest> to a converter function. 
-            Dictionary<string, object> _funcs = new Dictionary<string, object>();
+            private Dictionary<string, object> _funcs = new Dictionary<string, object>();
 
             public ConverterManager()
             {
                 this.AddConverter<byte[], string>(DefaultByteArray2String);
             }
 
-            static string DefaultByteArray2String(byte[] bytes)
+            private static string DefaultByteArray2String(byte[] bytes)
             {
                 string str = Encoding.UTF8.GetString(bytes);
                 return str;
@@ -73,6 +73,28 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 if (exactMatch != null)
                 {
                     return exactMatch;
+                }
+
+                // Object --> TDest
+                // Catch all for any conversion to TDest
+                Func<object, TDest> objConversion = TryGetConverter<object, TDest>();
+                if (objConversion != null)
+                {
+                    return (src) =>
+                    {
+                        var result = objConversion(src);
+                        return result;
+                    };
+                }
+
+                // Inheritence (also covers idempotency)
+                if (typeof(TDest).IsAssignableFrom(typeof(TSrc)))
+                {
+                    return (src) =>
+                    {
+                        object obj = (object)src;
+                        return (TDest)obj;
+                    };
                 }
 
                 // string --> TDest

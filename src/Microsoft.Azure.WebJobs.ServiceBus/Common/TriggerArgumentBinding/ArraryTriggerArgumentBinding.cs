@@ -1,15 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
-    class ArrayTriggerArgumentBinding<TMessage, TTriggerValue> : SimpleTriggerArgumentBinding<TMessage, TTriggerValue>
+    internal class ArrayTriggerArgumentBinding<TMessage, TTriggerValue> : SimpleTriggerArgumentBinding<TMessage, TTriggerValue>
     {
         private readonly SimpleTriggerArgumentBinding<TMessage, TTriggerValue> _innerBinding;
 
@@ -23,12 +23,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         public override Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context)
         {
-            Dictionary<string, object> bindingData = _hooks.GetContractInstance(value);
+            Dictionary<string, object> bindingData = Hooks.GetContractInstance(value);
 
-            TMessage[] arrayRaw = _hooks.BindMessageArray(value, context);
+            TMessage[] arrayRaw = Hooks.BindMessageArray(value, context);
 
             int len = arrayRaw.Length;
-            Type elementType = _innerBinding._elementType;
+            Type elementType = _innerBinding.ElementType;
 
             var arrayUser = Array.CreateInstance(elementType, len);
             for (int i = 0; i < len; i++)

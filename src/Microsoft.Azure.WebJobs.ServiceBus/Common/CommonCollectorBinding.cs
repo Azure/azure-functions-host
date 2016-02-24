@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -21,8 +21,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             TContext client,
             Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder,
             ParameterDescriptor param,
-            Func<string, TContext> invokeStringBinder
-            )
+            Func<string, TContext> invokeStringBinder)
         {
             this._client = client;
             this._argumentBuilder = argumentBuilder;

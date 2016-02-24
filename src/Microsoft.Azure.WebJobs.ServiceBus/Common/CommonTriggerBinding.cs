@@ -1,13 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -25,8 +25,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             ITriggerDataArgumentBinding<TTriggerValue> argumentBinding,
             Func<ListenerFactoryContext, bool, Task<IListener>> createListener,
             ParameterDescriptor parameterDescriptor,
-            bool singleDispatch
-            )
+            bool singleDispatch)
         {
             this._hooks = hooks;
             this._argumentBinding = argumentBinding;
@@ -74,6 +73,5 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             return _parameterDescriptor;
         }
-    }      
-
+    }
 }

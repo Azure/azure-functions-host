@@ -1,21 +1,21 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.ServiceBus.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // Created from the EventHubTrigger attribute to listen on the EventHub. 
     internal sealed class EventHubListener : IListener, IEventProcessor, IEventProcessorFactory
     {
-        private ITriggeredFunctionExecutor _executor;
+        private readonly ITriggeredFunctionExecutor _executor;
         private readonly EventProcessorHost _eventListener;
         private readonly bool _singleDispatch;
         private readonly EventProcessorOptions _options;
@@ -48,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return _eventListener.UnregisterEventProcessorAsync();
         }
 
-
         Task IEventProcessor.OpenAsync(PartitionContext context)
         {
             // Begin listener 
@@ -59,14 +58,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             EventHubTriggerInput value = new EventHubTriggerInput
             {
-                _events = messages.ToArray(),
-                _context = context
+                Events = messages.ToArray(),
+                Context = context
             };
 
             // Single dispatch 
             if (_singleDispatch)
             {
-                int len = value._events.Length;
+                int len = value.Events.Length;
 
                 Task[] dispatches = new Task[len];
                 for (int i = 0; i < len; i++)
@@ -74,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                     TriggeredFunctionData input = new TriggeredFunctionData
                     {
                         ParentId = null,
-                        TriggerValue = value.GetSingleEvent(i)
+                        TriggerValue = value.GetSingleEventTriggerInput(i)
                     };
                     dispatches[i] = _executor.TryExecuteAsync(input, CancellationToken.None);
                 }
@@ -112,5 +111,4 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return this;
         }
     }
-
 }

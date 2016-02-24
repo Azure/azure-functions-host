@@ -8,21 +8,39 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     // The core object we get when an EventHub is triggered. 
     // This gets converter to the user type (EventData, string, poco, etc) 
     internal sealed class EventHubTriggerInput      
-    {
-        internal EventData[] _events;
-        internal PartitionContext _context;
-
+    {        
         // If != -1, then only process a single event in this batch. 
-        public int _selector = -1;
+        private int _selector = -1;
 
-        public EventHubTriggerInput GetSingleEvent(int idx)
+        internal EventData[] Events { get; set; }
+        internal PartitionContext Context { get; set; }
+
+        public static EventHubTriggerInput New(EventData eventData)
         {
             return new EventHubTriggerInput
             {
-                _events = this._events,
-                _context = this._context,
+                Context = null,
+                Events = new EventData[]
+                {
+                      eventData
+                },
+                _selector = 0,
+            };
+        }
+
+        public EventHubTriggerInput GetSingleEventTriggerInput(int idx)
+        {
+            return new EventHubTriggerInput
+            {
+                Events = this.Events,
+                Context = this.Context,
                 _selector = idx
             };
-        }     
+        }
+
+        public EventData GetSingleEventData()
+        {
+            return this.Events[this._selector];
+        }        
     }
 }

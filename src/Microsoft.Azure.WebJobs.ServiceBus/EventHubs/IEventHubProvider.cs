@@ -6,7 +6,7 @@ using Microsoft.ServiceBus.Messaging;
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // Expose to binders / attributes so they can get the EventHub connections. 
-    interface IEventHubProvider
+    internal interface IEventHubProvider
     {
         // Lookup a client (for sending events) given the name provided in the [EventHub] attribute. 
         EventHubClient GetEventHubClient(string eventHubName);
@@ -17,5 +17,4 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         // Get the eventhub options, used by the EventHub SDK for listening on event. 
         EventProcessorOptions GetOptions();
     }
-
 }

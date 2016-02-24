@@ -1,14 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using System;
 using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -19,8 +19,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             ITriggerBindingStrategy<TMessage, TTriggerValue> hooks,
             ParameterInfo parameter,
             IConverterManager converterManager,
-            Func<ListenerFactoryContext, bool, Task<IListener>> createListener
-            )
+            Func<ListenerFactoryContext, bool, Task<IListener>> createListener)
         {
             bool singleDispatch;
             var argumentBinding = GenericBinder.GetTriggerArgumentBinding(hooks, parameter, converterManager, out singleDispatch);
@@ -38,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 hooks, argumentBinding, createListener, parameterDescriptor, singleDispatch);
 
             return binding;
-
         }
 
         // Bind a trigger argument to various parameter types. 
@@ -95,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             }         
         }
 
-
         // Bind an IAsyncCollector<TMessage> to a user parameter. 
         // This handles the various flavors of parameter types and will morph them to the connector.
         // parameter  - parameter being bound. 
@@ -105,7 +102,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         public static IBinding BindCollector<TMessage, TContext>(
             ParameterInfo parameter,
             IConverterManager converterManager,
-            TContext client,
             Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
             string invokeString,
             Func<string, TContext> invokeStringBinder)
@@ -130,7 +126,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                             return new CommonAsyncCollectorValueProvider<IAsyncCollector<TMessage>, TMessage>(raw, raw, invokeString);
                         };
                     }
-                    else {
+                    else
+                    {
                         // Bind to IAsyncCollector<T>
                         // Get a converter from T to TMessage
                         argumentBuilder = DynamicInvokeBuildIAsyncCollectorArgument(elementType, converterManager, builder, invokeString);
@@ -201,23 +198,25 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             if (argumentBuilder != null)
             {
-                ParameterDescriptor param = new ParameterDescriptor {
+                ParameterDescriptor param = new ParameterDescriptor
+                {
                     Name = parameter.Name,
                     DisplayHints = new ParameterDisplayHints
                     {
                         Description = "output"
                     }
                 };
-                return new CommonCollectorBinding<TMessage, TContext>(client, argumentBuilder, param, invokeStringBinder);
+
+                var initialClient = invokeStringBinder(invokeString);
+                return new CommonCollectorBinding<TMessage, TContext>(initialClient, argumentBuilder, param, invokeStringBinder);
             }
 
             string msg = string.Format(CultureInfo.CurrentCulture, "Can't bind to {0}.", parameter);
             throw new InvalidOperationException(msg);
         }
 
-
         // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        static Func<TContext, ValueBindingContext, IValueProvider> DynamicBuildOutArrayArgument<TContext, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicBuildOutArrayArgument<TContext, TMessage>(
                 Type typeMessageSrc,
                 IConverterManager cm,
                 Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
@@ -230,11 +229,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return argumentBuilder;
         }
 
-        static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArrayArgument<TContext, TMessageSrc, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArrayArgument<TContext, TMessageSrc, TMessage>(
             IConverterManager cm,
             Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
-            string invokeString
-            )
+            string invokeString)
         {
             // Other 
             Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
@@ -247,10 +245,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             };
             return argumentBuilder;
         }
-
-
+        
         // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildOutArgument<TContext, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildOutArgument<TContext, TMessage>(
                 Type typeMessageSrc,
                 IConverterManager cm,
                 Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
@@ -263,11 +260,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return argumentBuilder;
         }
 
-        static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArgument<TContext, TMessageSrc, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArgument<TContext, TMessageSrc, TMessage>(
             IConverterManager cm,
             Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
-            string invokeString
-            )
+            string invokeString)
         {
             // Other 
             Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
@@ -280,10 +276,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return argumentBuilder;
         }
 
-
-
         // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildICollectorArgument<TContext, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildICollectorArgument<TContext, TMessage>(
                 Type typeMessageSrc,
                 IConverterManager cm,
                 Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder, 
@@ -296,11 +290,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return argumentBuilder;
         }
 
-        static Func<TContext, ValueBindingContext, IValueProvider> BuildICollectorArgument<TContext, TMessageSrc, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> BuildICollectorArgument<TContext, TMessageSrc, TMessage>(
             IConverterManager cm,
             Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
-            string invokeString
-            )
+            string invokeString)
         {
             // Other 
             Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
@@ -315,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         // Helper to dynamically invoke BuildIAsyncCollectorArgument with the proper generics
-        static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildIAsyncCollectorArgument<TContext, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildIAsyncCollectorArgument<TContext, TMessage>(
                 Type typeMessageSrc,
                 IConverterManager cm,
                 Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
@@ -329,11 +322,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         // Helper to build an argument binder for IAsyncCollector<TMessageSrc>
-        static Func<TContext, ValueBindingContext, IValueProvider> BuildIAsyncCollectorArgument<TContext, TMessageSrc, TMessage>(
+        private static Func<TContext, ValueBindingContext, IValueProvider> BuildIAsyncCollectorArgument<TContext, TMessageSrc, TMessage>(
             IConverterManager cm,
             Func<TContext, ValueBindingContext, IFlushCollector<TMessage>> builder,
-            string invokeString
-            )
+            string invokeString)
         {
             Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
             Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = (context, valueBindingContext) =>
@@ -343,8 +335,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 return new CommonAsyncCollectorValueProvider<IAsyncCollector<TMessageSrc>, TMessage>(obj, raw, invokeString);
             };
             return argumentBuilder;
-        }
-
-    
+        }    
     }
 }

@@ -12,11 +12,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     public sealed class EventHubTriggerAttribute : Attribute
     {
         /// <summary>
-        /// Name of the event hub. 
-        /// </summary>
-        public string EventHubName { get; private set; }
-
-        /// <summary>
         /// Create an instance of this attribute.
         /// </summary>
         /// <param name="eventHubName">Event hub to listen on for messages. </param>
@@ -24,5 +19,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             this.EventHubName = eventHubName;
         }
+
+        /// <summary>
+        /// Name of the event hub. 
+        /// </summary>
+        public string EventHubName { get; private set; }
     }
 }

@@ -15,5 +15,4 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         void AddConverter<TSrc, TDest>(Func<TSrc, TDest> converter);
     }
-
 }

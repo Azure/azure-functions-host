@@ -13,6 +13,17 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         private readonly IFlushCollector<TDest> _inner;
         private readonly Func<TSrc, TDest> _convert;
 
+        public TypedAsyncCollectorAdapter(IFlushCollector<TDest> inner, Func<TSrc, TDest> convert)
+        {
+            if (convert == null)
+            {
+                throw new ArgumentNullException("convert");
+            }
+
+            _inner = inner;
+            _convert = convert;
+        }
+
         public Task AddAsync(TSrc item, CancellationToken cancellationToken = default(CancellationToken))
         {
             TDest x = _convert(item);
@@ -22,12 +33,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         public Task FlushAsync()
         {
             return _inner.FlushAsync();
-        }
-
-        public TypedAsyncCollectorAdapter(IFlushCollector<TDest> inner, Func<TSrc, TDest> convert)
-        {
-            _inner = inner;
-            _convert = convert;
-        }
+        }        
     }
 }

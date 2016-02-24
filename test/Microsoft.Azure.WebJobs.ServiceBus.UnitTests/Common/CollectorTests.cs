@@ -23,6 +23,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             public int val1 { get; set; }
         }
 
+        public class DerivedFakeQueueData : FakeQueueData
+        {
+            [JsonIgnore]
+            public string Bonus { get; set; }
+        }
+
         // Various flavors that all bind down to an IAsyncCollector 
         public class Functions
         {
@@ -43,6 +49,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             public static void SendOnePoco([FakeQueue] out Payload output)
             {
                 output = new Payload { val1 = 123 };
+            }
+
+            // Send a Poco type with a direct conversion to the native type. 
+            // This skips JSON serialization because the IConverterManager has a direct conversion. 
+            public static void SendOneOtherNative([FakeQueue] out OtherFakeQueueData output)
+            {
+                output = new OtherFakeQueueData
+                {
+                    _test = "direct"
+                };
+            }
+
+            public static void SendOneDerivedNative([FakeQueue] out DerivedFakeQueueData output)
+            {
+                output = new DerivedFakeQueueData
+                {
+                    ExtraPropertery = "extra",
+                    Message = "message",
+                    Bonus = "Bonus!"
+                };
             }
 
             public static void SendOneNative([FakeQueue] out FakeQueueData output)
@@ -121,6 +147,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             extensions.RegisterExtension<IExtensionConfigProvider>(client);
 
             JobHost host = new JobHost(config);
+
+            var p8 = Invoke(host, client, "SendOneDerivedNative");
+            Assert.Equal(1, p8.Length);
+            DerivedFakeQueueData pd8 = (DerivedFakeQueueData)p8[0];
+            Assert.Equal("Bonus!", pd8.Bonus); // verify derived prop that wouldn't serialize. 
+
+            var p9 = Invoke(host, client, "SendOneOtherNative");
+            Assert.Equal(1, p9.Length);
+            Assert.Equal("direct", p9[0].ExtraPropertery); // Set by the  DirectFakeQueueData.ToEvent
 
             // Single items
             var p1 = InvokeJson<Payload>(host, client, "SendOnePoco");
