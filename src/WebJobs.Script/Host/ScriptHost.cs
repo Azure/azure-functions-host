@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
+        private const string HostFileName = "host.json";
+        internal const string FunctionConfigFileName = "function.json";
         private readonly TraceWriter _traceWriter;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private Action<FileSystemEventArgs> _restart;
@@ -123,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, "host.json");
+            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostFileName);
             _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
@@ -268,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
                 // read the function config
-                string functionConfigPath = Path.Combine(scriptDir, "function.json");
+                string functionConfigPath = Path.Combine(scriptDir, FunctionConfigFileName);
                 if (!File.Exists(functionConfigPath))
                 {
                     // not a function directory
@@ -294,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // determine the primary script
-                string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != "function.json").ToArray();
+                string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != FunctionConfigFileName).ToArray();
                 if (functionFiles.Length == 0)
                 {
                     continue;
@@ -463,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string fileName = Path.GetFileName(e.Name);
 
-            if (((string.Compare(fileName, "host.json") == 0) || string.Compare(fileName, "function.json") == 0) ||
+            if (((string.Compare(fileName, HostFileName, ignoreCase: true) == 0) || string.Compare(fileName, FunctionConfigFileName, ignoreCase: true) == 0) ||
                 ((Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot)))
             {
                 // a host level configuration change has been made which requires a
