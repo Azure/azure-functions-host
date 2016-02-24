@@ -38,7 +38,7 @@ namespace WebJobs.Script.Tests
             Assert.Equal("input", parameter.Name);
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
-            Assert.Equal("Cron: '* * * * * *'", attribute.Schedule.ToString());
+            Assert.Equal("* * * * * *", attribute.ScheduleExpression);
             Assert.True(attribute.RunOnStartup);
         }
 
