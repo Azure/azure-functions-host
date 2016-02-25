@@ -167,7 +167,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ScriptHost scriptHost = new ScriptHost(scriptConfig);
-            scriptHost.Initialize();
+
+            try
+            {
+                scriptHost.Initialize();
+            }
+            catch (Exception e)
+            {
+                scriptHost._traceWriter.Error("Script Host initialization failed", e);
+                throw;
+            }
 
             return scriptHost;
         }
