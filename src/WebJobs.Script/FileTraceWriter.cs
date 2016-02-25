@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
@@ -39,6 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public override void Trace(TraceEvent traceEvent)
         {
+            if (traceEvent == null)
+            {
+                throw new ArgumentNullException("traceEvent");
+            }
+
             // TODO: figure out the right log file format
             // TODO: buffer logs and write only periodically
             AppendLine(traceEvent.Message);
@@ -66,7 +72,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void AppendLine(string line)
         {
-            line = string.Format("{0} {1}\r\n", DateTime.Now.ToString("s"), line.Trim());
+            if (line == null)
+            {
+                return;
+            }
+
+            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}\r\n", DateTime.Now.ToString("s", CultureInfo.InvariantCulture), line.Trim());
 
             // TODO: fix this locking issue
             try
@@ -98,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void SetNewLogFile()
         {
-            string filePath = Path.Combine(_logFilePath, string.Format("{0}.log", Guid.NewGuid()));
+            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}.log", Guid.NewGuid()));
             _currentLogFileInfo = new FileInfo(filePath);
         }
     }

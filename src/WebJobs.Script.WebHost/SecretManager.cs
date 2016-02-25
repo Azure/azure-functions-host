@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -59,12 +61,17 @@ namespace WebJobs.Script.WebHost
 
         public virtual FunctionSecrets GetFunctionSecrets(string functionName)
         {
+            if (string.IsNullOrEmpty(functionName))
+            {
+                throw new ArgumentNullException("functionName");
+            }
+
             functionName = functionName.ToLowerInvariant();
 
             return _secretsMap.GetOrAdd(functionName, (n) =>
             {
                 FunctionSecrets secrets;
-                string secretFileName = string.Format("{0}.json", functionName);
+                string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
                 string secretFilePath = Path.Combine(_secretsPath, secretFileName);
                 if (File.Exists(secretFilePath))
                 {

@@ -13,7 +13,7 @@ using Microsoft.Azure.WebJobs.Script;
 
 namespace WebJobs.Script.WebHost.Filters
 {
-    public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
+    public sealed class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
 
@@ -26,6 +26,11 @@ namespace WebJobs.Script.WebHost.Filters
 
         public override void OnAuthorization(HttpActionContext actionContext)
         {
+            if (actionContext == null)
+            {
+                throw new ArgumentNullException("actionContext");
+            }
+
             SecretManager secretManager = (SecretManager)actionContext.ControllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
 
             if (!IsAuthorized(actionContext.Request, Level, secretManager))

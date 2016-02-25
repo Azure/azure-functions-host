@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -28,18 +29,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _functionName;
         private readonly TraceWriter _fileTraceWriter;
         private readonly bool _omitInputParameter;
-        private readonly BindingMetadata _trigger;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             _scriptFilePath = scriptFilePath;
             _config = config;
-            _scriptType = Path.GetExtension(_scriptFilePath).ToLower().TrimStart('.');
+            _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _functionName = functionMetadata.Name;
             _omitInputParameter = omitInputParameter;
-            _trigger = trigger;
 
             if (config.FileLoggingEnabled)
             {
@@ -54,7 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static bool IsSupportedScriptType(string extension)
         {
-            string scriptType = extension.ToLower().TrimStart('.');
+            if (string.IsNullOrEmpty(extension))
+            {
+                throw new ArgumentNullException("extension");
+            }
+
+            string scriptType = extension.ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             return _supportedScriptTypes.Contains(scriptType);
         }
 
@@ -188,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
                 foreach (var queryParam in queryParams)
                 {
-                    string varName = string.Format("REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
+                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
                     environmentVariables[varName] = queryParam.Value;
                 }
             }
@@ -262,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)
+        internal static Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)
         {
             // TODO: need to set encoding on stdout/stderr?
             var psi = new ProcessStartInfo
@@ -325,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!File.Exists(path))
             {
-                throw new InvalidOperationException(string.Format("Unable to locate '{0}'. Make sure it is installed.", target));
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unable to locate '{0}'. Make sure it is installed.", target));
             }
 
             return path;

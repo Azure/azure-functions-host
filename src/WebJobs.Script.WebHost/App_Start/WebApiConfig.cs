@@ -1,4 +1,5 @@
-﻿using System.Web.Http;
+﻿using System;
+using System.Web.Http;
 using Autofac;
 using Autofac.Integration.WebApi;
 using WebJobs.Script.WebHost.App_Start;
@@ -11,6 +12,11 @@ namespace WebJobs.Script.WebHost
     {
         public static void Register(HttpConfiguration config)
         {
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
+            }
+
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
             AutofacBootstrap.Initialize(builder);

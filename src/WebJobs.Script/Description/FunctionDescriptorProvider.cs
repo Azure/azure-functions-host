@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        public FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
+        protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
             Host = host;
             Config = config;
@@ -29,6 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public virtual bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
         {
+            if (functionMetadata == null)
+            {
+                throw new InvalidOperationException("functionMetadata");
+            }
+
             functionDescriptor = null;
 
             if (functionMetadata.IsDisabled)
@@ -105,6 +110,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
@@ -124,6 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseBlobTrigger(BlobBindingMetadata trigger, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
@@ -143,6 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseServiceBusTrigger(ServiceBusBindingMetadata trigger, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
@@ -179,6 +199,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseTimerTrigger(TimerBindingMetadata trigger, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
@@ -204,6 +229,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseHttpTrigger(HttpBindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
+            if (methodAttributes == null)
+            {
+                throw new ArgumentNullException("methodAttributes");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);
@@ -223,6 +258,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseManualTrigger(BindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
+            if (methodAttributes == null)
+            {
+                throw new ArgumentNullException("methodAttributes");
+            }
+
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);

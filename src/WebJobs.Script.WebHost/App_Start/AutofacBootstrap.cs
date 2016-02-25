@@ -12,7 +12,7 @@ using WebJobs.Script.WebHost.WebHooks;
 
 namespace WebJobs.Script.WebHost.App_Start
 {
-    public class AutofacBootstrap
+    public static class AutofacBootstrap
     {
         internal static void Initialize(ContainerBuilder builder)
         {

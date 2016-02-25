@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -29,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string ClearRequireCacheScript;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly string _triggerParameterName;
         private readonly bool _omitInputParameter;
         private readonly string _script;
         private readonly FileSystemWatcher _fileWatcher;
@@ -83,10 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _host = host;
             _trigger = trigger;
-            _triggerParameterName = trigger.Name;
             _omitInputParameter = omitInputParameter;
             string scriptFilePath = metadata.Source.Replace('\\', '/');
-            _script = string.Format(FunctionTemplate, scriptFilePath);
+            _script = string.Format(CultureInfo.InvariantCulture, FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _functionMetadata = metadata;
@@ -248,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
-            if (string.Compare(fileName, ScriptHost.FunctionConfigFileName) != 0)
+            if (string.Compare(fileName, ScriptHost.FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) != 0)
             {
                 // one of the script files for this function changed
                 // force a reload on next execution
@@ -257,17 +256,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // clear the node module cache
                 ClearRequireCacheFunc(null).Wait();
 
-                _fileTraceWriter.Verbose(string.Format("Script for function '{0}' changed. Reloading.", _functionMetadata.Name));
+                _fileTraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", _functionMetadata.Name));
             }
         }
 
         private Dictionary<string, object> CreateScriptExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder, ExecutionContext functionExecutionContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
-            var log = (Func<object, Task<object>>)((text) =>
+            var log = (Func<object, Task<object>>)(p =>
             {
-                traceWriter.Verbose((string)text);
-                fileTraceWriter.Verbose((string)text);
+                string text = (string)p;
+                traceWriter.Verbose(text);
+                fileTraceWriter.Verbose(text);
                 return Task.FromResult<object>(null);
             });
 
@@ -367,8 +367,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static bool IsJson(string input)
         {
             input = input.Trim();
-            return (input.StartsWith("{") && input.EndsWith("}"))
-                   || (input.StartsWith("[") && input.EndsWith("]"));
+            return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
+                || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

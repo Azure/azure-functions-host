@@ -47,6 +47,11 @@ namespace WebJobs.Script.WebHost
 
         public FunctionDescriptor GetHttpFunctionOrNull(Uri uri)
         {
+            if (uri == null)
+            {
+                throw new ArgumentNullException("uri");
+            }
+
             FunctionDescriptor function = null;
 
             if (HttpFunctions == null || HttpFunctions.Count == 0)
@@ -57,7 +62,7 @@ namespace WebJobs.Script.WebHost
             // Parse the route (e.g. "api/myfunc") to get 'myfunc"
             // including any path after "api/"
             string route = uri.AbsolutePath;
-            int idx = route.ToLowerInvariant().IndexOf("api");
+            int idx = route.ToLowerInvariant().IndexOf("api", StringComparison.OrdinalIgnoreCase);
             if (idx > 0)
             {
                 idx = route.IndexOf('/', idx);

@@ -43,7 +43,6 @@ namespace WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            string input = invocation.Input;
             ParameterDescriptor inputParameter = function.Parameters.First();
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {

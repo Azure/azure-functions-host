@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
@@ -16,9 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
         {
+            if (functionMetadata == null)
+            {
+                throw new ArgumentNullException("functionMetadata");
+            }
+
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(functionMetadata.Source).ToLower();
+            string extension = Path.GetExtension(functionMetadata.Source).ToLower(CultureInfo.InvariantCulture);
             if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
             {
                 return false;

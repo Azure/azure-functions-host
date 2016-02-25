@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess fileAccess, bool isTrigger) : base(config, name, "blob", fileAccess, isTrigger)
+        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess access, bool isTrigger) : base(config, name, "blob", access, isTrigger)
         {
             Path = path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, FileAccess));
-            if (FileAccess == FileAccess.Write)
+            Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, Access));
+            if (Access == FileAccess.Write)
             {
                 await context.Value.CopyToAsync(blobStream);
             }

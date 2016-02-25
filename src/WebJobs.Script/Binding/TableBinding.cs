@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,13 +13,14 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
+    [CLSCompliant(false)]
     public class TableBinding : FunctionBinding
     {
         private readonly BindingTemplate _partitionKeyBindingTemplate;
         private readonly BindingTemplate _rowKeyBindingTemplate;
         private readonly TableQuery _tableQuery;
 
-        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess fileAccess, TableQuery tableQuery = null) : base(config, name, "queue", fileAccess, false)
+        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess access, TableQuery tableQuery = null) : base(config, name, "queue", access, false)
         {
             TableName = tableName;
             PartitionKey = partitionKey;
@@ -71,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 boundRowKey = Resolve(boundRowKey);
             }
 
-            if (FileAccess == FileAccess.Write)
+            if (Access == FileAccess.Write)
             {
                 // read the content as a JObject
                 JObject jsonObject = null;

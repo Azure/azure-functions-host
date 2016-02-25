@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case JsonToken.Bytes:
                     return reader.Value;
                 default:
-                    string msg = string.Format("Unexpected token when converting IDictionary<string, object>: {0}", reader.TokenType);
+                    string msg = string.Format(CultureInfo.InvariantCulture, "Unexpected token when converting IDictionary<string, object>: {0}", reader.TokenType);
                     throw new JsonSerializationException(msg);
             }
         }

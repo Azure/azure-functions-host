@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
 
-        public HttpBinding(ScriptHostConfiguration config, string name, FileAccess fileAccess, bool isTrigger) : base(config, name, "http", fileAccess, isTrigger)
+        public HttpBinding(ScriptHostConfiguration config, string name, FileAccess access, bool isTrigger) : base(config, name, "http", access, isTrigger)
         {
         }
 

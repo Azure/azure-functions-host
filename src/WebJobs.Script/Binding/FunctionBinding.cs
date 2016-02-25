@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly ScriptHostConfiguration _config;
 
-        protected FunctionBinding(ScriptHostConfiguration config, string name, string type, FileAccess fileAccess, bool isTrigger)
+        protected FunctionBinding(ScriptHostConfiguration config, string name, string type, FileAccess access, bool isTrigger)
         {
             _config = config;
             Name = name;
             Type = type;
-            FileAccess = fileAccess;
+            Access = access;
             IsTrigger = isTrigger;
         }
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public bool IsTrigger { get; private set; }
 
-        public FileAccess FileAccess { get; private set; }
+        public FileAccess Access { get; private set; }
 
         public abstract bool HasBindingParameters { get; }
 
@@ -86,7 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             bindings.Add(new TableBinding(config, name, tableBindingMetadata.TableName, tableBindingMetadata.PartitionKey, tableBindingMetadata.RowKey, fileAccess, tableQuery));
                             break;
                         case BindingType.Http:
-                            HttpBindingMetadata httpBindingMetadata = (HttpBindingMetadata)bindingMetadata;
                             if (fileAccess != FileAccess.Write)
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");

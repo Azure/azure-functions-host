@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // restart after ALL the operations are complete and there is a quiet period.
             _restart = (e) =>
             {
-                _traceWriter.Verbose(string.Format("File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
+                _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
                 _traceWriter.Verbose("Host configuration has changed. Signaling restart.");
 
                 // signal host restart
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 File.WriteAllText(hostConfigFilePath, "{}");
             }
 
-            _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
+            _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -141,8 +142,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
-            string typeName = string.Format("{0}.{1}", defaultNamespace, "Functions");
-            _traceWriter.Verbose(string.Format("Generating {0} job function(s)", functions.Count));
+            string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
+            _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
             Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
@@ -433,23 +434,23 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (configSection.TryGetValue("lockPeriod", out value))
                 {
-                    hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
                 if (configSection.TryGetValue("listenerLockPeriod", out value))
                 {
-                    hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
                 if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
                 {
-                    hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
                 if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
                 {
-                    hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
                 if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
                 {
-                    hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value);
+                    hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
             }
 
@@ -485,7 +486,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string fileName = Path.GetFileName(e.Name);
 
-            if (((string.Compare(fileName, HostConfigFileName, ignoreCase: true) == 0) || string.Compare(fileName, FunctionConfigFileName, ignoreCase: true) == 0) ||
+            if (((string.Compare(fileName, HostConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) || string.Compare(fileName, FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 ((Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot)))
             {
                 // a host level configuration change has been made which requires a
@@ -500,7 +501,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // TODO: this needs to be written to the TraceWriter, not
                 // Console
-                Console.WriteLine(string.Format("Function '{0}' is disabled", functionName));
+                Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "Function '{0}' is disabled", functionName));
                 return true;
             }
 
@@ -541,6 +542,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _fileWatcher.Dispose();
                 }
+
+                _restartEvent.Dispose();
             }
         }
     }

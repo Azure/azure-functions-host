@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static Type Generate(string assemblyName, string typeName, Collection<FunctionDescriptor> functions)
         {
+            if (functions == null)
+            {
+                throw new ArgumentNullException("functions");
+            }
+
             AssemblyName aName = new AssemblyName(assemblyName);
             AssemblyBuilder ab =
                 AppDomain.CurrentDomain.DefineDynamicAssembly(

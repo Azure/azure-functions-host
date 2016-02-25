@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // and will then remove themselves from this list. 
         private HashSet<ScriptHost> _liveInstances = new HashSet<ScriptHost>();
 
+        private bool _disposed;
         private bool _stopped;
         private AutoResetEvent _stopEvent = new AutoResetEvent(false);
 
@@ -150,10 +151,23 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public void Dispose()
         {
-            ScriptHost[] instances = GetLiveInstancesAndClear();
-            foreach (var instance in instances)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing && !_disposed)
             {
-                instance.Dispose();
+                ScriptHost[] instances = GetLiveInstancesAndClear();
+                foreach (var instance in instances)
+                {
+                    instance.Dispose();
+                }
+
+                _stopEvent.Dispose();
+
+                _disposed = true;
             }
         }
     }

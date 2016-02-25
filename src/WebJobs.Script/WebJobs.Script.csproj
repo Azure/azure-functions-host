@@ -12,6 +12,9 @@
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -164,6 +167,7 @@
     <Compile Include="Description\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\TableBindingMetadata.cs" />
     <Compile Include="Description\TimerBindingMetadata.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Host\ScriptHost.cs" />
     <Compile Include="Host\ScriptHostManager.cs" />
     <Compile Include="Description\FunctionMetadata.cs" />
@@ -219,7 +223,15 @@
     </Content>
     <EmbeddedResource Include="functionTemplate.js" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
+      <Link>CustomDictionary.xml</Link>
+      <SubType>Designer</SubType>
+    </CodeAnalysisDictionary>
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
