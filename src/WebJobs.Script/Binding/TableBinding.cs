@@ -71,11 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 boundRowKey = Resolve(boundRowKey);
             }
 
+            // TODO: Need to handle Stream conversions properly
+            Stream valueStream = context.Value as Stream;
+
             if (FileAccess == FileAccess.Write)
             {
                 // read the content as a JObject
                 JObject jsonObject = null;
-                using (StreamReader streamReader = new StreamReader(context.Value))
+                using (StreamReader streamReader = new StreamReader(valueStream))
                 {
                     string content = await streamReader.ReadToEndAsync();
                     jsonObject = JObject.Parse(content);
@@ -104,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     if (tableEntity != null)
                     {
                         string json = ConvertEntityToJObject(tableEntity).ToString();
-                        using (StreamWriter sw = new StreamWriter(context.Value))
+                        using (StreamWriter sw = new StreamWriter(valueStream))
                         {
                             await sw.WriteAsync(json);
                         }
@@ -123,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
 
                     string json = entityArray.ToString(Formatting.None);
-                    using (StreamWriter sw = new StreamWriter(context.Value))
+                    using (StreamWriter sw = new StreamWriter(valueStream))
                     {
                         await sw.WriteAsync(json);
                     }
