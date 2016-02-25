@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -15,6 +16,8 @@ namespace WebJobs.Script.Tests
 {
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
+        private const string JobLogTestFileName = "joblog.txt";
+
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -145,17 +148,25 @@ namespace WebJobs.Script.Tests
         {
             // job is running every second, so give it a few seconds to
             // generate some output
-            await Task.Delay(4000);
-
-            string[] lines = File.ReadAllLines("joblog.txt");
-            Assert.True(lines.Length > 2);
+            await TestHelpers.Await(() =>
+            {
+                if (File.Exists(JobLogTestFileName))
+                {
+                    string[] lines = File.ReadAllLines(JobLogTestFileName);
+                    return lines.Length > 2;
+                }
+                else
+                {
+                    return false;
+                }
+            }, timeout: 10 * 1000);
         }
 
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node")
             {
-                File.Delete("joblog.txt");
+                File.Delete(JobLogTestFileName);
             }
         }
     }

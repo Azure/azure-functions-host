@@ -5,6 +5,13 @@
         "type": "timerTrigger",
         "schedule": "* * * * * *"
       }
+    ],
+    "output": [
+      {
+        "type": "blob",
+        "name": "output",
+        "path": "test-output/testblob"
+      }
     ]
   }
 }

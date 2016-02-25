@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 object functionResult = await ScriptFunc(scriptExecutionContext);
 
                 // normalize output binding results
-                IDictionary<string, object> functionOutputs = null;
+                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
                 if (functionResult != null && _outputBindings.Count == 1)
                 {
                     // if there is only a single output binding allow that binding value
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
-            if (string.Compare(fileName, "function.json") != 0)
+            if (string.Compare(fileName, ScriptHost.FunctionConfigFileName) != 0)
             {
                 // one of the script files for this function changed
                 // force a reload on next execution

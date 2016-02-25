@@ -3,7 +3,7 @@
     "input": [
       {
         "type": "timerTrigger",
-        "schedule": "0 * * * * *",
+        "schedule": "0/10 * * * * *",
         "runOnStartup": true
       }
     ],
@@ -11,7 +11,7 @@
       {
         "type": "queue",
         "name": "message",
-        "queueName": "samples-fsharp"
+        "queueName": "samples-csharp"
       }
     ]
   }
