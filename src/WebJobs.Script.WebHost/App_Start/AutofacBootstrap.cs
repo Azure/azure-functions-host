@@ -48,7 +48,7 @@ namespace WebJobs.Script.WebHost.App_Start
             var section = (MachineKeySection)ConfigurationManager.GetSection("system.web/machineKey");
             if (section.Decryption != "Auto" && section.ValidationKey.Length >= 32)
             {
-                scriptHostConfig.HostConfig.HostId = section.ValidationKey.Substring(0, 32);
+                scriptHostConfig.HostConfig.HostId = section.ValidationKey.Substring(0, 32).ToLowerInvariant();
             }
 
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
