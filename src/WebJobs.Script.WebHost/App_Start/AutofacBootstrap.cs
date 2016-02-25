@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Configuration;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Configuration;
 using System.Web.Hosting;
 using Autofac;
 using Microsoft.Azure.WebJobs.Script;
@@ -40,6 +42,15 @@ namespace WebJobs.Script.WebHost.App_Start
                 RootLogPath = logFilePath,
                 FileLoggingEnabled = true
             };
+
+            // If there is an explicit machine key, it makes a good default host id. It can still be
+            // overridden in host.json
+            var section = (MachineKeySection)ConfigurationManager.GetSection("system.web/machineKey");
+            if (section.Decryption != "Auto" && section.ValidationKey.Length >= 32)
+            {
+                scriptHostConfig.HostConfig.HostId = section.ValidationKey.Substring(0, 32);
+            }
+
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        private const string HostFileName = "host.json";
+        private const string HostConfigFileName = "host.json";
         internal const string FunctionConfigFileName = "function.json";
         private readonly TraceWriter _traceWriter;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
@@ -125,7 +125,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostFileName);
+            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostConfigFileName);
+
+            // If it doesn't exist, create an empty JSON file
+            if (!File.Exists(hostConfigFilePath))
+            {
+                File.WriteAllText(hostConfigFilePath, "{}");
+            }
+
             _traceWriter.Verbose(string.Format("Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
@@ -370,12 +377,16 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             JobHostConfiguration hostConfig = scriptConfig.HostConfig;
 
+            // We may already have a host id, but the one from the JSON takes precedence
             JToken hostId = (JToken)config["id"];
-            if (hostId == null)
+            if (hostId != null)
+            {
+                hostConfig.HostId = (string)hostId;
+            }
+            else if (hostConfig.HostId == null)
             {
                 throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
             }
-            hostConfig.HostId = (string)hostId;
 
             JToken watchFiles = (JToken)config["watchFiles"];
             if (watchFiles != null && watchFiles.Type == JTokenType.Boolean)
@@ -465,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string fileName = Path.GetFileName(e.Name);
 
-            if (((string.Compare(fileName, HostFileName, ignoreCase: true) == 0) || string.Compare(fileName, FunctionConfigFileName, ignoreCase: true) == 0) ||
+            if (((string.Compare(fileName, HostConfigFileName, ignoreCase: true) == 0) || string.Compare(fileName, FunctionConfigFileName, ignoreCase: true) == 0) ||
                 ((Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot)))
             {
                 // a host level configuration change has been made which requires a
