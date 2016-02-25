@@ -54,6 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 IsRunning = false;
 
+                // Create a new host config, but keep the host id from existing one
+                _config.HostConfig = new JobHostConfiguration
+                {
+                    HostId = _config.HostConfig.HostId
+                };
                 ScriptHost newInstance = ScriptHost.Create(_config);
 
                 // TODO: consider using StartAsync here to speed up
