@@ -60,7 +60,7 @@ namespace WebJobs.Script.WebHost.App_Start
             WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager);
             builder.RegisterInstance<WebHookReceiverManager>(webHookRecieverManager);
 
-            Task.Run(() => scriptHostManager.RunAndBlock(CancellationToken.None));
+            HostingEnvironment.QueueBackgroundWorkItem((ct) => scriptHostManager.RunAndBlock(ct));
         }
     }
 }

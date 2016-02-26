@@ -73,6 +73,7 @@
       <Word>ScopeId</Word>
       <Word>FunctionMetadata</Word>
       <Word>Debounce</Word>
+      <Word>ScriptHost</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>
@@ -92,6 +93,7 @@
 		<Term>SingletonAttribute</Term>
 		<Term>ScopeId</Term>
     <Term>FunctionMetadata</Term>
+    <Term>ScriptHost</Term>
     </DiscreteExceptions>
   </Words>
   <Acronyms>

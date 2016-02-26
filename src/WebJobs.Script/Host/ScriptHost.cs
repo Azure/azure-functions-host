@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string HostConfigFileName = "host.json";
         internal const string FunctionConfigFileName = "function.json";
-        private readonly TraceWriter _traceWriter;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
@@ -38,12 +37,12 @@ namespace Microsoft.Azure.WebJobs.Script
             if (scriptConfig.FileLoggingEnabled)
             {
                 string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
-                _traceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose);
-                scriptConfig.HostConfig.Tracing.Tracers.Add(_traceWriter);
+                TraceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose);
+                scriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
             }
             else
             {
-                _traceWriter = NullTraceWriter.Instance;
+                TraceWriter = NullTraceWriter.Instance;
             }
 
             if (scriptConfig.TraceWriter != null)
@@ -75,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // restart after ALL the operations are complete and there is a quiet period.
             _restart = (e) =>
             {
-                _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
-                _traceWriter.Verbose("Host configuration has changed. Signaling restart.");
+                TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
+                TraceWriter.Verbose("Host configuration has changed. Signaling restart.");
 
                 // signal host restart
                 _restartEvent.Set();
@@ -86,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
         }
+
+        public TraceWriter TraceWriter { get; private set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
@@ -134,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 File.WriteAllText(hostConfigFilePath, "{}");
             }
 
-            _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -143,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
-            _traceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
             Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
@@ -168,14 +169,13 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ScriptHost scriptHost = new ScriptHost(scriptConfig);
-
             try
             {
                 scriptHost.Initialize();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                scriptHost._traceWriter.Error("Script Host initialization failed", e);
+                scriptHost.TraceWriter.Error("ScriptHost initialization failed", ex);
                 throw;
             }
 
