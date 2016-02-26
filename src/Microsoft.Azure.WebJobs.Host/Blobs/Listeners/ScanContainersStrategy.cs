@@ -178,22 +178,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                try
-                {
-                    await currentBlob.FetchAttributesAsync(cancellationToken);
-                }
-                catch (StorageException exception)
-                {
-                    if (exception.IsNotFound())
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-
                 IStorageBlobProperties properties = currentBlob.Properties;
                 DateTime lastModifiedTimestamp = properties.LastModified.Value.UtcDateTime;
 

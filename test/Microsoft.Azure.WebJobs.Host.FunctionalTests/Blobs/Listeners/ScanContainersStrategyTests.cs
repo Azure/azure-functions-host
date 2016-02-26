@@ -22,9 +22,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             const string containerName = "container";
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageBlobContainer container = account.CreateBlobClient().GetContainerReference(containerName);
-            IBlobNotificationStrategy product = new ScanContainersStrategy();
+            IBlobListenerStrategy product = new ScanContainersStrategy();
             LambdaBlobTriggerExecutor executor = new LambdaBlobTriggerExecutor();
             product.Register(container, executor);
+            product.Start();
 
             executor.ExecuteLambda = (_) =>
             {

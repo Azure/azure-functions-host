@@ -23,14 +23,21 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         private readonly FakeStorageBlobProperties _properties;
         private readonly CloudBlockBlob _sdkObject;
 
-        public FakeStorageBlockBlob(MemoryBlobStore store, string blobName, IStorageBlobContainer parent)
+        public FakeStorageBlockBlob(MemoryBlobStore store, string blobName, IStorageBlobContainer parent, FakeStorageBlobProperties properties = null)
         {
             _store = store;
             _blobName = blobName;
             _parent = parent;
             _containerName = parent.Name;
             _metadata = new Dictionary<string, string>();
-            _properties = new FakeStorageBlobProperties();
+            if (properties != null )
+            {
+                _properties = properties;
+            }
+            else
+            {
+                _properties = new FakeStorageBlobProperties();
+            }
             _sdkObject = new CloudBlockBlob(new Uri("http://localhost/" + _containerName + "/" + blobName));
         }
 

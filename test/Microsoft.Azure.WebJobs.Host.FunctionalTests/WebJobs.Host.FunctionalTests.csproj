@@ -50,6 +50,7 @@
     </Compile>
     <Compile Include="BinderTests.cs" />
     <Compile Include="Blobs\Listeners\BlobNotificationStrategyExtensions.cs" />
+    <Compile Include="Blobs\Listeners\ScanBlobScanLogHybridPollingStrategyTests.cs" />
     <Compile Include="Blobs\Listeners\ScanContainersStrategyTests.cs" />
     <Compile Include="BlobTriggerTests.cs" />
     <Compile Include="FunctionalTest.cs" />

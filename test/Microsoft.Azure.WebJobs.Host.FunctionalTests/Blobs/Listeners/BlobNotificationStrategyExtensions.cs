@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 {
     internal static class BlobNotificationStrategyExtensions
     {
-        public static void Execute(this IBlobNotificationStrategy strategy)
+        public static void Execute(this IBlobListenerStrategy strategy)
         {
             if (strategy == null)
             {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             strategy.ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
-        public static void Register(this IBlobNotificationStrategy strategy, IStorageBlobContainer container,
+        public static void Register(this IBlobListenerStrategy strategy, IStorageBlobContainer container,
             ITriggerExecutor<IStorageBlob> triggerExecutor)
         {
             if (strategy == null)
@@ -30,6 +30,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             }
 
             strategy.RegisterAsync(container, triggerExecutor, CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public static void Start(this IBlobListenerStrategy strategy, IStorageBlobContainer container,
+            ITriggerExecutor<IStorageBlob> triggerExecutor)
+        {
+            if (strategy == null)
+            {
+                throw new ArgumentNullException("strategy");
+            }
+
+            strategy.Start();
         }
     }
 }

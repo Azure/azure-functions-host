@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Shared.Protocol;
@@ -81,11 +82,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 throw new NotImplementedException();
             }
 
-            if (maxResults.HasValue)
-            {
-                throw new NotImplementedException();
-            }
-
             if (blobListingDetails != BlobListingDetails.None && blobListingDetails != BlobListingDetails.Metadata)
             {
                 throw new NotImplementedException();
@@ -93,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             if (prefix.StartsWith("$logs/"))
             {
-                return null;
+                return new StorageBlobResultSegment(null, new List<IStorageBlob>());
             }
 
             if (prefix.Contains("/"))
@@ -103,11 +99,40 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             if (!_items.ContainsKey(prefix))
             {
-                return null;
+                // if there are no blobs with the criteria, azure storage return empty list not null object
+                return new StorageBlobResultSegment(null, new List<IStorageBlob>());
             }
 
             IStorageBlobContainer parent = containerFactory.Invoke(prefix);
-            IEnumerable<IStorageBlob> results = _items[prefix].ListBlobs(this, parent, blobListingDetails);
+            List<IStorageBlob> results = _items[prefix].ListBlobs(this, parent, blobListingDetails).ToList();
+
+            // handle token
+            // in this mock up token.NextMarker is going to be assumed the last blob returned in the last
+            // call, we will remove everything before and send the rest with a new token that is the last
+            // element in the new list
+            if (currentToken != null)
+            {
+                var edgeMarker = results.FindIndex(r => r.Name == currentToken.NextMarker);
+                
+                // if it is not the last element then filter all before the marker including the marker
+                if (!(edgeMarker == results.Count - 1))
+                {
+                    results.RemoveRange(0, edgeMarker + 1);
+                }
+            }
+
+            // handle maxResults
+            if (maxResults.HasValue && results.ToList().Count > maxResults.Value)
+            {
+                int realMaxResults = maxResults.Value;
+                List<IStorageBlob> filteredResult = (List<IStorageBlob>)results;
+                filteredResult.RemoveRange(realMaxResults, (filteredResult.Count - realMaxResults));
+                BlobContinuationToken token = new BlobContinuationToken();
+                token.NextMarker = filteredResult.Last().Name;
+                return new StorageBlobResultSegment(token, results);
+            }
+
+
             return new StorageBlobResultSegment(null, results);
         }
 
@@ -282,8 +307,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 foreach (KeyValuePair<string, Blob> item in _items)
                 {
                     string blobName = item.Key;
-                    IStorageBlob blob = new FakeStorageBlockBlob(store, blobName, parent);
 
+                    // Etag  and LastModifiedTime is always passed in listBlobs
+                    FakeStorageBlobProperties properties = new FakeStorageBlobProperties()
+                    {
+                        ETag = item.Value.ETag,
+                        LastModified = item.Value.LastModified,
+                    };
+
+                    IStorageBlob blob = new FakeStorageBlockBlob(store, blobName, parent, properties);
                     if ((blobListingDetails | BlobListingDetails.Metadata) == BlobListingDetails.Metadata)
                     {
                         Blob storeBlob = item.Value;
