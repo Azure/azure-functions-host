@@ -46,6 +46,40 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
+          
+            string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.Source);
+            bool omitInputParameter = ShouldOmitInputParameter(triggerMetadata.Type);
+
+            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+
+            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
+            Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+
+            functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+
+            return true;
+        }
+
+        protected virtual Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata, 
+            BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        {
+            if (functionInvoker == null)
+            {
+                throw new ArgumentNullException(nameof(functionInvoker));
+            }
+            if (functionMetadata == null)
+            {
+                throw new ArgumentNullException(nameof(functionMetadata));
+            }
+            if (triggerMetadata == null)
+            {
+                throw new ArgumentNullException(nameof(triggerMetadata));
+            }
+            if (methodAttributes == null)
+            {
+                throw new ArgumentNullException(nameof(methodAttributes));
+            }
+
             BindingType triggerType = triggerMetadata.Type;
             string triggerParameterName = triggerMetadata.Name;
             bool triggerNameSpecified = true;
@@ -56,9 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerNameSpecified = false;
             }
 
-            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             ParameterDescriptor triggerParameter = null;
-            bool omitInputParameter = false;
             switch (triggerType)
             {
                 case BindingType.QueueTrigger:
@@ -74,7 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata);
                     break;
                 case BindingType.TimerTrigger:
-                    omitInputParameter = true;
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, typeof(TimerInfo));
                     break;
                 case BindingType.HttpTrigger:
@@ -102,11 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Add ExecutionContext to provide access to InvocationId, etc.
             parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
 
-            string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.Source);
-            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
-            functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+            return parameters;
+        }
 
-            return true;
+        protected virtual bool ShouldOmitInputParameter(BindingType triggerBindingType)
+        {
+            return triggerBindingType == BindingType.TimerTrigger;
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);

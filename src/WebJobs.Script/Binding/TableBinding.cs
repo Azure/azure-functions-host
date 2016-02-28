@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.WindowsAzure.Storage;
@@ -54,6 +55,24 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        public override CustomAttributeBuilder GetCustomAttribute()
+        {
+            Type[] constructorTypes = null;
+            object[] constructorArguments = null;
+            if (Access == FileAccess.Write)
+            {
+                constructorTypes = new Type[] { typeof(string)};
+                constructorArguments = new object[] { TableName};
+            }
+            else
+            {
+                constructorTypes = new Type[] { typeof(string), typeof(string), typeof(string) };
+                constructorArguments = new object[] { TableName, PartitionKey, RowKey };
+            }
+
+            return new CustomAttributeBuilder(typeof(TableAttribute).GetConstructor(constructorTypes), constructorArguments);
+        }
+
         public override async Task BindAsync(BindingContext context)
         {
             string boundPartitionKey = PartitionKey;
@@ -73,11 +92,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 boundRowKey = Resolve(boundRowKey);
             }
 
+            // TODO: Need to handle Stream conversions properly
+            Stream valueStream = context.Value as Stream;
+
             if (Access == FileAccess.Write)
             {
                 // read the content as a JObject
                 JObject jsonObject = null;
-                using (StreamReader streamReader = new StreamReader(context.Value))
+                using (StreamReader streamReader = new StreamReader(valueStream))
                 {
                     string content = await streamReader.ReadToEndAsync();
                     jsonObject = JObject.Parse(content);
@@ -106,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     if (tableEntity != null)
                     {
                         string json = ConvertEntityToJObject(tableEntity).ToString();
-                        using (StreamWriter sw = new StreamWriter(context.Value))
+                        using (StreamWriter sw = new StreamWriter(valueStream))
                         {
                             await sw.WriteAsync(json);
                         }
@@ -125,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
 
                     string json = entityArray.ToString(Formatting.None);
-                    using (StreamWriter sw = new StreamWriter(context.Value))
+                    using (StreamWriter sw = new StreamWriter(valueStream))
                     {
                         await sw.WriteAsync(json);
                     }

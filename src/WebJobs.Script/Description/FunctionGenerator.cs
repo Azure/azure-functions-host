@@ -91,6 +91,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     il.Emit(OpCodes.Ldloc_0);
                     il.Emit(OpCodes.Ldc_I4, i);
                     il.Emit(OpCodes.Ldarg, i);
+
+                    // For Out and Ref types, need to do an indirection. 
+                    if (function.Parameters[i].Type.IsByRef)
+                    {
+                        il.Emit(OpCodes.Ldind_Ref);
+                    }
+
                     il.Emit(OpCodes.Stelem_Ref);
                 }
 
@@ -103,11 +110,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 il.Emit(OpCodes.Ldloc_1);
                 il.Emit(OpCodes.Ldloc_0);
                 il.Emit(OpCodes.Callvirt, invokeMethod);
+
+                // Copy back out and ref parameters
+                for (int i = 0; i < function.Parameters.Count; i++)
+                {
+                    var param = function.Parameters[i];
+                    if (!param.Type.IsByRef)
+                    {
+                        continue;
+                    }
+
+                    il.Emit(OpCodes.Ldarg, i);
+
+                    il.Emit(OpCodes.Ldloc_0);
+                    il.Emit(OpCodes.Ldc_I4, i);
+                    il.Emit(OpCodes.Ldelem_Ref);
+                    il.Emit(OpCodes.Castclass, param.Type.GetElementType());
+
+                    il.Emit(OpCodes.Stind_Ref, i);
+                }
+
                 il.Emit(OpCodes.Ret);
             }
 
             Type t = tb.CreateType();
-
+            
             return t;
         }
     }

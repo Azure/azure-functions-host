@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new ScriptFunctionInvoker(scriptFilePath, Config, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+            return new ScriptFunctionInvoker(scriptFilePath, Host, functionMetadata, omitInputParameter, inputBindings, outputBindings);
         }
     }
 }

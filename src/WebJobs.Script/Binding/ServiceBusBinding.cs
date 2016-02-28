@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
@@ -28,6 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        public override CustomAttributeBuilder GetCustomAttribute()
+        {
+            var constructorTypes = new Type[] { typeof(string) };
+            var constructorArguments = new object[] { QueueOrTopicName };
+
+            return new CustomAttributeBuilder(typeof(ServiceBusAttribute).GetConstructor(constructorTypes), constructorArguments);
+        }
+
         public override async Task BindAsync(BindingContext context)
         {
             string boundQueueName = QueueOrTopicName;
@@ -38,8 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundQueueName = Resolve(boundQueueName);
 
+            // TODO: Need to handle Stream conversions properly
+            Stream valueStream = context.Value as Stream;
+
             // only an output binding is supported
-            using (StreamReader reader = new StreamReader(context.Value))
+            using (StreamReader reader = new StreamReader(valueStream))
             {
                 // TODO: only string supported currently - need to support other types
                 IAsyncCollector<string> collector = context.Binder.Bind<IAsyncCollector<string>>(new ServiceBusAttribute(boundQueueName));

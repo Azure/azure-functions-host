@@ -2,15 +2,15 @@
   "bindings": [
     {
       "type": "timerTrigger",
-      "direction": "in",
       "schedule": "0 * * * * *",
-      "runOnStartup": true
+      "runOnStartup": true,
+      "direction": "in"
     },
     {
       "type": "queue",
       "name": "message",
-      "direction": "out",
-      "queueName": "samples-fsharp"
+      "queueName": "samples-csharp",
+      "direction": "out"
     }
   ]
 }

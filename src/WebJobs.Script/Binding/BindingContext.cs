@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public object Input { get; set; }
 
         public Stream Value { get; set; }
-
+        
         public IReadOnlyDictionary<string, string> BindingData { get; set; }
     }
 }

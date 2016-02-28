@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -36,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public abstract bool HasBindingParameters { get; }
 
         public abstract Task BindAsync(BindingContext context);
+
+        public abstract CustomAttributeBuilder GetCustomAttribute();
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "EventHub")]
         internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)

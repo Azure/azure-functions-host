@@ -5,13 +5,14 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class HttpBinding : FunctionBinding
+    public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
         internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
 
@@ -25,6 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 return false;
             }
+        }
+
+        public override CustomAttributeBuilder GetCustomAttribute()
+        {
+            return null;
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -72,6 +78,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             request.Properties[HttpResponsePropertyKey] = response;
+        }
+
+        public void ProcessResult(object inputValue, object result)
+        {
+            HttpRequestMessage request = inputValue as HttpRequestMessage;
+
+            if (request != null && result is HttpResponseMessage)
+            {
+                request.Properties[HttpResponsePropertyKey] = result;
+            }
+        }
+
+        public bool CanProcessResult(object result)
+        {
+            return result is HttpResponseMessage;
         }
     }
 }
