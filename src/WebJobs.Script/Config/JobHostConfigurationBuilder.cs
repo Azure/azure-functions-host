@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     // Helper to collect configuration updates from the BindingMetadata and ultimately apply to the JobHostConfiguration. 
     public class JobHostConfigurationBuilder
     {
-        public JobHostConfiguration Config;
+        internal JobHostConfiguration Config;
 
         public JobHostConfigurationBuilder(JobHostConfiguration config)
         {
             this.Config = config;
         }
 
-        public EventHubConfiguration EventHubConfiguration = new EventHubConfiguration();
+        internal EventHubConfiguration EventHubConfiguration = new EventHubConfiguration();
 
         public void Done()
         {

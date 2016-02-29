@@ -16,6 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
         {
+            if (configBuilder == null)
+            {
+                throw new ArgumentNullException("configBuilder");
+            }
             EventHubConfiguration eventHubConfig = configBuilder.EventHubConfiguration;
 
             if (this.IsTrigger)

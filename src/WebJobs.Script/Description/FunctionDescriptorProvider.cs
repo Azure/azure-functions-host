@@ -113,6 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType = null)
         {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
             if (triggerParameterType == null)
             {
                 triggerParameterType = typeof(string);

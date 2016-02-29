@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
         
         // Bindings may require us to update JobHostConfiguration. 
-        private void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
+        private static void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
         {
             JobHostConfigurationBuilder builder = new JobHostConfigurationBuilder(hostConfig);
 

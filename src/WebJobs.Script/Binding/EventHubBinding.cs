@@ -12,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _eventHubNameBindingTemplate;
 
-        public EventHubBinding(ScriptHostConfiguration config, string name, string eventHubName, FileAccess fileAccess, bool isTrigger) : 
-            base(config, name, "eventhub", fileAccess, isTrigger)
+        public EventHubBinding(ScriptHostConfiguration config, string name, string eventHubName, FileAccess access, bool isTrigger) : 
+            base(config, name, "eventhub", access, isTrigger)
         {
             EventHubName = eventHubName;
             _eventHubNameBindingTemplate = BindingTemplate.FromString(EventHubName);

@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     // Attribute to mark a string property has embedded %key% and supports INameResolver resolution. 
     [AttributeUsage(AttributeTargets.Property)]
-    public class AllowNameResolutionAttribute : Attribute
+    public sealed class AllowNameResolutionAttribute : Attribute
     {
     }
 }
