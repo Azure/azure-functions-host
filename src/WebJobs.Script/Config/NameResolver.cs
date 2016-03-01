@@ -36,7 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 return value;
             }
-            return name;
+
+            // contract is to return null if not found. 
+            return null;
         }
     }
 }

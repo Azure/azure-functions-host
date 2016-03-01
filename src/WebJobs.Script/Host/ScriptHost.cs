@@ -127,7 +127,23 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Bindings may use name resolution, so provide this before reading the bindings. 
-            ScriptConfig.HostConfig.NameResolver = new NameResolver();
+            var nameResolver = new NameResolver();
+
+            var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            if (storageString == null)
+            {
+                // Disable core storage 
+                ScriptConfig.HostConfig.StorageConnectionString = null;
+            }
+
+            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
+            if (dashboardString == null)
+            {
+                // Disable logging if no storage account provided
+                ScriptConfig.HostConfig.DashboardConnectionString = null;
+            }
+
+            ScriptConfig.HostConfig.NameResolver = nameResolver;
 
             // read host.json and apply to JobHostConfiguration
             string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostConfigFileName);
