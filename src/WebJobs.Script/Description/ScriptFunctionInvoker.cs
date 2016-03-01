@@ -129,8 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             string invocationId = functionExecutionContext.InvocationId.ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-            string rootOutputPath = Path.Combine(_config.RootLogPath, "Binding");
-            string functionInstanceOutputPath = Path.Combine(rootOutputPath, invocationId);
+            string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
 
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
