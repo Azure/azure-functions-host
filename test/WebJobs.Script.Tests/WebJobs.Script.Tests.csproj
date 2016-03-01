@@ -161,6 +161,7 @@
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
+    <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="PhpEndToEndTests.cs" />

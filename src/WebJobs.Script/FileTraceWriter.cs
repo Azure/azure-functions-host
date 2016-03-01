@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FileTraceWriter : TraceWriter
     {
-        private object _syncLock = new object();
+        private static object _syncLock = new object();
         private readonly string _logFilePath;
         private readonly string _instanceId;
         private const long _maxLogFileSizeBytes = 5 * 1024 * 1024;
