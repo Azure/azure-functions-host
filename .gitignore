@@ -12,5 +12,6 @@ Publish
 
 /packages
 /TestResults
+App_Data/
 
 /tools/NuGet.exe
