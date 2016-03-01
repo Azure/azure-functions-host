@@ -174,7 +174,7 @@ namespace WebJobs.Script.Tests
             FunctionMetadata metadata = new FunctionMetadata();
             metadata.Name = "Test";
             metadata.Source = Path.Combine(rootPath, @"Node\Common\test.js");
-            metadata.InputBindings.Add(trigger);
+            metadata.Bindings.Add(trigger);
 
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
             metadatas.Add(metadata);
