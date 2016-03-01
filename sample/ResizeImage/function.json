@@ -1,22 +1,21 @@
 {
-  "bindings": {
-    "input": [
-      {
-        "type": "queueTrigger",
-        "queueName": "image-resize"
-      },
-      {
-        "type": "blob",
-        "name": "original",
-        "path": "images-original/{name}"
-      }
-    ],
-    "output": [
-      {
-        "type": "blob",
-        "name": "resized",
-        "path": "images-resized/{name}"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "image-resize"
+    },
+    {
+      "type": "blob",
+      "name": "original",
+      "direction": "in",
+      "path": "images-original/{name}"
+    },
+    {
+      "type": "blob",
+      "name": "resized",
+      "direction": "out",
+      "path": "images-resized/{name}"
+    }
+  ]
 }

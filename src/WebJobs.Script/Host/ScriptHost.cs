@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
 
-        protected ScriptHost(ScriptHostConfiguration scriptConfig) 
+        protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
         {
             ScriptConfig = scriptConfig;
@@ -153,12 +153,12 @@ namespace Microsoft.Azure.WebJobs.Script
             types.Add(type);
 
             ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
-                        
+
             ApplyBindingConfiguration(functions, ScriptConfig.HostConfig);
 
             Functions = functions;
         }
-        
+
         // Bindings may require us to update JobHostConfiguration. 
         private static void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
         {
@@ -208,37 +208,18 @@ namespace Microsoft.Azure.WebJobs.Script
             };
 
             JValue triggerDisabledValue = null;
-            JObject bindingsObject = (JObject)jObject["bindings"];
-            if (bindingsObject != null)
+            JArray bindingArray = (JArray)jObject["bindings"];
+            if (bindingArray != null)
             {
-                // parse input bindings
-                JArray bindingArray = (JArray)bindingsObject["input"];
-                if (bindingArray != null)
+                foreach (JObject binding in bindingArray)
                 {
-                    foreach (JObject binding in bindingArray)
+                    BindingMetadata bindingMetadata = null;
+                    if (TryParseBindingMetadata(binding, nameResolver, out bindingMetadata))
                     {
-                        BindingMetadata bindingMetadata = null;
-                        if (TryParseBindingMetadata(binding, nameResolver, out bindingMetadata))
+                        functionMetadata.Bindings.Add(bindingMetadata);
+                        if (bindingMetadata.IsTrigger)
                         {
-                            functionMetadata.InputBindings.Add(bindingMetadata);
-                            if (bindingMetadata.IsTrigger)
-                            {
-                                triggerDisabledValue = (JValue)binding["disabled"];
-                            }
-                        }
-                    }
-                }
-
-                // parse output bindings
-                bindingArray = (JArray)bindingsObject["output"];
-                if (bindingArray != null)
-                {
-                    foreach (JObject binding in bindingArray)
-                    {
-                        BindingMetadata bindingMetadata = null;
-                        if (TryParseBindingMetadata(binding, nameResolver, out bindingMetadata))
-                        {
-                            functionMetadata.OutputBindings.Add(bindingMetadata);
+                            triggerDisabledValue = (JValue)binding["disabled"];
                         }
                     }
                 }
@@ -258,8 +239,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             bindingMetadata = null;
             string bindingTypeValue = (string)binding["type"];
+            string bindingDirectionValue = (string)binding["direction"];
             BindingType bindingType;
-            if (!string.IsNullOrEmpty(bindingTypeValue) && Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
+            BindingDirection bindingDirection;
+            if (!string.IsNullOrEmpty(bindingTypeValue) &&
+                Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType) &&
+                Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
             {
                 switch (bindingType)
                 {
@@ -295,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 };
 
                 bindingMetadata.Type = bindingType;
-
+                bindingMetadata.Direction = bindingDirection;
 
                 appsettingResolver.ResolveAllProperties(bindingMetadata);
 

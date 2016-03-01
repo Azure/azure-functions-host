@@ -167,6 +167,7 @@
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\AllowNameResolutionAttribute.cs" />
     <Compile Include="Config\NameResolver.cs" />
+    <Compile Include="Description\BindingDirection.cs" />
     <Compile Include="Description\BindingMetadata.cs" />
     <Compile Include="Description\BindingType.cs" />
     <Compile Include="Description\BlobBindingMetadata.cs" />

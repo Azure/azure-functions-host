@@ -7,7 +7,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         public string Name { get; set; }
 
-        public BindingType Type { get;set; }
+        public BindingType Type { get; set; }
+
+        public BindingDirection Direction { get; set; }
 
         public bool IsTrigger
         {
