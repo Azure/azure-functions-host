@@ -55,6 +55,8 @@ namespace WebJobs.Script.WebHost.App_Start
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
             SecretManager secretManager = new SecretManager(secretsPath);
+            // Make sure that host secrets get created on startup if they don't exist
+            secretManager.GetHostSecrets();
             builder.RegisterInstance<SecretManager>(secretManager);
 
             WebHookReceiverManager webHookRecieverManager = new WebHookReceiverManager(secretManager);

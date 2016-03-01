@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
 using Newtonsoft.Json;
 
 namespace WebJobs.Script.WebHost
@@ -52,8 +53,14 @@ namespace WebJobs.Script.WebHost
                 }
                 else
                 {
-                    // initialize with empty instance
-                    _hostSecrets = new HostSecrets();
+                    // initialize with new secrets and save it
+                    _hostSecrets = new HostSecrets
+                    {
+                        MasterKey = GenerateSecretString(),
+                        FunctionKey = GenerateSecretString()
+                    };
+
+                    File.WriteAllText(secretFilePath, JsonConvert.SerializeObject(_hostSecrets, Formatting.Indented));
                 }
             }
             return _hostSecrets;
@@ -81,12 +88,30 @@ namespace WebJobs.Script.WebHost
                 }
                 else
                 {
-                    // initialize with empty instance
-                    secrets = new FunctionSecrets();
+                    // initialize with new secrets and save it
+                    secrets = new FunctionSecrets
+                    {
+                        Key = GenerateSecretString()
+                    };
+
+                    File.WriteAllText(secretFilePath, JsonConvert.SerializeObject(secrets, Formatting.Indented));
                 }
 
                 return secrets;
             });
+        }
+
+        static string GenerateSecretString()
+        {
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                byte[] data = new byte[40];
+                rng.GetBytes(data);
+                string secret = Convert.ToBase64String(data);
+
+                // Replace pluses as they are problematic as URL values
+                return secret.Replace('+', 'a');
+            }
         }
 
         private void OnChanged(object sender, FileSystemEventArgs e)
