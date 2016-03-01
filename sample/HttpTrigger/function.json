@@ -1,14 +1,12 @@
 ﻿{
-  "bindings": {
-    "input": [
-      {
-        "type": "httpTrigger"
-      }
-    ],
-    "output": [
-      {
-        "type": "http"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "direction": "in"
+    },
+    {
+      "type": "http",
+      "direction": "out"
+    }
+  ]
 }

@@ -1,17 +1,15 @@
 ﻿{
-  "bindings": {
-    "input": [
-      {
-        "type": "queueTrigger",
-        "queueName": "samples-workitems"
-      }
-    ],
-    "output": [
-      {
-        "type": "blob",
-        "name": "receipt",
-        "path": "samples-workitems/{id}"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "samples-workitems"
+    },
+    {
+      "type": "blob",
+      "name": "receipt",
+      "direction": "out",
+      "path": "samples-workitems/{id}"
+    }
+  ]
 }

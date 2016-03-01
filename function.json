@@ -1,20 +1,17 @@
 {
-  "bindings": {
-    "input": [
-      {
-        "type": "eventHubTrigger",
-        "connectionString": "%AzureWebJobsEventHubReceiver%",
-        "path": "%AzureWebJobsEventHubPath%"
-      }
-    ],
-
-    "output": [
-      {
-        "type": "eventHub",
-        "name" :  "output",
-        "connectionString": "%AzureWebJobsEventHubSender%",
-        "path": "%AzureWebJobsEventHubPath%"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "eventHubTrigger",
+      "direction": "in",
+      "connectionString": "%AzureWebJobsEventHubReceiver%",
+      "path": "%AzureWebJobsEventHubPath%"
+    },
+    {
+      "type": "eventHub",
+      "name": "output",
+      "direction": "in",
+      "connectionString": "%AzureWebJobsEventHubSender%",
+      "path": "%AzureWebJobsEventHubPath%"
+    }
+  ]
 }

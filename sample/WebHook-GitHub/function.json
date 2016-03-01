@@ -1,15 +1,13 @@
 {
-  "bindings": {
-    "input": [
-      {
-        "type": "httpTrigger",
-        "webHookType": "github"
-      }
-    ],
-    "output": [
-      {
-        "type": "http"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "direction": "in",
+      "webHookType": "github"
+    },
+    {
+      "type": "http",
+      "direction": "out"
+    }
+  ]
 }

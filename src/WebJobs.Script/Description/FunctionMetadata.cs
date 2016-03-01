@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -9,8 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         public FunctionMetadata()
         {
-            InputBindings = new Collection<BindingMetadata>();
-            OutputBindings = new Collection<BindingMetadata>();
+            Bindings = new Collection<BindingMetadata>();
         }
 
         public string Name { get; set; }
@@ -19,8 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public bool IsDisabled { get; set; }
 
-        public Collection<BindingMetadata> InputBindings { get; private set; }
+        public Collection<BindingMetadata> Bindings { get; private set; }
 
-        public Collection<BindingMetadata> OutputBindings { get; private set; }
+        public IEnumerable<BindingMetadata> InputBindings
+        {
+            get
+            {
+                return Bindings.Where(p => p.Direction != BindingDirection.Out);
+            }
+        }
+
+        public IEnumerable<BindingMetadata> OutputBindings
+        {
+            get
+            {
+                return Bindings.Where(p => p.Direction != BindingDirection.In);
+            }
+        }
     }
 }
