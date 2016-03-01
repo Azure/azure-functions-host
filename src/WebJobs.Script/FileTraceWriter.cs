@@ -14,12 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private object _syncLock = new object();
         private readonly string _logFilePath;
+        private readonly string _instanceId;
         private const long _maxLogFileSizeBytes = 5 * 1024 * 1024;
         private FileInfo _currentLogFileInfo;
 
         public FileTraceWriter(string logFilePath, TraceLevel level): base (level)
         {
             _logFilePath = logFilePath;
+            _instanceId = GetInstanceId();
 
             DirectoryInfo directory = new DirectoryInfo(logFilePath);
             if (!directory.Exists)
@@ -29,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 // get the last log file written to (or null)
-                _currentLogFileInfo = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+                string pattern = string.Format(CultureInfo.InvariantCulture, "*-{0}.log", _instanceId);
+                _currentLogFileInfo = directory.GetFiles(pattern).OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
             }
 
             if (_currentLogFileInfo == null)
@@ -45,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("traceEvent");
             }
 
-            // TODO: figure out the right log file format
             // TODO: buffer logs and write only periodically
             AppendLine(traceEvent.Message);
             if (traceEvent.Exception != null)
@@ -77,9 +79,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
+            // TODO: figure out the right log file format
             line = string.Format(CultureInfo.InvariantCulture, "{0} {1}\r\n", DateTime.Now.ToString("s", CultureInfo.InvariantCulture), line.Trim());
 
-            // TODO: fix this locking issue
+            // TODO: optimize this locking
             try
             {
                 lock (_syncLock)
@@ -109,8 +112,23 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void SetNewLogFile()
         {
-            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}.log", Guid.NewGuid()));
+            // we include a machine identifier in the log file name to ensure we don't have any
+            // log file contention between scaled out instances
+            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", Guid.NewGuid(), _instanceId));
             _currentLogFileInfo = new FileInfo(filePath);
+        }
+
+        private static string GetInstanceId()
+        {
+            string instanceId = System.Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID");
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                instanceId = Environment.MachineName;
+            }
+
+            instanceId = instanceId.Length > 10 ? instanceId.Substring(0, 10) : instanceId;
+
+            return instanceId.ToLowerInvariant();
         }
     }
 }
