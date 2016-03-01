@@ -62,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
 
             IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(cancellationToken);
-            IStorageAccount storageAccount = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
             IFunctionInstanceLogger traceWriterFunctionLogger = new TraceWriterFunctionInstanceLogger(_trace);
 
             if (dashboardAccount != null)

@@ -171,13 +171,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
             }
 
-            // Only dashboard may be null when requested.
-            if (account == null && connectionStringName != ConnectionStringNames.Dashboard)
-            {
-                throw new InvalidOperationException(StorageAccountParser.FormatParseAccountErrorMessage(
-                    StorageAccountParseResult.MissingOrEmptyConnectionStringError, connectionStringName));
-            }
-
             if (account != null)
             {
                 // On the first attempt, this will make a network call to verify the credentials work.

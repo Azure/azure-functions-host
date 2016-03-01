@@ -184,20 +184,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public void GetAccountAsync_WhenStorageOverriddenWithNull_Throws()
+        public async Task GetAccountAsync_WhenStorageOverriddenWithNull_Succeeds()
         {
             DefaultStorageAccountProvider provider = CreateProductUnderTest();
             provider.StorageConnectionString = null;
 
-            ExceptionAssert.ThrowsInvalidOperation(() => provider.GetAccountAsync(
-                ConnectionStringNames.Storage, CancellationToken.None).GetAwaiter().GetResult(), 
-                @"Microsoft Azure WebJobs SDK Storage connection string is missing or empty. The Microsoft Azure Storage account connection string can be set in the following ways:" + 
-                Environment.NewLine +
-                @"1. Set the connection string named 'AzureWebJobsStorage' in the connectionStrings section of the .config file in the following format <add name=""AzureWebJobsStorage"" connectionString=""DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY"" />, or" + 
-                Environment.NewLine +
-                @"2. Set the environment variable named 'AzureWebJobsStorage', or" + 
-                Environment.NewLine + 
-                @"3. Set corresponding property of JobHostConfiguration.");
+            var account = await provider.GetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
+            Assert.Null(account);
+        }
+
+        [Fact]
+        public async Task GetAccountAsync_WhenNoStorage_Succeeds()
+        {
+            DefaultStorageAccountProvider provider = CreateProductUnderTest();
+            provider.DashboardConnectionString = null;
+            provider.StorageConnectionString = null;
+
+            var dashboardAccount = await provider.GetAccountAsync(ConnectionStringNames.Dashboard, CancellationToken.None);
+            Assert.Null(dashboardAccount);
+
+            var storageAccount = await provider.GetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
+            Assert.Null(storageAccount);
         }
 
         [Fact]

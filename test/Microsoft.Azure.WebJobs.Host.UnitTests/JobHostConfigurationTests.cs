@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -324,6 +325,53 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private class CustomStorageClientFactory : StorageClientFactory
         {
+        }
+
+
+        // Test that we can explicitly disable storage and call through a function
+        [Fact]
+        public void JobHost_NoStorage_Succeeds()
+        {
+            string prevStorage  = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            string prevDashboard = Environment.GetEnvironmentVariable("AzureWebJobsDashboard");
+            try
+            {
+                Environment.SetEnvironmentVariable("AzureWebJobsStorage", null);
+                Environment.SetEnvironmentVariable("AzureWebJobsDashboard", null);
+
+                JobHostConfiguration config = new JobHostConfiguration()
+                {
+                    TypeLocator = new FakeTypeLocator(typeof(BasicTest))
+                };
+                // Explicitly disalbe storage. 
+                config.HostId = Guid.NewGuid().ToString("n");
+                config.DashboardConnectionString = null;
+                config.StorageConnectionString = null;
+
+                JobHost host = new JobHost(config);
+
+                // Manually invoked. 
+                var method = typeof(BasicTest).GetMethod("Method", BindingFlags.Public | BindingFlags.Static);
+
+                host.Call(method);
+                Assert.True(BasicTest.Called);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("AzureWebJobsStorage", prevStorage);
+                Environment.SetEnvironmentVariable("AzureWebJobsDashboard", prevDashboard);
+            }
+        }
+
+        public class BasicTest
+        {
+            public static bool Called = false;
+
+            [NoAutomaticTrigger]
+            public static void Method()
+            {
+                Called = true;
+            }
         }
     }
 }
