@@ -29,7 +29,7 @@
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
 
   <Target Name="DownloadNuGet">
-    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
+    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="3.3.0" />
   </Target>
 
   <Target Name="RestoreSkipStrongNames" DependsOnTargets="DownloadNuGet">
