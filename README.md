@@ -1,48 +1,38 @@
 ﻿WebJobs.Script
 ===
-This repo contains libraries that enable a **light-weight scripting model** for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function **scripts** written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), Python, F#, PowerShell, PHP, CMD, BAT, BASH scripts, etc.) along with a simple **function.json** metadata file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) runtime.
+This repo contains libraries that enable a **light-weight scripting model** for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function **scripts** written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), C#, Python, F#, PowerShell, PHP, CMD, BAT, BASH scripts, etc.) along with a simple **function.json** metadata file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) runtime.
 
 This opens the door for interesting **UI driven scenarios**, where the user simply configures functions via drop-downs, provides a job script, and the corresponding function.json is generated behind the scenes. The scripting runtime is able to take these two simple inputs and set everything else up. The engine behind the scenes is the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/). 
 
-As an example, here's a simple Node.js job function that receives a queue message and writes that message to Azure Blob storage:
+As an example, here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
 
 ```javascript
-var util = require('util');
-
-module.exports = function (context) {
-    context.log('Node.js queue trigger function processed work item ' 
-        + util.inspect(context.workItem.id));
-
-    context.output({
-        receipt: JSON.stringify(context.workItem)
-    });
-
-    context.done();
+module.exports = function (workItem, context) {
+    context.log('Node.js queue trigger function processed work item ' + workItem.id);
+    context.done(null, workItem);
 }
 ```
 
-And here's the corresponding **function.json** file which includes a trigger **input binding** that instructs the runtime to invoke this function whenever a new queue message is added to the `samples-workitems`:
+And here's the corresponding **function.json** file which includes a trigger **input binding** that instructs the runtime to invoke this function whenever a new queue message is added to the `samples-workitems` queue:
 
 ```javascript
 {
-  "bindings": {
-    "input": [
-      {
-        "type": "queueTrigger",
-        "name": "workItem",
-        "queueName": "samples-workitems"
-      }
-    ],
-    "output": [
-      {
-        "type": "blob",
-        "name": "receipt",
-        "path": "samples-workitems/{id}"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "samples-workitems"
+    },
+    {
+      "type": "blob",
+      "name": "receipt",
+      "direction": "out",
+      "path": "samples-workitems/{id}"
+    }
+  ]
 }
 ```
+
 The `receipt` blob **output binding** that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming JSON message. Functions can be just a single script file, or can include additional files/content. For example, a Node.js function might include a node_modules folder, multiple .js files, etc. A PowerShell function might include and load additional companion scripts.
 
 Here's a Windows Batch script that uses the **same function definition**, writing the incoming messages to blobs (it could process/modify the message in any way):
@@ -74,26 +64,25 @@ The samples also includes a canonical [image resize sample](http://github.com/Az
 
 ```javascript
 {
-  "bindings": {
-    "input": [
-      {
-        "type": "queueTrigger",
-        "queueName": "image-resize"
-      },
-      {
-        "type": "blob",
-        "name": "original",
-        "path": "images-original/{name}"
-      }
-    ],
-    "output": [
-      {
-        "type": "blob",
-        "name": "resized",
-        "path": "images-resized/{name}"
-      }
-    ]
-  }
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "image-resize"
+    },
+    {
+      "type": "blob",
+      "name": "original",
+      "direction": "in",
+      "path": "images-original/{name}"
+    },
+    {
+      "type": "blob",
+      "name": "resized",
+      "direction": "out",
+      "path": "images-resized/{name}"
+    }
+  ]
 }
 ```
 
