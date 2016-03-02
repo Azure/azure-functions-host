@@ -23,33 +23,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
-        private readonly ScriptHostConfiguration _config;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly string _functionName;
-        private readonly TraceWriter _fileTraceWriter;
         private readonly bool _omitInputParameter;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHostConfiguration config, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHost host, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            : base(host, functionMetadata)
         {
             _scriptFilePath = scriptFilePath;
-            _config = config;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _functionName = functionMetadata.Name;
             _omitInputParameter = omitInputParameter;
-
-            if (config.FileLoggingEnabled)
-            {
-                string logFilePath = Path.Combine(_config.RootLogPath, "Function", _functionName);
-                _fileTraceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
             }
-            else
-            {
-                _fileTraceWriter = NullTraceWriter.Instance;
-            }
-        }
 
         public static bool IsSupportedScriptType(string extension)
         {
@@ -125,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
             }
 
-            _fileTraceWriter.Verbose(string.Format("Function started"));
+            TraceWriter.Verbose(string.Format("Function started"));
 
             string invocationId = functionExecutionContext.InvocationId.ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
@@ -161,18 +147,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (process.ExitCode != 0)
             {
                 string error = process.StandardError.ReadToEnd();
-                _fileTraceWriter.Error(error);
-                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                TraceWriter.Error(error);
+                TraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw new ApplicationException(error);
             }
 
             string output = process.StandardOutput.ReadToEnd();
-            _fileTraceWriter.Verbose(output);
+            TraceWriter.Verbose(output);
             traceWriter.Verbose(output);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
-            _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
+            TraceWriter.Verbose(string.Format("Function completed (Success)"));
         }
 
         private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext context)

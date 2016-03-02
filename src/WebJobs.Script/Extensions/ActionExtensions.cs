@@ -30,5 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 });
             };
         }
+
+        public static Action Debounce(this Action targetAction, int milliseconds = 300)
+        {
+            Action<object> action = _ => targetAction();
+            action = action.Debounce(milliseconds);
+
+            return () => action(null);
+        }
     }
 }

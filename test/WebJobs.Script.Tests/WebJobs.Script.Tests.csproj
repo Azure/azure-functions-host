@@ -159,6 +159,7 @@
     <Compile Include="AdminControllerTests.cs" />
     <Compile Include="AuthorizationLevelAttributeTests.cs" />
     <Compile Include="BashEndToEndTests.cs" />
+    <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="FileTraceWriterTests.cs" />
@@ -178,7 +179,9 @@
     <Compile Include="WindowsBatchEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
     <None Include="TestScripts\Bash\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -187,6 +190,21 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Bash\QueueTriggerToBlob\run.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\BlobTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\BlobTrigger\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\QueueTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\QueueTriggerToBlob\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\host.json">

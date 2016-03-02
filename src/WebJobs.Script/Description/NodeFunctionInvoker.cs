@@ -32,11 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly bool _omitInputParameter;
         private readonly string _script;
-        private readonly FileSystemWatcher _fileWatcher;
-        private readonly ScriptHost _host;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
-        private readonly TraceWriter _fileTraceWriter;
-        private readonly FunctionMetadata _functionMetadata;
         private readonly BindingMetadata _trigger;
 
         static NodeFunctionInvoker()
@@ -79,40 +75,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata metadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            : base(host, functionMetadata)
         {
-            _host = host;
             _trigger = trigger;
             _omitInputParameter = omitInputParameter;
-            string scriptFilePath = metadata.Source.Replace('\\', '/');
+            string scriptFilePath = functionMetadata.Source.Replace('\\', '/');
             _script = string.Format(CultureInfo.InvariantCulture, FunctionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _functionMetadata = metadata;
 
-            if (host.ScriptConfig.FileWatchingEnabled)
-            {
-                string functionDirectory = Path.GetDirectoryName(scriptFilePath);
-                _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
-                {
-                    IncludeSubdirectories = true,
-                    EnableRaisingEvents = true
-                };
-                _fileWatcher.Changed += OnScriptFileChanged;
-                _fileWatcher.Created += OnScriptFileChanged;
-                _fileWatcher.Deleted += OnScriptFileChanged;
-                _fileWatcher.Renamed += OnScriptFileChanged;
-            }
-
-            if (_host.ScriptConfig.FileLoggingEnabled)
-            {
-                string logFilePath = Path.Combine(_host.ScriptConfig.RootLogPath, "Function", _functionMetadata.Name);
-                _fileTraceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
-            }
-            else
-            {
-                _fileTraceWriter = NullTraceWriter.Instance;
-            }
+            InitializeFileWatcherIfEnabled();
         }
 
         public override async Task Invoke(object[] parameters)
@@ -124,9 +97,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                _fileTraceWriter.Verbose(string.Format("Function started"));
+                TraceWriter.Verbose(string.Format("Function started"));
 
-                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, _fileTraceWriter, binder, functionExecutionContext);
+                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, binder, functionExecutionContext);
 
                 // if there are any binding parameters in the output bindings,
                 // parse the input as json to get the binding data
@@ -161,12 +134,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, functionOutputs);
 
-                _fileTraceWriter.Verbose(string.Format("Function completed (Success)"));
+                TraceWriter.Verbose(string.Format("Function completed (Success)"));
             }
             catch (Exception ex)
             {
-                _fileTraceWriter.Error(ex.Message, ex);
-                _fileTraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                TraceWriter.Error(ex.Message, ex);
+                TraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw;
             }
         }
@@ -237,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
             if (_scriptFunc == null)
             {
@@ -256,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // clear the node module cache
                 ClearRequireCacheFunc(null).Wait();
 
-                _fileTraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", _functionMetadata.Name));
+                TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
             }
         }
 

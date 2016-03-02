@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "samples-workitems-csharp"
+    },
+    {
+      "type": "blob",
+      "name": "output",
+      "direction": "out",
+      "path": "samples-workitems/{id}"
+    }
+  ]
+}

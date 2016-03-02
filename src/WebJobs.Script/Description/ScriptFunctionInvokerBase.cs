@@ -1,16 +1,65 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class ScriptFunctionInvokerBase : IFunctionInvoker
     {
+        private FileSystemWatcher _fileWatcher;
+
+        internal ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
+        {
+            Host = host;
+            Metadata = functionMetadata;
+            TraceWriter = CreateTraceWriter(host.ScriptConfig, functionMetadata.Name);
+        }
+
+        public ScriptHost Host { get; }
+
+        public FunctionMetadata Metadata { get; }
+
+        public TraceWriter TraceWriter { get; }
+
+        private static TraceWriter CreateTraceWriter(ScriptHostConfiguration scriptContig, string functionName)
+        {
+            if (scriptContig.FileLoggingEnabled)
+            {
+                string logFilePath = Path.Combine(scriptContig.RootLogPath, "Function", functionName);
+                return new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+            }
+
+            return NullTraceWriter.Instance;
+        }
+
+        protected void InitializeFileWatcherIfEnabled()
+        {
+            if (Host.ScriptConfig.FileWatchingEnabled)
+            {
+                string functionDirectory = Path.GetDirectoryName(Metadata.Source);
+                _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
+                {
+                    IncludeSubdirectories = true,
+                    EnableRaisingEvents = true
+                };
+                _fileWatcher.Changed += OnScriptFileChanged;
+                _fileWatcher.Created += OnScriptFileChanged;
+                _fileWatcher.Deleted += OnScriptFileChanged;
+                _fileWatcher.Renamed += OnScriptFileChanged;
+            }
+        }
+
         public abstract Task Invoke(object[] parameters);
+
+        protected virtual void OnScriptFileChanged(object sender, FileSystemEventArgs e) { }
 
         protected static Dictionary<string, string> GetBindingData(object value)
         {

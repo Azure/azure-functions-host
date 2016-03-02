@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -33,14 +34,14 @@ namespace WebJobs.Script.Tests
             await Fixture.TestQueue.AddMessageAsync(message);
 
             string result = await WaitForBlobAsync(id);
-            Assert.Equal(RemoveWhitespace(messageContent), RemoveWhitespace(result));
+            Assert.Equal(RemoveByteOrderMarkAndWhitespace(messageContent), RemoveByteOrderMarkAndWhitespace(result));
 
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
             Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
 
-            string trace = RemoveWhitespace(scriptTrace.Message);
-            Assert.True(trace.Contains(RemoveWhitespace("script processed queue message")));
-            Assert.True(trace.Contains(RemoveWhitespace(messageContent)));
+            string trace = RemoveByteOrderMarkAndWhitespace(scriptTrace.Message);
+            Assert.True(trace.Contains(RemoveByteOrderMarkAndWhitespace("script processed queue message")));
+            Assert.True(trace.Contains(RemoveByteOrderMarkAndWhitespace(messageContent)));
         }
 
         protected async Task<string> WaitForBlobAsync(string id)
@@ -52,13 +53,16 @@ namespace WebJobs.Script.Tests
                 return resultBlob.Exists();
             });
 
-            string result = await resultBlob.DownloadTextAsync();
+            string result = await resultBlob.DownloadTextAsync(Encoding.UTF8,
+                null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
+            
             return result;
         }
 
-        protected static string RemoveWhitespace(string s)
+        protected static string RemoveByteOrderMarkAndWhitespace(string s)
         {
-            return s.Trim().Replace(" ", "");
+            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+            return s.Trim().Replace(" ", "").Replace(byteOrderMark, "");
         }
     }
 }
