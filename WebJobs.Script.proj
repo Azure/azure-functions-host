@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;PackageWebHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="14.0" DefaultTargets="PackageScriptHost;PackageWebHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
@@ -141,7 +141,7 @@
     </ItemGroup>
   </Target>
 
-  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
+  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="C:\Program Files (x86)\MSBuild\14.0\Bin\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <OutputFileName ParameterType="System.String" Required="true" />
       <MinimumVersion ParameterType="System.String" Required="true" />
