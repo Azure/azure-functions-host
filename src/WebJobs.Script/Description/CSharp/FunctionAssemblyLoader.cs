@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (currentContext != null)
             {
-                throw new InvalidOperationException(FormattableString.Invariant($"Assembly load context for function '{metadata.Name}' already exists."));
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Assembly load context for function '{0}' already exists.", metadata.Name));
             }
 
             var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver);
@@ -94,9 +95,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private FunctionAssemblyLoadContext GetFunctionContext(Assembly requestingAssembly)
-            => _functionContexts.FirstOrDefault(c => c.FunctionAssembly == requestingAssembly);
+        { 
+            return _functionContexts.FirstOrDefault(c => c.FunctionAssembly == requestingAssembly);
+        }
 
         private FunctionAssemblyLoadContext GetFunctionContext(FunctionMetadata metadata)
-            => _functionContexts.FirstOrDefault(c => string.Compare(c.Metadata.Name, metadata.Name, StringComparison.Ordinal) == 0);
+        {
+            return _functionContexts.FirstOrDefault(c => string.Compare(c.Metadata.Name, metadata.Name, StringComparison.Ordinal) == 0);
+        }
     }
 }

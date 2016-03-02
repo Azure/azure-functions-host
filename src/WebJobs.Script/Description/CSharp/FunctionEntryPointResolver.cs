@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
-using static System.FormattableString;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -45,11 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (runMethods.Count > 1)
             {
                 throw CreateCompilationException("AF002", "Ambiguous function entry points. Multiple 'Run' methods.",
-                    Invariant($"Multiple methods named 'Run'. Consider renaming methods."));
+                    "Multiple methods named 'Run'. Consider renaming methods.");
             }
 
-            throw CreateCompilationException("AF001", "Missing function entry point", 
-                Invariant($"Your function must contain a single method, or a single public entry point method named 'Run'."));
+            throw CreateCompilationException("AF001", "Missing function entry point", "Your function must contain a single method, or a single public entry point method named 'Run'.");
         }
 
         private static CompilationErrorException CreateCompilationException(string code, string title, string messageFormat)

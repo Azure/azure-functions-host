@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var csharpInvoker = functionInvoker as CSharpFunctionInvoker;
             if (csharpInvoker == null)
             {
-                throw new InvalidOperationException(FormattableString.Invariant($"Expected invoker of type '{typeof(CSharpFunctionInvoker).Name}' but received '{functionInvoker.GetType().Name}'"));
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Expected invoker of type '{0}' but received '{1}'", typeof(CSharpFunctionInvoker).Name, functionInvoker.GetType().Name));
             }
             
             BindingType triggerType = triggerMetadata.Type;

@@ -59,10 +59,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public ScriptOptions FunctionScriptOptions
-            => ScriptOptions.Default
-                    .WithMetadataResolver(this)
-                    .WithReferences(GetCompilationReferences())
-                    .WithImports(_defaultNamespaceImports);
+        {
+            get
+            {
+                return ScriptOptions.Default
+                        .WithMetadataResolver(this)
+                        .WithReferences(GetCompilationReferences())
+                        .WithImports(_defaultNamespaceImports);
+            }
+        }
 
         /// <summary>
         /// Gets the private 'bin' path for a given script.

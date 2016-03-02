@@ -23,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter = CreateTraceWriter(host.ScriptConfig, functionMetadata.Name);
         }
 
-        public ScriptHost Host { get; }
+        public ScriptHost Host { get; private set; }
 
-        public FunctionMetadata Metadata { get; }
+        public FunctionMetadata Metadata { get; private set; }
 
-        public TraceWriter TraceWriter { get; }
+        public TraceWriter TraceWriter { get; private set; }
 
         private static TraceWriter CreateTraceWriter(ScriptHostConfiguration scriptContig, string functionName)
         {

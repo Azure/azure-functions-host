@@ -26,11 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Metadata = functionMetadata;
         }
 
-        public Assembly FunctionAssembly { get; }
+        public Assembly FunctionAssembly { get; private set; }
 
-        public FunctionMetadata Metadata { get; }
+        public FunctionMetadata Metadata { get; private set; }
 
-        internal Assembly ResolveAssembly(string name) 
-            => _metadataResolver.ResolveAssembly(name);
+        internal Assembly ResolveAssembly(string name)
+        {
+            return _metadataResolver.ResolveAssembly(name);
+        }
     }
 }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -17,7 +18,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
-using static System.FormattableString;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Reset cached function
             _function = null;
-            TraceWriter.Verbose(Invariant($"Script for function '{Metadata.Name}' changed. Reloading."));
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
 
             TraceWriter.Verbose("Compiling function script.");
             var stopwatch = new Stopwatch();
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ImmutableArray<Diagnostic> compilationResult = script.GetCompilation().GetDiagnostics();
 
             stopwatch.Stop();
-            TraceWriter.Verbose(Invariant($"Compilation completed ({stopwatch.ElapsedMilliseconds} milliseconds)."));
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation completed ({0} milliseconds).", stopwatch.ElapsedMilliseconds));
 
             foreach (var diagnostic in compilationResult)
             {
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                             stopwatch.Stop();
 
-                            TraceWriter.Verbose(Invariant($"Compilation completed ({stopwatch.ElapsedMilliseconds} milliseconds)."));
+                            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation completed ({0} milliseconds).", stopwatch.ElapsedMilliseconds));
 
                             if (!result.Success)
                             {

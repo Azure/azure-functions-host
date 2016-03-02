@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 var jobject = JObject.Parse(File.ReadAllText(fileName));
 
-                var target = jobject.SelectTokens(FormattableString.Invariant($"$.targets['{FrameworkTargetName}']")).FirstOrDefault();
+                var target = jobject.SelectTokens(string.Format(CultureInfo.InvariantCulture, "$.targets['{0}']", FrameworkTargetName)).FirstOrDefault();
 
                 if (target != null)
                 {

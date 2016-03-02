@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     ErrorDialog = false,
-                    Arguments = FormattableString.Invariant($"restore \"{projectPath}\"")
+                    Arguments = "restore \"" + projectPath + "\""
                 };
 
                 PopulateEnvironment(startInfo);
