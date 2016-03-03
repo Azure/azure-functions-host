@@ -1,0 +1,16 @@
+{
+  "bindings": [
+    {
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 * * * * *",
+      "runOnStartup": true
+    },
+    {
+      "type": "queue",
+      "name": "message",
+      "direction": "out",
+      "queueName": "samples-fsharp"
+    }
+  ]
+}
