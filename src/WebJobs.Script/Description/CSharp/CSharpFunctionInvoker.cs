@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metadataResolver = new FunctionMetadataResolver(functionMetadata, TraceWriter);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger)?.Name ?? DefaultInputName;
+            _triggerInputName = GetTriggerInputName(functionMetadata);
 
             InitializeFileWatcherIfEnabled();
             _resultProcessor = CreateResultProcessor();
@@ -61,6 +61,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
+        }
+
+        private static string GetTriggerInputName(FunctionMetadata functionMetadata)
+        {
+            BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
+            
+            if (triggerBinding != null)
+            {
+                return triggerBinding.Name;
+            }
+
+            return DefaultInputName;
         }
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
@@ -199,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                             // Get our function entry point
                             System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
-                            _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType?.DeclaredMethods.ToList());
+                            _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
                         }
                     }
                 }
@@ -274,17 +286,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 processor = (args, result) =>
                 {
-                    int? inputPosition = _function.GetParameters()
-                    .FirstOrDefault(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0)
-                    ?.Position;
+                    ParameterInfo parameter = _function.GetParameters()
+                    .FirstOrDefault(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0);
 
-                    if (inputPosition != null)
+                    if (parameter != null)
                     {
                         foreach (var processingBinding in bindings)
                         {
                             if (processingBinding.CanProcessResult(result))
                             {
-                                processingBinding.ProcessResult(args[inputPosition.Value], result);
+                                processingBinding.ProcessResult(args[parameter.Position], result);
                                 break;
                             }
                         }
