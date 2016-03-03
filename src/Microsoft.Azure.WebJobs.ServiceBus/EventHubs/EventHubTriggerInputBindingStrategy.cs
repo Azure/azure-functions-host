@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         // Single instance: Core --> EventData
-        public EventData BindMessage(EventHubTriggerInput value, ValueBindingContext context)
+        public EventData BindSingle(EventHubTriggerInput value, ValueBindingContext context)
         {
             if (value == null)
             {
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return eventData;
         }
 
-        public EventData[] BindMessageArray(EventHubTriggerInput value, ValueBindingContext context)
+        public EventData[] BindMultiple(EventHubTriggerInput value, ValueBindingContext context)
         {
             if (value == null)
             {

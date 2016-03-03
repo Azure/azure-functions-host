@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     // Core object to send events to EventHub. 
     // Any user parameter that sends events will eventually get bound to this object. 
     // This gets wrappers with various adapters and passed to the user function. 
-    internal class EventHubAsyncCollector : IFlushCollector<EventData>
+    internal class EventHubAsyncCollector : IAsyncCollector<EventData>
     {
         private readonly EventHubClient _client;
 
@@ -34,11 +34,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             if (flush)
             {
-                await this.FlushAsync();
+                await this.FlushAsync(cancellationToken);
             }
         }
 
-        public async Task FlushAsync()
+        public async Task FlushAsync(CancellationToken cancellationToken)
         {
             EventData[] batch = null;
             lock (_list)

@@ -19,5 +19,13 @@ namespace Microsoft.Azure.WebJobs
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task that will add the item to the collector.</returns>
         Task AddAsync(T item, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Flush all the events accumulated so far. 
+        /// This can be an empty operation if the messages are not batched. 
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns></returns>
+        Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken));
     }
 }

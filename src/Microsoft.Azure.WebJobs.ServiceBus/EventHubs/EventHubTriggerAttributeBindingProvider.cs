@@ -5,6 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                  return Task.FromResult(listener);
              };
 
-            ITriggerBinding binding = GenericBinder.GetTriggerBinding<EventData, EventHubTriggerInput>(hooks, parameter, _converterManager, createListener);
+            ITriggerBinding binding = BindingFactory.GetTriggerBinding<EventData, EventHubTriggerInput>(hooks, parameter, _converterManager, createListener);
             return Task.FromResult<ITriggerBinding>(binding);         
         }
     } // end class

@@ -375,6 +375,22 @@
     <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />
     <Compile Include="Blobs\Listeners\ContainerScanInfo.cs" />
     <Compile Include="Blobs\Listeners\ScanBlobScanLogHybridPollingStrategy.cs" />
+    <Compile Include="Bindings\AsyncCollector\AsyncCollectorBinding.cs" />
+    <Compile Include="Triggers\StrategyTriggerBinding.cs" />
+    <Compile Include="Bindings\ConstantValueProvider.cs" />
+    <Compile Include="Bindings\ConverterManager.cs" />
+    <Compile Include="Bindings\BindingFactory.cs" />
+    <Compile Include="IConverterManager.cs" />
+    <Compile Include="Triggers\ITriggerBindingStrategy.cs" />
+    <Compile Include="Bindings\AsyncCollector\AsyncCollectorValueProvider.cs" />
+    <Compile Include="Bindings\AsyncCollector\OutArrayValueProvider.cs" />
+    <Compile Include="Bindings\AsyncCollector\OutValueProvider.cs" />
+    <Compile Include="Bindings\AsyncCollector\SyncAsyncCollectorAdapter.cs" />
+    <Compile Include="Triggers\TriggerArgumentBinding\ArraryTriggerArgumentBinding.cs" />
+    <Compile Include="Triggers\TriggerArgumentBinding\PocoTriggerArgumentBinding.cs" />
+    <Compile Include="Triggers\TriggerArgumentBinding\SimpleTriggerArgumentBinding.cs" />
+    <Compile Include="Triggers\TriggerArgumentBinding\StringTriggerArgumentBinding.cs" />
+    <Compile Include="Bindings\AsyncCollector\TypedAsyncCollectorAdapter.cs" />
     <Compile Include="CompositeTraceWriter.cs" />
     <Compile Include="ConfigurationUtility.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
@@ -939,6 +955,7 @@
       <SubType>Designer</SubType>
     </CodeAnalysisDictionary>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

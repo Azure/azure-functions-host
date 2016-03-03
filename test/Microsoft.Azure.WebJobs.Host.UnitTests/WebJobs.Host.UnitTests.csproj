@@ -136,6 +136,8 @@
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
+    <Compile Include="Common\CollectorTests.cs" />
+    <Compile Include="Common\TriggerTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="ConfigurationUtilityTests.cs" />
     <Compile Include="ConsoleTraceWriterTests.cs" />
@@ -150,6 +152,15 @@
     <Compile Include="Executors\ActivatorInstanceFactoryTests.cs" />
     <Compile Include="Executors\FunctionResultTests.cs" />
     <Compile Include="Executors\NullInstanceFactoryTests.cs" />
+    <Compile Include="FakeQueue\FakeQeueueTriggerAttribute.cs" />
+    <Compile Include="FakeQueue\FakeQueueAttribute.cs" />
+    <Compile Include="FakeQueue\FakeQueueBindingProvider.cs" />
+    <Compile Include="FakeQueue\FakeQueueClient.cs" />
+    <Compile Include="FakeQueue\FakeQueueData.cs" />
+    <Compile Include="FakeQueue\FakeQueueDataBatch.cs" />
+    <Compile Include="FakeQueue\FakeQueueListener.cs" />
+    <Compile Include="FakeQueue\FakeQueueTriggerBindingProvider.cs" />
+    <Compile Include="FakeQueue\FakeQueueTriggerBindingStrategy.cs" />
     <Compile Include="FunctionIndexerFactory.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
     <Compile Include="Listeners\HostListenerFactoryTests.cs" />

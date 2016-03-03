@@ -180,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [InlineData(typeof(StorageClientFactory), typeof(StorageClientFactory))]
         [InlineData(typeof(INameResolver), typeof(DefaultNameResolver))]
         [InlineData(typeof(IJobActivator), typeof(DefaultJobActivator))]
+        [InlineData(typeof(IConverterManager), typeof(ConverterManager))]
         public void GetService_ReturnsExpectedDefaultServices(Type serviceType, Type expectedInstanceType)
         {
             JobHostConfiguration configuration = new JobHostConfiguration();

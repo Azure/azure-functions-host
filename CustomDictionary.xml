@@ -71,6 +71,7 @@
       <Word>SingletonAttribute</Word>
       <Word>Prefetch</Word>
       <Word>ScopeId</Word>
+      <Word>poco</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>
@@ -80,6 +81,7 @@
       <Term CompoundAlternate="ETag">eTag</Term>
     </Compound>
     <DiscreteExceptions>
+      <Term>Poco</Term>
 		<Term>WebJobs</Term>
 		<Term>ServiceBus</Term>
 		<Term>PartitionKey</Term>

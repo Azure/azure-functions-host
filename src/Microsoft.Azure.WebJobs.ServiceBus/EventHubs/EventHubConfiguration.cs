@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             INameResolver nameResolver = context.Config.NameResolver;
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
 
-            IConverterManager cm = context.Config.GetOrCreateConverterManager();
+            IConverterManager cm = context.Config.GetService<IConverterManager>();
             cm.AddConverter<string, EventData>(ConvertString2EventData);
             cm.AddConverter<EventData, string>(ConvertEventData2String);
             cm.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations

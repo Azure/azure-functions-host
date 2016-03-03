@@ -2,6 +2,7 @@
   <GlobalSettings>
     <StringProperty Name="MergeSettingsFiles">NoMerge</StringProperty>
     <CollectionProperty Name="RecognizedWords">
+      <Value>Poco</Value>
       <Value>Autofac</Value>
       <Value>etag</Value>
       <Value>Fx</Value>

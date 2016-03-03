@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             Func<string, EventHubClient> invokeStringBinder = (invokeString) => _eventHubConfig.GetEventHubClient(invokeString);
 
-            IBinding binding = GenericBinder.BindCollector<EventData, EventHubClient>(
+            IBinding binding = BindingFactory.BindCollector<EventData, EventHubClient>(
                 parameter,
                 _converterManager,
                 (client, valueBindingContext) => new EventHubAsyncCollector(client),

@@ -41,5 +41,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             return _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
         }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // Batching not supported. 
+            return Task.FromResult(0);
+        }
     }
 }

@@ -60,11 +60,14 @@ namespace Microsoft.Azure.WebJobs
             // add our built in services here
             IExtensionRegistry extensions = new DefaultExtensionRegistry();
             ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
+            IConverterManager converterManager = new ConverterManager();
+
             AddService<IExtensionRegistry>(extensions);
             AddService<StorageClientFactory>(new StorageClientFactory());
             AddService<INameResolver>(new DefaultNameResolver());
             AddService<IJobActivator>(DefaultJobActivator.Instance);
             AddService<ITypeLocator>(typeLocator);
+            AddService<IConverterManager>(converterManager);
 
             string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
             IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;

@@ -44,5 +44,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             return _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
         }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // Batching not supported. 
+            return Task.FromResult(0);
+        }
     }
 }
