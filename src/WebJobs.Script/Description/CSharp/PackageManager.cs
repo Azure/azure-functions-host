@@ -16,6 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     internal sealed class PackageManager
     {
+        private const string NugetPathEnvironmentKey = "AzureWebJobs_NuGetPath";
+        private const string NuGetFileName = "nuget.exe";
+        
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
 
@@ -35,8 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 var startInfo = new ProcessStartInfo
                 {
-                    // TODO: Hardcoding this for some tests...
-                    FileName = @"D:\home\SiteExtensions\Kudu\bin\Scripts\NuGet.exe",
+                    FileName = ResolveNuGetPath(),
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
@@ -44,8 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     ErrorDialog = false,
                     Arguments = "restore \"" + projectPath + "\""
                 };
-
-                PopulateEnvironment(startInfo);
 
                 var process = new Process { StartInfo = startInfo };
                 process.ErrorDataReceived += ProcessDataReceived;
@@ -73,17 +73,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return tcs.Task;
         }
 
-        private static void PopulateEnvironment(ProcessStartInfo startInfo)
+        public static string ResolveNuGetPath()
         {
-            var environment = Environment.GetEnvironmentVariables();
+            // Check if we have the path in the well known environment variable
+            string path = Environment.GetEnvironmentVariable(NugetPathEnvironmentKey);
 
-            foreach (DictionaryEntry item in environment)
+            //// If we don't have the path, try to get a fully qualified path to Kudu's NuGet copy.
+            if (string.IsNullOrEmpty(path))
             {
-                if (!startInfo.EnvironmentVariables.ContainsKey(item.Key.ToString()))
+                // Get the latest Kudu extension path
+                string kuduPath = Directory.GetDirectories(Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu"))
+                    .OrderByDescending(d => d).FirstOrDefault();
+
+                if (!string.IsNullOrEmpty(kuduPath))
                 {
-                    startInfo.EnvironmentVariables.Add(item.Key.ToString(), item.Value.ToString());
-                }
+                    path = Path.Combine(kuduPath, "\\bin\\scripts", NuGetFileName);
+                }                
             }
+
+            // Return the resolved value or expect NuGet.exe to be present in the path.
+            return path ?? NuGetFileName;
         }
 
         private void ProcessDataReceived(object sender, DataReceivedEventArgs e)

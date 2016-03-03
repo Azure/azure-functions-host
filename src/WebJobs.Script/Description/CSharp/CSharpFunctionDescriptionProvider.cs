@@ -15,12 +15,13 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class CSharpFunctionDescriptionProvider : FunctionDescriptorProvider, IDisposable
     {
-        
+
         private readonly FunctionAssemblyLoader _assemblyLoader;
 
         public CSharpFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Expected invoker of type '{0}' but received '{1}'", typeof(CSharpFunctionInvoker).Name, functionInvoker.GetType().Name));
             }
-            
+
             BindingType triggerType = triggerMetadata.Type;
             string triggerParameterName = triggerMetadata.Name;
             bool triggerNameSpecified = true;
@@ -101,50 +102,59 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerNameSpecified = false;
             }
 
-            MethodInfo functionTarget = csharpInvoker.GetFunctionTarget();
-            ParameterInfo[] parameters = functionTarget.GetParameters();
-            Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
-            IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
-            foreach (var parameter in parameters)
+            try
             {
-                // Is it the trigger parameter?
-                if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
+                MethodInfo functionTarget = csharpInvoker.GetFunctionTarget();
+                ParameterInfo[] parameters = functionTarget.GetParameters();
+                Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
+                IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
+                foreach (var parameter in parameters)
                 {
-                    descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata, triggerType, methodAttributes, triggerNameSpecified));
-                }
-                else
-                {
-                    Type parameterType = parameter.ParameterType;
-                    if (parameterType.IsByRef)
+                    // Is it the trigger parameter?
+                    if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
                     {
-                        parameterType = parameterType.GetElementType();
+                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata, triggerType, methodAttributes, triggerNameSpecified));
                     }
-
-                    var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
-
-                    var binding = bindings.FirstOrDefault(b => string.Compare(b.Name, parameter.Name, StringComparison.Ordinal) == 0);
-                    if (binding != null)
+                    else
                     {
-                        CustomAttributeBuilder customAttribute = binding.GetCustomAttribute();
-                        if (customAttribute != null)
+                        Type parameterType = parameter.ParameterType;
+                        if (parameterType.IsByRef)
                         {
-                            descriptor.CustomAttributes.Add(customAttribute);
+                            parameterType = parameterType.GetElementType();
                         }
-                    }
 
-                    if (parameter.IsOut)
-                    {
-                        descriptor.Attributes |= ParameterAttributes.Out;
-                    }
+                        var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
 
-                    descriptors.Add(descriptor);
+                        var binding = bindings.FirstOrDefault(b => string.Compare(b.Name, parameter.Name, StringComparison.Ordinal) == 0);
+                        if (binding != null)
+                        {
+                            CustomAttributeBuilder customAttribute = binding.GetCustomAttribute();
+                            if (customAttribute != null)
+                            {
+                                descriptor.CustomAttributes.Add(customAttribute);
+                            }
+                        }
+
+                        if (parameter.IsOut)
+                        {
+                            descriptor.Attributes |= ParameterAttributes.Out;
+                        }
+
+                        descriptors.Add(descriptor);
+                    }
                 }
-            }
 
-            return descriptors;
+                return descriptors;
+            }
+            catch (CompilationErrorException)
+            {
+                // We were unable to compile the function to get its signature,
+                // setup the descriptor with the default parameters
+                return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+            }
         }
 
-        private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata, 
+        private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata,
             BindingType triggerType, Collection<CustomAttributeBuilder> methodAttributes, bool triggerNameSpecified)
         {
             ParameterDescriptor triggerParameter = null;
