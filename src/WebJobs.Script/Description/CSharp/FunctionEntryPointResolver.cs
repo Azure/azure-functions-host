@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (declaredMethods == null)
             {
-                throw new ArgumentNullException(nameof(declaredMethods));
+                throw new ArgumentNullException("declaredMethods");
             }
 
             if (declaredMethods.Count == 1)

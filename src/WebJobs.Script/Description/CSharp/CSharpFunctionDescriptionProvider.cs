@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException(nameof(functionMetadata));
+                throw new ArgumentNullException("functionMetadata");
             }
 
             functionDescriptor = null;
@@ -71,19 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionInvoker == null)
             {
-                throw new ArgumentNullException(nameof(functionInvoker));
+                throw new ArgumentNullException("functionInvoker");
             }
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException(nameof(functionMetadata));
+                throw new ArgumentNullException("functionMetadata");
             }
             if (triggerMetadata == null)
             {
-                throw new ArgumentNullException(nameof(triggerMetadata));
+                throw new ArgumentNullException("triggerMetadata");
             }
             if (methodAttributes == null)
             {
-                throw new ArgumentNullException(nameof(methodAttributes));
+                throw new ArgumentNullException("methodAttributes");
             }
 
             var csharpInvoker = functionInvoker as CSharpFunctionInvoker;

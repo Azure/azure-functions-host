@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (metadata == null)
             {
-                throw new ArgumentNullException(nameof(metadata));
+                throw new ArgumentNullException("metadata");
             }
 
             var currentContext = GetFunctionContext(metadata);
