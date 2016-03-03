@@ -570,6 +570,16 @@ namespace Microsoft.Azure.WebJobs.Script
                     _fileWatcher.Dispose();
                 }
 
+                foreach (var function in Functions)
+                {
+                    var invoker = function.Invoker as IDisposable;
+
+                    if (invoker != null)
+                    {
+                        invoker.Dispose();
+                    }
+                }
+
                 _restartEvent.Dispose();
             }
         }

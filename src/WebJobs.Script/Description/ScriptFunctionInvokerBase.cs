@@ -12,9 +12,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public abstract class ScriptFunctionInvokerBase : IFunctionInvoker
+    public abstract class ScriptFunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private FileSystemWatcher _fileWatcher;
+        private bool _disposed = false;
 
         internal ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
         {
@@ -82,6 +83,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return bindingData;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_fileWatcher != null)
+                    {
+                        _fileWatcher.Dispose();
+                    }
+                }
+
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
