@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     il.Emit(OpCodes.Ldelem_Ref);
                     il.Emit(OpCodes.Castclass, param.Type.GetElementType());
 
-                    il.Emit(OpCodes.Stind_Ref, i);
+                    il.Emit(OpCodes.Stind_Ref);
                 }
 
                 il.Emit(OpCodes.Ret);

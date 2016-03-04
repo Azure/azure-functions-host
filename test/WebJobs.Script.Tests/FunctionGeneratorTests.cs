@@ -25,7 +25,7 @@ namespace WebJobs.Script.Tests
             ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
             PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(
-                ctorInfo, 
+                ctorInfo,
                 new object[] { "00:00:02" },
                 new PropertyInfo[] { runOnStartupProperty },
                 new object[] { true });
@@ -62,6 +62,43 @@ namespace WebJobs.Script.Tests
 
             // verify our custom invoker was called
             Assert.True(invoker.InvokeCount >= 2);
+        }
+
+        [Fact]
+        public void Generate_WithMultipleOutParameters()
+        {
+            string functionName = "FunctionWithOuts";
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+
+            parameters.Add(new ParameterDescriptor("param1", typeof(string)));
+            parameters.Add(new ParameterDescriptor("param2", typeof(string).MakeByRefType()) { Attributes = ParameterAttributes.Out });
+            parameters.Add(new ParameterDescriptor("param3", typeof(string).MakeByRefType()) { Attributes = ParameterAttributes.Out });
+
+            FunctionMetadata metadata = new FunctionMetadata();
+            TestInvoker invoker = new TestInvoker();
+            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters);
+            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            functions.Add(function);
+
+            // generate the Type
+            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", functions);
+
+            // verify the generated function
+            MethodInfo method = functionType.GetMethod(functionName);
+            ParameterInfo[] functionParams = method.GetParameters();
+
+            // Verify that we have the correct number of parameters
+            Assert.Equal(parameters.Count, functionParams.Length);
+
+            // Verify that out parameters were correctly generated
+            Assert.True(functionParams[1].IsOut);
+            Assert.True(functionParams[2].IsOut);
+
+            // Verify that the method is invocable
+            method.Invoke(null, new object[] { "test", null, null });
+
+            // verify our custom invoker was called
+            Assert.Equal(1, invoker.InvokeCount);
         }
     }
 }
