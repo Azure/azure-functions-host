@@ -104,7 +104,7 @@
     </MSBuild>
     <Zip
       InputPath=".\src\WebJobs.Script.WebHost\Publish"
-      OutputFileName="$(PublishPath)\Packages\AzureFunctions.zip"
+      OutputFileName="$(PublishPath)\Packages\Functions.Private.zip"
       OverwriteExistingFile="true"/>
   </Target>
 
