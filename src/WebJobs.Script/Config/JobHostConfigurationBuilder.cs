@@ -1,25 +1,22 @@
-﻿using Microsoft.Azure.WebJobs.ServiceBus;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
-using System.Reflection;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.WebJobs.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
-{    
+{
     // Helper to collect configuration updates from the BindingMetadata and ultimately apply to the JobHostConfiguration. 
     public class JobHostConfigurationBuilder
     {
-        internal JobHostConfiguration Config;
-
         public JobHostConfigurationBuilder(JobHostConfiguration config)
         {
             this.Config = config;
+            this.EventHubConfiguration = new EventHubConfiguration();
         }
 
-        internal EventHubConfiguration EventHubConfiguration = new EventHubConfiguration();
+        internal JobHostConfiguration Config { get; private set; }
+
+        internal EventHubConfiguration EventHubConfiguration { get; private set; }
 
         public void Done()
         {

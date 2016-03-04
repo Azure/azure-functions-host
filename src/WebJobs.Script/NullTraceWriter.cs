@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static NullTraceWriter _instance = new NullTraceWriter();
 
-        private NullTraceWriter() : base (TraceLevel.Off)
+        private NullTraceWriter() : base(TraceLevel.Off)
         {
         }
 

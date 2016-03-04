@@ -22,14 +22,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class FunctionMetadataResolver : MetadataReferenceResolver
     {
         private readonly string _privateAssembliesPath;
-        private PackageAssemblyResolver _packageAssemblyResolver;
-        private ScriptMetadataResolver _scriptResolver;
         private readonly string[] _assemblyExtensions = new[] { ".exe", ".dll" };
         private readonly string _id = Guid.NewGuid().ToString();
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
 
-        private static readonly string[] _defaultAssemblyReferences =
+        private PackageAssemblyResolver _packageAssemblyResolver;
+        private ScriptMetadataResolver _scriptResolver;
+
+        private static readonly string[] DefaultAssemblyReferences =
            {
                 "System",
                 "System.Core",
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(System.Web.Http.ApiController).Assembly.Location
             };
 
-        private static readonly string[] _defaultNamespaceImports =
+        private static readonly string[] DefaultNamespaceImports =
             {
                 "System",
                 "System.Collections.Generic",
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return ScriptOptions.Default
                         .WithMetadataResolver(this)
                         .WithReferences(GetCompilationReferences())
-                        .WithImports(_defaultNamespaceImports);
+                        .WithImports(DefaultNamespaceImports);
             }
         }
 
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var result = new List<string>(_packageAssemblyResolver.AssemblyRegistry.Values);
 
             // Add default references
-            result.AddRange(_defaultAssemblyReferences);
+            result.AddRange(DefaultAssemblyReferences);
 
             return result.AsReadOnly();
         }

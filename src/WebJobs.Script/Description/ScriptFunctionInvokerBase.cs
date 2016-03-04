@@ -60,7 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public abstract Task Invoke(object[] parameters);
 
-        protected virtual void OnScriptFileChanged(object sender, FileSystemEventArgs e) { }
+        protected virtual void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        {
+        }
 
         protected static Dictionary<string, string> GetBindingData(object value)
         {

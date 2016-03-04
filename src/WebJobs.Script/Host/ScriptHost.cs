@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
-        private static bool TryParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject jObject, out FunctionMetadata functionMetadata)
+        private static bool TryParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject configMetadata, out FunctionMetadata functionMetadata)
         {
             functionMetadata = new FunctionMetadata
             {
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script
             };
 
             JValue triggerDisabledValue = null;
-            JArray bindingArray = (JArray)jObject["bindings"];
+            JArray bindingArray = (JArray)configMetadata["bindings"];
             if (bindingArray != null)
             {
                 foreach (JObject binding in bindingArray)
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // A function can be disabled at the trigger or function level
             if (IsDisabled(functionName, triggerDisabledValue) ||
-                IsDisabled(functionName, (JValue)jObject["disabled"]))
+                IsDisabled(functionName, (JValue)configMetadata["disabled"]))
             {
                 functionMetadata.IsDisabled = true;
             }
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     case BindingType.TimerTrigger:
                         bindingMetadata = binding.ToObject<TimerBindingMetadata>();
                         break;
-                };
+                }
 
                 bindingMetadata.Type = bindingType;
                 bindingMetadata.Direction = bindingDirection;
@@ -322,18 +322,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 string json = File.ReadAllText(functionConfigPath);
-                JObject jObject = JObject.Parse(json);
+                JObject configMetadata = JObject.Parse(json);
                 FunctionMetadata metadata = null;
 
                 // unless the name is explicitly set in the config,
                 // default it to the function folder name
-                string name = (string)jObject["name"];
+                string name = (string)configMetadata["name"];
                 if (string.IsNullOrEmpty(name))
                 {
                     name = Path.GetFileNameWithoutExtension(scriptDir);
                 }
 
-                if (!TryParseFunctionMetadata(name, config.HostConfig.NameResolver, jObject, out metadata))
+                if (!TryParseFunctionMetadata(name, config.HostConfig.NameResolver, configMetadata, out metadata))
                 {
                     // TODO: Handle error
                     continue;
@@ -363,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // finally, if there is an explicit primary file indicated
                             // in config, use it
-                            JToken token = jObject["source"];
+                            JToken token = configMetadata["source"];
                             if (token != null)
                             {
                                 string sourceFileName = (string)token;
@@ -482,17 +482,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Apply ServiceBus configuration
-            ServiceBusConfiguration sbConfig = new ServiceBusConfiguration();
+            ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration();
             configSection = (JObject)config["serviceBus"];
             value = null;
             if (configSection != null)
             {
                 if (configSection.TryGetValue("maxConcurrentCalls", out value))
                 {
-                    sbConfig.MessageOptions.MaxConcurrentCalls = (int)value;
+                    serviceBusConfig.MessageOptions.MaxConcurrentCalls = (int)value;
                 }
             }
-            hostConfig.UseServiceBus(sbConfig);
+            hostConfig.UseServiceBus(serviceBusConfig);
 
             // Apply Tracing configuration
             configSection = (JObject)config["tracing"];
@@ -514,7 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string fileName = Path.GetFileName(e.Name);
 
             if (((string.Compare(fileName, HostConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) || string.Compare(fileName, FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                ((Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot)))
+                (Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot))
             {
                 // a host level configuration change has been made which requires a
                 // host restart

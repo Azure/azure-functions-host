@@ -24,10 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     // TODO: make this internal
     public class NodeFunctionInvoker : ScriptFunctionInvokerBase
     {
-        private Func<object, Task<object>> _scriptFunc;
-        private Func<object, Task<object>> _clearRequireCache;
-        private static string FunctionTemplate;
-        private static string ClearRequireCacheScript;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly bool _omitInputParameter;
@@ -35,17 +31,35 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
 
+        private Func<object, Task<object>> _scriptFunc;
+        private Func<object, Task<object>> _clearRequireCache;
+        private static string _functionTemplate;
+        private static string _clearRequireCacheScript;
+
         static NodeFunctionInvoker()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.functionTemplate.js")))
             {
-                FunctionTemplate = reader.ReadToEnd();
+                _functionTemplate = reader.ReadToEnd();
             }
             using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.clearRequireCache.js")))
             {
-                ClearRequireCacheScript = reader.ReadToEnd();
+                _clearRequireCacheScript = reader.ReadToEnd();
             }
+        }
+
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            : base(host, functionMetadata)
+        {
+            _trigger = trigger;
+            _omitInputParameter = omitInputParameter;
+            string scriptFilePath = functionMetadata.Source.Replace('\\', '/');
+            _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
+            _inputBindings = inputBindings;
+            _outputBindings = outputBindings;
+
+            InitializeFileWatcherIfEnabled();
         }
 
         private Func<object, Task<object>> ScriptFunc
@@ -69,23 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (_clearRequireCache == null)
                 {
-                    _clearRequireCache = Edge.Func(ClearRequireCacheScript);
+                    _clearRequireCache = Edge.Func(_clearRequireCacheScript);
                 }
                 return _clearRequireCache;
             }
-        }
-
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
-            : base(host, functionMetadata)
-        {
-            _trigger = trigger;
-            _omitInputParameter = omitInputParameter;
-            string scriptFilePath = functionMetadata.Source.Replace('\\', '/');
-            _script = string.Format(CultureInfo.InvariantCulture, FunctionTemplate, scriptFilePath);
-            _inputBindings = inputBindings;
-            _outputBindings = outputBindings;
-
-            InitializeFileWatcherIfEnabled();
         }
 
         public override async Task Invoke(object[] parameters)

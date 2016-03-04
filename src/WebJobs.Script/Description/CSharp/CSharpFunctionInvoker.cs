@@ -25,19 +25,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string ScriptClassName = "Submission#0";
         private const string DefaultInputName = "input";
 
-        private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private MethodInfo _function;
-        private FunctionMetadataResolver _metadataResolver;
         private readonly FunctionAssemblyLoader _assemblyLoader;
-        private Action _reloadScript;
-        private Action _restorePackages;
-        private Action<object[], object> _resultProcessor;
         private readonly ScriptHost _host;
         private readonly string _triggerInputName;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
+        private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
 
-        private static readonly string[] _watchedFileTypes = { ".cs", ".csx", ".dll", ".exe" };
+        private MethodInfo _function;
+        private FunctionMetadataResolver _metadataResolver;
+        private Action _reloadScript;
+        private Action _restorePackages;
+        private Action<object[], object> _resultProcessor;
+
+        private static readonly string[] WatchedFileTypes = { ".cs", ".csx", ".dll", ".exe" };
 
         internal CSharpFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileExtension = Path.GetExtension(e.Name);
-            if (_watchedFileTypes.Contains(fileExtension))
+            if (WatchedFileTypes.Contains(fileExtension))
             {
                 _reloadScript();
             }
@@ -113,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // If the compilation succeeded, restart the host
             // TODO: Make this smarter so we only restart the host if the 
             // method signature (or types used in the signature) change.
-            if (!compilationResult.Any(d=>d.Severity == DiagnosticSeverity.Error))
+            if (!compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
                 _host.RestartEvent.Set();
             }
@@ -150,8 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (functionResult is Task)
                 {
-                    functionResult = await ((Task)functionResult)
-                        .ContinueWith(t => GetTaskResult(t));
+                    functionResult = await((Task)functionResult).ContinueWith(t => GetTaskResult(t));
                 }
 
                 if (functionResult != null)
@@ -193,7 +193,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         using (pdbStream = new MemoryStream())
                         {
-
                             var result = compilation.Emit(assemblyStream, pdbStream);
 
                             stopwatch.Stop();
@@ -298,7 +297,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                                 break;
                             }
                         }
-                        
                     }
                 };
             }

@@ -83,7 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     // signaled. That is fine - the restart will be processed immediately
                     // once we get to this line again. The important thing is that these
                     // restarts are only happening on a single thread.
-                    WaitHandle.WaitAny(new WaitHandle[] {
+                    WaitHandle.WaitAny(new WaitHandle[] 
+                    {
                         newInstance.RestartEvent,
                         _stopEvent
                     });
@@ -91,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
-                    Task tIgnore = Orphan(newInstance);
+                    Task taskIgnore = Orphan(newInstance);
                 }
                 catch (Exception ex)
                 {

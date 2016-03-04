@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class CSharpFunctionDescriptionProvider : FunctionDescriptorProvider, IDisposable
     {
-
         private readonly FunctionAssemblyLoader _assemblyLoader;
 
         public CSharpFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)

@@ -12,13 +12,13 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FileTraceWriter : TraceWriter
     {
-        private static object _syncLock = new object();
+        private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
         private readonly string _logFilePath;
         private readonly string _instanceId;
-        private const long _maxLogFileSizeBytes = 5 * 1024 * 1024;
+        private static object _syncLock = new object();
         private FileInfo _currentLogFileInfo;
 
-        public FileTraceWriter(string logFilePath, TraceLevel level): base (level)
+        public FileTraceWriter(string logFilePath, TraceLevel level) : base(level)
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // TODO: Need to optimize this, so we only do the check every
             // so often
             _currentLogFileInfo.Refresh();
-            if (_currentLogFileInfo.Length > _maxLogFileSizeBytes)
+            if (_currentLogFileInfo.Length > MaxLogFileSizeBytes)
             {
                 SetNewLogFile();
             }

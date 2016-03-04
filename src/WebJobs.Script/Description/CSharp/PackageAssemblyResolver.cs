@@ -26,6 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _assemblyRegistry = InitializeAssemblyRegistry(metadata);
         }
 
+        public IDictionary<AssemblyName, string> AssemblyRegistry
+        {
+            get
+            {
+                return _assemblyRegistry;
+            }
+        }
+
         private static IDictionary<AssemblyName, string> InitializeAssemblyRegistry(FunctionMetadata metadata)
         {
             IDictionary<AssemblyName, string> registry = null;
@@ -84,7 +92,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var assemblyName = new AssemblyName(name);
             return _assemblyRegistry.TryGetValue(assemblyName, out path);
         }
-
-        public IDictionary<AssemblyName, string> AssemblyRegistry { get { return _assemblyRegistry; } }
     }
 }

@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public string RootScriptPath { get; set; }
 
         /// <summary>
-        /// Gets or sets the root path to ouput log files.
+        /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
 
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public TraceWriter TraceWriter { get; set; }
 
         /// <summary>
-        /// Gets or sets a value dicating whether the <see cref="ScriptHost"/> should
+        /// Gets or sets a value dictating whether the <see cref="ScriptHost"/> should
         /// monitor file for changes (default is true). When set to true, the host will
         /// automatically react to source/config file changes. When set to false no file
         /// monitoring will be performed.

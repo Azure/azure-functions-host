@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-            : base (host, config)
+            : base(host, config)
         {
         }
 

@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-
         // Bindings can include information that drives the JobHostConfiguration. 
         public virtual void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
         {

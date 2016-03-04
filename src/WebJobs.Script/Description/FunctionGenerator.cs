@@ -23,20 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _invokerMap[method];
         }
 
-        public static Type Generate(string assemblyName, string typeName, Collection<FunctionDescriptor> functions)
+        public static Type Generate(string functionAssemblyName, string typeName, Collection<FunctionDescriptor> functions)
         {
             if (functions == null)
             {
                 throw new ArgumentNullException("functions");
             }
 
-            AssemblyName aName = new AssemblyName(assemblyName);
-            AssemblyBuilder ab =
+            AssemblyName assemblyName = new AssemblyName(functionAssemblyName);
+            AssemblyBuilder assemblyBuilder =
                 AppDomain.CurrentDomain.DefineDynamicAssembly(
-                    aName,
+                    assemblyName,
                     AssemblyBuilderAccess.RunAndSave);
 
-            ModuleBuilder mb = ab.DefineDynamicModule(aName.Name, aName.Name + ".dll");
+            ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name, assemblyName.Name + ".dll");
 
             TypeBuilder tb = mb.DefineType(typeName, TypeAttributes.Public);
 

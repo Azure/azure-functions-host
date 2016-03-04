@@ -61,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             object[] constructorArguments = null;
             if (Access == FileAccess.Write)
             {
-                constructorTypes = new Type[] { typeof(string)};
-                constructorArguments = new object[] { TableName};
+                constructorTypes = new Type[] { typeof(string) };
+                constructorArguments = new object[] { TableName };
             }
             else
             {
