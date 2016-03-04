@@ -99,7 +99,7 @@ namespace WebJobs.Script.WebHost.WebHooks
         }
 
         /// <summary>
-        /// Custom <see cref="WebHookHandler"/> used to integrate ASP.NET WebHooks int our request pipeline.
+        /// Custom <see cref="WebHookHandler"/> used to integrate ASP.NET WebHooks in our request pipeline.
         /// When a request is dispatched to a <see cref="WebHookReceiver"/>, after validating the request
         /// fully, it will delegate to this handler, allowing us to resume processing and dispatch the request
         /// to the function.

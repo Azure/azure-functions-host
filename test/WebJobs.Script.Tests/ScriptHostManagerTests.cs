@@ -62,7 +62,7 @@ namespace WebJobs.Script.Tests
         // Update the manifest for the timer function
         // - this will cause a file touch which cause ScriptHostManager to notice and update
         // - set to a new output location so that we can ensure we're getting new changes. 
-        static CloudBlockBlob UpdateOutputName(string prev, string hint, EndToEndTestFixture fixture)
+        private static CloudBlockBlob UpdateOutputName(string prev, string hint, EndToEndTestFixture fixture)
         {
             string name = hint;
 

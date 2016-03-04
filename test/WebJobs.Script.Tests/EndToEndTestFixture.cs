@@ -16,7 +16,7 @@ namespace WebJobs.Script.Tests
     public abstract class EndToEndTestFixture : IDisposable
     {
         protected EndToEndTestFixture(string rootPath)
-        {         
+        {
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
@@ -29,6 +29,14 @@ namespace WebJobs.Script.Tests
             Host = ScriptHost.Create(config);
             Host.Start();
         }
+
+        public TestTraceWriter TraceWriter { get; private set; }
+
+        public CloudBlobContainer TestContainer { get; private set; }
+
+        public CloudQueue TestQueue { get; private set; }
+
+        public ScriptHost Host { get; private set; }
 
         private void CreateTestStorageEntities()
         {
@@ -44,14 +52,6 @@ namespace WebJobs.Script.Tests
             TestContainer = blobClient.GetContainerReference("test-output");
             TestContainer.CreateIfNotExists();
         }
-
-        public TestTraceWriter TraceWriter { get; private set; }
-
-        public CloudBlobContainer TestContainer { get; private set; }
-
-        public CloudQueue TestQueue { get; private set; }
-
-        public ScriptHost Host { get; private set; }
 
         public void Dispose()
         {

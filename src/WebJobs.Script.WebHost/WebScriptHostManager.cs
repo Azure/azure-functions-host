@@ -15,7 +15,7 @@ namespace WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
-        public WebScriptHostManager(ScriptHostConfiguration config) : base (config)
+        public WebScriptHostManager(ScriptHostConfiguration config) : base(config)
         {
         }
 

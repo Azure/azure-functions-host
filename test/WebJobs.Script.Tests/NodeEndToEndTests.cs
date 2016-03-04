@@ -3,15 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Newtonsoft.Json;
 
 namespace WebJobs.Script.Tests
 {
@@ -46,13 +45,7 @@ namespace WebJobs.Script.Tests
             string result = await WaitForBlobAsync(testData);
 
             var payload = JsonConvert.DeserializeObject<Payload>(result);
-            Assert.Equal(testData, payload.id);
-        }
-
-        class Payload
-        {
-            public string prop1 { get; set; }
-            public string id { get; set; }
+            Assert.Equal(testData, payload.Id);
         }
 
         [Fact]
@@ -202,6 +195,14 @@ namespace WebJobs.Script.Tests
                 File.Delete(JobLogTestFileName);
             }
         }
+
+        private class Payload
+        {
+            [JsonProperty(PropertyName = "id")]
+            public string Id { get; set; }
+
+            [JsonProperty(PropertyName = "prop1")]
+            public string Prop1 { get; set; }
+        }
     }
 }
-

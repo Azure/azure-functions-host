@@ -131,8 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<PortableExecutableReference>.Empty;
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", 
-            MessageId = "System.Reflection.Assembly.LoadFile", Justification = "Calling LoadFile uses the appropriate load context")]
         public Assembly ResolveAssembly(string assemblyName)
         {
             Assembly assembly = null;

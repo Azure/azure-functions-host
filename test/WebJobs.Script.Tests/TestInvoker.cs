@@ -9,11 +9,19 @@ namespace WebJobs.Script.Tests
 {
     public class TestInvoker : IFunctionInvoker
     {
-        public int InvokeCount = 0;
+        private int _invokeCount = 0;
+
+        public int InvokeCount
+        {
+            get
+            {
+                return _invokeCount;
+            }
+        }
 
         public Task Invoke(object[] parameters)
         {
-            Interlocked.Increment(ref InvokeCount);
+            Interlocked.Increment(ref _invokeCount);
             return Task.FromResult(0);
         }
     }

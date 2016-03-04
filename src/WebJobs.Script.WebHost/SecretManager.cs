@@ -101,7 +101,7 @@ namespace WebJobs.Script.WebHost
             });
         }
 
-        static string GenerateSecretString()
+        private static string GenerateSecretString()
         {
             using (var rng = RandomNumberGenerator.Create())
             {

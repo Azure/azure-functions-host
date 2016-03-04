@@ -13,13 +13,13 @@ namespace WebJobs.Script.WebHost
             GlobalConfiguration.Configure(WebApiConfig.Register);
         }
 
-        void Application_Error(object sender, EventArgs e)
+        protected void Application_Error(object sender, EventArgs e)
         {
             // TODO: Log any unhandled exceptions
             Exception ex = Server.GetLastError();
         }
 
-        void Application_End(object sender, EventArgs e)
+        protected void Application_End(object sender, EventArgs e)
         {
             WebScriptHostManager webScriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));
             if (webScriptHostManager != null)

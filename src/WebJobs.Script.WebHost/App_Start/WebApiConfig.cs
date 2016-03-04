@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Web.Http;
 using Autofac;
 using Autofac.Integration.WebApi;
@@ -32,15 +35,13 @@ namespace WebJobs.Script.WebHost
 
             config.Routes.MapHttpRoute(
                 name: "Home",
-                routeTemplate: "",
-                defaults: new { controller = "Home" }
-            );
+                routeTemplate: string.Empty,
+                defaults: new { controller = "Home" });
 
             config.Routes.MapHttpRoute(
                 name: "Functions",
                 routeTemplate: "{*uri}",
-                defaults: new { controller = "Functions" }
-            );
+                defaults: new { controller = "Functions" });
 
             // Initialize WebHook Receivers
             config.InitializeReceiveGenericJsonWebHooks();

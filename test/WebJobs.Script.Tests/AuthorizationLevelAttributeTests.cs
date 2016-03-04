@@ -17,9 +17,9 @@ namespace WebJobs.Script.Tests
 {
     public class AuthorizationLevelAttributeTests
     {
-        private readonly string TestMasterKeyValue = "abc123";
-        private readonly string TestFunctionKeyValue = "def456";
-        private readonly string TestHostFunctionKeyValue = "xyz789";
+        private readonly string testMasterKeyValue = "abc123";
+        private readonly string testFunctionKeyValue = "def456";
+        private readonly string testHostFunctionKeyValue = "xyz789";
         private HttpActionContext _actionContext;
         private HostSecrets _hostSecrets;
         private FunctionSecrets _functionSecrets;
@@ -37,13 +37,13 @@ namespace WebJobs.Script.Tests
             _mockSecretManager = new Mock<SecretManager>(MockBehavior.Strict);
             _hostSecrets = new HostSecrets
             {
-                MasterKey = TestMasterKeyValue,
-                FunctionKey = TestHostFunctionKeyValue
+                MasterKey = testMasterKeyValue,
+                FunctionKey = testHostFunctionKeyValue
             };
             _mockSecretManager.Setup(p => p.GetHostSecrets()).Returns(_hostSecrets);
             _functionSecrets = new FunctionSecrets
             {
-                Key = TestFunctionKeyValue
+                Key = testFunctionKeyValue
             };
             _mockSecretManager.Setup(p => p.GetFunctionSecrets(It.IsAny<string>())).Returns(_functionSecrets);
             mockDependencyResolver.Setup(p => p.GetService(typeof(SecretManager))).Returns(_mockSecretManager.Object);
@@ -91,7 +91,7 @@ namespace WebJobs.Script.Tests
             _hostSecrets.MasterKey = null;
 
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
             _actionContext.ControllerContext.Request = request;
 
             attribute.OnAuthorization(_actionContext);
@@ -116,7 +116,7 @@ namespace WebJobs.Script.Tests
         public void GetAuthorizationLevel_ValidKeyHeader_MasterKey_ReturnsAdmin()
         {
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
 
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
 
@@ -128,13 +128,13 @@ namespace WebJobs.Script.Tests
         {
             // first verify the host level function key works
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestHostFunctionKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testHostFunctionKeyValue);
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
             Assert.Equal(AuthorizationLevel.Function, level);
 
             // test function specific key
             request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestFunctionKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testFunctionKeyValue);
             level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
@@ -153,7 +153,7 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GetAuthorizationLevel_ValidKeyQueryParam_MasterKey_ReturnsAdmin()
         {
-            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", TestMasterKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", testMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
@@ -165,12 +165,12 @@ namespace WebJobs.Script.Tests
         public void GetAuthorizationLevel_ValidKeyQueryParam_FunctionKey_ReturnsFunction()
         {
             // first try host level function key
-            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", TestHostFunctionKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", testHostFunctionKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
 
-            uri = new Uri(string.Format("http://functions/api/foo?key={0}", TestFunctionKeyValue));
+            uri = new Uri(string.Format("http://functions/api/foo?key={0}", testFunctionKeyValue));
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);

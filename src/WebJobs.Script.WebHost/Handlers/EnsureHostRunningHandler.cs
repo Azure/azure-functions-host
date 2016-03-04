@@ -12,10 +12,10 @@ namespace WebJobs.Script.WebHost.Handlers
 {
     public class EnsureHostRunningHandler : DelegatingHandler
     {
-        private WebScriptHostManager _scriptHostManager;
         private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 10);
         private readonly int _hostRunningPollIntervalMs = 500;
-
+        private WebScriptHostManager _scriptHostManager;
+ 
         public EnsureHostRunningHandler()
         {
             _scriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));

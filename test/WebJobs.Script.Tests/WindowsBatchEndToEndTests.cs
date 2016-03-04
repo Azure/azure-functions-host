@@ -20,13 +20,6 @@ namespace WebJobs.Script.Tests
         {
         }
 
-        public class TestFixture : EndToEndTestFixture
-        {
-            public TestFixture() : base(@"TestScripts\WindowsBatch")
-            {
-            }
-        }
-
         [Fact]
         public async Task WebHookTrigger_GenericJson()
         {
@@ -86,6 +79,13 @@ namespace WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Please pass a value on the query string", body.Trim());
+        }
+
+        public class TestFixture : EndToEndTestFixture
+        {
+            public TestFixture() : base(@"TestScripts\WindowsBatch")
+            {
+            }
         }
     }
 }

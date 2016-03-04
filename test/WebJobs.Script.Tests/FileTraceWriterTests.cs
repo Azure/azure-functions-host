@@ -39,12 +39,11 @@ namespace WebJobs.Script.Tests
             await Task.WhenAll(
                 Task.Run(() => WriteLogs(_logFilePath, numLines)),
                 Task.Run(() => WriteLogs(_logFilePath, numLines)),
-                Task.Run(() => WriteLogs(_logFilePath, numLines))
-            );
+                Task.Run(() => WriteLogs(_logFilePath, numLines)));
 
             string logFile = Directory.EnumerateFiles(_logFilePath).Single();
             string[] fileLines = File.ReadAllLines(logFile);
-            Assert.Equal(3 * numLines + 1, fileLines.Length);
+            Assert.Equal((3 * numLines) + 1, fileLines.Length);
         }
 
         private void WriteLogs(string logFilePath, int numLogs)

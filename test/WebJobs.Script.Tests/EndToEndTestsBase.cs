@@ -62,7 +62,7 @@ namespace WebJobs.Script.Tests
         protected static string RemoveByteOrderMarkAndWhitespace(string s)
         {
             string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            return s.Trim().Replace(" ", "").Replace(byteOrderMark, "");
+            return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
         }
     }
 }
