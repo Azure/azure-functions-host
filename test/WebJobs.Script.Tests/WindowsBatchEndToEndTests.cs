@@ -59,6 +59,7 @@ namespace WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?value={0}", testData)),
                 Method = HttpMethod.Get
             };
+            request.Headers.Add("test-header", "Test Request Header");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -70,14 +71,16 @@ namespace WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();
-            string expected = string.Format("Value = {0}", testData);
-            Assert.Equal(expected, body.Trim());
+            string[] lines = body.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal("test-header = Test Request Header", lines[0].Trim());
+            Assert.Equal(string.Format("Value = {0}", testData), lines[1].Trim());
 
             request.RequestUri = new Uri(string.Format("http://localhost/api/httptrigger", testData));
+            request.Headers.Clear();
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
             response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            body = await response.Content.ReadAsStringAsync();
+            body = await response.Content.ReadAsStringAsync();   
             Assert.Equal("Please pass a value on the query string", body.Trim());
         }
 

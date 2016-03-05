@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -67,6 +68,7 @@ namespace WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
                 Method = HttpMethod.Get,
             };
+            request.Headers.Add("test-header", "Test Request Header");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -77,10 +79,16 @@ namespace WebJobs.Script.Tests
             HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
+            Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
+
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["type"], "undefined");
-            Assert.Null((string)resultObject["body"]);
+            Assert.Equal((string)resultObject["reqBodyType"], "undefined");
+            Assert.Null((string)resultObject["reqBody"]);
+
+            // validate input headers
+            JObject reqHeaders = (JObject)resultObject["reqHeaders"];
+            Assert.Equal("Test Request Header", reqHeaders["test-header"]);
         }
 
         [Fact]
@@ -105,8 +113,8 @@ namespace WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["type"], "string");
-            Assert.Equal((string)resultObject["body"], testData);
+            Assert.Equal((string)resultObject["reqBodyType"], "string");
+            Assert.Equal((string)resultObject["reqBody"], testData);
         }
 
         [Fact]
@@ -136,8 +144,8 @@ namespace WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["type"], "object");
-            Assert.Equal((string)resultObject["body"]["testData"], testData);
+            Assert.Equal((string)resultObject["reqBodyType"], "object");
+            Assert.Equal((string)resultObject["reqBody"]["testData"], testData);
         }
 
         [Fact]

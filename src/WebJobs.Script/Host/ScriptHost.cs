@@ -282,6 +282,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
                         break;
                     case BindingType.HttpTrigger:
+                        bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
+                        break;
                     case BindingType.Http:
                         bindingMetadata = binding.ToObject<HttpBindingMetadata>();
                         break;

@@ -242,6 +242,7 @@
     <Compile Include="Description\CSharp\PackageManager.cs" />
     <Compile Include="Description\EventHubBindingMetadata.cs" />
     <Compile Include="Description\HttpBindingMetadata.cs" />
+    <Compile Include="Description\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\QueueBindingMetadata.cs" />
     <Compile Include="Description\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\TableBindingMetadata.cs" />
@@ -264,6 +265,7 @@
     <Compile Include="DictionaryJsonConverter.cs" />
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="FileTraceWriter.cs" />
+    <Compile Include="HttpMethodJsonConverter.cs" />
     <Compile Include="NullTraceWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Config\ScriptHostConfiguration.cs" />

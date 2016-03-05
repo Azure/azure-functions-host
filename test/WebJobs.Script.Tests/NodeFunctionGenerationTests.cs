@@ -85,7 +85,7 @@ namespace WebJobs.Script.Tests
         [Fact]
         public void GenerateHttpTriggerFunction()
         {
-            HttpBindingMetadata trigger = new HttpBindingMetadata
+            HttpTriggerBindingMetadata trigger = new HttpTriggerBindingMetadata
             {
                 Type = BindingType.HttpTrigger
             };

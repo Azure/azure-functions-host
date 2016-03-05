@@ -83,7 +83,7 @@ namespace WebJobs.Script.WebHost
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
             foreach (var function in Instance.Functions)
             {
-                HttpBindingMetadata httpTriggerBinding = (HttpBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
+                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
                 if (httpTriggerBinding != null)
                 {
                     string route = httpTriggerBinding.Route;

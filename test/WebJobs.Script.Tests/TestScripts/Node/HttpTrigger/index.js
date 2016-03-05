@@ -2,8 +2,15 @@
     context.log('Node.js HttpTrigger function invoked.');
 
     var res = {
-        type: typeof req.body,
-        body: req.body
+        status: 200,
+        body: {
+            reqBodyType: typeof req.body,
+            reqBody: req.body,
+            reqHeaders: req.headers
+        },
+        headers: {
+            'test-header': 'Test Response Header'
+        }
     };
 
     context.done(null, res);

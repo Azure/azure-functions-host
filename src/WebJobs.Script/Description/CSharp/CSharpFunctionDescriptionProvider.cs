@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         triggerMetadata.Name = "req";
                     }
-                    triggerParameter = ParseHttpTrigger((HttpBindingMetadata)triggerMetadata, methodAttributes, parameter.ParameterType);
+                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, parameter.ParameterType);
                     break;
                 case BindingType.ManualTrigger:
                     triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes, parameter.ParameterType);

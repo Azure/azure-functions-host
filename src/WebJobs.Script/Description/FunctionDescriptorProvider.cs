@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         triggerMetadata.Name = triggerParameterName = "req";
                     }
-                    triggerParameter = ParseHttpTrigger((HttpBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
+                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
                     break;
                 case BindingType.ManualTrigger:
                     triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes);
@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseHttpTrigger(HttpBindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
         {
             if (trigger == null)
             {

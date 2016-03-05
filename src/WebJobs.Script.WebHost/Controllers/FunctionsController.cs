@@ -42,7 +42,7 @@ namespace WebJobs.Script.WebHost.Controllers
 
             // Authorize the request
             SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
-            HttpBindingMetadata httpFunctionMetadata = (HttpBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
             bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
             if (!isWebHook && !AuthorizationLevelAttribute.IsAuthorized(request, httpFunctionMetadata.AuthLevel, secretManager, functionName: function.Name))
             {
@@ -63,6 +63,13 @@ namespace WebJobs.Script.WebHost.Controllers
             }
             else
             {
+                // Validate the HttpMethod
+                // Note that for WebHook requests, WebHook receiver does its own validation
+                if (httpFunctionMetadata.Methods != null && !httpFunctionMetadata.Methods.Contains(request.Method))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+
                 // Not a WebHook request so dispatch directly
                 response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
             }

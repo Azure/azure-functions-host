@@ -55,10 +55,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 if (jsonObject["status"] != null && jsonObject["body"] != null)
                 {
                     HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
-                    string body = jsonObject.Value<string>("body");
+                    string body = jsonObject["body"].ToString();
 
                     response = new HttpResponseMessage(statusCode);
                     response.Content = new StringContent(body);
+
+                    JObject headers = (JObject)jsonObject["headers"];
+                    if (headers != null)
+                    {
+                        foreach (var header in headers)
+                        {
+                            if (header.Value != null)
+                            {
+                                response.Headers.Add(header.Key, header.Value.ToString());
+                            }
+                        }
+                    }
                 }
             }
             catch (JsonException)

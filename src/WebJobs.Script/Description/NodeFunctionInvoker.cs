@@ -270,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // If this is a WebHook function, the input should be the
                 // request body
-                HttpBindingMetadata httpBinding = _trigger as HttpBindingMetadata;
+                HttpTriggerBindingMetadata httpBinding = _trigger as HttpTriggerBindingMetadata;
                 if (httpBinding != null &&
                     !string.IsNullOrEmpty(httpBinding.WebHookType))
                 {
@@ -296,6 +296,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             inputDictionary["originalUrl"] = request.RequestUri.ToString();
             inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
             inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+            foreach (var header in request.Headers)
+            {
+                // since HTTP headers are case insensitive, we lower-case the keys
+                // as does Node.js request object
+                headers.Add(header.Key.ToLowerInvariant(), header.Value.First());
+            }
+            inputDictionary["headers"] = headers;
 
             // if the request includes a body, add it to the request object 
             if (request.Content != null && request.Content.Headers.ContentLength > 0)
