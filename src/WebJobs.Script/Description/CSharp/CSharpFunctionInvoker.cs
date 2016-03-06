@@ -66,13 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string GetTriggerInputName(FunctionMetadata functionMetadata)
         {
             BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
-            
+
+            string triggerName = null;
             if (triggerBinding != null)
             {
-                return triggerBinding.Name;
+                triggerName = triggerBinding.Name;
             }
 
-            return DefaultInputName;
+            return triggerName ?? DefaultInputName;
         }
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
