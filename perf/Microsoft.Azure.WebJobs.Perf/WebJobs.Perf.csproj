@@ -110,6 +110,10 @@
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>WebJobs.Host</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Logging\WebJobs.Logging.csproj">
+      <Project>{b5a04006-ab0c-4800-ae4c-080d31867de3}</Project>
+      <Name>WebJobs.Logging</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs\WebJobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>WebJobs</Name>

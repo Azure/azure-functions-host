@@ -45,6 +45,9 @@ namespace Dashboard.Data
 
         public DateTimeOffset? EndTime { get; set; }
 
+        // If specified, text output is provided in the string. Ignore the OutputBlob. 
+        public string InlineOutputText { get; set; }
+
         public LocalBlobDescriptor OutputBlob { get; set; }
 
         public LocalBlobDescriptor ParameterLogBlob { get; set; }

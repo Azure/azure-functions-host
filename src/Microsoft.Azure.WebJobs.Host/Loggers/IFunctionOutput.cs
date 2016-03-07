@@ -13,8 +13,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     {
         IRecurrentCommand UpdateCommand { get; }
 
+        // Get a text writer for logging. A user function can get this via model binding to a 'TextWriter'.
+        // The logging provider determines the backing storage for this. 
         TextWriter Output { get; }
 
-        Task SaveAndCloseAsync(CancellationToken cancellationToken);
+        // Copy the output contents the logEntry. 
+        Task SaveAndCloseAsync(SdkFunctionLogEntry logEntry, CancellationToken cancellationToken);
     }
 }

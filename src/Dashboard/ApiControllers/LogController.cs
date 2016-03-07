@@ -43,6 +43,11 @@ namespace Dashboard.ApiControllers
                 return NotFound();
             }
 
+            if (instance.InlineOutputText != null)
+            {
+                return new TextResult(instance.InlineOutputText, Request);
+            }
+
             LocalBlobDescriptor outputBlobDescriptor = instance.OutputBlob;
             if (outputBlobDescriptor == null)
             {

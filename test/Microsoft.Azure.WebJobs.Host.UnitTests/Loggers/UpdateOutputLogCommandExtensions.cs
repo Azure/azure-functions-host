@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 throw new ArgumentNullException("command");
             }
 
-            command.SaveAndCloseAsync(CancellationToken.None).GetAwaiter().GetResult();
+            command.SaveAndCloseAsync(null, CancellationToken.None).GetAwaiter().GetResult();
         }
     }
 }

@@ -47,8 +47,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 hostIdProvider = new FixedHostIdProvider(_config.HostId);
             }
+
+            var fastLogger = _config.GetService<IAsyncCollector<SdkFunctionLogEntry>>();
+
             return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
-                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider);
+                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider, fastLogger : fastLogger);
         }
 
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
@@ -70,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = null,
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null,
-            SingletonManager singletonManager = null)
+            SingletonManager singletonManager = null,
+            IAsyncCollector<SdkFunctionLogEntry> fastLogger = null)
         {
             if (hostIdProvider == null)
             {
@@ -110,8 +114,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
-
-            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
+                        
+            bool hasFastTableHook = config.GetService<IAsyncCollector<SdkFunctionLogEntry>>() != null;
+            bool noDashboardStorage = config.DashboardConnectionString == null;
+            if (hasFastTableHook && noDashboardStorage)
+            {
+                var loggerProvider = new FastTableLoggerProvider();
+                hostInstanceLogerProvider = loggerProvider;
+                functionInstanceLoggerProvider = loggerProvider;
+                functionOutputLoggerProvider = loggerProvider;
+            }
+            else {
+                var loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
+                hostInstanceLogerProvider = loggerProvider;
+                functionInstanceLoggerProvider = loggerProvider;
+                functionOutputLoggerProvider = loggerProvider;
+            }
 
             if (singletonManager == null)
             {
@@ -126,39 +144,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(combinedCancellationToken);
 
-                IHostInstanceLogger hostInstanceLogger = null;
-                if (hostInstanceLogerProvider != null)
-                {
-                    hostInstanceLogger = await hostInstanceLogerProvider.GetAsync(combinedCancellationToken);
-                }
-                else
-                {
-                    hostInstanceLogger = await((IHostInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
-                }
-
-                IFunctionInstanceLogger functionInstanceLogger = null;
-                if (functionInstanceLoggerProvider != null)
-                {
-                    functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);
-                }
-                else
-                {
-                    functionInstanceLogger = await((IFunctionInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
-                }
-
-                IFunctionOutputLogger functionOutputLogger = null;
-                if (functionOutputLoggerProvider != null)
-                {
-                    functionOutputLogger = await functionOutputLoggerProvider.GetAsync(combinedCancellationToken);
-                }
-                else
-                {
-                    functionOutputLogger = await((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
-                }
-
+                IHostInstanceLogger hostInstanceLogger = await hostInstanceLogerProvider.GetAsync(combinedCancellationToken);                
+                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
+                IFunctionOutputLogger functionOutputLogger = await functionOutputLoggerProvider.GetAsync(combinedCancellationToken);
+                
                 if (functionExecutor == null)
                 {
-                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace, config.FunctionTimeout);
+                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace, config.FunctionTimeout, fastLogger);
                 }
 
                 if (functionIndexProvider == null)
