@@ -11,12 +11,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class ContainerScanInfo
     {
-        public ICollection<ITriggerExecutor<IStorageBlob>> Registrations;
+        public ICollection<ITriggerExecutor<IStorageBlob>> Registrations { get; set; }
 
-        public DateTime LastSweepCycleStartTime;
+        public DateTime LastSweepCycleStartTime { get; set; }
 
-        public DateTime CurrentSweepCycleStartTime;
+        public DateTime CurrentSweepCycleStartTime { get; set; }
 
-        public BlobContinuationToken ContinuationToken;
+        public BlobContinuationToken ContinuationToken { get; set; }
     }
 }

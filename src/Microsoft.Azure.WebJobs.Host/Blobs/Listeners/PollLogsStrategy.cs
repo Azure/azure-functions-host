@@ -26,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly Thread _initialScanThread;
         private readonly ConcurrentQueue<IStorageBlob> _blobsFoundFromScanOrNotification;
         private readonly CancellationTokenSource _cancellationTokenSource;
-
+        private bool _performInitialScan;
         private bool _disposed;
 
-        public PollLogsStrategy()
+        public PollLogsStrategy(bool performInitialScan = true)
         {
             _registrations = new Dictionary<IStorageBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>>(
                 new StorageBlobContainerComparer());
@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _initialScanThread = new Thread(ScanContainers);
             _blobsFoundFromScanOrNotification = new ConcurrentQueue<IStorageBlob>();
             _cancellationTokenSource = new CancellationTokenSource();
+            _performInitialScan = performInitialScan;
         }
 
         public async Task RegisterAsync(IStorageBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
@@ -121,7 +122,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             // Start a background scan of the container on first execution. Later writes will be found via polling logs.
             // Thread monitors _cancellationTokenSource.Token (that's the only way this thread is controlled).
-            _initialScanThread.Start(_cancellationTokenSource.Token);
+            if (_performInitialScan)
+            {
+                _initialScanThread.Start(_cancellationTokenSource.Token);
+            }
         }
 
         public void Cancel()

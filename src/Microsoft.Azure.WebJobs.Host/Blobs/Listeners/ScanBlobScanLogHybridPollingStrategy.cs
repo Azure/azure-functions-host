@@ -19,23 +19,21 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class ScanBlobScanLogHybridPollingStrategy : IBlobListenerStrategy
     {
-        private static readonly TimeSpan _pollintInterval = TimeSpan.FromSeconds(10);
-        private enum PollStrategy { ScanBlobs, ScanLogs, NotDetermined };
-
+        private static readonly TimeSpan PollingtInterval = TimeSpan.FromSeconds(10);
+        private readonly IDictionary<IStorageBlobContainer, ContainerScanInfo> _scanInfo;
+        private readonly ConcurrentQueue<IStorageBlob> _blobsFoundFromScanOrNotification;
+        private readonly CancellationTokenSource _cancellationTokenSource;
         // A budget is allocated representing the number of blobs to be listed in a polling 
         // interval, each container will get its share of _scanBlobLimitPerPoll/number of containers.
         // this share will be listed for each container each polling interval
         private int _scanBlobLimitPerPoll = 10000;
-        private readonly IDictionary<IStorageBlobContainer, ContainerScanInfo> _scanInfo;
-        private readonly ConcurrentQueue<IStorageBlob> _blobsFoundFromScanOrNotification;
         private PollLogsStrategy _pollLogStrategy;
-        private readonly CancellationTokenSource _cancellationTokenSource;
         private bool _disposed;
 
         public ScanBlobScanLogHybridPollingStrategy() : base()
         {
             _scanInfo = new Dictionary<IStorageBlobContainer, ContainerScanInfo>(new StorageBlobContainerComparer());
-            _pollLogStrategy = new PollLogsStrategy();
+            _pollLogStrategy = new PollLogsStrategy(performInitialScan: false);
             _cancellationTokenSource = new CancellationTokenSource();
             _blobsFoundFromScanOrNotification = new ConcurrentQueue<IStorageBlob>();
         }
@@ -82,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             ThrowIfDisposed();
 
-            Task LogPollingTask = _pollLogStrategy.ExecuteAsync(cancellationToken);
+            Task logPollingTask = _pollLogStrategy.ExecuteAsync(cancellationToken);
             List<IStorageBlob> failedNotifications = new List<IStorageBlob>();
             List<Task> notifications = new List<Task>();
 
@@ -102,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             await Task.WhenAll(notifications);
 
             List<Task> pollingTasks = new List<Task>();
-            pollingTasks.Add(LogPollingTask);
+            pollingTasks.Add(logPollingTask);
 
             foreach (KeyValuePair<IStorageBlobContainer, ContainerScanInfo> containerScanInfoPair in _scanInfo)
             {
@@ -118,12 +116,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             await Task.WhenAll(pollingTasks);
 
             // Run subsequent iterations at "_pollingInterval" second intervals.
-            return new TaskSeriesCommandResult(wait: Task.Delay(_pollintInterval));
+            return new TaskSeriesCommandResult(wait: Task.Delay(PollingtInterval));
         }
 
         private async Task PollAndNotify(IStorageBlobContainer container, ContainerScanInfo containerInfo, CancellationToken cancellationToken, List<IStorageBlob> failedNotifications)
         {
-
             cancellationToken.ThrowIfCancellationRequested();
             IEnumerable<IStorageBlob> newBlobs = await PollNewBlobsAsync(container, containerInfo, cancellationToken);
 
@@ -163,10 +160,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// budget of allocated number of blobs to query, for each container we query a page of 
         /// that size and we keep the continuation token for the next time. AS a curser, we use
         /// the time stamp when the current cycle on the container started. blobs newer than that
-        /// time will be considered new and registerations will be notified
+        /// time will be considered new and registrations will be notified
         /// </summary>
         /// <param name="container"></param>
-        /// <param name="containerScanInfo"> Information that includes the lastcycle start
+        /// <param name="containerScanInfo"> Information that includes the last cycle start
         /// the continuation token and the current cycle start for a container</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>

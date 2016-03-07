@@ -99,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 return new ScanContainersStrategy();
             }
-
         }
     }
 }
