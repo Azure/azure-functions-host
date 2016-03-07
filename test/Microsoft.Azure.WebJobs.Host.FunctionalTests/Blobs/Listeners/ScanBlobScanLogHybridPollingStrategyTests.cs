@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
         [Fact]
         public void ScanBlobScanLogHybridPollingStrategyTestBlobListener()
         {
-            string containerName = "container";
+            string containerName = Path.GetRandomFileName();
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageBlobContainer container = account.CreateBlobClient().GetContainerReference(containerName);
             IBlobListenerStrategy product = new ScanBlobScanLogHybridPollingStrategy();
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             product.Start();
 
             RunExecuterWithExpectedBlobs(new List<string>(), product, executor);
-
+            
             string expectedBlobName = CreateAblobAndUploadToContainer(container);
 
             RunExecuterWithExpectedBlobs(new List<string>(){ expectedBlobName}, product, executor);
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
         public void TestBlobListenerWithContainerBiggerThanThreshold()
         {
             int testScanBlobLimitPerPoll = 1;
-            string containerName = "container";
+            string containerName = Path.GetRandomFileName();
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageBlobContainer container = account.CreateBlobClient().GetContainerReference(containerName);
             IBlobListenerStrategy product = new ScanBlobScanLogHybridPollingStrategy();
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 
             product.Register(container, executor);
             product.Start();
-
+            
             // populate with 5 blobs
             List<string> expectedNames = new List<string>();
             for (int i = 0; i< 5; i++)
@@ -74,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
         public void TestBlobListenerWithMultipleContainers()
         {
             int testScanBlobLimitPerPoll = 6, containerCount = 2;
-            string firstContainerName = "container1";
-            string secondContainerName = "container2";
+            string firstContainerName = Path.GetRandomFileName();
+            string secondContainerName = Path.GetRandomFileName();
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageBlobContainer firstContainer = account.CreateBlobClient().GetContainerReference(firstContainerName);
             IStorageBlobContainer secondContainer = account.CreateBlobClient().GetContainerReference(secondContainerName);
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             product.Register(firstContainer, executor);
             product.Register(secondContainer, executor);
             product.Start();
-
+            
             // populate first container with 5 blobs > page size and second with 2 blobs < page size
             // page size is going to be testScanBlobLimitPerPoll / number of container 6/2 = 3
             List<string> firstContainerExpectedNames = new List<string>();
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
                 {
                     throw new InvalidOperationException("shouldn't be any blobs in the container");
                 };
-                product.Execute();
+                product.Execute().Wait.Wait();
             }
             else
             {
