@@ -216,6 +216,7 @@
     <Compile Include="Description\BindingType.cs" />
     <Compile Include="Description\BlobBindingMetadata.cs" />
     <Compile Include="Description\CSharp\CSharpConstants.cs" />
+    <Compile Include="Description\CSharp\CSharpFunctionSignature.cs" />
     <Compile Include="Description\CSharp\FunctionAssemblyLoadContext.cs" />
     <Compile Include="Description\CSharp\FunctionAssemblyLoader.cs" />
     <Compile Include="Description\CSharp\CSharpFunctionDescriptionProvider.cs" />
@@ -223,6 +224,8 @@
     <Compile Include="Description\CSharp\FunctionEntryPointResolver.cs" />
     <Compile Include="Description\CSharp\FunctionMetadataResolver.cs" />
     <Compile Include="Description\CSharp\IFunctionEntryPointResolver.cs" />
+    <Compile Include="Description\CSharp\IMethodReference.cs" />
+    <Compile Include="Description\CSharp\MethodReference.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolver.cs" />
     <Compile Include="Description\CSharp\PackageManager.cs" />
     <Compile Include="Description\EventHubBindingMetadata.cs" />

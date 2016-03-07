@@ -32,8 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 return declaredMethods[0];
             }
-            
-            var runMethods = declaredMethods
+
+            var methods = declaredMethods.Select(m => new MethodReference<MethodInfo>(m.Name, m.IsPublic, m));
+            MethodReference<MethodInfo> entryPoint = GetFunctionEntryPoint(methods);
+
+            return entryPoint.Value;
+        }
+
+        public T GetFunctionEntryPoint<T>(IEnumerable<T> methods) where T : IMethodReference
+        {
+            var runMethods = methods
                 .Where(m => m.IsPublic && string.Compare(m.Name, "run", StringComparison.OrdinalIgnoreCase) == 0)
                 .ToList();
 

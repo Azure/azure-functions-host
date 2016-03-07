@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
 
         private MethodInfo _function;
+        private CSharpFunctionSignature _functionSignature;
         private FunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
         private Action _restorePackages;
@@ -101,7 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             stopwatch.Start();
 
             Script<object> script = CreateScript();
-            ImmutableArray<Diagnostic> compilationResult = script.GetCompilation().GetDiagnostics();
+            Compilation compilation = script.GetCompilation();
+            ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
 
             stopwatch.Stop();
             TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation completed ({0} milliseconds).", stopwatch.ElapsedMilliseconds));
@@ -112,10 +114,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter.Trace(traceEvent);
             }
 
-            // If the compilation succeeded, restart the host
-            // TODO: Make this smarter so we only restart the host if the 
-            // method signature (or types used in the signature) change.
-            if (!compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error))
+            // If the compilation succeeded, AND:
+            //      - We're referencing local function types (i.e. POCOs defined in the function)
+            //  OR
+            //      - Our our function signature has changed
+            // Restart our host.
+            if (!compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error) &&
+                (_functionSignature.HasLocalTypeReference || 
+                !_functionSignature.Equals(CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver))))
             {
                 _host.RestartEvent.Set();
             }
@@ -227,6 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             // Get our function entry point
                             System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
                             _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                            _functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
                         }
                     }
                 }

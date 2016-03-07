@@ -9,5 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public interface IFunctionEntryPointResolver
     {
         MethodInfo GetFunctionEntryPoint(IList<MethodInfo> declaredMethods);
+
+        T GetFunctionEntryPoint<T>(IEnumerable<T> methods) where T : IMethodReference;
     }
 }
