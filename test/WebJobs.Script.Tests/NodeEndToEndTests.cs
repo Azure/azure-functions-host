@@ -23,6 +23,20 @@ namespace WebJobs.Script.Tests
         {
         }
 
+        /// <summary>
+        /// Function "Invalid" has a binding error. This function validates that the error
+        /// is cached, and the fact that all the other tests in this suite run verifies that
+        /// the error did not bring down the host.
+        /// </summary>
+        [Fact]
+        public void ErrorFunction_DoesNotBringDownHost()
+        {
+            // verify the cached error for the invalid function
+            Assert.Equal(1, Fixture.Host.FunctionErrors.Count);
+            string error = Fixture.Host.FunctionErrors["Invalid"].Single();
+            Assert.Equal("'invalid' is not a valid binding direction.", error);
+        }
+
         [Fact]
         public async Task EventHub()
         {

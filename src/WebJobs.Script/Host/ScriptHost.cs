@@ -84,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
+
+            FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public TraceWriter TraceWriter { get; private set; }
@@ -91,6 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
         public Collection<FunctionDescriptor> Functions { get; private set; }
+
+        public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
         public AutoResetEvent RestartEvent
         {
@@ -217,27 +221,29 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
-        private static bool TryParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject configMetadata, out FunctionMetadata functionMetadata)
+        private static FunctionMetadata ParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject configMetadata)
         {
-            functionMetadata = new FunctionMetadata
+            FunctionMetadata functionMetadata = new FunctionMetadata
             {
                 Name = functionName
             };
 
             JValue triggerDisabledValue = null;
             JArray bindingArray = (JArray)configMetadata["bindings"];
+            if (bindingArray == null || bindingArray.Count == 0)
+            {
+                throw new FormatException("At least one binding must be declared.");
+            }
+
             if (bindingArray != null)
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = null;
-                    if (TryParseBindingMetadata(binding, nameResolver, out bindingMetadata))
+                    BindingMetadata bindingMetadata = ParseBindingMetadata(binding, nameResolver);
+                    functionMetadata.Bindings.Add(bindingMetadata);
+                    if (bindingMetadata.IsTrigger)
                     {
-                        functionMetadata.Bindings.Add(bindingMetadata);
-                        if (bindingMetadata.IsTrigger)
-                        {
-                            triggerDisabledValue = (JValue)binding["disabled"];
-                        }
+                        triggerDisabledValue = (JValue)binding["disabled"];
                     }
                 }
             }
@@ -249,163 +255,178 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.IsDisabled = true;
             }
 
-            return true;
+            return functionMetadata;
         }
 
-        private static bool TryParseBindingMetadata(JObject binding, INameResolver appsettingResolver, out BindingMetadata bindingMetadata)
+        private static BindingMetadata ParseBindingMetadata(JObject binding, INameResolver nameResolver)
         {
-            bindingMetadata = null;
+            BindingMetadata bindingMetadata = null;
             string bindingTypeValue = (string)binding["type"];
             string bindingDirectionValue = (string)binding["direction"];
-            BindingType bindingType;
-            BindingDirection bindingDirection;
-            if (!string.IsNullOrEmpty(bindingTypeValue) &&
-                Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType) &&
-                Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
+            BindingType bindingType = default(BindingType);
+            BindingDirection bindingDirection = default(BindingDirection);
+
+            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
+                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
             {
-                switch (bindingType)
-                {
-                    case BindingType.EventHubTrigger:
-                    case BindingType.EventHub:
-                        bindingMetadata = binding.ToObject<EventHubBindingMetadata>();
-                        break;
-                    case BindingType.QueueTrigger:
-                    case BindingType.Queue:
-                        bindingMetadata = binding.ToObject<QueueBindingMetadata>();
-                        break;
-                    case BindingType.BlobTrigger:
-                    case BindingType.Blob:
-                        bindingMetadata = binding.ToObject<BlobBindingMetadata>();
-                        break;
-                    case BindingType.ServiceBusTrigger:
-                    case BindingType.ServiceBus:
-                        bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
-                        break;
-                    case BindingType.HttpTrigger:
-                        bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
-                        break;
-                    case BindingType.Http:
-                        bindingMetadata = binding.ToObject<HttpBindingMetadata>();
-                        break;
-                    case BindingType.Table:
-                        bindingMetadata = binding.ToObject<TableBindingMetadata>();
-                        break;
-                    case BindingType.ManualTrigger:
-                        bindingMetadata = binding.ToObject<BindingMetadata>();
-                        break;
-                    case BindingType.TimerTrigger:
-                        bindingMetadata = binding.ToObject<TimerBindingMetadata>();
-                        break;
-                }
-
-                bindingMetadata.Type = bindingType;
-                bindingMetadata.Direction = bindingDirection;
-
-                appsettingResolver.ResolveAllProperties(bindingMetadata);
-
-                return true;
+                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
             }
 
-            return false;
+            if (!string.IsNullOrEmpty(bindingTypeValue) &&
+                !Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
+            {
+                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding type.", bindingTypeValue));
+            }
+
+            switch (bindingType)
+            {
+                case BindingType.EventHubTrigger:
+                case BindingType.EventHub:
+                    bindingMetadata = binding.ToObject<EventHubBindingMetadata>();
+                    break;
+                case BindingType.QueueTrigger:
+                case BindingType.Queue:
+                    bindingMetadata = binding.ToObject<QueueBindingMetadata>();
+                    break;
+                case BindingType.BlobTrigger:
+                case BindingType.Blob:
+                    bindingMetadata = binding.ToObject<BlobBindingMetadata>();
+                    break;
+                case BindingType.ServiceBusTrigger:
+                case BindingType.ServiceBus:
+                    bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
+                    break;
+                case BindingType.HttpTrigger:
+                    bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
+                    break;
+                case BindingType.Http:
+                    bindingMetadata = binding.ToObject<HttpBindingMetadata>();
+                    break;
+                case BindingType.Table:
+                    bindingMetadata = binding.ToObject<TableBindingMetadata>();
+                    break;
+                case BindingType.ManualTrigger:
+                    bindingMetadata = binding.ToObject<BindingMetadata>();
+                    break;
+                case BindingType.TimerTrigger:
+                    bindingMetadata = binding.ToObject<TimerBindingMetadata>();
+                    break;
+            }
+
+            bindingMetadata.Type = bindingType;
+            bindingMetadata.Direction = bindingDirection;
+
+            nameResolver.ResolveAllProperties(bindingMetadata);
+
+            return bindingMetadata;
         }
 
-        internal static Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptionProviders)
+        private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             string scriptRootPath = config.RootScriptPath;
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
+
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
-                // read the function config
-                string functionConfigPath = Path.Combine(scriptDir, FunctionConfigFileName);
-                if (!File.Exists(functionConfigPath))
-                {
-                    // not a function directory
-                    continue;
-                }
+                string functionName = null;
 
-                string json = File.ReadAllText(functionConfigPath);
-                JObject configMetadata = JObject.Parse(json);
-                FunctionMetadata metadata = null;
-
-                // unless the name is explicitly set in the config,
-                // default it to the function folder name
-                string name = (string)configMetadata["name"];
-                if (string.IsNullOrEmpty(name))
+                try
                 {
-                    name = Path.GetFileNameWithoutExtension(scriptDir);
-                }
-
-                if (!TryParseFunctionMetadata(name, config.HostConfig.NameResolver, configMetadata, out metadata))
-                {
-                    // TODO: Handle error
-                    continue;
-                }
-
-                // determine the primary script
-                string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != FunctionConfigFileName).ToArray();
-                if (functionFiles.Length == 0)
-                {
-                    continue;
-                }
-                else if (functionFiles.Length == 1)
-                {
-                    // if there is only a single file, that file is primary
-                    metadata.Source = functionFiles[0];
-                }
-                else
-                {
-                    // if there is a "run" file, that file is primary
-                    string functionPrimary = null;
-                    functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run");
-                    if (string.IsNullOrEmpty(functionPrimary))
+                    // read the function config
+                    string functionConfigPath = Path.Combine(scriptDir, FunctionConfigFileName);
+                    if (!File.Exists(functionConfigPath))
                     {
-                        // for Node, any index.js file is primary
-                        functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileName(p).ToLowerInvariant() == "index.js");
-                        if (string.IsNullOrEmpty(functionPrimary))
-                        {
-                            // finally, if there is an explicit primary file indicated
-                            // in config, use it
-                            JToken token = configMetadata["source"];
-                            if (token != null)
-                            {
-                                string sourceFileName = (string)token;
-                                functionPrimary = Path.Combine(scriptDir, sourceFileName);
-                            }
-                        }
-                    }
-
-                    if (string.IsNullOrEmpty(functionPrimary))
-                    {
-                        // TODO: should this be an error?
+                        // not a function directory
                         continue;
                     }
-                    metadata.Source = functionPrimary;
-                }
 
-                metadatas.Add(metadata);
+                    functionName = Path.GetFileNameWithoutExtension(scriptDir);
+
+                    // TODO: we need to define a json schema document and do
+                    // schema validation
+                    string json = File.ReadAllText(functionConfigPath);
+                    JObject configMetadata = JObject.Parse(json);
+                    FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
+
+                    // determine the primary script
+                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != FunctionConfigFileName).ToArray();
+                    if (functionFiles.Length == 0)
+                    {
+                        AddFunctionError(functionName, "No function script files present.");
+                        continue;
+                    }
+                    else if (functionFiles.Length == 1)
+                    {
+                        // if there is only a single file, that file is primary
+                        metadata.Source = functionFiles[0];
+                    }
+                    else
+                    {
+                        // if there is a "run" file, that file is primary
+                        string functionPrimary = null;
+                        functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run");
+                        if (string.IsNullOrEmpty(functionPrimary))
+                        {
+                            // for Node, any index.js file is primary
+                            functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileName(p).ToLowerInvariant() == "index.js");
+                            if (string.IsNullOrEmpty(functionPrimary))
+                            {
+                                // finally, if there is an explicit primary file indicated
+                                // in config, use it
+                                JToken token = configMetadata["source"];
+                                if (token != null)
+                                {
+                                    string sourceFileName = (string)token;
+                                    functionPrimary = Path.Combine(scriptDir, sourceFileName);
+                                }
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(functionPrimary))
+                        {
+                            AddFunctionError(functionName, "Unable to determine primary function script.");
+                            continue;
+                        }
+                        metadata.Source = functionPrimary;
+                    }
+
+                    metadatas.Add(metadata);
+                }
+                catch (Exception ex)
+                {
+                    // log any unhandled exceptions and continue
+                    AddFunctionError(functionName, ex.Message);
+                }
             }
 
-            var functions = ReadFunctions(metadatas, descriptionProviders);
-            return functions;
+            return ReadFunctions(metadatas, descriptorProviders);
         }
 
-        internal static Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             foreach (FunctionMetadata metadata in metadatas)
             {
-                FunctionDescriptor descriptor = null;
-                foreach (var provider in descriptorProviders)
+                try
                 {
-                    if (provider.TryCreate(metadata, out descriptor))
+                    FunctionDescriptor descriptor = null;
+                    foreach (var provider in descriptorProviders)
                     {
-                        break;
+                        if (provider.TryCreate(metadata, out descriptor))
+                        {
+                            break;
+                        }
+                    }
+
+                    if (descriptor != null)
+                    {
+                        functionDescriptors.Add(descriptor);
                     }
                 }
-
-                if (descriptor != null)
+                catch (Exception ex)
                 {
-                    functionDescriptors.Add(descriptor);
+                    // log any unhandled exceptions and continue
+                    AddFunctionError(metadata.Name, ex.Message);
                 }
             }
 
@@ -509,6 +530,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             hostConfig.UseTimers();
             hostConfig.UseCore();
+        }
+
+        private void AddFunctionError(string functionName, string error)
+        {
+            Collection<string> errors = null;
+            if (!FunctionErrors.TryGetValue(functionName, out errors))
+            {
+                errors = new Collection<string>();
+                FunctionErrors[functionName] = errors;
+            }
+
+            errors.Add(error);
         }
 
         private void OnFileChanged(object sender, FileSystemEventArgs e)

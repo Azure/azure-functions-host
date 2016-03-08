@@ -17,6 +17,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public EventHubBinding(ScriptHostConfiguration config, string name, string eventHubName, FileAccess access, bool isTrigger) : 
             base(config, name, "eventhub", access, isTrigger)
         {
+            if (string.IsNullOrEmpty(eventHubName))
+            {
+                throw new ArgumentException("The event hub path cannot be null or empty.");
+            }
+
             EventHubName = eventHubName;
             _eventHubNameBindingTemplate = BindingTemplate.FromString(EventHubName);
         }

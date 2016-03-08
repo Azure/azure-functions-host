@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -51,6 +52,32 @@ namespace WebJobs.Script.WebHost.Controllers
             Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
 
             return new HttpResponseMessage(HttpStatusCode.Accepted);
+        }
+
+        [HttpGet]
+        [Route("admin/functions/{name}")]
+        public FunctionStatus Get(string name)
+        {
+            FunctionStatus status = new FunctionStatus();
+            Collection<string> functionErrors = null;
+
+            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+            if (function == null)
+            {
+                // if the function doesn't exist in the host, see if it the function
+                // has errors
+                if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
+                {
+                    status.Errors = functionErrors;
+                }
+                else
+                {
+                    // we don't know anything about this function
+                    throw new HttpResponseException(HttpStatusCode.NotFound);
+                }
+            }
+
+            return status;
         }
     }
 }

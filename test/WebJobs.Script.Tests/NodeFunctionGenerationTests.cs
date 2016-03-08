@@ -188,7 +188,8 @@ namespace WebJobs.Script.Tests
             {
                 new NodeFunctionDescriptorProvider(host, scriptConfig)
             };
-            var functionDescriptors = ScriptHost.ReadFunctions(metadatas, descriptorProviders);
+
+            var functionDescriptors = host.ReadFunctions(metadatas, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();

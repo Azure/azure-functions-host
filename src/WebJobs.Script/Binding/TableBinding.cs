@@ -23,6 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess access, TableQuery tableQuery = null) : base(config, name, "queue", access, false)
         {
+            if (string.IsNullOrEmpty(tableName))
+            {
+                throw new ArgumentException("The table name cannot be null or empty.");
+            }
+
             TableName = tableName;
             PartitionKey = partitionKey;
             RowKey = rowKey;
