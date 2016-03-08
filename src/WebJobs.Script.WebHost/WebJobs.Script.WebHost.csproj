@@ -233,6 +233,7 @@
   <ItemGroup>
     <Compile Include="App_Start\AutofacBootstrap.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="App_Start\WebHostSettings.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />

@@ -183,6 +183,7 @@
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
+    <Compile Include="SamplesEndToEndTests.cs" />
     <Compile Include="PhpEndToEndTests.cs" />
     <Compile Include="PowershellEndToEndTests.cs" />
     <Compile Include="PythonEndToEndTests.cs" />

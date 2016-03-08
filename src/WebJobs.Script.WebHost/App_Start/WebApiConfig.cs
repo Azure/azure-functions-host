@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
+using System.Web;
+using System.Web.Hosting;
 using System.Web.Http;
 using Autofac;
 using Autofac.Integration.WebApi;
@@ -15,18 +18,27 @@ namespace WebJobs.Script.WebHost
     {
         public static void Register(HttpConfiguration config)
         {
+            Register(config, GetDefaultSettings());
+        }
+
+        public static void Register(HttpConfiguration config, WebHostSettings settings = null)
+        {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
+            if (settings == null)
+            {
+                throw new ArgumentNullException("settings");
+            }
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
-            AutofacBootstrap.Initialize(builder);
+            AutofacBootstrap.Initialize(builder, settings);
             var container = builder.Build();
-            GlobalConfiguration.Configuration.DependencyResolver = new AutofacWebApiDependencyResolver(container);
+            config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
 
-            config.MessageHandlers.Add(new EnsureHostRunningHandler()); 
+            config.MessageHandlers.Add(new EnsureHostRunningHandler(config)); 
 
             // Web API configuration and services
 
@@ -58,6 +70,29 @@ namespace WebJobs.Script.WebHost
             config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
             config.InitializeReceiveSalesforceWebHooks();
+        }
+
+        private static WebHostSettings GetDefaultSettings()
+        {
+            WebHostSettings settings = new WebHostSettings();
+
+            string home = Environment.GetEnvironmentVariable("HOME");
+            bool isLocal = string.IsNullOrEmpty(home);
+            if (isLocal)
+            {
+                settings.ScriptPath = Path.Combine(HostingEnvironment.ApplicationPhysicalPath, @"..\..\sample");
+                settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
+            }
+            else
+            {
+                // we're running in Azure
+                settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
+                settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
+                settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
+            }
+
+            return settings;
         }
     }
 }

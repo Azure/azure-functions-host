@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using WebJobs.Script.WebHost.Filters;
 using WebJobs.Script.WebHost.WebHooks;
@@ -40,29 +41,41 @@ namespace WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            // Authorize the request
+            // Determine the authorization level of the request
             SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
+            AuthorizationLevel authorizationLevel = AuthorizationLevelAttribute.GetAuthorizationLevel(request, secretManager, functionName: function.Name);
+
+            // Dispatch the request
             HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
             bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
-            if (!isWebHook && !AuthorizationLevelAttribute.IsAuthorized(request, httpFunctionMetadata.AuthLevel, secretManager, functionName: function.Name))
-            {
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
-            }
-
             HttpResponseMessage response = null;
             if (isWebHook)
             {
-                // This is a WebHook request so define a delegate for the user function.
-                // The WebHook Receiver pipeline will first validate the request fully
-                // then invoke this callback.
-                Func<HttpRequestMessage, Task<HttpResponseMessage>> invokeFunction = async (req) =>
+                if (authorizationLevel == AuthorizationLevel.Admin)
                 {
-                    return await _scriptHostManager.HandleRequestAsync(function, req, cancellationToken);
-                };
-                response = await _webHookReceiverManager.HandleRequestAsync(function, request, invokeFunction);
+                    // Admin level requests bypass the WebHook auth pipeline
+                    response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
+                }
+                else
+                {
+                    // This is a WebHook request so define a delegate for the user function.
+                    // The WebHook Receiver pipeline will first validate the request fully
+                    // then invoke this callback.
+                    Func<HttpRequestMessage, Task<HttpResponseMessage>> invokeFunction = async (req) =>
+                    {
+                        return await _scriptHostManager.HandleRequestAsync(function, req, cancellationToken);
+                    };
+                    response = await _webHookReceiverManager.HandleRequestAsync(function, request, invokeFunction);
+                }
             }
             else
             {
+                // Authorize
+                if (authorizationLevel < httpFunctionMetadata.AuthLevel)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                }
+
                 // Validate the HttpMethod
                 // Note that for WebHook requests, WebHook receiver does its own validation
                 if (httpFunctionMetadata.Methods != null && !httpFunctionMetadata.Methods.Contains(request.Method))

@@ -16,9 +16,14 @@ namespace WebJobs.Script.WebHost.Handlers
         private readonly int _hostRunningPollIntervalMs = 500;
         private WebScriptHostManager _scriptHostManager;
  
-        public EnsureHostRunningHandler()
+        public EnsureHostRunningHandler(HttpConfiguration config)
         {
-            _scriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
+            }
+
+            _scriptHostManager = (WebScriptHostManager)config.DependencyResolver.GetService(typeof(WebScriptHostManager));
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
