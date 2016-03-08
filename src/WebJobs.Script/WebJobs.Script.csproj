@@ -207,6 +207,7 @@
     <Compile Include="Binding\QueueBinding.cs" />
     <Compile Include="Binding\ServiceBusBinding.cs" />
     <Compile Include="Binding\TableBinding.cs" />
+    <Compile Include="CompositeTraceWriter.cs" />
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\AllowNameResolutionAttribute.cs" />
     <Compile Include="Config\NameResolver.cs" />

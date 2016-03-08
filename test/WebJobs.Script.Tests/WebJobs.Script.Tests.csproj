@@ -159,6 +159,7 @@
     <Compile Include="AdminControllerTests.cs" />
     <Compile Include="AuthorizationLevelAttributeTests.cs" />
     <Compile Include="BashEndToEndTests.cs" />
+    <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />

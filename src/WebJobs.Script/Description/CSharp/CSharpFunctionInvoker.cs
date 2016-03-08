@@ -146,6 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 TraceWriter.Verbose("Function started");
 
+                parameters = ProcessInputParameters(parameters);
+
                 MethodInfo function = GetFunctionTarget();
           
                 object functionResult = function.Invoke(null, parameters);
@@ -168,6 +170,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter.Verbose("Function completed (Failure)");
                 throw;
             }
+        }
+
+        private object[] ProcessInputParameters(object[] parameters)
+        {
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                TraceWriter writer = parameters[i] as TraceWriter;
+                if (writer != null)
+                {
+                    parameters[i] = new CompositeTraceWriter(new[] { writer, TraceWriter });
+                }
+            }
+
+            return parameters;
         }
 
         internal MethodInfo GetFunctionTarget()

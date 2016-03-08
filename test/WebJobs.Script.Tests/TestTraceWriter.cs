@@ -23,9 +23,18 @@ namespace WebJobs.Script.Tests
             }
         }
 
+        public bool Flushed { get; private set; }
+
         public override void Trace(TraceEvent traceEvent)
         {
             Traces.Add(traceEvent);
+        }
+
+        public override void Flush()
+        {
+            Flushed = true;
+
+            base.Flush();
         }
     }
 }
