@@ -151,9 +151,9 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetAuthorizationLevel_ValidKeyQueryParam_MasterKey_ReturnsAdmin()
+        public void GetAuthorizationLevel_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
         {
-            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", testMasterKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", testMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
@@ -162,24 +162,24 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetAuthorizationLevel_ValidKeyQueryParam_FunctionKey_ReturnsFunction()
+        public void GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction()
         {
             // first try host level function key
-            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", testHostFunctionKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", testHostFunctionKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
 
-            uri = new Uri(string.Format("http://functions/api/foo?key={0}", testFunctionKeyValue));
+            uri = new Uri(string.Format("http://functions/api/foo?code={0}", testFunctionKeyValue));
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
 
         [Fact]
-        public void GetAuthorizationLevel_InvalidKeyQueryParam_ReturnsAnonymous()
+        public void GetAuthorizationLevel_InvalidCodeQueryParam_ReturnsAnonymous()
         {
-            Uri uri = new Uri(string.Format("http://functions/api/foo?key={0}", "invalid"));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", "invalid"));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);

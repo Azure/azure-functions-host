@@ -64,7 +64,7 @@ namespace WebJobs.Script.WebHost.Filters
             else
             {
                 var queryParameters = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
-                queryParameters.TryGetValue("key", out keyValue);
+                queryParameters.TryGetValue("code", out keyValue);
             }
 
             if (!string.IsNullOrEmpty(keyValue))
