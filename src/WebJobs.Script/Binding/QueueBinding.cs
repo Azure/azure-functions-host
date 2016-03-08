@@ -15,7 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly BindingTemplate _queueNameBindingTemplate;
 
         public QueueBinding(ScriptHostConfiguration config, string name, string queueName, FileAccess access, bool isTrigger) : base(config, name, "queue", access, isTrigger)
-        {   
+        {
+            if (string.IsNullOrEmpty(queueName))
+            {
+                throw new ArgumentException("The queue name cannot be null or empty.");
+            }
+
             QueueName = queueName;
             _queueNameBindingTemplate = BindingTemplate.FromString(QueueName);
         }

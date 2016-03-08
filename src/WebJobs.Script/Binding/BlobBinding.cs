@@ -16,6 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess access, bool isTrigger) : base(config, name, "blob", access, isTrigger)
         {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentException("The blob path cannot be null or empty.");
+            }
+
             Path = path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
         }

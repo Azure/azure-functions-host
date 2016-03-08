@@ -16,6 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public ServiceBusBinding(ScriptHostConfiguration config, string name, string queueOrTopicName, FileAccess access, bool isTrigger) : base(config, name, "serviceBus", access, isTrigger)
         {
+            if (string.IsNullOrEmpty(queueOrTopicName))
+            {
+                throw new ArgumentException("A valid queue or topic name must be specified.");
+            }
+
             QueueOrTopicName = queueOrTopicName;
             _queueOrTopicNameBindingTemplate = BindingTemplate.FromString(QueueOrTopicName);
         }

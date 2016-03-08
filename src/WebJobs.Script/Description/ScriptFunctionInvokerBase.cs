@@ -30,11 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public TraceWriter TraceWriter { get; private set; }
 
-        private static TraceWriter CreateTraceWriter(ScriptHostConfiguration scriptContig, string functionName)
+        private static TraceWriter CreateTraceWriter(ScriptHostConfiguration scriptConfig, string functionName)
         {
-            if (scriptContig.FileLoggingEnabled)
+            if (scriptConfig.FileLoggingEnabled)
             {
-                string logFilePath = Path.Combine(scriptContig.RootLogPath, "Function", functionName);
+                string logFilePath = Path.Combine(scriptConfig.RootLogPath, "Function", functionName);
                 return new FileTraceWriter(logFilePath, TraceLevel.Verbose);
             }
 

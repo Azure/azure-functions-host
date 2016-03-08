@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -67,6 +69,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     ScriptHost newInstance = ScriptHost.Create(_config);
                     _traceWriter = newInstance.TraceWriter;
 
+                    // write any function initialization errors to the log file
+                    LogErrors(newInstance);
+
                     newInstance.Start();
                     lock (_liveInstances)
                     {
@@ -110,6 +115,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             while (!_stopped && !cancellationToken.IsCancellationRequested);
+        }
+
+        private static void LogErrors(ScriptHost host)
+        {
+            if (host.FunctionErrors.Count > 0)
+            {
+                StringBuilder builder = new StringBuilder();
+                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "The following {0} functions are in error:", host.FunctionErrors.Count));
+                foreach (var error in host.FunctionErrors)
+                {
+                    string functionErrors = string.Join(Environment.NewLine, error.Value);
+                    builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
+                }
+                host.TraceWriter.Error(builder.ToString());
+            }
         }
 
         // Let the existing host instance finish currently executing functions.
