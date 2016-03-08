@@ -13,6 +13,7 @@ using Xunit;
 
 namespace WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
         private TestFixture _fixture;
