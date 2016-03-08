@@ -90,9 +90,27 @@ namespace WebJobs.Script.Tests
                 HttpServer server = new HttpServer(config);
                 this.Client = new HttpClient(server);
                 this.Client.BaseAddress = new Uri("https://localhost/");
+
+                WaitForHost();
             }
 
             public HttpClient Client { get; set; }
+
+            private void WaitForHost()
+            {
+                TestHelpers.Await(() =>
+                {
+                    return IsHostRunning();
+                }).Wait();
+            }
+
+            private bool IsHostRunning()
+            {
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+
+                HttpResponseMessage response = this.Client.SendAsync(request).Result;
+                return response.StatusCode == HttpStatusCode.NoContent;
+            }
         }
     }
 }

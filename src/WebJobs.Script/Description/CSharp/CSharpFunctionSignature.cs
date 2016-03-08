@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override int GetHashCode()
         {
-            return string.Join("<>", _parameters.Select(p=>GetParameterIdentityString(p)))
+            return string.Join("<>", _parameters.Select(p => GetParameterIdentityString(p)))
                 .GetHashCode();
         }
 
