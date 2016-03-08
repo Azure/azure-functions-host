@@ -1,10 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Configuration;
-using System.IO;
-using System.Web;
+using System.Threading.Tasks;
 using System.Web.Configuration;
 using System.Web.Hosting;
 using Autofac;
@@ -15,32 +13,12 @@ namespace WebJobs.Script.WebHost.App_Start
 {
     public static class AutofacBootstrap
     {
-        internal static void Initialize(ContainerBuilder builder)
+        internal static void Initialize(ContainerBuilder builder, WebHostSettings settings)
         {
-            string logFilePath;
-            string scriptRootPath;
-            string secretsPath;
-            string home = Environment.GetEnvironmentVariable("HOME");
-            bool isLocal = string.IsNullOrEmpty(home);
-            if (isLocal)
-            {
-                // we're running locally
-                scriptRootPath = Path.Combine(HostingEnvironment.ApplicationPhysicalPath, @"..\..\sample");
-                logFilePath = Path.Combine(Path.GetTempPath(), @"Functions");
-                secretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
-            }
-            else
-            {
-                // we're running in Azure
-                scriptRootPath = Path.Combine(home, @"site\wwwroot");
-                logFilePath = Path.Combine(home, @"LogFiles\Application\Functions");
-                secretsPath = Path.Combine(home, @"data\Functions\secrets");
-            }
-
             ScriptHostConfiguration scriptHostConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = scriptRootPath,
-                RootLogPath = logFilePath,
+                RootScriptPath = settings.ScriptPath,
+                RootLogPath = settings.LogPath,
                 FileLoggingEnabled = true
             };
 
@@ -55,7 +33,7 @@ namespace WebJobs.Script.WebHost.App_Start
             WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
             builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
-            SecretManager secretManager = new SecretManager(secretsPath);
+            SecretManager secretManager = new SecretManager(settings.SecretsPath);
             // Make sure that host secrets get created on startup if they don't exist
             secretManager.GetHostSecrets();
             builder.RegisterInstance<SecretManager>(secretManager);
@@ -63,7 +41,14 @@ namespace WebJobs.Script.WebHost.App_Start
             WebHookReceiverManager webHookReceiverManager = new WebHookReceiverManager(secretManager);
             builder.RegisterInstance<WebHookReceiverManager>(webHookReceiverManager);
 
-            HostingEnvironment.QueueBackgroundWorkItem((ct) => scriptHostManager.RunAndBlock(ct));
+            if (!settings.IsSelfHost)
+            {
+                HostingEnvironment.QueueBackgroundWorkItem((ct) => scriptHostManager.RunAndBlock(ct));
+            }
+            else
+            {
+                Task.Run(() => scriptHostManager.RunAndBlock());
+            }
         }
     }
 }
