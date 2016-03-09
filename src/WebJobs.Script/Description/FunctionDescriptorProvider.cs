@@ -48,9 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
           
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.Source);
-            bool omitInputParameter = ShouldOmitInputParameter(triggerMetadata.Type);
 
-            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, inputBindings, outputBindings);
 
             Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
             Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
@@ -136,12 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return parameters;
         }
 
-        protected virtual bool ShouldOmitInputParameter(BindingType triggerBindingType)
-        {
-            return triggerBindingType == BindingType.TimerTrigger;
-        }
-
-        protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
+        protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
 
         protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType = null)
         {

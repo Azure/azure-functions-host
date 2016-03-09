@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -52,9 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // TODO: This logic needs to be made more robust
                 // E.g. we might decide to use a Regex to determine if
                 // the json is a response body or not
-                if (jsonObject["status"] != null && jsonObject["body"] != null)
+                if (jsonObject["body"] != null)
                 {
-                    HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                    HttpStatusCode statusCode = HttpStatusCode.OK;
+                    if (jsonObject["status"] != null)
+                    {
+                        statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                    }
+
                     string body = jsonObject["body"].ToString();
 
                     response = new HttpResponseMessage(statusCode);
@@ -65,10 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     {
                         foreach (var header in headers)
                         {
-                            if (header.Value != null)
-                            {
-                                response.Headers.Add(header.Key, header.Value.ToString());
-                            }
+                            AddResponseHeader(response, header);
                         }
                     }
                 }
@@ -105,6 +109,63 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public bool CanProcessResult(object result)
         {
             return result is HttpResponseMessage;
+        }
+
+        private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, JToken> header)
+        {
+            if (header.Value != null)
+            {
+                DateTimeOffset dateTimeOffset;
+                switch (header.Key.ToLowerInvariant())
+                {
+                    // The following content headers must be added to the response
+                    // content header collection
+                    case "content-type":
+                        response.Content.Headers.ContentType = new MediaTypeHeaderValue(header.Value.ToString());
+                        break;
+                    case "content-length":
+                        long contentLength;
+                        if (long.TryParse(header.Value.ToString(), out contentLength))
+                        {
+                            response.Content.Headers.ContentLength = contentLength;
+                        }
+                        break;
+                    case "content-disposition":
+                        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(header.Value.ToString());
+                        break;
+                    case "content-encoding":
+                    case "content-language":
+                    case "content-range":
+                        response.Content.Headers.Add(header.Key, header.Value.ToString());
+                        break;
+                    case "content-location":
+                        Uri uri;
+                        if (Uri.TryCreate(header.Value.ToString(), UriKind.Absolute, out uri))
+                        {
+                            response.Content.Headers.ContentLocation = uri;
+                        }
+                        break;
+                    case "content-md5":
+                        response.Content.Headers.ContentMD5 = header.Value.Value<byte[]>();
+                        break;
+                    case "expires":
+                        if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
+                        {
+                            response.Content.Headers.Expires = dateTimeOffset;
+                        }
+                        break;
+                    case "last-modified":
+                        if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
+                        {
+                            response.Content.Headers.LastModified = dateTimeOffset;
+                        }
+                        break;
+                    default:
+                        // All other headers are added directly to the response
+                        response.Headers.Add(header.Key, header.Value.ToString());
+                        break;
+                }
+            }
         }
     }
 }

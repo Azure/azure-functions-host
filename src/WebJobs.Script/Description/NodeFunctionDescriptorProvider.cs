@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return base.TryCreate(functionMetadata, out functionDescriptor);
         }
 
-        protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new NodeFunctionInvoker(Host, triggerMetadata, functionMetadata, omitInputParameter, inputBindings, outputBindings);
+            return new NodeFunctionInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings);
         }
     }
 }

@@ -25,17 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _scriptType;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly bool _omitInputParameter;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHost host, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHost host, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
             : base(host, functionMetadata)
         {
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _omitInputParameter = omitInputParameter;
-            }
+        }
 
         public static bool IsSupportedScriptType(string extension)
         {
@@ -84,11 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal async Task ExecuteScriptAsync(string path, string arguments, object[] invocationParameters)
         {
-            object input = null;
-            if (!_omitInputParameter)
-            {
-                input = invocationParameters[0];
-            }
+            object input = invocationParameters[0];
             TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
             IBinder binder = (IBinder)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
