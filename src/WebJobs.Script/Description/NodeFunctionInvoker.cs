@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly bool _omitInputParameter;
         private readonly string _script;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
@@ -49,11 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, bool omitInputParameter, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
             : base(host, functionMetadata)
         {
             _trigger = trigger;
-            _omitInputParameter = omitInputParameter;
             string scriptFilePath = functionMetadata.Source.Replace('\\', '/');
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
@@ -116,24 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 object functionResult = await ScriptFunc(scriptExecutionContext);
 
-                // normalize output binding results
-                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
-                if (functionResult != null && _outputBindings.Count == 1)
-                {
-                    // if there is only a single output binding allow that binding value
-                    // to be specified directly (i.e. normalize output format)
-                    var binding = _outputBindings.Single();
-                    functionOutputs = functionResult as IDictionary<string, object>;
-                    if (functionOutputs == null || !functionOutputs.ContainsKey(binding.Name))
-                    {
-                        functionOutputs = new Dictionary<string, object>()
-                        {
-                            { binding.Name, functionResult }
-                        };
-                    }
-                }
-
-                await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, functionOutputs);
+                await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, scriptExecutionContext, functionResult);
 
                 TraceWriter.Verbose(string.Format("Function completed (Success)"));
             }
@@ -147,6 +128,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task ProcessInputBindingsAsync(IBinder binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
         {
+            var bindings = (Dictionary<string, object>)executionContext["bindings"];
+
+            // create an ordered array of all inputs and add to
+            // the execution context. These will be promoted to
+            // positional parameters
+            List<object> inputs = new List<object>();
+            inputs.Add(bindings[_trigger.Name]);
+
             var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
             foreach (var inputBinding in nonTriggerInputBindings)
             {
@@ -166,24 +155,39 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     value = sr.ReadToEnd();
                 }
 
-                executionContext[inputBinding.Name] = value;
+                bindings.Add(inputBinding.Name, value);
+
+                inputs.Add(value);
             }
+
+            executionContext["inputs"] = inputs;
         }
 
-        private static async Task ProcessOutputBindingsAsync(
-            Collection<FunctionBinding> outputBindings, object input, IBinder binder, Dictionary<string, string> bindingData, 
-            IDictionary<string, object> functionOutputs)
+        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, IBinder binder, 
+            Dictionary<string, string> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
         {
-            if (outputBindings == null || functionOutputs == null)
+            if (outputBindings == null)
             {
                 return;
+            }
+
+            // if the function returned binding values via the function result,
+            // apply them to context.bindings
+            var contextBindings = (Dictionary<string, object>)scriptExecutionContext["bindings"];
+            IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
+            if (functionOutputs != null)
+            {
+                foreach (var output in functionOutputs)
+                {
+                    contextBindings[output.Key] = output.Value;
+                }
             }
 
             foreach (FunctionBinding binding in outputBindings)
             {
                 // get the output value from the script
                 object value = null;
-                if (functionOutputs.TryGetValue(binding.Name, out value))
+                if (contextBindings.TryGetValue(binding.Name, out value))
                 {
                     if (value.GetType() == typeof(ExpandoObject))
                     {
@@ -245,10 +249,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return Task.FromResult<object>(null);
             });
 
+            var bindings = new Dictionary<string, object>();
+            var bind = (Func<object, Task<object>>)(p =>
+            {
+                IDictionary<string, object> bindValues = (IDictionary<string, object>)p;
+                foreach (var bindValue in bindValues)
+                {
+                    bindings[bindValue.Key] = bindValue.Value;
+                }
+                return Task.FromResult<object>(null);
+            });
+
             var context = new Dictionary<string, object>()
             {
                 { "invocationId", functionExecutionContext.InvocationId },
-                { "log", log }
+                { "log", log },
+                { "bindings", bindings },
+                { "bind", bind }
             };
 
             Type triggerParameterType = input.GetType();
@@ -277,14 +294,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     input = requestObject["body"];
 
                     // make the entire request object available as well
+                    // this is symmetric with context.res which we also support
                     context["req"] = requestObject;
                 }
             }
-
-            if (!_omitInputParameter)
+            else if (triggerParameterType == typeof(TimerInfo))
             {
-                context["input"] = input;
+                TimerInfo timerInfo = (TimerInfo)input;
+                var inputValues = new Dictionary<string, object>()
+                {
+                    { "isPastDue", timerInfo.IsPastDue }
+                };
+                if (timerInfo.ScheduleStatus != null)
+                {
+                    inputValues["last"] = timerInfo.ScheduleStatus.Last.ToString("s", CultureInfo.InvariantCulture);
+                    inputValues["next"] = timerInfo.ScheduleStatus.Next.ToString("s", CultureInfo.InvariantCulture);
+                }
+                input = inputValues;
             }
+
+            bindings.Add(_trigger.Name, input);
 
             return context;
         }

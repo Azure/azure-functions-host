@@ -1,4 +1,4 @@
-﻿module.exports = function (req, context) {
+﻿module.exports = function (context, req) {
     context.log('Node.js HTTP trigger function processed a request. Name=' + req.query.name);
 
     var headerValue = req.headers['test-header'];
@@ -7,9 +7,17 @@
     }
 
     if (typeof req.query.name == 'undefined') {
-        context.done(null, "Please pass a name on the query string");
+        context.res = {
+            status: 400,
+            body: "Please pass a name on the query string"
+        };
     }
     else {
-        context.done(null, "Hello " + req.query.name);
+        context.res = {
+            status: 200,
+            body: "Hello " + req.query.name
+        };
     }
+
+    context.done();
 }
