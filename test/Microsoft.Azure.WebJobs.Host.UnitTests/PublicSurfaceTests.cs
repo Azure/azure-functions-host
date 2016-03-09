@@ -79,6 +79,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
+                "IConverterManager",
+                "BindingFactory",
+                "ITriggerBindingStrategy`2",
                 "ConnectionStringNames",
                 "JobHost",
                 "JobHostConfiguration",
