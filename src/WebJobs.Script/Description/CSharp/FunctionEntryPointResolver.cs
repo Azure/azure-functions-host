@@ -52,11 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (runMethods.Count > 1)
             {
-                throw CreateCompilationException("AF002", "Ambiguous function entry points. Multiple 'Run' methods.",
-                    "Multiple methods named 'Run'. Consider renaming methods.");
+                throw CreateCompilationException(CSharpConstants.AmbiguousFunctionEntryPointsCompilationCode, 
+                    "Ambiguous function entry points. Multiple 'Run' methods.", "Multiple methods named 'Run'. Consider renaming methods.");
             }
 
-            throw CreateCompilationException("AF001", "Missing function entry point", "Your function must contain a single method, or a single public entry point method named 'Run'.");
+            throw CreateCompilationException(CSharpConstants.MissingFunctionEntryPointCompilationCode, 
+                "Missing function entry point", "Your function must contain a single method, or a single public entry point method named 'Run'.");
         }
 
         private static CompilationErrorException CreateCompilationException(string code, string title, string messageFormat)

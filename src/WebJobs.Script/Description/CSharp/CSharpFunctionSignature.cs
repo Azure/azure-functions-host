@@ -30,6 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool HasLocalTypeReference { get; set; }
 
+        public ImmutableArray<IParameterSymbol> Parameters
+        {
+            get
+            {
+                return _parameters;
+            }
+        }
+
         public static CSharpFunctionSignature FromCompilation(Compilation compilation, IFunctionEntryPointResolver entryPointResolver)
         {
             if (compilation == null)

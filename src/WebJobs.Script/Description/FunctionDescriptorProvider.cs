@@ -49,14 +49,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
           
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.Source);
 
-            IFunctionInvoker invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, inputBindings, outputBindings);
+            IFunctionInvoker invoker = null;
 
-            Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
-            Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+            try
+            {
+                invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, inputBindings, outputBindings);
 
-            functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+                Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
+                Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
-            return true;
+                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+
+                return true;
+            }
+            catch (Exception)
+            {
+                IDisposable disposableInvoker = invoker as IDisposable;
+                if (disposableInvoker != null)
+                {
+                    disposableInvoker.Dispose();
+                }
+
+                throw;
+            }
         }
 
         protected virtual Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata, 

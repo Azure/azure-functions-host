@@ -10,5 +10,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string ProjectFileName = "Project.json";
 
         public const string ProjectLockFileName = "Project.lock.json";
+
+        public const string MissingFunctionEntryPointCompilationCode = "AF001";
+
+        public const string AmbiguousFunctionEntryPointsCompilationCode = "AF002";
+
+        public const string MissingTriggerArgumentCompilationCode = "AF003";
+
+        public const string MissingBindingArgumentCompilationCode = "AF004";
     }
 }

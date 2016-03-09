@@ -106,22 +106,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
 
             stopwatch.Stop();
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation completed ({0} milliseconds).", stopwatch.ElapsedMilliseconds));
 
-            foreach (var diagnostic in compilationResult)
-            {
-                var traceEvent = new TraceEvent(GetTraceLevelFromDiagnostic(diagnostic), diagnostic.ToString());
-                TraceWriter.Trace(traceEvent);
-            }
+            CSharpFunctionSignature signature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+            compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+            
+            TraceCompilationDiagnostics(compilationResult);
+
+            bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
+
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation {0} ({1} ms).",
+                compilationSucceeded ? "succeeded" : "failed", stopwatch.ElapsedMilliseconds));
 
             // If the compilation succeeded, AND:
-            //      - We're referencing local function types (i.e. POCOs defined in the function)
-            //  OR
-            //      - Our our function signature has changed
+            //  - We haven't cached a function (failed to compile on load), OR
+            //  - We're referencing local function types (i.e. POCOs defined in the function) AND Our our function signature has changed
             // Restart our host.
-            if (!compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error) &&
-                (_functionSignature.HasLocalTypeReference || 
-                !_functionSignature.Equals(CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver))))
+            if (compilationSucceeded && 
+                (_functionSignature == null || 
+                (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
                 _host.RestartEvent.Set();
             }
@@ -172,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception ex)
             {
-                TraceWriter.Error(ex.Message, ex);
+                TraceWriter.Error(ex.Message, ex is CompilationErrorException ? null : ex);
                 TraceWriter.Verbose("Function completed (Failure)");
                 throw;
             }
@@ -205,22 +207,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _assemblyLoader.ReleaseContext(Metadata);
 
-                    TraceWriter.Verbose("Compiling function script.");
-                    var stopwatch = new Stopwatch();
-                    stopwatch.Start();
-
                     Script<object> script = CreateScript();
                     Compilation compilation = GetScriptCompilation(script, debug);
+                    CSharpFunctionSignature functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+
+                    ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
 
                     using (assemblyStream = new MemoryStream())
                     {
                         using (pdbStream = new MemoryStream())
                         {
                             var result = compilation.Emit(assemblyStream, pdbStream);
-
-                            stopwatch.Stop();
-
-                            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation completed ({0} milliseconds).", stopwatch.ElapsedMilliseconds));
 
                             if (!result.Success)
                             {
@@ -233,24 +230,71 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             // Get our function entry point
                             System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
                             _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
-                            _functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+                            _functionSignature = functionSignature;
                         }
                     }
                 }
                 catch (CompilationErrorException ex)
                 {
                     TraceWriter.Error("Function compilation error");
-
-                    foreach (var diagnostic in ex.Diagnostics.Where(d => !d.IsSuppressed))
-                    {
-                        TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
-                        TraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
-                    }
+                    TraceCompilationDiagnostics(ex.Diagnostics);               
                     throw;
                 }
             }
 
             return _function;
+        }
+
+        private void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        {
+            foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
+            {
+                TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
+                TraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
+            }
+        }
+
+        private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(CSharpFunctionSignature functionSignature,
+            ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
+        {
+            var resultBuilder = builder ?? ImmutableArray<Diagnostic>.Empty.ToBuilder();
+
+            if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
+            {
+                string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", _triggerInputName);
+                var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingTriggerArgumentCompilationCode, 
+                    "Missing trigger argument", message, "AzureFunctions", DiagnosticSeverity.Error, true);
+
+                resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
+            }
+
+            var bindings = _inputBindings.Where(b => !b.IsTrigger).Union(_outputBindings);
+
+            foreach (var binding in bindings)
+            {
+                if (binding.Type == "http")
+                {
+                    continue;
+                }
+
+                if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Name, StringComparison.Ordinal) == 0))
+                {
+                    string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Name);
+                    var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingBindingArgumentCompilationCode, 
+                        "Missing binding argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
+
+                    resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
+                }
+            }
+
+            ImmutableArray<Diagnostic> result = resultBuilder.ToImmutable();
+
+            if (throwIfFailed && result.Any(d => d.Severity == DiagnosticSeverity.Error))
+            {
+                throw new CompilationErrorException("Function compilation failed.", result);
+            }
+
+            return resultBuilder.ToImmutable();
         }
 
         private Compilation GetScriptCompilation(Script<object> script, bool debug)
