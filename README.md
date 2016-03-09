@@ -7,9 +7,10 @@ This opens the door for interesting **UI driven scenarios**, where the user simp
 As an example, here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
 
 ```javascript
-module.exports = function (workItem, context) {
+module.exports = function (context, workItem) {
     context.log('Node.js queue trigger function processed work item ' + workItem.id);
-    context.done(null, workItem);
+    context.bindings.receipt = workItem;
+    context.done();
 }
 ```
 
