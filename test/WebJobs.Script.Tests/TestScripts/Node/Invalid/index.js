@@ -1,3 +1,3 @@
-﻿module.exports = function (req, context) {
+﻿module.exports = function (context, req) {
     context.done();
 }

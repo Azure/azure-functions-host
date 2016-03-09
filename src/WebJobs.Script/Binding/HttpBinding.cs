@@ -52,9 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // TODO: This logic needs to be made more robust
                 // E.g. we might decide to use a Regex to determine if
                 // the json is a response body or not
-                if (jsonObject["status"] != null && jsonObject["body"] != null)
+                if (jsonObject["body"] != null)
                 {
-                    HttpStatusCode statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                    HttpStatusCode statusCode = HttpStatusCode.OK;
+                    if (jsonObject["status"] != null)
+                    {
+                        statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
+                    }
+
                     string body = jsonObject["body"].ToString();
 
                     response = new HttpResponseMessage(statusCode);
