@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             if (collectorGenericType == null)
             {
-                throw new ArgumentNullException(nameof(collectorGenericType));
+                throw new ArgumentNullException("collectorGenericType");
             }
             if (!collectorGenericType.IsGenericTypeDefinition)
             {
