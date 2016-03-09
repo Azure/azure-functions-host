@@ -67,11 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // Bind a trigger argument to various parameter types. 
         // Handles either T or T[], 
         private static ITriggerDataArgumentBinding<TTriggerValue> GetTriggerArgumentBinding<TMessage, TTriggerValue>(
-            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy, 
-            ParameterInfo parameter, 
+            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
+            ParameterInfo parameter,
             IConverterManager converterManager,
             out bool singleDispatch)
-        {        
+        {
             ITriggerDataArgumentBinding<TTriggerValue> argumentBinding = null;
             if (parameter.ParameterType.IsArray)
             {
@@ -96,10 +96,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return argumentBinding;
             }
         }
-        
+
         // Bind a T. 
         private static SimpleTriggerArgumentBinding<TMessage, TTriggerValue> GetTriggerArgumentElementBinding<TMessage, TTriggerValue>(
-            Type elementType, 
+            Type elementType,
             ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
             IConverterManager converterManager)
         {
@@ -115,7 +115,63 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 // Default, assume a Poco
                 return new PocoTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager, elementType);
-            }         
+            }
+        }
+
+        /// <summary>
+        /// Creates a binding that binds to an <see cref="IAsyncCollector{T}"/> with the specified argument type. Allows for a binding
+        /// to be generated for any POCO type.
+        /// </summary>
+        /// <param name="parameter">The ParameterInfo for the binding</param>
+        /// <param name="collectorGenericType">The generic type that must implement <see cref="IAsyncCollector{T}"/> and have a public constructor with at most one parameter.</param>
+        /// <param name="collectorGenericArgumentType">The generic argument type for the <see cref="IAsyncCollector{T}"/></param>
+        /// <param name="converterManager">A converter manager to pass along.</param>        
+        /// <param name="invokeStringBinder">A <see cref="Func{T, TContext}"/> that returns the TContext to be used by the <see cref="IAsyncCollector{T}"/></param>
+        /// <returns></returns>
+        public static IBinding BindGenericCollector<TContext>(ParameterInfo parameter, Type collectorGenericType, Type collectorGenericArgumentType,
+            IConverterManager converterManager, Func<string, TContext> invokeStringBinder)
+        {
+            if (collectorGenericType == null)
+            {
+                throw new ArgumentNullException(nameof(collectorGenericType));
+            }
+            if (!collectorGenericType.IsGenericTypeDefinition)
+            {
+                throw new ArgumentException("The parameter 'collectorGenericType' must be a generic type definition.");
+            }
+            if (collectorGenericType.GetInterface(typeof(IAsyncCollector<>).Name) == null)
+            {
+                throw new ArgumentException("The Type specified by parameter 'collectorGenericType' must implement IAsyncCollector<T>.");
+            }
+
+            Type asyncCollectorInterfaceType = typeof(IAsyncCollector<>).MakeGenericType(collectorGenericArgumentType);
+            Type actualCollectorType = collectorGenericType.MakeGenericType(collectorGenericArgumentType);
+
+            // Create a delegate to pass as the builder func to BindCollector
+            Type funcType = typeof(Func<,,>).MakeGenericType(typeof(object), typeof(ValueBindingContext), asyncCollectorInterfaceType);
+            MethodInfo getCollector = typeof(BindingFactory).GetMethod("GetCollector", BindingFlags.NonPublic | BindingFlags.Static)
+                .MakeGenericMethod(actualCollectorType, collectorGenericArgumentType);
+            var del = Delegate.CreateDelegate(funcType, getCollector);
+
+            // Create the method and parameters.
+            MethodInfo bindCollectorMethod = typeof(BindingFactory).GetMethod("BindCollector").MakeGenericMethod(collectorGenericArgumentType, typeof(TContext));
+            object[] parameters = new object[] { parameter, converterManager, del, null, invokeStringBinder };
+
+            return bindCollectorMethod.Invoke(null, parameters) as IBinding;
+        }
+
+        /// <summary>
+        /// A method that is used as a instantiated as a <see cref="Func{T1, T2, TResult}"/> to pass to BindCollector
+        /// </summary>
+        /// <typeparam name="TCollector">The type of collector to create for the binding.</typeparam>
+        /// <typeparam name="TCore">The 'core' type of the binding.</typeparam>
+        /// <param name="userContext">The object to pass to the constructor of TCollector.</param>
+        /// <param name="context">The ValueBindingContext (unused).</param>
+        /// <returns>An <see cref="IAsyncCollector{T}"/></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
+        private static IAsyncCollector<TCore> GetCollector<TCollector, TCore>(object userContext, ValueBindingContext context)
+        {
+            return Activator.CreateInstance(typeof(TCollector), userContext) as IAsyncCollector<TCore>;
         }
 
         /// <summary>
@@ -154,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             Type parameterType = parameter.ParameterType;
 
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = null;            
+            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = null;
 
             if (parameterType.IsGenericType)
             {
@@ -291,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             };
             return argumentBuilder;
         }
-        
+
         // Helper to dynamically invoke BuildICollectorArgument with the proper generics
         private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildOutArgument<TContext, TMessage>(
                 Type typeMessageSrc,
@@ -326,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildICollectorArgument<TContext, TMessage>(
                 Type typeMessageSrc,
                 IConverterManager cm,
-                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder, 
+                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
                 string invokeString)
         {
             var method = typeof(BindingFactory).GetMethod("BuildICollectorArgument", BindingFlags.NonPublic | BindingFlags.Static);
@@ -381,6 +437,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return new AsyncCollectorValueProvider<IAsyncCollector<TMessageSrc>, TMessage>(obj, raw, invokeString);
             };
             return argumentBuilder;
-        }    
+        }
     }
 }
