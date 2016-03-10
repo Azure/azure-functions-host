@@ -71,9 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Dictionary<string, string> bindingData = new Dictionary<string, string>();
 
-            // first apply any existing binding data
-            ApplyAmbientBindingData(binder, bindingData);
-
             // If there are any parameters in the bindings,
             // get the binding data. In dynamic script cases we need
             // to parse this POCO data ourselves - it won't be in the existing
@@ -82,6 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (outputBindings.Any(p => p.HasBindingParameters) ||
                 inputBindings.Any(p => p.HasBindingParameters))
             {
+                // first apply any existing binding data
+                ApplyAmbientBindingData(binder, bindingData);
+
                 try
                 {
                     string json = value as string;
@@ -115,22 +115,41 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         protected static void ApplyAmbientBindingData(IBinder binder, IDictionary<string, string> bindingData)
         {
-            // TEMP: Dig the ambient binding data out of the binder
-            FieldInfo fieldInfo = binder.GetType().GetField("_bindingSource", BindingFlags.NonPublic | BindingFlags.Instance);
-            var bindingSource = fieldInfo.GetValue(binder);
-            PropertyInfo propertyInfo = bindingSource.GetType().GetProperty("AmbientBindingContext");
-            var ambientBindingContext = propertyInfo.GetValue(bindingSource);
-            propertyInfo = ambientBindingContext.GetType().GetProperty("BindingData");
-            IDictionary<string, object> ambientBindingData = (IDictionary<string, object>)propertyInfo.GetValue(ambientBindingContext);
-
+            var ambientBindingData = GetAmbientBindingData(binder);
             if (ambientBindingData != null)
             {
                 // apply the binding data to ours
                 foreach (var item in ambientBindingData)
                 {
-                    bindingData[item.Key] = item.Value.ToString();
+                    if (item.Value != null)
+                    {
+                        bindingData[item.Key] = item.Value.ToString();
+                    }
                 }
             }
+        }
+
+        private static IDictionary<string, object> GetAmbientBindingData(IBinder binder)
+        {
+            IDictionary<string, object> ambientBindingData = null;
+
+            try
+            {
+                // TEMP: Dig the ambient binding data out of the binder
+                FieldInfo fieldInfo = binder.GetType().GetField("_bindingSource", BindingFlags.NonPublic | BindingFlags.Instance);
+                var bindingSource = fieldInfo.GetValue(binder);
+                PropertyInfo propertyInfo = bindingSource.GetType().GetProperty("AmbientBindingContext");
+                var ambientBindingContext = propertyInfo.GetValue(bindingSource);
+                propertyInfo = ambientBindingContext.GetType().GetProperty("BindingData");
+                ambientBindingData = (IDictionary<string, object>)propertyInfo.GetValue(ambientBindingContext);
+            }
+            catch
+            {
+                // If this fails for whatever reason we just won't
+                // have any binding data
+            }
+
+            return ambientBindingData;
         }
 
         protected static bool IsJson(string input)
