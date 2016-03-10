@@ -114,14 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
-            // if there are any parameters in the bindings,
-            // parse the input as json to get the binding data
-            Dictionary<string, string> bindingData = new Dictionary<string, string>();
-            if (_outputBindings.Any(p => p.HasBindingParameters) ||
-                _inputBindings.Any(p => p.HasBindingParameters))
-            {
-                bindingData = GetBindingData(stdin);
-            }
+            Dictionary<string, string> bindingData = GetBindingData(stdin, binder, _inputBindings, _outputBindings);
             bindingData["InvocationId"] = invocationId;
 
             await ProcessInputBindingsAsync(functionInstanceOutputPath, binder, bindingData, environmentVariables);

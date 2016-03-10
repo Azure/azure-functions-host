@@ -16,6 +16,7 @@
     <Rule Id="CA904" Action="None" />
     <Rule Id="CA905" Action="None" />
     <Rule Id="CA908" Action="None" />
+    <Rule Id="CA1062" Action="None" />
     <Rule Id="CA1303" Action="None" /> <!-- Enable when we move literals to resx -->
   </Rules>
 </RuleSet>

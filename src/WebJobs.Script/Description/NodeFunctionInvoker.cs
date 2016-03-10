@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
@@ -100,14 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, binder, functionExecutionContext);
 
-                // if there are any binding parameters in the output bindings,
-                // parse the input as json to get the binding data
-                Dictionary<string, string> bindingData = new Dictionary<string, string>();
-                if (_outputBindings.Any(p => p.HasBindingParameters) ||
-                    _inputBindings.Any(p => p.HasBindingParameters))
-                {
-                    bindingData = GetBindingData(input);
-                }
+                Dictionary<string, string> bindingData = GetBindingData(input, binder, _inputBindings, _outputBindings);
                 bindingData["InvocationId"] = functionExecutionContext.InvocationId.ToString();
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
@@ -374,13 +366,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 return false;
             }
-        }
-
-        private static bool IsJson(string input)
-        {
-            input = input.Trim();
-            return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
-                || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
         }
     }
 }
