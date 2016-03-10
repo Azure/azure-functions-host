@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected static Dictionary<string, string> GetBindingData(object value, IBinder binder, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            Dictionary<string, string> bindingData = new Dictionary<string, string>();
+            Dictionary<string, string> bindingData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             // If there are any parameters in the bindings,
             // get the binding data. In dynamic script cases we need
@@ -79,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (outputBindings.Any(p => p.HasBindingParameters) ||
                 inputBindings.Any(p => p.HasBindingParameters))
             {
-                // first apply any existing binding data
+                // First apply any existing binding data. Any additional binding
+                // data coming from the message will take precedence
                 ApplyAmbientBindingData(binder, bindingData);
 
                 try
@@ -90,9 +91,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         // parse the object skipping any nested objects (binding data
                         // only includes top level properties)
                         JObject parsed = JObject.Parse(json);
-                        bindingData = parsed.Children<JProperty>()
+                        var additionalBindingData = parsed.Children<JProperty>()
                             .Where(p => p.Value.Type != JTokenType.Object)
                             .ToDictionary(p => p.Name, p => (string)p);
+
+                        if (additionalBindingData != null)
+                        {
+                            foreach (var item in additionalBindingData)
+                            {
+                                if (item.Value != null)
+                                {
+                                    bindingData[item.Key] = item.Value.ToString();
+                                }
+                            }
+                        }
                     }
                 }
                 catch

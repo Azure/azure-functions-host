@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 Dictionary<string, string> bindingData = GetBindingData(input, binder, _inputBindings, _outputBindings);
                 bindingData["InvocationId"] = functionExecutionContext.InvocationId.ToString();
+                scriptExecutionContext["bindingData"] = bindingData;
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
 
