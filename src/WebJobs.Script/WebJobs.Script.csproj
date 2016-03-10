@@ -254,10 +254,12 @@
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="FileTraceWriter.cs" />
     <Compile Include="HttpMethodJsonConverter.cs" />
+    <Compile Include="IScriptHostFactory.cs" />
     <Compile Include="NullTraceWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />
+    <Compile Include="ScriptHostFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">

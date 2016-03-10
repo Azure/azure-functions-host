@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace WebJobs.Script.Tests
@@ -59,6 +61,32 @@ namespace WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public void RunAndBlock_DisposesOfHost_WhenExceptionIsThrown()
+        {
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                TraceWriter = NullTraceWriter.Instance
+            };
+
+            var hostMock = new Mock<TestScriptHost>(config);
+            var factoryMock = new Mock<IScriptHostFactory>();
+            factoryMock.Setup(f => f.Create(It.IsAny<ScriptHostConfiguration>()))
+                .Returns(hostMock.Object);
+
+            var target = new Mock<ScriptHostManager>(config, factoryMock.Object);
+            target.Protected().Setup("OnHostStarted")
+                .Throws(new Exception());
+
+            hostMock.Protected().Setup("Dispose", true)
+                .Callback(() => target.Object.Stop());
+
+            Task.Run(() => target.Object.RunAndBlock()).Wait(5000);
+
+            hostMock.Protected().Verify("Dispose", Times.Once(), true);
+        }
+
         // Update the manifest for the timer function
         // - this will cause a file touch which cause ScriptHostManager to notice and update
         // - set to a new output location so that we can ensure we're getting new changes. 
@@ -74,6 +102,13 @@ namespace WebJobs.Script.Tests
             var blob = fixture.TestContainer.GetBlockBlobReference(name);
             blob.DeleteIfExists();
             return blob;
+        }
+
+        public class TestScriptHost : ScriptHost
+        {
+            public TestScriptHost(ScriptHostConfiguration scriptConfig) : base(scriptConfig)
+            {
+            }
         }
     }
 }

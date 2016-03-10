@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHostManager : IDisposable
     {
         private readonly ScriptHostConfiguration _config;
+        private readonly IScriptHostFactory _scriptHostFactory;
         private ScriptHost _currentInstance;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance. 
@@ -33,8 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private TraceWriter _traceWriter;
 
         public ScriptHostManager(ScriptHostConfiguration config)
+            : this(config, new ScriptHostFactory())
+        {
+        }
+
+        public ScriptHostManager(ScriptHostConfiguration config, IScriptHostFactory scriptHostFactory)
         {
             _config = config;
+            _scriptHostFactory = scriptHostFactory;
         }
 
         /// <summary>
@@ -57,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // host level configuration files change
             do
             {
+                ScriptHost newInstance = null;
                 try
                 {
                     IsRunning = false;
@@ -66,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         HostId = _config.HostConfig.HostId
                     };
-                    ScriptHost newInstance = ScriptHost.Create(_config);
+                    newInstance = _scriptHostFactory.Create(_config);
                     _traceWriter = newInstance.TraceWriter;
 
                     // write any function initialization errors to the log file
@@ -108,6 +116,20 @@ namespace Microsoft.Azure.WebJobs.Script
                         _traceWriter.Error("A ScriptHost error occurred", ex);
                     }
 
+                    // If a ScriptHost instance was created before the exception was thrown
+                    // Orphan and cleanup that instance.
+                    if (newInstance != null)
+                    {
+                        Orphan(newInstance, forceStop: true)
+                            .ContinueWith(t =>
+                            {
+                                if (t.IsFaulted)
+                                {
+                                    t.Exception.Handle(e => true);
+                                }
+                            });
+                    }
+
                     // Wait for a short period of time before restarting to
                     // avoid cases where a host level config error might cause
                     // a rapid restart cycle
@@ -132,21 +154,33 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        // Let the existing host instance finish currently executing functions.
-        private async Task Orphan(ScriptHost instance)
+        /// <summary>
+        /// Remove the <see cref="ScriptHost"/> instance from the live instances collection,
+        /// allowing it to finish currently executing functions before stopping and disposing of it.
+        /// </summary>
+        /// <param name="instance">The <see cref="ScriptHost"/> instance to remove</param>
+        /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
+        /// <returns></returns>
+        private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
             lock (_liveInstances)
             {
                 bool removed = _liveInstances.Remove(instance);
-                if (!removed)
+                if (!forceStop && !removed)
                 {
                     return; // somebody else is handling it
                 }
             }
 
-            // this thread now owns the instance
-            await instance.StopAsync();
-            instance.Dispose();
+            try
+            {
+                // this thread now owns the instance
+                await instance.StopAsync();
+            }
+            finally
+            {
+                instance.Dispose();
+            }
         }
 
         public void Stop()
