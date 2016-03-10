@@ -107,11 +107,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// TEMP HACK
         /// We need to merge the ambient binding data that already exists in the IBinder
         /// with our binding data. We have to do this rather than relying solely on
         /// IBinder.BindAsync because we need to include any POCO values we get from parsing
         /// JSON bodies, etc.
+        /// TEMP: We might find a better way to do this in the future, perhaps via core
+        /// SDK changes.
         /// </summary>
         protected static void ApplyAmbientBindingData(IBinder binder, IDictionary<string, string> bindingData)
         {
@@ -135,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                // TEMP: Dig the ambient binding data out of the binder
+                // TEMP HACK: Dig the ambient binding data out of the binder
                 FieldInfo fieldInfo = binder.GetType().GetField("_bindingSource", BindingFlags.NonPublic | BindingFlags.Instance);
                 var bindingSource = fieldInfo.GetValue(binder);
                 PropertyInfo propertyInfo = bindingSource.GetType().GetProperty("AmbientBindingContext");
