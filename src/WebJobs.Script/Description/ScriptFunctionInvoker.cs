@@ -12,6 +12,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -23,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
+        private readonly IMetricsLogger _metrics;
+
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
 
@@ -33,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
+            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
         }
 
         public static bool IsSupportedScriptType(string extension)
@@ -87,6 +91,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IBinder binder = (IBinder)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
 
+            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
+            _metrics.BeginEvent(startedEvent);
+
             // perform any required input conversions
             string stdin = null;
             if (input != null)
@@ -131,8 +138,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             process.WaitForExit();
 
-            if (process.ExitCode != 0)
+            bool failed = process.ExitCode != 0;
+            startedEvent.Success = !failed;
+            _metrics.EndEvent(startedEvent);
+
+            if (failed)
             {
+                startedEvent.Success = false;
+
                 string error = process.StandardError.ReadToEnd();
                 TraceWriter.Error(error);
                 TraceWriter.Verbose(string.Format("Function completed (Failure)"));

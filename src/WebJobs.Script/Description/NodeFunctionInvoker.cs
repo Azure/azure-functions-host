@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _script;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
+        private readonly IMetricsLogger _metrics;
 
         private Func<object, Task<object>> _scriptFunc;
         private Func<object, Task<object>> _clearRequireCache;
@@ -55,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
+            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcherIfEnabled();
         }
@@ -93,6 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IBinder binder = (IBinder)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
 
+            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
+            _metrics.BeginEvent(startedEvent);
+
             try
             {
                 TraceWriter.Verbose(string.Format("Function started"));
@@ -113,9 +119,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception ex)
             {
+                startedEvent.Success = false;
                 TraceWriter.Error(ex.Message, ex);
                 TraceWriter.Verbose(string.Format("Function completed (Failure)"));
                 throw;
+            }
+            finally
+            {
+                _metrics.EndEvent(startedEvent);
             }
         }
 
