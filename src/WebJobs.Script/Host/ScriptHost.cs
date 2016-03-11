@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
 
@@ -119,6 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void Initialize()
         {
+            IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            if (metricsLogger == null)
+            {
+                ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
+            }
+
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),

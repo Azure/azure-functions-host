@@ -8,8 +8,11 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using WebJobs.Script.WebHost.Diagnostics;
 
 namespace WebJobs.Script.WebHost
 {
@@ -72,6 +75,14 @@ namespace WebJobs.Script.WebHost
             }
 
             return function;
+        }
+
+        protected override void OnInitializeConfig(JobHostConfiguration config)
+        {
+            base.OnInitializeConfig(config);
+
+            // Add our WebHost specific services
+            config.AddService<IMetricsLogger>(new WebHostMetricsLogger());
         }
 
         protected override void OnHostStarted()
