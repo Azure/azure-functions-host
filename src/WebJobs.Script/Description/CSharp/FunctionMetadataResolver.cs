@@ -37,9 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Xml",
                 "System.Net.Http",
                 typeof(object).Assembly.Location,
-                typeof(TraceWriter).Assembly.Location,
-                typeof(TimerInfo).Assembly.Location,
-                typeof(System.Web.Http.ApiController).Assembly.Location
+                typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
+                typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
+                typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
+                typeof(System.Web.Http.ApiController).Assembly.Location /*System.Web.Http*/
+            };
+
+        private static readonly Assembly[] SharedAssemblies =
+            {
+                typeof(Newtonsoft.Json.JsonConvert).Assembly /*Newtonsoft.Json*/
             };
 
         private static readonly string[] DefaultNamespaceImports =
@@ -47,7 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System",
                 "System.Collections.Generic",
                 "System.Linq",
-                "System.Net.Http"
+                "System.Net.Http",
+                "Microsoft.Azure.WebJobs",
+                "Microsoft.Azure.WebJobs.Host"
             };
 
         public FunctionMetadataResolver(FunctionMetadata metadata, TraceWriter traceWriter)
@@ -109,20 +117,42 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 return ImmutableArray<PortableExecutableReference>.Empty;
             }
+
             if (!HasValidAssemblyFileExtension(reference))
             {
-                var result = _scriptResolver.ResolveReference(reference, baseFilePath, properties);
+                // Try to resolve using the default resolver (framework assemblies, e.g. System.Core, System.Xml, etc.)
+                ImmutableArray<PortableExecutableReference> result = _scriptResolver.ResolveReference(reference, baseFilePath, properties);
+
+                // If the default script resolver can't resolve the assembly
+                // check if this is one of host's shared assemblies
+                if (result.IsEmpty)
+                {
+                    Assembly assembly = SharedAssemblies
+                        .FirstOrDefault(m => string.Compare(m.GetName().Name, reference, StringComparison.OrdinalIgnoreCase) == 0);
+
+                    if (assembly != null)
+                    {
+                        result = ImmutableArray.Create(MetadataReference.CreateFromFile(assembly.Location));
+                    }
+                }
 
                 return result;
             }
 
+            return GetMetadataFromReferencePath(reference);
+        }
+
+        private ImmutableArray<PortableExecutableReference> GetMetadataFromReferencePath(string reference)
+        {
             if (Path.IsPathRooted(reference))
             {
+                // If the path is rooted, create a direct reference to the assembly file
                 return ImmutableArray.Create(MetadataReference.CreateFromFile(reference));
             }
-            else if (reference.StartsWith(CSharpConstants.PrivateAssembliesFolderName + "\\", StringComparison.OrdinalIgnoreCase))
+            else
             {
-                string filePath = Path.Combine(_privateAssembliesPath, Path.GetFileName(reference));
+                // Treat the reference as a private assembly reference
+                string filePath = Path.Combine(_privateAssembliesPath, reference);
                 if (File.Exists(Path.Combine(filePath)))
                 {
                     return ImmutableArray.Create(MetadataReference.CreateFromFile(filePath));
