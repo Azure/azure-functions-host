@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Core",
                 "System.Xml",
                 "System.Net.Http",
+                "Microsoft.CSharp",
                 typeof(object).Assembly.Location,
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
