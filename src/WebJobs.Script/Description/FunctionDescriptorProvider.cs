@@ -17,6 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
+        internal const string DefaultInputParameterName = "input";
+        internal const string DefaultHttpInputParameterName = "req";
+
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
             Host = host;
@@ -39,6 +42,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (functionMetadata.IsDisabled)
             {
                 return false;
+            }
+
+            // Default the trigger binding name if a name hasn't
+            // been specified
+            // TODO: Remove this logic and always require it to be explicitly
+            // specified?
+            foreach (var binding in functionMetadata.Bindings.Where(p => p.IsTrigger))
+            {
+                if (string.IsNullOrEmpty(binding.Name))
+                {
+                    if (binding.Type == BindingType.HttpTrigger)
+                    {
+                        binding.Name = DefaultHttpInputParameterName;
+                    }
+                    else
+                    {
+                        binding.Name = DefaultInputParameterName;
+                    }
+                }
             }
 
             // parse the bindings
@@ -94,18 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("methodAttributes");
             }
 
-            BindingType triggerType = triggerMetadata.Type;
-            string triggerParameterName = triggerMetadata.Name;
-            bool triggerNameSpecified = true;
-            if (string.IsNullOrEmpty(triggerParameterName))
-            {
-                // default the name to simply 'input'
-                triggerMetadata.Name = triggerParameterName = "input";
-                triggerNameSpecified = false;
-            }
-
             ParameterDescriptor triggerParameter = null;
-            switch (triggerType)
+            switch (triggerMetadata.Type)
             {
                 case BindingType.QueueTrigger:
                     triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata);
@@ -114,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata);
                     break;
                 case BindingType.BlobTrigger:
-                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata);
+                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata, typeof(Stream));
                     break;
                 case BindingType.ServiceBusTrigger:
                     triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata);
@@ -123,10 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, typeof(TimerInfo));
                     break;
                 case BindingType.HttpTrigger:
-                    if (!triggerNameSpecified)
-                    {
-                        triggerMetadata.Name = triggerParameterName = "req";
-                    }
                     triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
                     break;
                 case BindingType.ManualTrigger:

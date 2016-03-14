@@ -77,7 +77,7 @@ namespace WebJobs.Script.Tests
             // verify trigger parameter
             ParameterInfo parameter = method.GetParameters()[0];
             Assert.Equal("input", parameter.Name);
-            Assert.Equal(typeof(string), parameter.ParameterType);
+            Assert.Equal(typeof(Stream), parameter.ParameterType);
             BlobTriggerAttribute attribute = parameter.GetCustomAttribute<BlobTriggerAttribute>();
             Assert.Equal("foo/bar", attribute.BlobPath);
         }

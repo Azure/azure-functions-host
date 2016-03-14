@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
-          BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             if (functionInvoker == null)
             {
@@ -86,16 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Expected invoker of type '{0}' but received '{1}'", typeof(CSharpFunctionInvoker).Name, functionInvoker.GetType().Name));
             }
 
-            BindingType triggerType = triggerMetadata.Type;
-            string triggerParameterName = triggerMetadata.Name;
-            bool triggerNameSpecified = true;
-            if (string.IsNullOrEmpty(triggerParameterName))
-            {
-                // default the name to simply 'input'
-                triggerMetadata.Name = "input";
-                triggerNameSpecified = false;
-            }
-
             try
             {
                 MethodInfo functionTarget = csharpInvoker.GetFunctionTarget();
@@ -107,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Is it the trigger parameter?
                     if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
                     {
-                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata, triggerType, methodAttributes, triggerNameSpecified));
+                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata, methodAttributes));
                     }
                     else
                     {
@@ -118,7 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         }
 
                         var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
-
                         var binding = bindings.FirstOrDefault(b => string.Compare(b.Name, parameter.Name, StringComparison.Ordinal) == 0);
                         if (binding != null)
                         {
@@ -149,10 +138,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata,
-            BindingType triggerType, Collection<CustomAttributeBuilder> methodAttributes, bool triggerNameSpecified)
+            Collection<CustomAttributeBuilder> methodAttributes)
         {
             ParameterDescriptor triggerParameter = null;
-            switch (triggerType)
+            switch (triggerMetadata.Type)
             {
                 case BindingType.QueueTrigger:
                     triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata, parameter.ParameterType);
@@ -170,10 +159,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, parameter.ParameterType);
                     break;
                 case BindingType.HttpTrigger:
-                    if (!triggerNameSpecified)
-                    {
-                        triggerMetadata.Name = "req";
-                    }
                     triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, parameter.ParameterType);
                     break;
                 case BindingType.ManualTrigger:

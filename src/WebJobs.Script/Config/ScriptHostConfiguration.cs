@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 
@@ -50,6 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script
         /// The default is false. When set to true, logs will be written to the directory
         /// specified by <see cref="RootLogPath"/>.
         /// </summary>
-        public bool FileLoggingEnabled { get; set; }    
+        public bool FileLoggingEnabled { get; set; }
+
+        /// <summary>
+        /// Gets the list of functions that should be run. This list can be used to filter
+        /// the set of functions that will be enabled - it can be a subset of the actual
+        /// function directories. When left null (the default) all discovered functions will
+        /// be run.
+        /// </summary>
+        public Collection<string> Functions { get; set; }
     }
 }

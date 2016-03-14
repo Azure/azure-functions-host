@@ -1,9 +1,11 @@
 open System
 open System.IO
 
-let input = System.Console.In.ReadLine()
-let message = sprintf "F# script processed queue message '%s'" input
-System.Console.Out.WriteLine(message)
+let inputPath = Environment.GetEnvironmentVariable("input")
+let input = File.ReadAllText(inputPath)
 
-let output = System.Environment.GetEnvironmentVariable("output");
+let message = sprintf "F# script processed queue message '%s'" input
+Console.Out.WriteLine(message)
+
+let output = Environment.GetEnvironmentVariable("output");
 File.WriteAllText(output, input)

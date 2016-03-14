@@ -349,6 +349,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     functionName = Path.GetFileNameWithoutExtension(scriptDir);
 
+                    if (ScriptConfig.Functions != null && 
+                        !ScriptConfig.Functions.Contains(functionName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        // a functions filter has been specified and the current function is
+                        // not in the filter list
+                        continue;
+                    }
+
                     // TODO: we need to define a json schema document and do
                     // schema validation
                     string json = File.ReadAllText(functionConfigPath);
@@ -443,6 +451,16 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
         {
             JobHostConfiguration hostConfig = scriptConfig.HostConfig;
+
+            JArray functions = (JArray)config["functions"];
+            if (functions != null && functions.Count > 0)
+            {
+                scriptConfig.Functions = new Collection<string>();
+                foreach (var function in functions)
+                {
+                    scriptConfig.Functions.Add((string)function);
+                }
+            }
 
             // We may already have a host id, but the one from the JSON takes precedence
             JToken hostId = (JToken)config["id"];

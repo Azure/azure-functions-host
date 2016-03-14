@@ -8,6 +8,12 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using WebJobs.Script.WebHost;
 using Xunit;
 
@@ -28,7 +34,7 @@ namespace WebJobs.Script.Tests
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
 
-            HttpResponseMessage response = await this._fixture.Client.SendAsync(request);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         }
 
@@ -38,7 +44,7 @@ namespace WebJobs.Script.Tests
             string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            HttpResponseMessage response = await this._fixture.Client.SendAsync(request);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Hello Mathew", body);
@@ -52,7 +58,7 @@ namespace WebJobs.Script.Tests
             request.Content = new StringContent("{ 'a': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-            HttpResponseMessage response = await this._fixture.Client.SendAsync(request);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("WebHook processed successfully! Foobar", body);
@@ -67,10 +73,50 @@ namespace WebJobs.Script.Tests
             request.Content = new StringContent("{ 'a': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-            HttpResponseMessage response = await this._fixture.Client.SendAsync(request);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("WebHook processed successfully! Foobar", body);
+        }
+        [Fact]
+        public async Task QueueTriggerBatch_Succeeds()
+        {
+            // write the input message
+            CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-batch");
+            string id = Guid.NewGuid().ToString();
+            JObject jsonObject = new JObject
+            {
+                { "id", id }
+            };
+            var message = new CloudQueueMessage(jsonObject.ToString(Formatting.None));
+            await inputQueue.AddMessageAsync(message);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+
+            jsonObject = JObject.Parse(result);
+            Assert.Equal(id, (string)jsonObject["id"]);
+        }
+
+        [Fact]
+        public async Task BlobTriggerBatch_Succeeds()
+        {
+            // write input blob
+            CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-batch");
+            string blobName = Guid.NewGuid().ToString();
+            string testData = "This is a test";
+            CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(blobName);
+            await inputBlob.UploadTextAsync(testData);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(blobName);
+            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+
+            // verify results
+            Assert.Equal(testData, result.Trim());
         }
 
         public class TestFixture
@@ -89,13 +135,22 @@ namespace WebJobs.Script.Tests
                 WebApiConfig.Register(config, settings);
 
                 HttpServer server = new HttpServer(config);
-                this.Client = new HttpClient(server);
-                this.Client.BaseAddress = new Uri("https://localhost/");
+                this.HttpClient = new HttpClient(server);
+                this.HttpClient.BaseAddress = new Uri("https://localhost/");
+
+                string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("Storage");
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                BlobClient = storageAccount.CreateCloudBlobClient();
+                QueueClient = storageAccount.CreateCloudQueueClient();
 
                 WaitForHost();
             }
 
-            public HttpClient Client { get; set; }
+            public CloudBlobClient BlobClient { get; set; }
+
+            public CloudQueueClient QueueClient { get; set; }
+
+            public HttpClient HttpClient { get; set; }
 
             private void WaitForHost()
             {
@@ -109,7 +164,7 @@ namespace WebJobs.Script.Tests
             {
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
 
-                HttpResponseMessage response = this.Client.SendAsync(request).Result;
+                HttpResponseMessage response = this.HttpClient.SendAsync(request).Result;
                 return response.StatusCode == HttpStatusCode.NoContent;
             }
         }

@@ -33,36 +33,16 @@ namespace WebJobs.Script.Tests
 
             await Fixture.TestQueue.AddMessageAsync(message);
 
-            string result = await WaitForBlobAsync(id);
-            Assert.Equal(RemoveByteOrderMarkAndWhitespace(messageContent), RemoveByteOrderMarkAndWhitespace(result));
+            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
+            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
             Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
 
-            string trace = RemoveByteOrderMarkAndWhitespace(scriptTrace.Message);
-            Assert.True(trace.Contains(RemoveByteOrderMarkAndWhitespace("script processed queue message")));
-            Assert.True(trace.Contains(RemoveByteOrderMarkAndWhitespace(messageContent)));
-        }
-
-        protected async Task<string> WaitForBlobAsync(string id)
-        {
-            CloudBlockBlob resultBlob = null;
-            await TestHelpers.Await(() =>
-            {
-                resultBlob = Fixture.TestContainer.GetBlockBlobReference(id);
-                return resultBlob.Exists();
-            });
-
-            string result = await resultBlob.DownloadTextAsync(Encoding.UTF8,
-                null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
-            
-            return result;
-        }
-
-        protected static string RemoveByteOrderMarkAndWhitespace(string s)
-        {
-            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
+            string trace = TestHelpers.RemoveByteOrderMarkAndWhitespace(scriptTrace.Message);
+            Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace("script processed queue message")));
+            Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent)));
         }
     }
 }
