@@ -2,13 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.WindowsAzure.Storage.Table;
+using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
     // Describes available function names. 
     // This is useful to quickly query available functions so we can use the names in other point queries. 
     // 1 entity per function definition. 
-    public class FunctionDefinitionEntity : TableEntity
+    internal class FunctionDefinitionEntity : TableEntity
     {
         const string PartitionKeyFormat = TableScheme.FuncDefIndexPK;
         const string RowKeyFormat = "{0}"; // functionName
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             return new FunctionDefinitionEntity
             {
                 PartitionKey = PartitionKeyFormat,
-                RowKey = string.Format(RowKeyFormat, TableScheme.NormalizeFunctionName(functionName))
+                RowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName))
             };
         }
 

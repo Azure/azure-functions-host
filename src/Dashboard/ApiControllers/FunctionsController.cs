@@ -6,15 +6,18 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Caching;
 using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+
 using InternalWebJobTypes = Microsoft.Azure.WebJobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobType;
 
@@ -38,6 +41,7 @@ namespace Dashboard.ApiControllers
             new ConcurrentDictionary<string, bool?>();
         private readonly ConcurrentDictionary<string, Tuple<int, int>> _cachedStatistics =
             new ConcurrentDictionary<string, Tuple<int, int>>();
+        private readonly ILogReader _reader;
 
         internal FunctionsController(
             CloudStorageAccount account,
@@ -51,7 +55,8 @@ namespace Dashboard.ApiControllers
             IRecentInvocationIndexByFunctionReader recentInvocationsByFunctionReader,
             IRecentInvocationIndexByJobRunReader recentInvocationsByJobRunReader,
             IRecentInvocationIndexByParentReader recentInvocationsByParentReader,
-            IFunctionStatisticsReader statisticsReader)
+            IFunctionStatisticsReader statisticsReader,
+            ILogReader reader)
         {
             _account = account;
             _blobClient = blobClient;
@@ -65,6 +70,7 @@ namespace Dashboard.ApiControllers
             _recentInvocationsByJobRunReader = recentInvocationsByJobRunReader;
             _recentInvocationsByParentReader = recentInvocationsByParentReader;
             _statisticsReader = statisticsReader;
+            _reader = reader;
         }
 
         [Route("api/jobs/triggered/{jobName}/runs/{runId}/functions")]
@@ -194,6 +200,58 @@ namespace Dashboard.ApiControllers
             IResultSegment<RecentInvocationEntry> indexSegment = _recentInvocationsByFunctionReader.Read(func.Id,
                 pagingInfo.Limit, pagingInfo.ContinuationToken);
             return Invocations(indexSegment);
+        }
+
+        // Returns a sparse array of (StartBucket, Start, TotalPass, TotalFail, TotalRun)                
+        [Route("api/functions/invocations/{functionId}/timeline")]
+        public async Task<IHttpActionResult> GetRecentInvocationsTimeline(
+            string functionId, 
+            [FromUri]PagingInfo pagingInfo,
+            DateTime? start = null,
+            DateTime? end = null)
+        {
+            if (end == null)
+            {
+                end = DateTime.UtcNow;
+            }
+            if (start == null)
+            {
+                start = end.Value.AddDays(-7);
+            }
+
+            var segment = await _reader.GetAggregateStatsAsync(functionId, start.Value, end.Value, null);
+            var entities = segment.Results;
+
+            var result = Array.ConvertAll(entities, entity => new
+            {
+                 StartBucket = entity.TimeBucket,
+                 Start = entity.Time,
+                 TotalPass = entity.TotalPass,
+                 TotalFail = entity.TotalFail,
+                 TotalRun = entity.TotalRun
+            });
+
+            return Ok(result);
+        }
+
+        // Returns sparse array of for when the containers are run.
+        [Route("api/containers/timeline")]
+        public async Task<IHttpActionResult> GetContainerTimeline(
+            [FromUri]PagingInfo pagingInfo,
+            DateTime? start = null,
+            DateTime? end = null)
+        {
+            if (end == null)
+            {
+                end = DateTime.UtcNow;
+            }
+            if (start == null)
+            {
+                start = end.Value.AddDays(-7);
+            }
+
+            var segment = await _reader.GetActiveContainerTimelineAsync(start.Value, end.Value, null);
+            return Ok(segment);
         }
 
         [Route("api/functions/invocations/recent")]

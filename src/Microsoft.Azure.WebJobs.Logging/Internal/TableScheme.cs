@@ -3,13 +3,14 @@
 
 using System;
 using Microsoft.WindowsAzure.Storage.Table;
+using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
     // Central place to organize Table schemes and provide helpers for row manipulation. 
     // Helps ensure partition keys coexist. 
     // - must be able to make bulk updates (so use same partition key)
-    class TableScheme
+    internal static class TableScheme
     {
         // List all partition keys in once place to ensure they're disjoint. 
         internal const string InstancePK = "I"; // InstanceTableEntity
@@ -17,17 +18,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal const string RecentFuncIndexPK = "R"; // RecentPerFuncEntity
         internal const string ContainerActivePK = "C"; // ContainerActiveEntity
         internal const string FuncDefIndexPK = "FD"; // FunctionDefinitionEntity
-
-        // Given a rowkey prefix, generate the next prefix. This can be used to find all row keys with a given prefix. 
-        internal static string NextRowKey(string rowKeyStart)
-        {
-            int len = rowKeyStart.Length;
-            char ch = rowKeyStart[len - 1];
-            char ch2 = (char)(((int)ch) + 1);
-
-            var x = rowKeyStart.Substring(0, len - 1) + ch2;
-            return x;
-        }
 
         // Read entire partition
         internal static TableQuery<TElement> GetRowsInPartition<TElement>(string partitionKey)
@@ -40,10 +30,17 @@ namespace Microsoft.Azure.WebJobs.Logging
         // Read rows in the following range
         internal static TableQuery<TElement> GetRowsInRange<TElement>(string partitionKey, string rowKeyStart, string rowKeyEnd)
         {
+            return GetRowsInRange<TElement>(partitionKey, rowKeyStart, rowKeyEnd, QueryComparisons.LessThan);
+        }                          
+        
+        private static TableQuery<TElement> GetRowsInRange<TElement>(
+            string partitionKey, string rowKeyStart, string rowKeyEnd,
+            string endOperator)
+        {
             var rowQuery = TableQuery.CombineFilters(
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThanOrEqual, rowKeyStart),
                 TableOperators.And,
-                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThan, rowKeyEnd));
+                TableQuery.GenerateFilterCondition("RowKey", endOperator, rowKeyEnd));
 
 
             var query = TableQuery.CombineFilters(
@@ -51,18 +48,12 @@ namespace Microsoft.Azure.WebJobs.Logging
                 TableOperators.And,
                 rowQuery);
 
+            
             TableQuery<TElement> rangeQuery = new TableQuery<TElement>().Where(query);
-            return rangeQuery;
+            return rangeQuery;            
         }
-
-        // Read rows with the the provided prefix. 
-        internal static TableQuery<TElement> GetRowsWithPrefix<TElement>(string partitionKey, string rowKeyPrefix)
-        {
-            string rowKeyEnd = NextRowKey(rowKeyPrefix);
-            return GetRowsInRange<TElement>(partitionKey, rowKeyPrefix, rowKeyEnd);
-        }
-             
-        internal static string Get2ndTerm(string rowKey)
+            
+        public static string Get2ndTerm(string rowKey)
         {
             int i = rowKey.IndexOf('-');
             if (i >= 0)
@@ -78,16 +69,16 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
             throw new InvalidOperationException("Row key is in illegal format: " + rowKey);
         }
-              
-        internal static string NormalizeFunctionName(string functionName)
+
+        public static string NormalizeFunctionName(string functionName)
         {
-            return functionName.ToLower();
+            return functionName.ToLower(CultureInfo.InvariantCulture);
         }
 
-        internal static string NormalizeContainerName(string containerName)
+        public static string NormalizeContainerName(string containerName)
         {
             // Remove illegal rowKey chras?
-            return containerName.ToLower();
+            return containerName.ToLower(CultureInfo.InvariantCulture);
         }
     }
 }

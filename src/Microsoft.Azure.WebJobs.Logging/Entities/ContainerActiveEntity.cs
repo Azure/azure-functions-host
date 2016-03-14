@@ -3,6 +3,7 @@
 
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Logging
@@ -10,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Entity to track active compute Containers during a timerange.
     // A Container is a billable compute unit, like a virtual machine. 
     // A container may run many functions simultaneously. 
-    public class ContainerActiveEntity : TableEntity
+    internal class ContainerActiveEntity : TableEntity
     {
         const string PartitionKeyFormat = TableScheme.ContainerActivePK;
         const string RowKeyPrefixTimeFormat = "{0:D20}-";
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         // Time first, support range queries in a time window. 
         internal static string RowKeyTimeInterval(long timeBucket, string containerName)
         {
-            string rowKey = string.Format(RowKeyFormat, timeBucket, TableScheme.NormalizeContainerName(containerName));
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, timeBucket, TableScheme.NormalizeContainerName(containerName));
             return rowKey;
         }
 
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static string RowKeyTimeIntervalPrefix(DateTime dateTime)
         {
             var bucket = TimeBucket.ConvertToBucket(dateTime);
-            string rowKey = string.Format(RowKeyPrefixTimeFormat, bucket);
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyPrefixTimeFormat, bucket);
             return rowKey;
         }
 

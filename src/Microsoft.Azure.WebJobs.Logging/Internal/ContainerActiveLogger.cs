@@ -3,24 +3,20 @@
 
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
-    // Log whether this container has any active functions. 
-
-    public interface IActiveCounter
-    {
-        void Increment();
-        void Decrement();
-    }
-
-    public class ContainerActiveLogger : IActiveCounter
+    // Log whether the container is active or not.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
+    internal class ContainerActiveLogger
     {
         private static TimeSpan _interval = TimeSpan.FromSeconds(5);
 
-        private int _outstandingCount;
+        // Track functionInstanceGuids (instead of just a single integer counter) in case we missed an event or double reported an event. 
+        private HashSet<Guid> _outstandingCount = new HashSet<Guid>();
         private readonly CloudTable _instanceTable;
         private readonly string _containerName;
 
@@ -50,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
         }
 
-        public void Increment()
+        public void Increment(Guid instanceId)
         {
             lock (_lock)
             {
@@ -62,12 +58,15 @@ namespace Microsoft.Azure.WebJobs.Logging
 
                 _recent = true;
 
-                int count = Interlocked.Increment(ref _outstandingCount);
+                _outstandingCount.Add(instanceId);
             }
         }
-        public void Decrement()
+        public void Decrement(Guid instanceId)
         {
-            int count = Interlocked.Decrement(ref _outstandingCount);
+            lock(_lock)
+            {
+                _outstandingCount.Remove(instanceId);
+            }
         }
 
         // this should be the only thread writing to this container
@@ -86,7 +85,13 @@ namespace Microsoft.Azure.WebJobs.Logging
                     // Don't return yet. One last chance to flush 
                 }
 
-                bool active = (_recent || _outstandingCount > 0);
+                bool hasOutstanding;
+                lock (_lock)
+                {
+                    hasOutstanding = _outstandingCount.Count > 0;
+                }
+
+                bool active = _recent || hasOutstanding;
                 _recent = false;
 
                 if (active)
@@ -114,7 +119,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }
             } while (!_cancel.IsCancellationRequested);
         }
-
 
         private Task<ContainerActiveEntity> TryGetAsync(long timeBucket)
         {

@@ -28,6 +28,9 @@
             recentInvocations: function () {
                 return "api/functions/invocations/recent";
             },
+            functionInvocationTimeline: function (functionId) {
+                return "api/functions/invocations/" + encodeURIComponent(functionId) + "/timeline";
+            },
             invocationsByFunction: function (functionId) {
                 return "api/functions/definitions/" + encodeURIComponent(functionId) + "/invocations";
             },

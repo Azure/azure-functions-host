@@ -7,11 +7,11 @@ namespace Microsoft.Azure.WebJobs.Logging
 {
     // A "time bucket" is a discrete unit of time that's useful for aggregation and reporting. 
     // Use minutes since a baseline.  
-    static class TimeBucket
+    internal static class TimeBucket
     {
         static DateTime _baselineTime = new DateTime(2000, 1, 1);
 
-        public static DateTime ConveretToDateTime(long bucket)
+        public static DateTime ConvertToDateTime(long bucket)
         {
             return _baselineTime.AddMinutes(bucket);
         }

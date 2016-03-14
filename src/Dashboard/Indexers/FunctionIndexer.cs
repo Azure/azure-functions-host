@@ -209,11 +209,14 @@ namespace Dashboard.Indexers
         {
             IDictionary<string, FunctionInstanceArgument> arguments = new Dictionary<string, FunctionInstanceArgument>();
 
-            foreach (KeyValuePair<string, string> item in argumentValues)
+            if (argumentValues != null)
             {
-                string name = item.Key;
-                ParameterDescriptor descriptor = GetParameterDescriptor(parameters, name);
-                arguments.Add(name, CreateFunctionInstanceArgument(item.Value, descriptor));
+                foreach (KeyValuePair<string, string> item in argumentValues)
+                {
+                    string name = item.Key;
+                    ParameterDescriptor descriptor = GetParameterDescriptor(parameters, name);
+                    arguments.Add(name, CreateFunctionInstanceArgument(item.Value, descriptor));
+                }
             }
 
             return arguments;

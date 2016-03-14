@@ -9,6 +9,13 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
+using System.IO;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Text;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -328,8 +335,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
         }
 
+        class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
+        {
+            public List<FunctionInstanceLogEntry> List = new List<FunctionInstanceLogEntry>();
+
+            public static FunctionInstanceLogEntry FlushEntry = new FunctionInstanceLogEntry(); // marker for flushes 
+
+            public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
+            {
+                var clone = JsonConvert.DeserializeObject< FunctionInstanceLogEntry>(JsonConvert.SerializeObject(item));
+                List.Add(clone);
+                return Task.FromResult(0);
+            }
+
+            public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
+            {
+                List.Add(FlushEntry);
+                return Task.FromResult(0);
+            }
+        }
+
 
         // Test that we can explicitly disable storage and call through a function
+        // And enable the fast table logger and ensure that's getting events. 
         [Fact]
         public void JobHost_NoStorage_Succeeds()
         {
@@ -349,13 +377,49 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 config.DashboardConnectionString = null;
                 config.StorageConnectionString = null;
 
+                var randomValue = Guid.NewGuid().ToString();
+
+                StringBuilder sbLoggingCallbacks = new StringBuilder();                
+                var fastLogger = new FastLogger();
+                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+
                 JobHost host = new JobHost(config);
 
                 // Manually invoked. 
                 var method = typeof(BasicTest).GetMethod("Method", BindingFlags.Public | BindingFlags.Static);
-
-                host.Call(method);
+                
+                host.Call(method, new { value = randomValue } );
                 Assert.True(BasicTest.Called);
+
+                Assert.Equal(2, fastLogger.List.Count); // We should be batching, so flush not called yet. 
+
+                host.Start(); // required to call stop()
+                host.Stop(); // will ensure flush is called. 
+
+                // Verify fast logs
+                Assert.Equal(3, fastLogger.List.Count);
+
+                var startMsg = fastLogger.List[0];
+                Assert.Equal("BasicTest.Method", startMsg.FunctionName);
+                Assert.Equal(null, startMsg.EndTime);
+                Assert.NotNull(startMsg.StartTime);
+
+                var endMsg = fastLogger.List[1];
+                Assert.Equal(startMsg.FunctionName, endMsg.FunctionName);
+                Assert.Equal(startMsg.StartTime, endMsg.StartTime);
+                Assert.Equal(startMsg.FunctionInstanceId, endMsg.FunctionInstanceId);
+                Assert.NotNull(endMsg.EndTime); // signal completed
+                Assert.True(endMsg.StartTime <= endMsg.EndTime);
+                Assert.Null(endMsg.ErrorDetails);
+                Assert.Null(endMsg.ParentId);
+
+                Assert.Equal(2, endMsg.Arguments.Count);
+                Assert.True(endMsg.Arguments.ContainsKey("log"));
+                Assert.Equal(randomValue, endMsg.Arguments["value"]);
+                Assert.Equal("val=" + randomValue, endMsg.LogOutput.Trim());
+
+                Assert.Same(FastLogger.FlushEntry, fastLogger.List[2]);
+
             }
             finally
             {
@@ -369,8 +433,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public static bool Called = false;
 
             [NoAutomaticTrigger]
-            public static void Method()
+            public static void Method(TextWriter log, string value)
             {
+                log.Write("val={0}", value);
                 Called = true;
             }
         }

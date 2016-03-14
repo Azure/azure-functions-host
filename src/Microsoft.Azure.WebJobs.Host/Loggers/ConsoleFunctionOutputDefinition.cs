@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 get { return null; }
             }
 
-            public Task SaveAndCloseAsync(SdkFunctionLogEntry item, CancellationToken cancellationToken)
+            public Task SaveAndCloseAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken)
             {
                 return Task.FromResult(0);
             }

@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,10 +11,15 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     /// <summary>    
     /// Represent a function invocation starting or finishing. 
-    /// Host can recieve these notifications to do their own logging. 
+    /// A host can register an IAsyncCollector on the JobHostConfiguration to receive these notifications to do their own logging. 
     /// </summary>
-    public class SdkFunctionLogEntry
+    public class FunctionInstanceLogEntry
     {
+        /// <summary>
+        /// Maximum length of LogOutput that will be captured. 
+        /// </summary>
+        public const int MaxLogOutputLength = 1000;
+
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
 
@@ -19,7 +27,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         public Guid? ParentId { get; set; }
 
         /// <summary>The name of the function. This serves as an identifier.</summary>
-        public string FunctionName { get; set; } 
+        public string FunctionName { get; set; }
+
+        /// <summary>
+        /// An optional hint about why this function was invoked. It may have been triggered, replayed, manually invoked, etc. 
+        /// </summary>
+        public string TriggerReason { get; set; }
 
         /// <summary>The time the function started executing.</summary>
         public DateTime StartTime { get; set; }
@@ -33,18 +46,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         /// </summary>
         public string ErrorDetails { get; set; }
 
-        /// <summary>Gets or sets the function's argument values and help strings.</summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        /// <summary>Gets or sets the function's argument values and help strings.</summary>        
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]        
         public IDictionary<string, string> Arguments { get; set; }
 
-        // Direct inline capture for small log outputs. For large log outputs, this is faulted over to a blob. 
-        /// <summary></summary>
+        /// <summary>Direct inline capture for output written to the per-function instance TextWriter log. 
+        /// For large log outputs, this is faulted over to a blob. </summary>
         public string LogOutput { get; set; }
-
-        /// <summary>
-        /// Maximum length of LogOutput that will be captured. 
-        /// </summary>
-        public const int MaxLogLength = 1000;
     }
 }
-

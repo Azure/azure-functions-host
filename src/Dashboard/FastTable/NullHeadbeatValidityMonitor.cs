@@ -3,7 +3,7 @@
 
 namespace Dashboard.Data
 {
-    internal class NullHeadbeatValidityMonitor : IHeartbeatValidityMonitor
+    internal class NullHeartbeatValidityMonitor : IHeartbeatValidityMonitor
     {
         public bool IsInstanceHeartbeatValid(string sharedContainerName, string sharedDirectoryName, string instanceBlobName, int expirationInSeconds)
         {

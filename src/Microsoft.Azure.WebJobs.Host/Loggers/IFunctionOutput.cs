@@ -18,6 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         TextWriter Output { get; }
 
         // Copy the output contents the logEntry. 
-        Task SaveAndCloseAsync(SdkFunctionLogEntry logEntry, CancellationToken cancellationToken);
+        Task SaveAndCloseAsync(FunctionInstanceLogEntry logEntry, CancellationToken cancellationToken);
     }
 }

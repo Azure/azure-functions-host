@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs
         private JobHostContext _context;
         private IListener _listener;
         private object _contextLock = new object();
-
+        
         private int _state;
         private Task _stopTask;
         private object _stopTaskLock = new object();
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 throw new ArgumentNullException("serviceProvider");
             }
-
+                        
             _contextFactory = serviceProvider.GetJobHostContextFactory();
             if (_contextFactory == null)
             {
@@ -159,6 +160,13 @@ namespace Microsoft.Azure.WebJobs
         private async Task StopAsyncCore(CancellationToken cancellationToken)
         {
             await _listener.StopAsync(cancellationToken);
+
+            // Flush remaining logs
+            var fastLogger = _context.FastLogger;
+            if (fastLogger != null)
+            {
+                await fastLogger.FlushAsync(cancellationToken);
+            }
 
             _context.Trace.Info("Job host stopped", Host.TraceSource.Host);
         }

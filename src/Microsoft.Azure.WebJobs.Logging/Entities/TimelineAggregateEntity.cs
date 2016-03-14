@@ -3,12 +3,13 @@
 
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
     // Entity per minute per function type, aggregated. 
     //  This lets clients do a timeline query to see activity in a given window.  
-    public class TimelineAggregateEntity : TableEntity, IAggregate
+    internal class TimelineAggregateEntity : TableEntity, IAggregateEntry
     {
         // HostId in the rowKey is additional salt in case multiple hosts are writing in the same timeline. It is ignored during read.
         const string PartitionKeyFormat = TableScheme.TimelineAggregatePK;
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static string RowKeyTimeIntervalPrefix(string functionId, DateTime dateTime)
         {
             var bucket = TimeBucket.ConvertToBucket(dateTime);
-            string rowKey = string.Format(RowKeyPrefixFormat, TableScheme.NormalizeFunctionName(functionId), bucket);
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyPrefixFormat, TableScheme.NormalizeFunctionName(functionId), bucket);
             return rowKey;
         }
 
@@ -50,31 +51,39 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static string RowKeyTimeInterval(string functionId, DateTime dateTime, string hostId)
         {
             var bucket = TimeBucket.ConvertToBucket(dateTime);
-            string rowKey = string.Format(RowKeyFormat, TableScheme.NormalizeFunctionName(functionId), bucket, hostId);
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionId), bucket, hostId);
             return rowKey;
         }
 
         // Extract the time bucket from the RowKey 
-        internal long GetTimeBucketFromRowKey()
+        long IAggregateEntry.TimeBucket
+        {
+            get
+            {
+                return GetTimeBucket();
+            }
+        }
+        private long GetTimeBucket()
         {
             string time = TableScheme.Get2ndTerm(this.RowKey);
-            var minute = long.Parse(time);
+            var minute = long.Parse(time, CultureInfo.InvariantCulture);
             return minute;
         }
 
         public string ContainerName { get; set; }
 
-        public DateTime GetTime()
+        DateTime IAggregateEntry.Time
         {
-            var bucket = GetTimeBucketFromRowKey();
-            return  TimeBucket.ConveretToDateTime(bucket);
+            get
+            {                
+                var bucket = GetTimeBucket();
+                return TimeBucket.ConvertToDateTime(bucket);
+            }
         }
          
         public int TotalRun { get; set; }
 
         public int TotalPass { get; set; }
         public int TotalFail { get; set; }
-
-        // 400 vs. 500? 
     }
 }

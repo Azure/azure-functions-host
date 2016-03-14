@@ -4,13 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -23,13 +23,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         IFunctionOutputLogger
     {
         private IHostInstanceLogger _hostInstanceLogger;
-        private IFunctionInstanceLogger _NullInstanceLogger = new NullInstanceLogger();
+        private IFunctionInstanceLogger _nullInstanceLogger = new NullInstanceLogger();
 
         public FastTableLoggerProvider()
         {
             _hostInstanceLogger = new NullHostInstanceLogger();
         }
-             
 
         Task<IFunctionOutputLogger> IFunctionOutputLoggerProvider.GetAsync(CancellationToken cancellationToken)
         {
@@ -45,10 +44,16 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         Task<IFunctionInstanceLogger> IFunctionInstanceLoggerProvider.GetAsync(CancellationToken cancellationToken)
         {
             // No instance loggin
-            return Task.FromResult<IFunctionInstanceLogger>(_NullInstanceLogger);
+            return Task.FromResult<IFunctionInstanceLogger>(_nullInstanceLogger);
         }
 
-        class NullInstanceLogger : IFunctionInstanceLogger
+        Task<IFunctionOutputDefinition> IFunctionOutputLogger.CreateAsync(IFunctionInstance instance, CancellationToken cancellationToken)
+        {
+            IFunctionOutputDefinition x = new PerFunc();
+            return Task.FromResult(x);
+        }
+        
+        private class NullInstanceLogger : IFunctionInstanceLogger
         {
             public Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)
             {
@@ -66,14 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        // 
-        Task<IFunctionOutputDefinition> IFunctionOutputLogger.CreateAsync(IFunctionInstance instance, CancellationToken cancellationToken)
-        {
-            IFunctionOutputDefinition x = new PerFunc();
-            return Task.FromResult(x);
-        }
-
-        class PerFunc : IFunctionOutputDefinition, IFunctionOutput
+        private class PerFunc : IFunctionOutputDefinition, IFunctionOutput
         {
             private readonly MemoryStream _ms = new MemoryStream();
             private readonly TextWriter _writer;
@@ -82,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {
                 _writer = new StreamWriter(_ms);
             }
-
 
             public TextWriter Output
             {
@@ -135,18 +132,18 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {                
             }
 
-            public Task SaveAndCloseAsync(SdkFunctionLogEntry item, CancellationToken cancellationToken)
+            public Task SaveAndCloseAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken)
             {
                 if (item != null)
                 {
                     var str = Encoding.UTF8.GetString(_ms.ToArray());
 
                     // Truncate. 
-                    if (str.Length > SdkFunctionLogEntry.MaxLogLength)
+                    if (str.Length > FunctionInstanceLogEntry.MaxLogOutputLength)
                     {                        
                         // 0123456789
                         // abcdefghij
-                        str = "..." +  str.Substring(str.Length - (SdkFunctionLogEntry.MaxLogLength - 3));
+                        str = "..." + str.Substring(str.Length - (FunctionInstanceLogEntry.MaxLogOutputLength - 3));
                     }
 
                     item.LogOutput = str;

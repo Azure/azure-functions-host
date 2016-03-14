@@ -493,7 +493,7 @@
     <Compile Include="Listeners\CompositeListenerFactory.cs" />
     <Compile Include="Listeners\ISharedContextProvider.cs" />
     <Compile Include="Listeners\ListenerFactoryContext.cs" />
-    <Compile Include="Loggers\SdkFunctionLogEntry.cs" />
+    <Compile Include="Loggers\FunctionInstanceLogEntry.cs" />
     <Compile Include="Loggers\FastTableLoggerProvider.cs" />
     <Compile Include="Loggers\DefaultConsoleProvider.cs" />
     <Compile Include="Loggers\DefaultLoggerProvider.cs" />

@@ -1,18 +1,18 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Logging;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Logging;
 
 namespace Dashboard.Data
 {
-    static class ExtensionHelpers
+    internal static class ExtensionHelpers
     {
-        public static FunctionInstanceSnapshot ConvertToSnapshot(this RecentPerFuncEntity entity)
+        public static FunctionInstanceSnapshot ConvertToSnapshot(this IRecentFunctionEntry entity)
         {
             return new FunctionInstanceSnapshot
             {
-                Id = entity.GetFunctionInstanceId(),
+                Id = entity.FunctionInstanceId,
                 FunctionFullName = entity.DisplayName,
                 FunctionShortName = entity.DisplayName,
                 DisplayTitle = entity.DisplayName, // skips Argument check
@@ -22,17 +22,17 @@ namespace Dashboard.Data
             };
         }
 
-        public static FunctionInstanceSnapshot ConvertToSnapshot(this InstanceTableEntity entity)
+        public static FunctionInstanceSnapshot ConvertToSnapshot(this FunctionInstanceLogItem entity)
         {
             var arguments = new Dictionary<string, FunctionInstanceArgument>();
-            foreach (var kv in entity.GetArguments())
+            foreach (var kv in entity.Arguments)
             {
                 arguments[kv.Key] = new FunctionInstanceArgument { Value = kv.Value };
             }
 
             return new FunctionInstanceSnapshot
             {
-                Id = entity.GetFunctionInstanceId(),
+                Id = entity.FunctionInstanceId,
                 FunctionFullName = entity.FunctionName,
                 FunctionShortName = entity.FunctionName,
 

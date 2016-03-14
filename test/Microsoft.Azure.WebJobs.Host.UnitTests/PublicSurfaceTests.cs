@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
-                "SdkFunctionLogEntry",
+                "FunctionInstanceLogEntry",
                 "IConverterManager",
                 "BindingFactory",
                 "ITriggerBindingStrategy`2",

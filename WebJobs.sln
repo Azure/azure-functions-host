@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Host.FunctionalTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Logging", "src\Microsoft.Azure.WebJobs.Logging\WebJobs.Logging.csproj", "{B5A04006-AB0C-4800-AE4C-080D31867DE3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Logging.FunctionalTests", "test\Microsoft.Azure.WebJobs.Logging.FunctionalTests\WebJobs.Logging.FunctionalTests.csproj", "{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -116,6 +118,10 @@ Global
 		{B5A04006-AB0C-4800-AE4C-080D31867DE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B5A04006-AB0C-4800-AE4C-080D31867DE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5A04006-AB0C-4800-AE4C-080D31867DE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -128,5 +134,6 @@ Global
 		{34D23554-5482-4B3D-B65F-46DFF5AF1684} = {FA608267-1272-4BD5-B230-0F41A48D18C8}
 		{28BC5EE0-9227-4124-AA8F-1C0CAA218D12} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal

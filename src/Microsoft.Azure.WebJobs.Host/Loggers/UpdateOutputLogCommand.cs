@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        public async Task SaveAndCloseAsync(SdkFunctionLogEntry item, CancellationToken cancellationToken)
+        public async Task SaveAndCloseAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken)
         {
             await UpdateOutputBlob(cancellationToken, flushAndClose: true);
         }

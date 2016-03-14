@@ -14,7 +14,7 @@ namespace Dashboard.Data
         {
             get
             {
-                return "";
+                return string.Empty;
             }
         }
     }

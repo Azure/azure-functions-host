@@ -15,11 +15,11 @@ namespace Microsoft.Azure.WebJobs.Logging
 {
     // Fast logger. 
     // Exposes a single AddAsync() to log one item, and then this will batch them up and write tables in bulk. 
-    public class LogWriter
+    internal class LogWriter : ILogWriter
     {
         // All writing goes to 1 table. 
         private readonly CloudTable _instanceTable;
-        private readonly string _containerName; // compute container that we're logging to. 
+        private readonly string _containerName; // compute container (not Blob Container) that we're logging for. 
 
         private string _uniqueId = Guid.NewGuid().ToString();
 
@@ -38,23 +38,25 @@ namespace Microsoft.Azure.WebJobs.Logging
         // Container is common shared across all log writer instances 
         static ContainerActiveLogger _container;
 
-        public LogWriter(string containerName, CloudTable table)
+        public LogWriter(string computerContainerName, CloudTable table)
         {
-            if (containerName == null)
+            if (computerContainerName == null)
             {
-                throw new ArgumentNullException("containerName");
+                throw new ArgumentNullException("computerContainerName");
             }
             if (table == null)
             {
                 throw new ArgumentNullException("table");
             }
-            this._containerName = containerName;         
+            this._containerName = computerContainerName;         
             table.CreateIfNotExists();
             this._instanceTable = table;
         }
 
-        public async Task AddAsync(FunctionLogItem item, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task AddAsync(FunctionInstanceLogItem item, CancellationToken cancellationToken = default(CancellationToken))
         {
+            item.Validate();
+
             {
                 lock(_lock)
                 {
@@ -65,10 +67,11 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }
                 if (item.IsCompleted())
                 {
-                    _container.Decrement();
+                    _container.Decrement(item.FunctionInstanceId);
                 }
-                else {
-                    _container.Increment();
+                else
+                {
+                    _container.Increment(item.FunctionInstanceId);
                 }
             }
 
@@ -111,11 +114,9 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             // Flush every 100 items, maximize with tables. 
-            //Stopwatch sw = Stopwatch.StartNew();
             Task t1 = FlushIntancesAsync(false);
             Task t2 = FlushTimelineAggregateAsync();
             await Task.WhenAll(t1, t2);
-
         }
 
         // Could flush on a timer. 
@@ -177,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             await Task.WhenAll(t1, t2, t3);
         }
 
-        public async Task FlushAsync()
+        public async Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             await FlushTimelineAggregateAsync(true);
             await FlushIntancesAsync(true);
@@ -185,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             await _container.StopAsync();
         }
 
-        private static void Increment(FunctionLogItem item, IAggregate x)
+        private static void Increment(FunctionInstanceLogItem item, TimelineAggregateEntity x)
         {
             x.TotalRun++;
 
@@ -239,34 +240,6 @@ namespace Microsoft.Azure.WebJobs.Logging
 
 
             await Task.WhenAll(t);
-        }
-
-        private async Task WriteBatchSerialAsync<T>(IEnumerable<T> e1) where T : TableEntity
-        {
-            HashSet<string> rowKeys = new HashSet<string>();
-
-            int batchSize = 90;
-
-            TableBatchOperation batch = new TableBatchOperation();
-
-            foreach (var e in e1)
-            {
-                if (!rowKeys.Add(e.RowKey))
-                {
-                    // Already present
-                }
-
-                batch.InsertOrReplace(e);
-                if (batch.Count >= batchSize)
-                {
-                    await _instanceTable.ExecuteBatchAsync(batch);
-                    batch = new TableBatchOperation();
-                }
-            }
-            if (batch.Count > 0)
-            {
-                await _instanceTable.ExecuteBatchAsync(batch);
-            }
-        }
+        }    
     }    
 }

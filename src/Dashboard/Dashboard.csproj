@@ -281,6 +281,7 @@
     <Compile Include="FastTable\FastTableReader.cs" />
     <Compile Include="FastTable\ExtensionHelpers.cs" />
     <Compile Include="FastTable\NullAborter.cs" />
+    <Compile Include="FastTable\NullFastReader.cs" />
     <Compile Include="FastTable\NullHeadbeatValidityMonitor.cs" />
     <Compile Include="FastTable\NullHostVersionReader.cs" />
     <Compile Include="FastTable\NullIDashboardVersionManager.cs" />

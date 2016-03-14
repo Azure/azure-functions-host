@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Configuration;
 using System.Web;
 using System.Web.Caching;
 using System.Web.Mvc;
@@ -10,14 +11,14 @@ using Dashboard.Data.Logs;
 using Dashboard.Filters;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Ninject.Modules;
 using Ninject.Web.Mvc.FilterBindingSyntax;
-using Microsoft.WindowsAzure.Storage.Table;
-using System.Configuration;
 
 namespace Dashboard
 {
@@ -41,13 +42,16 @@ namespace Dashboard
             Bind<CloudBlobClient>().ToConstant(blobClient);
 
             string tableLog = ConfigurationManager.AppSettings["AzureWebJobsLogTableName"];
-            if (tableLog != null)
+            if (!string.IsNullOrWhiteSpace(tableLog))
             {
-                // ASt table reader. 
+                // fast table reader. 
                 var client = account.CreateCloudTableClient();
                 CloudTable logTable = client.GetTableReference(tableLog);
+                var reader = LogFactory.NewReader(logTable);
+                Bind<ILogReader>().ToConstant(reader);
 
-                var s = new FastTableReader(logTable);
+                var s = new FastTableReader(reader);
+
                 Bind<IFunctionLookup>().ToConstant(s);
                 Bind<IFunctionInstanceLookup>().ToConstant(s);
                 Bind<IFunctionStatisticsReader>().ToConstant(s);
@@ -61,7 +65,8 @@ namespace Dashboard
                 Bind<IRecentInvocationIndexByJobRunReader>().To<NullInvocationIndexReader>();
                 Bind<IRecentInvocationIndexByParentReader>().To<NullInvocationIndexReader>();
 
-                Bind<IHeartbeatValidityMonitor>().To<NullHeadbeatValidityMonitor>();
+                Bind<IHeartbeatValidityMonitor>().To<NullHeartbeatValidityMonitor>();
+                            
                 Bind<IAborter>().To<NullAborter>();
 
                 // for diagnostics
@@ -71,6 +76,8 @@ namespace Dashboard
             }
             else
             {
+                Bind<ILogReader>().ToConstant(new NullFastReader());
+
                 // Traditional SDK reader. 
 
                 CloudQueueClient queueClient = account.CreateCloudQueueClient();

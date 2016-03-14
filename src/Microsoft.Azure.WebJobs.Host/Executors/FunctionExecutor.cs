@@ -27,13 +27,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly TimeSpan? _functionTimeout;
         private readonly TraceWriter _trace;
-        private readonly IAsyncCollector<SdkFunctionLogEntry> _fastLogger;
+        private readonly IAsyncCollector<FunctionInstanceLogEntry> _fastLogger;
 
         private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger, 
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher, TraceWriter trace, TimeSpan? functionTimeout,
-            IAsyncCollector<SdkFunctionLogEntry> fastLogger = null)
+            IAsyncCollector<FunctionInstanceLogEntry> fastLogger = null)
         {
             if (functionInstanceLogger == null)
             {
@@ -78,10 +78,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             string functionStartedMessageId = null;
             TraceLevel functionTraceLevel = GetFunctionTraceLevel(functionInstance);
 
-            SdkFunctionLogEntry fastItem = new SdkFunctionLogEntry
+            FunctionInstanceLogEntry fastItem = new FunctionInstanceLogEntry
             {
                 FunctionInstanceId = functionStartedMessage.FunctionInstanceId,
+                ParentId = functionStartedMessage.ParentId,
                 FunctionName = functionStartedMessage.Function.ShortName,
+                TriggerReason = functionStartedMessage.ReasonDetails,
                 StartTime = functionStartedMessage.StartTime.DateTime
             };
             if (_fastLogger != null)
@@ -132,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         
             if (_fastLogger != null)
             {
-                // Log completed
+                // Log completed                
                 fastItem.EndTime = DateTime.UtcNow;
                 fastItem.Arguments = functionCompletedMessage.Arguments;
                 
@@ -172,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private async Task<string> ExecuteWithLoggingAsync(IFunctionInstance instance, FunctionStartedMessage message,
-            SdkFunctionLogEntry fastItem,
+            FunctionInstanceLogEntry fastItem,
             IDictionary<string, ParameterLog> parameterLogCollector, TraceLevel functionTraceLevel, CancellationToken cancellationToken)
         {
             IFunctionOutputDefinition outputDefinition = null;

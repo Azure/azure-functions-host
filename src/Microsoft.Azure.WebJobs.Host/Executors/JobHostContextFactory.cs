@@ -48,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 hostIdProvider = new FixedHostIdProvider(_config.HostId);
             }
 
-            var fastLogger = _config.GetService<IAsyncCollector<SdkFunctionLogEntry>>();
+            var fastLogger = _config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>();
 
             return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
-                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider, fastLogger : fastLogger);
+                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider, fastLogger: fastLogger);
         }
 
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null,
             SingletonManager singletonManager = null,
-            IAsyncCollector<SdkFunctionLogEntry> fastLogger = null)
+            IAsyncCollector<FunctionInstanceLogEntry> fastLogger = null)
         {
             if (hostIdProvider == null)
             {
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
                         
-            bool hasFastTableHook = config.GetService<IAsyncCollector<SdkFunctionLogEntry>>() != null;
+            bool hasFastTableHook = config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>() != null;
             bool noDashboardStorage = config.DashboardConnectionString == null;
             if (hasFastTableHook && noDashboardStorage)
             {
@@ -124,7 +124,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 functionInstanceLoggerProvider = loggerProvider;
                 functionOutputLoggerProvider = loggerProvider;
             }
-            else {
+            else
+            {
                 var loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
                 hostInstanceLogerProvider = loggerProvider;
                 functionInstanceLoggerProvider = loggerProvider;
@@ -264,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     trace.Info(functionsTrace.ToString(), TraceSource.Indexing);
                 }
 
-                return new JobHostContext(functions, hostCallExecutor, listener, trace);
+                return new JobHostContext(functions, hostCallExecutor, listener, trace, fastLogger);
             }
         }
 
