@@ -1,0 +1,15 @@
+﻿{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "samples-easytables-node"
+    },
+    {
+      "type": "easyTable",
+      "direction": "out",
+      "name": "item",
+      "tableName": "Item"
+    }
+  ]
+}

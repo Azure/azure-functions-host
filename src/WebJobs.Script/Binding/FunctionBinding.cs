@@ -110,6 +110,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         case BindingType.HttpTrigger:
                             bindings.Add(new HttpBinding(config, name, FileAccess.Read, bindingMetadata.IsTrigger));
                             break;
+                        case BindingType.EasyTable:
+                            EasyTableBindingMetadata easyTableMetadata = (EasyTableBindingMetadata)bindingMetadata;
+                            bindings.Add(new EasyTableBinding(config, name, easyTableMetadata.TableName, easyTableMetadata.Id, fileAccess, bindingMetadata.Direction));
+                            break;
                     }
                 }
             }

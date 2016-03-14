@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{E6F59990-F3A1-469F-A9D8-6D529121D385}</Project>
-      <Name>WebJobs.Script</Name>
+      <Name>WebJobs.Script</Name>      
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -22,6 +22,10 @@
     </NuGetContent>-->
   </ItemGroup>
   <Import Project="$(WebJobsToolsPath)NuGetProj.targets"/>
+
+  <!-- This is required to properly resolve dependencies during the Nuget package build -->
+  <Import Project="..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" />
+
   <Target Name="BeforeBuild">
     <PropertyGroup>
       <!-- Define properties you want to use inside your nuspec file. -->

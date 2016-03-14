@@ -1,0 +1,16 @@
+﻿{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "queueName": "easytables-input",
+      "direction": "in"
+    },
+    {
+      "type": "easyTable",
+      "name": "item",
+      "direction": "in",
+      "tableName": "Item",
+      "id": "{QueueTrigger}"
+    }
+  ]
+}

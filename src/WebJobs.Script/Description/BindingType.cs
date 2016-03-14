@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Http,
         Table,
         ManualTrigger,
-        TimerTrigger
+        TimerTrigger,
+        EasyTable
     }
 }

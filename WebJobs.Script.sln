@@ -160,6 +160,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-Batch", "BlobTr
 		sample\BlobTrigger-Batch\run.bat = sample\BlobTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EasyTable-CSharp", "EasyTable-CSharp", "{B51AE854-21D2-49D2-B83D-9FA18780A175}"
+	ProjectSection(SolutionItems) = preProject
+		sample\EasyTables-CSharp\function.json = sample\EasyTables-CSharp\function.json
+		sample\EasyTables-CSharp\run.csx = sample\EasyTables-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EasyTable-Node", "EasyTable-Node", "{87E44645-EA02-4F12-8C3E-820B5710292D}"
+	ProjectSection(SolutionItems) = preProject
+		sample\EasyTables-Node\function.json = sample\EasyTables-Node\function.json
+		sample\EasyTables-Node\index.js = sample\EasyTables-Node\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -218,5 +230,7 @@ Global
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B80C88CF-68EE-4400-A68D-216F1F85179C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{B51AE854-21D2-49D2-B83D-9FA18780A175} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

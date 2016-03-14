@@ -1,0 +1,13 @@
+﻿{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "direction": "in"      
+    },
+    {
+      "type": "easyTable",
+      "name": "item",
+      "direction": "out"
+    }
+  ]
+}
