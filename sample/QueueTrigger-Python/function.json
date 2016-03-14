@@ -7,7 +7,7 @@
       },
       {
         "type": "table",
-        "name": "input",
+        "name": "tableInput",
         "direction": "in",
         "tableName": "samples",
         "partitionKey": "samples",

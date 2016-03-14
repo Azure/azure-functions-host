@@ -56,8 +56,9 @@ namespace WebJobs.Script.Tests
             await Fixture.Host.CallAsync("EventHubSender", arguments);
 
             // Second, there's an EventHub trigger listener on the events which will write a blob. 
-            // Once the blob is written, we know both sender & listener are working. 
-            string result = await WaitForBlobAsync(testData);
+            // Once the blob is written, we know both sender & listener are working.
+            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testData);
+            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
 
             var payload = JsonConvert.DeserializeObject<Payload>(result);
             Assert.Equal(testData, payload.Id);

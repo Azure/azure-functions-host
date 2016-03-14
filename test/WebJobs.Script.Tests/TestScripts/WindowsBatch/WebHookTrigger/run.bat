@@ -1,3 +1,3 @@
 ﻿echo OFF
-SET /p req=
+SET /p req=<%req%
 echo WebHook processed successfully! %req% > %res%

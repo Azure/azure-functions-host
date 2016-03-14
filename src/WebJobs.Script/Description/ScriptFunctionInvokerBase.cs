@@ -85,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 try
                 {
+                    // if the input value is a JSON string, extract additional
+                    // binding data from it
                     string json = value as string;
                     if (!string.IsNullOrEmpty(json) && IsJson(json))
                     {

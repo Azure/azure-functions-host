@@ -1,16 +1,15 @@
-{
+﻿{
   "bindings": [
     {
       "type": "blobTrigger",
-      "name": "original",
       "direction": "in",
-      "path": "images-original/{name}"
+      "path": "samples-batch/{name}"
     },
     {
       "type": "blob",
-      "name": "resized",
+      "name": "output",
       "direction": "out",
-      "path": "images-resized/{name}"
+      "path": "samples-output/{name}"
     }
   ]
 }

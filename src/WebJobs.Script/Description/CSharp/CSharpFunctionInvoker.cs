@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class CSharpFunctionInvoker : ScriptFunctionInvokerBase
     {
         private const string ScriptClassName = "Submission#0";
-        private const string DefaultInputName = "input";
 
         private readonly FunctionAssemblyLoader _assemblyLoader;
         private readonly ScriptHost _host;
@@ -67,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _restorePackages = _restorePackages.Debounce();
         }
 
+        // TODO: Is this function still needed? Can we factor it away?
         private static string GetTriggerInputName(FunctionMetadata functionMetadata)
         {
             BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerName = triggerBinding.Name;
             }
 
-            return triggerName ?? DefaultInputName;
+            return triggerName ?? FunctionDescriptorProvider.DefaultInputParameterName;
         }
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)

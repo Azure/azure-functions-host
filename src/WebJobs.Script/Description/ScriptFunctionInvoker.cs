@@ -95,20 +95,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metrics.BeginEvent(startedEvent);
 
             // perform any required input conversions
-            string stdin = null;
+            object convertedInput = input;
             if (input != null)
             {
                 HttpRequestMessage request = input as HttpRequestMessage;
                 if (request != null)
                 {
+                    // TODO: Handle other content types? (E.g. byte[])
                     if (request.Content != null && request.Content.Headers.ContentLength > 0)
                     {
-                        stdin = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
-                    } 
-                }
-                else
-                {
-                    stdin = input.ToString();
+                        convertedInput = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                    }
                 }
             }
 
@@ -121,21 +118,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
-            Dictionary<string, string> bindingData = GetBindingData(stdin, binder, _inputBindings, _outputBindings);
+            Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder, _inputBindings, _outputBindings);
             bindingData["InvocationId"] = invocationId;
 
-            await ProcessInputBindingsAsync(functionInstanceOutputPath, binder, bindingData, environmentVariables);
+            await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, bindingData, environmentVariables);
 
             // TODO
             // - put a timeout on how long we wait?
             // - need to periodically flush the standard out to the TraceWriter
             Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
             process.Start();
-            if (stdin != null)
-            {
-                process.StandardInput.WriteLine(stdin);
-                process.StandardInput.Flush();
-            }
             process.WaitForExit();
 
             bool failed = process.ExitCode != 0;
@@ -189,29 +181,56 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task ProcessInputBindingsAsync(string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
+        private async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
         {
             // if there are any input or output bindings declared, set up the temporary
             // output directory
-            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
-            if (_outputBindings.Count > 0 || nonTriggerInputBindings.Any())
+            if (_outputBindings.Count > 0 || _inputBindings.Any())
             {
                 Directory.CreateDirectory(functionInstanceOutputPath);
             }
 
             // process input bindings
-            foreach (var inputBinding in nonTriggerInputBindings)
+            foreach (var inputBinding in _inputBindings)
             {
                 string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
                 using (FileStream stream = File.OpenWrite(filePath))
                 {
-                    BindingContext bindingContext = new BindingContext
+                    // If this is the trigger input, write it directly to the stream.
+                    // The trigger binding is a special case because it is early bound
+                    // rather than late bound as is the case with all the other input
+                    // bindings.
+                    if (inputBinding.IsTrigger)
                     {
-                        Binder = binder,
-                        BindingData = bindingData,
-                        Value = stream
-                    };
-                    await inputBinding.BindAsync(bindingContext);
+                        if (input is string)
+                        {
+                            using (StreamWriter sw = new StreamWriter(stream))
+                            {
+                                await sw.WriteAsync((string)input);
+                            }
+                        }
+                        else if (input is byte[])
+                        {
+                            byte[] bytes = input as byte[];
+                            await stream.WriteAsync(bytes, 0, bytes.Length);
+                        }
+                        else if (input is Stream)
+                        {
+                            Stream inputStream = input as Stream;
+                            await inputStream.CopyToAsync(stream);
+                        }
+                    }
+                    else
+                    {
+                        // invoke the input binding
+                        BindingContext bindingContext = new BindingContext
+                        {
+                            Binder = binder,
+                            BindingData = bindingData,
+                            Value = stream
+                        };
+                        await inputBinding.BindAsync(bindingContext);
+                    }
                 }
 
                 environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
