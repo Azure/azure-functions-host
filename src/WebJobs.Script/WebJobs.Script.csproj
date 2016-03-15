@@ -223,6 +223,7 @@
     <Compile Include="Description\CSharp\CSharpFunctionInvoker.cs" />
     <Compile Include="Description\CSharp\FunctionEntryPointResolver.cs" />
     <Compile Include="Description\CSharp\FunctionMetadataResolver.cs" />
+    <Compile Include="Description\CSharp\FunctionValueLoader.cs" />
     <Compile Include="Description\CSharp\IFunctionEntryPointResolver.cs" />
     <Compile Include="Description\CSharp\IMethodReference.cs" />
     <Compile Include="Description\CSharp\MethodReference.cs" />

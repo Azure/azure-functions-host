@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -32,13 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly IMetricsLogger _metrics;
+        private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
 
-        private MethodInfo _function;
         private CSharpFunctionSignature _functionSignature;
         private FunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
         private Action _restorePackages;
-        private Action<object[], object> _resultProcessor;
+        private Action<MethodInfo, object[], object> _resultProcessor;
+        private FunctionValueLoader _functionValueLoader;
 
         private static readonly string[] WatchedFileTypes = { ".cs", ".csx", ".dll", ".exe" };
 
@@ -58,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             InitializeFileWatcherIfEnabled();
             _resultProcessor = CreateResultProcessor();
+
+            _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
 
             _reloadScript = ReloadScript;
             _reloadScript = _reloadScript.Debounce();
@@ -97,38 +101,52 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private void ReloadScript()
         {
             // Reset cached function
-            _function = null;
+            ResetFunctionValue();
             TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
 
             TraceWriter.Verbose("Compiling function script.");
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
 
             Script<object> script = CreateScript();
             Compilation compilation = script.GetCompilation();
             ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
 
-            stopwatch.Stop();
-
             CSharpFunctionSignature signature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
             compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
-            
+
             TraceCompilationDiagnostics(compilationResult);
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation {0} ({1} ms).",
-                compilationSucceeded ? "succeeded" : "failed", stopwatch.ElapsedMilliseconds));
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.",
+                compilationSucceeded ? "succeeded" : "failed"));
 
             // If the compilation succeeded, AND:
             //  - We haven't cached a function (failed to compile on load), OR
             //  - We're referencing local function types (i.e. POCOs defined in the function) AND Our our function signature has changed
             // Restart our host.
-            if (compilationSucceeded && 
-                (_functionSignature == null || 
+            if (compilationSucceeded &&
+                (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
                 _host.RestartEvent.Set();
+            }
+        }
+
+        private void ResetFunctionValue()
+        {
+            _functionValueLoaderLock.EnterWriteLock();
+            try
+            {
+                if (_functionValueLoader != null)
+                {
+                    _functionValueLoader.Dispose();
+                }
+
+                _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
+            }
+            finally
+            {
+                _functionValueLoaderLock.ExitWriteLock();
             }
         }
 
@@ -146,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         return;
                     }
 
-                    TraceWriter.Verbose("Packages restored.");    
+                    TraceWriter.Verbose("Packages restored.");
                     _reloadScript();
                 });
         }
@@ -162,8 +180,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 parameters = ProcessInputParameters(parameters);
 
-                MethodInfo function = GetFunctionTarget();
-          
+                MethodInfo function = await GetFunctionTargetAsync();
+
                 object functionResult = function.Invoke(null, parameters);
 
                 if (functionResult is Task)
@@ -173,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (functionResult != null)
                 {
-                    _resultProcessor(parameters, functionResult);
+                    _resultProcessor(function, parameters, functionResult);
                 }
 
                 TraceWriter.Verbose("Function completed (Success)");
@@ -208,55 +226,82 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return parameters;
         }
 
-        internal MethodInfo GetFunctionTarget()
+        internal async Task<MethodInfo> GetFunctionTargetAsync(int attemptCount = 0)
         {
-            if (_function == null)
+            FunctionValueLoader currentValueLoader;
+            _functionValueLoaderLock.EnterReadLock();
+            try
             {
-                // TODO:Get this from some context set in/by the host.
-                bool debug = true;
-                MemoryStream assemblyStream = null;
-                MemoryStream pdbStream = null;
+                currentValueLoader = _functionValueLoader;
+            }
+            finally
+            {
+                _functionValueLoaderLock.ExitReadLock();
+            }
 
-                try
+            try
+            {
+                return await currentValueLoader;
+            }
+            catch (OperationCanceledException)
+            {
+                // If the current task we were awaiting on was cancelled due to a
+                // cache refresh, retry, which will use the new loader
+                if (attemptCount > 2)
                 {
-                    _assemblyLoader.ReleaseContext(Metadata);
-
-                    Script<object> script = CreateScript();
-                    Compilation compilation = GetScriptCompilation(script, debug);
-                    CSharpFunctionSignature functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
-
-                    ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
-
-                    using (assemblyStream = new MemoryStream())
-                    {
-                        using (pdbStream = new MemoryStream())
-                        {
-                            var result = compilation.Emit(assemblyStream, pdbStream);
-
-                            if (!result.Success)
-                            {
-                                throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
-                            }
-
-                            Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
-                            _assemblyLoader.CreateContext(Metadata, assembly, _metadataResolver);
-
-                            // Get our function entry point
-                            System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
-                            _function = _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
-                            _functionSignature = functionSignature;
-                        }
-                    }
-                }
-                catch (CompilationErrorException ex)
-                {
-                    TraceWriter.Error("Function compilation error");
-                    TraceCompilationDiagnostics(ex.Diagnostics);               
                     throw;
                 }
             }
 
-            return _function;
+            return await GetFunctionTargetAsync(++attemptCount);
+        }
+
+        private MethodInfo CreateFunctionTarget(CancellationToken cancellationToken)
+        {
+            // TODO:Get this from some context set in/by the host.
+            bool debug = true;
+            MemoryStream assemblyStream = null;
+            MemoryStream pdbStream = null;
+
+            try
+            {
+                Script<object> script = CreateScript();
+                Compilation compilation = GetScriptCompilation(script, debug);
+                CSharpFunctionSignature functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+
+                ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+
+                using (assemblyStream = new MemoryStream())
+                {
+                    using (pdbStream = new MemoryStream())
+                    {
+                        var result = compilation.Emit(assemblyStream, pdbStream);
+
+                        // Check if cancellation was requested while we were compiling, 
+                        // and if so quit here. 
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (!result.Success)
+                        {
+                            throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
+                        }
+
+                        Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
+                        _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver);
+
+                        // Get our function entry point
+                        System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
+                        _functionSignature = functionSignature;
+                        return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                    }
+                }
+            }
+            catch (CompilationErrorException ex)
+            {
+                TraceWriter.Error("Function compilation error");
+                TraceCompilationDiagnostics(ex.Diagnostics);
+                throw;
+            }
         }
 
         private void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics)
@@ -276,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
             {
                 string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", _triggerInputName);
-                var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingTriggerArgumentCompilationCode, 
+                var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingTriggerArgumentCompilationCode,
                     "Missing trigger argument", message, "AzureFunctions", DiagnosticSeverity.Error, true);
 
                 resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
@@ -294,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Name, StringComparison.Ordinal) == 0))
                 {
                     string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Name);
-                    var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingBindingArgumentCompilationCode, 
+                    var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingBindingArgumentCompilationCode,
                         "Missing binding argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 
                     resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
@@ -330,8 +375,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     .RemoveAllSyntaxTrees()
                     .AddSyntaxTrees(scriptTree);
             }
-           
-            return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel));
+
+            return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel))
+                .WithAssemblyName(FunctionAssemblyLoader.GetAssemblyNameFromMetadata(Metadata, compilation.AssemblyName));
         }
 
         private Script<object> CreateScript()
@@ -357,16 +403,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return null;
         }
 
-        private Action<object[], object> CreateResultProcessor()
+        private Action<MethodInfo, object[], object> CreateResultProcessor()
         {
             var bindings = _inputBindings.Union(_outputBindings).OfType<IResultProcessingBinding>();
 
-            Action<object[], object> processor = null;
+            Action<MethodInfo, object[], object> processor = null;
             if (bindings.Any())
             {
-                processor = (args, result) =>
+                processor = (function, args, result) =>
                 {
-                    ParameterInfo parameter = _function.GetParameters()
+                    ParameterInfo parameter = function.GetParameters()
                     .FirstOrDefault(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0);
 
                     if (parameter != null)
@@ -383,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 };
             }
 
-            return processor ?? ((_, __) => { /*noop*/ });
+            return processor ?? ((_, __, ___) => { /*noop*/ });
         }
 
         private static TraceLevel GetTraceLevelFromDiagnostic(Diagnostic diagnostic)

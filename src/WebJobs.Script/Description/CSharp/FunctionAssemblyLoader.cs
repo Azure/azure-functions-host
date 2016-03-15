@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -15,11 +17,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public class FunctionAssemblyLoader : IDisposable
     {
-        private readonly List<FunctionAssemblyLoadContext> _functionContexts = new List<FunctionAssemblyLoadContext>();
+        // Prefix that uniquely identifies our assemblies
+        // i.e.: "ƒ-<functionname>"
+        public const string AssemblyPrefix = "\u0192-";
+
+        private readonly ConcurrentDictionary<string, FunctionAssemblyLoadContext> _functionContexts = new ConcurrentDictionary<string, FunctionAssemblyLoadContext>();
+        private readonly Regex _functionNameFromAssemblyRegex;
 
         public FunctionAssemblyLoader()
         {
             AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
+            _functionNameFromAssemblyRegex = new Regex(string.Format(CultureInfo.InvariantCulture, "^{0}(?<name>.*?)#", AssemblyPrefix), RegexOptions.Compiled);
         }
 
         public void Dispose()
@@ -50,58 +58,74 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         [CLSCompliant(false)]
-        public FunctionAssemblyLoadContext CreateContext(FunctionMetadata metadata, Assembly functionAssembly, FunctionMetadataResolver metadataResolver)
+        public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, FunctionMetadataResolver metadataResolver)
         {
             if (metadata == null)
             {
                 throw new ArgumentNullException("metadata");
             }
-
-            var currentContext = GetFunctionContext(metadata);
-
-            if (currentContext != null)
+            if (functionAssembly == null)
             {
-                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Assembly load context for function '{0}' already exists.", metadata.Name));
+                throw new ArgumentNullException("functionAssembly");
+            }
+            if (metadataResolver == null)
+            {
+                throw new ArgumentNullException("metadataResolver");
             }
 
             var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver);
-            _functionContexts.Add(context);
-
-            return context;
+            
+            return _functionContexts.AddOrUpdate(metadata.Name, context, (s, o) => context);
         }
 
         public bool ReleaseContext(FunctionMetadata metadata)
         {
-            var context = GetFunctionContext(metadata);
-
-            if (context != null)
-            {
-                return _functionContexts.Remove(context);
-            }
-
-            return false;
-        }
-
-        public bool ReleaseContext(Assembly assembly)
-        {
-            var context = GetFunctionContext(assembly);
-
-            if (context != null)
-            {
-                return _functionContexts.Remove(context);
-            }
-
-            return false;
+            FunctionAssemblyLoadContext context;
+            return _functionContexts.TryRemove(metadata.Name, out context);
         }
 
         private FunctionAssemblyLoadContext GetFunctionContext(Assembly requestingAssembly)
-        { 
-            return _functionContexts.FirstOrDefault(c => c.FunctionAssembly == requestingAssembly);
+        {
+            string functionName = GetFunctionNameFromAssembly(requestingAssembly);
+            if (functionName != null)
+            {
+                FunctionAssemblyLoadContext context = GetFunctionContext(functionName);
+
+                if (context != null && context.FunctionAssembly == requestingAssembly)
+                {
+                    return context;
+                }
+            }
+
+            return null;
+        }
+        
+        private FunctionAssemblyLoadContext GetFunctionContext(string functionName)
+        {
+            FunctionAssemblyLoadContext context;
+            _functionContexts.TryGetValue(functionName, out context);
+
+            return context;
         }
 
-        private FunctionAssemblyLoadContext GetFunctionContext(FunctionMetadata metadata)
+        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
         {
-            return _functionContexts.FirstOrDefault(c => string.Compare(c.Metadata.Name, metadata.Name, StringComparison.Ordinal) == 0);
+            return AssemblyPrefix + metadata.Name + "#" + suffix;
+        }
+
+        public string GetFunctionNameFromAssembly(Assembly assembly)
+        {
+            if (assembly != null)
+            {
+                Match match = _functionNameFromAssemblyRegex.Match(assembly.FullName);
+
+                if (match.Success)
+                {
+                    return match.Groups["name"].Value;
+                }
+            }
+
+            return null;
         }
     }
 }

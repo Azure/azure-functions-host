@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                MethodInfo functionTarget = csharpInvoker.GetFunctionTarget();
+                MethodInfo functionTarget = csharpInvoker.GetFunctionTargetAsync().Result;
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
@@ -129,12 +129,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 return descriptors;
             }
+            catch (AggregateException exc)
+            {
+                if (!(exc.InnerException is CompilationErrorException))
+                {
+                    throw;
+                }
+            }
             catch (CompilationErrorException)
             {
-                // We were unable to compile the function to get its signature,
-                // setup the descriptor with the default parameters
-                return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
             }
+
+            // We were unable to compile the function to get its signature,
+            // setup the descriptor with the default parameters
+            return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
         }
 
         private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata,
