@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(TimerInfo input, out string message, TraceWriter log)
 {
-    log.Verbose("CSharp Timer trigger function executed.");
+    log.Verbose("C# Timer trigger function executed.");
 
     message = $"Trigger function executed at {DateTime.Now}";
 }

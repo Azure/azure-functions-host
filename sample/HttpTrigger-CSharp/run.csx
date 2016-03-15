@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage input, TraceWriter log)
+public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
-    var queryParamms = input.GetQueryNameValuePairs()
+    var queryParamms = req.GetQueryNameValuePairs()
         .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
 
-    log.Verbose(string.Format("CSharp HTTP trigger function processed a request. Name={0}", input.RequestUri));
+    log.Verbose(string.Format("C# HTTP trigger function processed a request. Name={0}", req.RequestUri));
 
     HttpResponseMessage res = null;
     string name;
