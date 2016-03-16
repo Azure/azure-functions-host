@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // write any function initialization errors to the log file
                     LogErrors(newInstance);
 
-                    newInstance.Start();
+                    newInstance.StartAsync(cancellationToken).Wait();
                     lock (_liveInstances)
                     {
                         _liveInstances.Add(newInstance);

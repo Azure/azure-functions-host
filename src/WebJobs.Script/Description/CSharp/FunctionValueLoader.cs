@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
-    /// Lazily loads the function value, guaranteeing single execution, and exposing 
+    /// Lazily loads the function value, guaranteeing single execution, and exposing
     /// a <see cref="Task{MethodInfo}"/> value that completes when the provided
     /// factory completes the function creation.
     /// </summary>
