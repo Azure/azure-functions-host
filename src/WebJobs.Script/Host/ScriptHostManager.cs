@@ -99,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // restarts are only happening on a single thread.
                     WaitHandle.WaitAny(new WaitHandle[] 
                     {
+                        cancellationToken.WaitHandle,
                         newInstance.RestartEvent,
                         _stopEvent
                     });
