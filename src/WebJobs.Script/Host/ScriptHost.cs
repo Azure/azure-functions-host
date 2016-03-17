@@ -644,6 +644,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 _restartEvent.Dispose();
+
+                if (TraceWriter != null && TraceWriter is IDisposable)
+                {
+                    ((IDisposable)TraceWriter).Dispose();
+                }
             }
         }
     }

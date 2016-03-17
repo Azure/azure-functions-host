@@ -2,21 +2,29 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Timers;
 using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FileTraceWriter : TraceWriter
+    public class FileTraceWriter : TraceWriter, IDisposable
     {
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
+        private const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
         private readonly string _instanceId;
         private static object _syncLock = new object();
         private FileInfo _currentLogFileInfo;
+        private bool _disposed = false;
+
+        private Timer _flushTimer;
+        private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
         public FileTraceWriter(string logFilePath, TraceLevel level) : base(level)
         {
@@ -36,6 +44,62 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             if (_currentLogFileInfo == null)
+            {
+                SetNewLogFile();
+            }
+
+            // start a timer to flush accumulated logs in batches
+            _flushTimer = new Timer
+            {
+                AutoReset = true,
+                Interval = LogFlushIntervalMs
+            };
+            _flushTimer.Elapsed += OnFlushLogs;
+            _flushTimer.Start();
+        }
+
+        public void FlushToFile()
+        {
+            if (_logBuffer.Count == 0)
+            {
+                return;
+            }
+
+            // snapshot the current set of buffered logs
+            // and set a new bag
+            ConcurrentQueue<string> currentBuffer = _logBuffer;
+            _logBuffer = new ConcurrentQueue<string>();
+
+            // concatenate all lines into one string
+            StringBuilder sb = new StringBuilder();
+            string line = null;
+            while (currentBuffer.TryDequeue(out line))
+            {
+                sb.AppendLine(line);
+            }
+
+            // write all lines in a single file operation
+            string contents = sb.ToString();
+            try
+            {
+                lock (_syncLock)
+                {
+                    File.AppendAllText(_currentLogFileInfo.FullName, contents);
+                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // need to handle cases where log file directories might
+                // have been deleted from underneath us
+                Directory.CreateDirectory(_logFilePath);
+                lock (_syncLock)
+                {
+                    File.AppendAllText(_currentLogFileInfo.FullName, contents);
+                }
+            }
+
+            _currentLogFileInfo.Refresh();
+            if (_currentLogFileInfo.Length > MaxLogFileSizeBytes)
             {
                 SetNewLogFile();
             }
@@ -72,6 +136,31 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_flushTimer != null)
+                    {
+                        _flushTimer.Dispose();
+                    }
+
+                    // ensure any remaining logs are flushed
+                    FlushToFile();
+                }
+
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         protected virtual void AppendLine(string line)
         {
             if (line == null)
@@ -79,35 +168,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            // TODO: figure out the right log file format
-            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}\r\n", DateTime.Now.ToString("s", CultureInfo.InvariantCulture), line.Trim());
+            // add the line to the current buffer batch, which is flushed
+            // on a timer
+            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), line.Trim());
+            _logBuffer.Enqueue(line);
+        }
 
-            // TODO: optimize this locking
-            try
-            {
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_currentLogFileInfo.FullName, line);
-                }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // need to handle cases where log file directories might
-                // have been deleted from underneath us
-                Directory.CreateDirectory(_logFilePath);
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_currentLogFileInfo.FullName, line);
-                }
-            }
-
-            // TODO: Need to optimize this, so we only do the check every
-            // so often
-            _currentLogFileInfo.Refresh();
-            if (_currentLogFileInfo.Length > MaxLogFileSizeBytes)
-            {
-                SetNewLogFile();
-            }
+        private void OnFlushLogs(object sender, ElapsedEventArgs e)
+        {
+            FlushToFile();
         }
 
         private void SetNewLogFile()

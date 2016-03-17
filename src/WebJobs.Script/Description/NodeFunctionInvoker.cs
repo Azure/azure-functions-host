@@ -95,18 +95,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter traceWriter = (TraceWriter)parameters[1];
             IBinder binder = (IBinder)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
+            string invocationId = functionExecutionContext.InvocationId.ToString();
 
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
             _metrics.BeginEvent(startedEvent);
 
             try
             {
-                TraceWriter.Verbose(string.Format("Function started"));
+                TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
                 var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, binder, functionExecutionContext);
 
                 Dictionary<string, string> bindingData = GetBindingData(input, binder, _inputBindings, _outputBindings);
-                bindingData["InvocationId"] = functionExecutionContext.InvocationId.ToString();
+                bindingData["InvocationId"] = invocationId;
                 scriptExecutionContext["bindingData"] = bindingData;
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
@@ -115,13 +116,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, scriptExecutionContext, functionResult);
 
-                TraceWriter.Verbose(string.Format("Function completed (Success)"));
+                TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
             }
             catch (Exception ex)
             {
                 startedEvent.Success = false;
                 TraceWriter.Error(ex.Message, ex);
-                TraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
                 throw;
             }
             finally

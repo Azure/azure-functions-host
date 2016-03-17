@@ -54,6 +54,8 @@ namespace WebJobs.Script.Tests
             {
                 traceWriter.Verbose(string.Format("Test message {0} {1}", Thread.CurrentThread.ManagedThreadId, i));
             }
+
+            traceWriter.FlushToFile();
         }
     }
 }

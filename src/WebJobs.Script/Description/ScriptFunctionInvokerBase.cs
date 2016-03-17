@@ -184,6 +184,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         _fileWatcher.Dispose();
                     }
+
+                    if (TraceWriter != null && TraceWriter is IDisposable)
+                    {
+                        ((IDisposable)TraceWriter).Dispose();
+                    }
                 }
 
                 _disposed = true;
