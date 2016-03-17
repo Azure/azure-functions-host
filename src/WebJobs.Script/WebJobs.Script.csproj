@@ -64,6 +64,10 @@
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.1.5.3\lib\net40\Microsoft.Azure.Documents.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Azure.NotificationHubs, Version=2.16.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.NotificationHubs.1.0.3\lib\net45-full\Microsoft.Azure.NotificationHubs.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=1.1.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.1.1.2-alpha-10271\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
       <Private>True</Private>
@@ -78,6 +82,10 @@
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.EasyTables, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EasyTables.1.0.0-alpha-10254\lib\net45\Microsoft.Azure.WebJobs.Extensions.EasyTables.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHub, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHub.1.0.0-alpha-10255\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
@@ -229,6 +237,7 @@
     <Compile Include="AuthorizationLevel.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\BlobBinding.cs" />
+    <Compile Include="Binding\NotificationHubBinding.cs" />
     <Compile Include="Binding\DocumentDBBinding.cs" />
     <Compile Include="Binding\EasyTableBinding.cs" />
     <Compile Include="Binding\EventHubBinding.cs" />
@@ -260,6 +269,7 @@
     <Compile Include="Description\CSharp\MethodReference.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolver.cs" />
     <Compile Include="Description\CSharp\PackageManager.cs" />
+    <Compile Include="Description\NotificationHubBindingMetadata.cs" />
     <Compile Include="Description\DocumentDBBindingMetadata.cs" />
     <Compile Include="Description\EasyTableBindingMetadata.cs" />
     <Compile Include="Description\EventHubBindingMetadata.cs" />

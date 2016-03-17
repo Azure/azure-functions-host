@@ -32,6 +32,19 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NotificationHub()
+        {
+            await NotificationHubTest();
+        }
+
+        [Fact]
+        public async Task NotificationHub_Out_Notification()
+        {
+            await Fixture.TouchProjectJson("NotificationHubOutNotification");
+            await NotificationHubTest();
+        }
+
+        [Fact]
         public async Task EasyTablesTable()
         {
             var id = Guid.NewGuid().ToString();
