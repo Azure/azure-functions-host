@@ -60,9 +60,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
             SingletonManager singletonManager = new SingletonManager();
 
+            TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, new TestTraceWriter(TraceLevel.Verbose), null);
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, trace, null);
 
             var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
                     nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
@@ -72,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
 
-            var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager);
+            var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager, trace);
 
             IJobHostContextFactory contextFactory = new TestJobHostContextFactory
             {

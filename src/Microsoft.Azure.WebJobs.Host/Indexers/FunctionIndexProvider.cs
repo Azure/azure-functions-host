@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly IFunctionExecutor _executor;
         private readonly IExtensionRegistry _extensions;
         private readonly SingletonManager _singletonManager;
+        private readonly TraceWriter _trace;
 
         private IFunctionIndex _index;
 
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IJobActivator activator,
             IFunctionExecutor executor,
             IExtensionRegistry extensions,
-            SingletonManager singletonManager)
+            SingletonManager singletonManager,
+            TraceWriter trace)
         {
             if (typeLocator == null)
             {
@@ -67,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 throw new ArgumentNullException("singletonManager");
             }
 
+            if (trace == null)
+            {
+                throw new ArgumentNullException("trace");
+            }
+
             _typeLocator = typeLocator;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
@@ -74,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _executor = executor;
             _extensions = extensions;
             _singletonManager = singletonManager;
+            _trace = trace;
         }
 
         public async Task<IFunctionIndex> GetAsync(CancellationToken cancellationToken)
@@ -89,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions, _singletonManager);
+            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions, _singletonManager, _trace);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(
                 typeLocator, triggerBindingProvider, bindingProvider,
-                activator, executor, extensions, singletonManager);
+                activator, executor, extensions, singletonManager, trace);
 
             IJobHostContextFactory contextFactory = new FakeJobHostContextFactory
             {

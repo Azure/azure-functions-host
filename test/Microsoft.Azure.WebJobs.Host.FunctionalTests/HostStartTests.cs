@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 // Act & Assert
                 FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(() => host.Start());
-                Assert.Equal("Error indexing method 'Invalid'", exception.Message);
+                Assert.Equal("Error indexing method 'InvalidQueueNameProgram.Invalid'", exception.Message);
                 Exception innerException = exception.InnerException;
                 Assert.IsType<ArgumentException>(innerException);
                 ArgumentException argumentException = (ArgumentException)innerException;

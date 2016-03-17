@@ -3,13 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -467,6 +471,45 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
+        [Fact]
+        public void IndexingExceptions_CanBeHandledByTraceWriter()
+        {
+            JobHostConfiguration config = new JobHostConfiguration();
+            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            config.Tracing.Tracers.Add(traceWriter);
+            config.TypeLocator = new FakeTypeLocator(typeof(BindingErrorsProgram));
+
+            FunctionErrorTraceWriter errorTraceWriter = new FunctionErrorTraceWriter(TraceLevel.Error);
+            config.Tracing.Tracers.Add(errorTraceWriter);
+
+            JobHost host = new JobHost(config);
+            host.Start();
+
+            // verify the handled binding error
+            FunctionIndexingException fex = errorTraceWriter.Errors.SingleOrDefault() as FunctionIndexingException;
+            Assert.True(fex.Handled);
+            Assert.Equal("BindingErrorsProgram.Invalid", fex.MethodName);
+
+            // verify that the binding error was logged
+            Assert.Equal(3, traceWriter.Traces.Count);
+            TraceEvent traceEvent = traceWriter.Traces[0];
+            Assert.Equal("Error indexing method 'BindingErrorsProgram.Invalid'", traceEvent.Message);
+            Assert.Same(fex, traceEvent.Exception);
+            Assert.Equal("Invalid container name: invalid$=+1", traceEvent.Exception.InnerException.Message);
+
+            // verify that the valid function was still indexed
+            traceEvent = traceWriter.Traces[1];
+            Assert.True(traceEvent.Message.Contains("Found the following functions"));
+            Assert.True(traceEvent.Message.Contains("BindingErrorsProgram.Valid"));
+
+            // verify that the job host was started successfully
+            traceEvent = traceWriter.Traces[2];
+            Assert.Equal("Job host started", traceEvent.Message);
+
+            host.Stop();
+            host.Dispose();
+        }
+
         private static TestJobHostConfiguration CreateConfiguration()
         {
             Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
@@ -587,6 +630,38 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public static void ProcessQueueAsBytes([QueueTrigger("ignore")] byte[] message)
             {
                 Bytes = message;
+            }
+        }
+
+        private class BindingErrorsProgram
+        {
+            // Invalid function
+            public static void Invalid([BlobTrigger("invalid$=+1")] string blob)
+            {
+            }
+
+            // Valid function
+            public static void Valid([BlobTrigger("test")] string blob)
+            {
+            }
+        }
+
+        private class FunctionErrorTraceWriter : TraceWriter
+        {
+            public Collection<Exception> Errors = new Collection<Exception>();
+
+            public FunctionErrorTraceWriter(TraceLevel level) : base(level)
+            {
+            }
+
+            public override void Trace(TraceEvent traceEvent)
+            {
+                FunctionIndexingException fex = traceEvent.Exception as FunctionIndexingException;
+                if (fex != null)
+                {
+                    fex.Handled = true;
+                    Errors.Add(fex);
+                } 
             }
         }
     }

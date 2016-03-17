@@ -50,16 +50,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
 
+            TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, new TestTraceWriter(TraceLevel.Verbose), null);
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, trace, null);
 
             if (extensionRegistry == null)
             {
                 extensionRegistry = new DefaultExtensionRegistry();
             }
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager());
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager(), trace);
         }
     }
 }

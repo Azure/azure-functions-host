@@ -138,7 +138,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IBindingDataProvider",
                 "FunctionInvocationException",
                 "TraceEvent",
-                "BindingTemplateExtensions"
+                "BindingTemplateExtensions",
+                "FunctionIndexingException"
             };
 
             AssertPublicTypes(expected, assembly);
