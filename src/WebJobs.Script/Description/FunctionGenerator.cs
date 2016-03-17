@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -83,19 +84,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // declare an array for all parameter values
                 il.Emit(OpCodes.Ldc_I4, function.Parameters.Count);
                 il.Emit(OpCodes.Newarr, typeof(object));
-                il.Emit(OpCodes.Stloc_0);
+                il.Emit(OpCodes.Stloc, argsLocal);
 
                 // copy each parameter into the arg array
                 for (int i = 0; i < function.Parameters.Count; i++)
                 {
-                    il.Emit(OpCodes.Ldloc_0);
+                    ParameterDescriptor parameter = function.Parameters[i];
+
+                    il.Emit(OpCodes.Ldloc, argsLocal);
                     il.Emit(OpCodes.Ldc_I4, i);
                     il.Emit(OpCodes.Ldarg, i);
 
                     // For Out and Ref types, need to do an indirection. 
-                    if (function.Parameters[i].Type.IsByRef)
+                    if (parameter.Type.IsByRef)
                     {
                         il.Emit(OpCodes.Ldind_Ref);
+                    }
+
+                    // Box value types
+                    if (parameter.Type.IsValueType)
+                    {
+                        il.Emit(OpCodes.Box, parameter.Type);
                     }
 
                     il.Emit(OpCodes.Stelem_Ref);
@@ -104,37 +113,61 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // get the invoker instance
                 il.Emit(OpCodes.Ldstr, function.Name);
                 il.Emit(OpCodes.Call, getInvoker);
-                il.Emit(OpCodes.Stloc_1);
+                il.Emit(OpCodes.Stloc, invokerLocal);
 
                 // now call the invoker, passing in the args
-                il.Emit(OpCodes.Ldloc_1);
-                il.Emit(OpCodes.Ldloc_0);
+                il.Emit(OpCodes.Ldloc, invokerLocal);
+                il.Emit(OpCodes.Ldloc, argsLocal);
                 il.Emit(OpCodes.Callvirt, invokeMethod);
-
-                // Copy back out and ref parameters
-                for (int i = 0; i < function.Parameters.Count; i++)
+                
+                if (function.Parameters.Any(p => p.Type.IsByRef))
                 {
-                    var param = function.Parameters[i];
-                    if (!param.Type.IsByRef)
+                    LocalBuilder taskLocal = il.DeclareLocal(typeof(Task));
+                    LocalBuilder taskAwaiterLocal = il.DeclareLocal(typeof(TaskAwaiter));
+
+                    // We need to wait on the function's task if we have any out/ref
+                    // parameters to ensure they have been populated before we copy them back
+
+                    // Store the result into a local Task
+                    // and load it onto the evaluation stack
+                    il.Emit(OpCodes.Stloc, taskLocal);
+                    il.Emit(OpCodes.Ldloc, taskLocal);
+                   
+                    // Call "GetAwaiter" on the Task
+                    il.Emit(OpCodes.Callvirt, typeof(Task).GetMethod("GetAwaiter", Type.EmptyTypes));
+
+                    // Call "GetResult", which will synchonously wait for the Task to complete
+                    il.Emit(OpCodes.Stloc, taskAwaiterLocal);
+                    il.Emit(OpCodes.Ldloca, taskAwaiterLocal);
+                    il.Emit(OpCodes.Call, typeof(TaskAwaiter).GetMethod("GetResult"));
+
+                    // Copy back out and ref parameters
+                    for (int i = 0; i < function.Parameters.Count; i++)
                     {
-                        continue;
+                        var param = function.Parameters[i];
+                        if (!param.Type.IsByRef)
+                        {
+                            continue;
+                        }
+
+                        il.Emit(OpCodes.Ldarg, i);
+
+                        il.Emit(OpCodes.Ldloc, argsLocal);
+                        il.Emit(OpCodes.Ldc_I4, i);
+                        il.Emit(OpCodes.Ldelem_Ref);
+                        il.Emit(OpCodes.Castclass, param.Type.GetElementType());
+
+                        il.Emit(OpCodes.Stind_Ref);
                     }
 
-                    il.Emit(OpCodes.Ldarg, i);
-
-                    il.Emit(OpCodes.Ldloc_0);
-                    il.Emit(OpCodes.Ldc_I4, i);
-                    il.Emit(OpCodes.Ldelem_Ref);
-                    il.Emit(OpCodes.Castclass, param.Type.GetElementType());
-
-                    il.Emit(OpCodes.Stind_Ref);
+                    il.Emit(OpCodes.Ldloc, taskLocal);
                 }
 
                 il.Emit(OpCodes.Ret);
             }
 
             Type t = tb.CreateType();
-            
+
             return t;
         }
     }

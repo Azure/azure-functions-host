@@ -285,6 +285,15 @@
     <None Include="TestScripts\FSharp\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\FunctionGeneration\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FunctionGeneration\HttpTrigger-CSharp\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FunctionGeneration\HttpTrigger-CSharp\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

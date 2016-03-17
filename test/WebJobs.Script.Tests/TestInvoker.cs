@@ -10,7 +10,14 @@ namespace WebJobs.Script.Tests
 {
     public class TestInvoker : IFunctionInvoker
     {
+        private readonly Action<object[]> _invokeCallback;
         private int _invokeCount = 0;
+
+        public TestInvoker(Action<object[]> invokeCallback = null)
+        {
+            _invokeCallback = invokeCallback
+                ?? new Action<object[]>(_ => { });
+        }
 
         public int InvokeCount
         {
@@ -23,6 +30,7 @@ namespace WebJobs.Script.Tests
         public Task Invoke(object[] parameters)
         {
             Interlocked.Increment(ref _invokeCount);
+            _invokeCallback(parameters);
             return Task.FromResult(0);
         }
 

@@ -35,7 +35,13 @@ namespace WebJobs.Script.WebHost
             {
                 { triggerParameter.Name, request }
             };
-            await Instance.CallAsync(function.Name, arguments, cancellationToken);
+
+            // Suspend the current synchronization context so we don't pass the ASP.NET
+            // context down to the function.
+            using (var syncContextSuspensionScope = new SuspendedSynchronizationContextScope())
+            {
+                await Instance.CallAsync(function.Name, arguments, cancellationToken);
+            }
 
             // Get the response
             HttpResponseMessage response = null;
