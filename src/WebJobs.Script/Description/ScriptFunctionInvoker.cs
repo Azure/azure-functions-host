@@ -90,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
             IBinder binder = (IBinder)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
+            string invocationId = functionExecutionContext.InvocationId.ToString();
 
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
             _metrics.BeginEvent(startedEvent);
@@ -109,9 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
             }
 
-            TraceWriter.Verbose(string.Format("Function started"));
+            TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
-            string invocationId = functionExecutionContext.InvocationId.ToString();
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
             string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
 
@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 string error = process.StandardError.ReadToEnd();
                 TraceWriter.Error(error);
-                TraceWriter.Verbose(string.Format("Function completed (Failure)"));
+                TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
                 throw new ApplicationException(error);
             }
 
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
-            TraceWriter.Verbose(string.Format("Function completed (Success)"));
+            TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
         }
 
         private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext context)

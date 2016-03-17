@@ -127,6 +127,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
 
+                // Add any additional common System parameters
+                // Add ExecutionContext to provide access to InvocationId, etc.
+                descriptors.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
+
                 return descriptors;
             }
             catch (AggregateException exc)

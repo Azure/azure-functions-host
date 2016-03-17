@@ -171,18 +171,33 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override async Task Invoke(object[] parameters)
         {
+            // Separate system parameters from the actual method parameters
+            object[] originalParameters = parameters;
+            MethodInfo function = await GetFunctionTargetAsync();
+            int actualParameterCount = function.GetParameters().Length;
+            object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
+            parameters = parameters.Take(actualParameterCount).ToArray();
+            
+            ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
+            string invocationId = functionExecutionContext.InvocationId.ToString();
+
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
             _metrics.BeginEvent(startedEvent);
 
             try
             {
-                TraceWriter.Verbose("Function started");
+                TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
                 parameters = ProcessInputParameters(parameters);
 
-                MethodInfo function = await GetFunctionTargetAsync();
-
                 object functionResult = function.Invoke(null, parameters);
+
+                // after the function executes, we have to copy values back into the original
+                // array to ensure object references are maintained (since we took a copy above)
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    originalParameters[i] = parameters[i];
+                }
 
                 if (functionResult is Task)
                 {
@@ -194,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     _resultProcessor(function, parameters, functionResult);
                 }
 
-                TraceWriter.Verbose("Function completed (Success)");
+                TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
             }
             catch (Exception ex)
             {
@@ -203,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 startedEvent.Success = false;
                 TraceWriter.Error(ex.Message, ex);
 
-                TraceWriter.Verbose("Function completed (Failure)");
+                TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
                 throw;
             }
             finally
