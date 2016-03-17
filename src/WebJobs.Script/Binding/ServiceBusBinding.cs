@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _queueOrTopicNameBindingTemplate;
 
-        public ServiceBusBinding(ScriptHostConfiguration config, string name, string queueOrTopicName, FileAccess access, bool isTrigger) : base(config, name, "serviceBus", access, isTrigger)
+        public ServiceBusBinding(ScriptHostConfiguration config, string name, string queueOrTopicName, FileAccess access, bool isTrigger) : base(config, name, BindingType.ServiceBus, access, isTrigger)
         {
             if (string.IsNullOrEmpty(queueOrTopicName))
             {

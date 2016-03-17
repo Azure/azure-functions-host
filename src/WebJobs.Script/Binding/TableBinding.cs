@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -21,7 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly BindingTemplate _rowKeyBindingTemplate;
         private readonly TableQuery _tableQuery;
 
-        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess access, TableQuery tableQuery = null) : base(config, name, "queue", access, false)
+        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess access, TableQuery tableQuery = null) 
+            : base(config, name, BindingType.Table, access, false)
         {
             if (string.IsNullOrEmpty(tableName))
             {

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess access, bool isTrigger) : base(config, name, "blob", access, isTrigger)
+        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess access, bool isTrigger) : base(config, name, BindingType.Blob, access, isTrigger)
         {
             if (string.IsNullOrEmpty(path))
             {

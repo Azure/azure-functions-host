@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly BindingDirection _bindingDirection;
 
         public EasyTableBinding(ScriptHostConfiguration config, string name, string tableName, string id, FileAccess access, BindingDirection direction) :
-            base(config, name, "easytable", access, false)
+            base(config, name, BindingType.EasyTable, access, false)
         {
             this.TableName = tableName;
             this.Id = id;

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly ScriptHostConfiguration _config;
 
-        protected FunctionBinding(ScriptHostConfiguration config, string name, string type, FileAccess access, bool isTrigger)
+        protected FunctionBinding(ScriptHostConfiguration config, string name, BindingType type, FileAccess access, bool isTrigger)
         {
             _config = config;
             Name = name;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string Name { get; private set; }
 
-        public string Type { get; private set; }
+        public BindingType Type { get; private set; }
 
         public bool IsTrigger { get; private set; }
 

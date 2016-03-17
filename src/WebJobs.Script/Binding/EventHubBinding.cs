@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -15,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly BindingTemplate _eventHubNameBindingTemplate;
 
         public EventHubBinding(ScriptHostConfiguration config, string name, string eventHubName, FileAccess access, bool isTrigger) : 
-            base(config, name, "eventhub", access, isTrigger)
+            base(config, name, BindingType.EventHub, access, isTrigger)
         {
             if (string.IsNullOrEmpty(eventHubName))
             {

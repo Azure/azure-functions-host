@@ -346,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var binding in bindings)
             {
-                if (binding.Type == "http")
+                if (binding.Type == BindingType.Http)
                 {
                     continue;
                 }

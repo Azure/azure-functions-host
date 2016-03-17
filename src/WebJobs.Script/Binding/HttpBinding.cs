@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
 
-        public HttpBinding(ScriptHostConfiguration config, string name, FileAccess access, bool isTrigger) : base(config, name, "http", access, isTrigger)
+        public HttpBinding(ScriptHostConfiguration config, string name, FileAccess access, bool isTrigger) : base(config, name, BindingType.Http, access, isTrigger)
         {
         }
 
