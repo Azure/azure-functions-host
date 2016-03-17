@@ -34,6 +34,9 @@ namespace WebJobs.Script.WebHost.App_Start
                     hostId = hostId.Substring(0, MaximumHostIdLength);
                 }
 
+                // Trim any trailing - as they can cause problems with queue names
+                hostId = hostId.TrimEnd('-');
+
                 scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
             }
 
