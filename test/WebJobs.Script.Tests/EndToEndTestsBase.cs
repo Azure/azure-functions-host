@@ -69,6 +69,22 @@ namespace WebJobs.Script.Tests
             Assert.Equal(doc.Id, id);
         }
 
+        protected async Task NotificationHubTest()
+        {
+            // NotificationHub tests need the following environment vars:
+            // "AzureWebJobsNotificationHubsConnectionString" -- the connection string for NotificationHubs
+            // "AzureWebJobsNotificationHubName"  -- NotificationHubName
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input",  "Hello" }
+            };
+            
+            //Only verifying the call succeeds. It is not possible to verify
+            //actual push notificaiton is delivered as they are sent only to 
+            //client applications that registered with NotificationHubs
+            await Fixture.Host.CallAsync("NotificationHubOut", arguments);
+        }
+
         protected async Task EasyTablesTest(bool writeToQueue = true)
         {
             // EasyTables needs the following environment vars:

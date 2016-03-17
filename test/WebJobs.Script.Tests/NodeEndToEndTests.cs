@@ -44,6 +44,12 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NotificationHub()
+        {
+            await NotificationHubTest();
+        }
+
+        [Fact]
         public async Task EasyTables()
         {
             // Only out bindings are supported in node right now: https://github.com/Azure/azure-webjobs-sdk-script/issues/107

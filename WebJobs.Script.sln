@@ -190,6 +190,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-CSharp", "Queu
 		sample\QueueTrigger-CSharp\run.csx = sample\QueueTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-CSharp", "NotificationHub-CSharp", "{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7}"
+	ProjectSection(SolutionItems) = preProject
+		sample\NotificationHub-CSharp\function.json = sample\NotificationHub-CSharp\function.json
+		sample\NotificationHub-CSharp\run.csx = sample\NotificationHub-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-Node", "NotificationHub-Node", "{ACEE40C6-DA72-422E-99B6-2FA3824733CE}"
+	ProjectSection(SolutionItems) = preProject
+		sample\NotificationHub-Node\function.json = sample\NotificationHub-Node\function.json
+		sample\NotificationHub-Node\index.js = sample\NotificationHub-Node\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -253,5 +265,7 @@ Global
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{ACEE40C6-DA72-422E-99B6-2FA3824733CE} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

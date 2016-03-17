@@ -105,6 +105,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             DocumentDBBindingMetadata docDBMetadata = (DocumentDBBindingMetadata)bindingMetadata;
                             bindings.Add(new DocumentDBBinding(config, docDBMetadata, fileAccess));
                             break;
+                        case BindingType.NotificationHub:
+                            NotificationHubBindingMetadata notificationHubMetadata = (NotificationHubBindingMetadata)bindingMetadata;
+                            bindings.Add(new NotificationHubBinding(config, notificationHubMetadata, fileAccess));
+                            break;
                     }
                 }
             }
