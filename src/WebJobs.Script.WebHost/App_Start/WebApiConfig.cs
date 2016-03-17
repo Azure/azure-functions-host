@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Web;
 using System.Web.Hosting;
@@ -31,6 +32,16 @@ namespace WebJobs.Script.WebHost
             {
                 throw new ArgumentNullException("settings");
             }
+
+            // Delete hostingstart.html if any. Azure creates that in all sites by default
+            string hostingStart = Path.Combine(settings.ScriptPath, "hostingstart.html");
+            if (File.Exists(hostingStart))
+            {
+                File.Delete(hostingStart);
+            }
+
+            // Add necessary folders to the %PATH%
+            PrependFoldersToEnvironmentPath();
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
@@ -70,6 +81,33 @@ namespace WebJobs.Script.WebHost
             config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
             config.InitializeReceiveSalesforceWebHooks();
+        }
+
+        private static void PrependFoldersToEnvironmentPath()
+        {
+            string home = Environment.GetEnvironmentVariable("HOME");
+
+            // Only do this when %HOME% is defined (normally on Azure)
+            if (!String.IsNullOrEmpty("HOME"))
+            {
+                // Create the tools folder if it doesn't exist
+                string toolsPath = Path.Combine(home, @"site\tools");
+                Directory.CreateDirectory(toolsPath);
+
+                var folders = new List<string>();
+                folders.Add(Path.Combine(home, @"site\tools"));
+
+                string path = Environment.GetEnvironmentVariable("PATH");
+                string additionalPaths = String.Join(";", folders);
+
+                // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
+                if (!path.Contains(additionalPaths))
+                {
+                    path = additionalPaths + ";" + path;
+
+                    Environment.SetEnvironmentVariable("PATH", path);
+                }
+            }
         }
 
         private static WebHostSettings GetDefaultSettings()
