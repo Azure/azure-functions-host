@@ -114,6 +114,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             EasyTableBindingMetadata easyTableMetadata = (EasyTableBindingMetadata)bindingMetadata;
                             bindings.Add(new EasyTableBinding(config, name, easyTableMetadata.TableName, easyTableMetadata.Id, fileAccess, bindingMetadata.Direction));
                             break;
+                        case BindingType.DocumentDB:
+                            DocumentDBBindingMetadata docDBMetadata = (DocumentDBBindingMetadata)bindingMetadata;
+                            bindings.Add(new DocumentDBBinding(config, name, docDBMetadata.DatabaseName, docDBMetadata.CollectionName, docDBMetadata.CreateIfNotExists, fileAccess, bindingMetadata.Direction));
+                            break;
                     }
                 }
             }

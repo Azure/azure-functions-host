@@ -22,7 +22,13 @@ namespace WebJobs.Script.Tests
         [Fact]
         public async Task EasyTables()
         {
-            await this.EasyTablesTest();
+            await EasyTablesTest();
+        }
+
+        [Fact]
+        public async Task DocumentDB()
+        {
+            await DocumentDBTest();
         }
 
         [Fact]

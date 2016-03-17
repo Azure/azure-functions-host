@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Table,
         ManualTrigger,
         TimerTrigger,
-        EasyTable
+        EasyTable,
+        DocumentDB
     }
 }

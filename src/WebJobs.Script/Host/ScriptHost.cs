@@ -321,6 +321,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 case BindingType.EasyTable:
                     bindingMetadata = binding.ToObject<EasyTableBindingMetadata>();
                     break;
+                case BindingType.DocumentDB:
+                    bindingMetadata = binding.ToObject<DocumentDBBindingMetadata>();
+                    break;
             }
 
             bindingMetadata.Type = bindingType;
@@ -352,7 +355,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     functionName = Path.GetFileNameWithoutExtension(scriptDir);
 
-                    if (ScriptConfig.Functions != null && 
+                    if (ScriptConfig.Functions != null &&
                         !ScriptConfig.Functions.Contains(functionName, StringComparer.OrdinalIgnoreCase))
                     {
                         // a functions filter has been specified and the current function is

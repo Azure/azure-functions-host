@@ -3,11 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Extensions.EasyTables;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.MobileServices;
@@ -47,6 +51,22 @@ namespace WebJobs.Script.Tests
             string trace = TestHelpers.RemoveByteOrderMarkAndWhitespace(scriptTrace.Message);
             Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace("script processed queue message")));
             Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent)));
+        }
+
+        protected async Task DocumentDBTest()
+        {
+            // DocumentDB tests need the following environment vars:
+            // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+            string id = Guid.NewGuid().ToString();
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input",  id }
+            };
+            await Fixture.Host.CallAsync("DocumentDBOut", arguments);
+
+            Document doc = await WaitForDocumentAsync(id);
+
+            Assert.Equal(doc.Id, id);
         }
 
         protected async Task EasyTablesTest(bool writeToQueue = true)
@@ -115,6 +135,37 @@ namespace WebJobs.Script.Tests
             }, 10 * 1000);
 
             return item;
+        }
+
+        protected async Task<Document> WaitForDocumentAsync(string itemId)
+        {
+            var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
+
+            // Get the connection string via the config
+            var connectionString = new DocumentDBConfiguration().ConnectionString;
+            var builder = new DbConnectionStringBuilder();
+            builder.ConnectionString = connectionString;
+            var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
+            var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
+
+            Document doc = null;
+            await TestHelpers.Await(() =>
+            {
+                bool result = false;
+                try
+                {
+                    var response = Task.Run(() => client.ReadDocumentAsync(docUri)).Result;
+                    doc = response.Resource;
+                    result = true;
+                }
+                catch (Exception)
+                {
+                }
+
+                return result;
+            }, 10 * 1000);
+
+            return doc;
         }
 
         protected async Task WaitForTraceAsync()

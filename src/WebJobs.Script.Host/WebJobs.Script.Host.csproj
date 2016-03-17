@@ -63,16 +63,24 @@
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-beta6\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Azure.Documents.Client, Version=1.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.1.5.3\lib\net40\Microsoft.Azure.Documents.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=1.1.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.1.1.2-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.1.0.2-alpha-10251\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.1.0.2-alpha-10252\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10252\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.EasyTables, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EasyTables.1.0.0-alpha-10251\lib\net45\Microsoft.Azure.WebJobs.Extensions.EasyTables.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EasyTables.1.0.0-alpha-10252\lib\net45\Microsoft.Azure.WebJobs.Extensions.EasyTables.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">

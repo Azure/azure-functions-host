@@ -172,6 +172,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EasyTable-Node", "EasyTable
 		sample\EasyTables-Node\index.js = sample\EasyTables-Node\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-CSharp", "DocumentDB-CSharp", "{437EB182-8CB9-42BD-9019-E5F6E69D1DB3}"
+	ProjectSection(SolutionItems) = preProject
+		sample\DocumentDB-CSharp\function.json = sample\DocumentDB-CSharp\function.json
+		sample\DocumentDB-CSharp\run.csx = sample\DocumentDB-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-Node", "DocumentDB-Node", "{8811DCFB-1023-4577-AB9C-B4F191200082}"
+	ProjectSection(SolutionItems) = preProject
+		sample\DocumentDB-Node\function.json = sample\DocumentDB-Node\function.json
+		sample\DocumentDB-Node\index.js = sample\DocumentDB-Node\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -232,5 +244,7 @@ Global
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B51AE854-21D2-49D2-B83D-9FA18780A175} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
