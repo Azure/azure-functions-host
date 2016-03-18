@@ -1,0 +1,18 @@
+{
+  "bindings": [
+    {
+      "type": "apiHubTrigger",
+      "connectionString": "%dropbox%",
+      "direction": "in",
+      "path": "test/{name}",
+      "name" : "input"
+    },
+    {
+      "name" : "output",
+      "type": "apiHub",
+      "connectionString": "%dropbox%",
+      "direction": "out",
+      "path": "testOut/{name}"
+    }
+  ]
+}
