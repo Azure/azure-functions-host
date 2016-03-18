@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (!string.IsNullOrEmpty(kuduPath))
                 {
-                    path = Path.Combine(kuduPath, "\\bin\\scripts", NuGetFileName);
+                    path = Path.Combine(kuduPath, "bin\\scripts", NuGetFileName);
                 }                
             }
 

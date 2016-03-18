@@ -19,14 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string EmptyFolderFileMarker = "_._";
         private const string FrameworkTargetName = ".NETFramework,Version=v4.6";
 
-        private readonly IDictionary<AssemblyName, string> _assemblyRegistry;
+        private readonly IDictionary<string, string> _assemblyRegistry;
         
         public PackageAssemblyResolver(FunctionMetadata metadata)
         {
             _assemblyRegistry = InitializeAssemblyRegistry(metadata);
         }
 
-        public IDictionary<AssemblyName, string> AssemblyRegistry
+        public IDictionary<string, string> AssemblyRegistry
         {
             get
             {
@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private static IDictionary<AssemblyName, string> InitializeAssemblyRegistry(FunctionMetadata metadata)
+        private static IDictionary<string, string> InitializeAssemblyRegistry(FunctionMetadata metadata)
         {
-            IDictionary<AssemblyName, string> registry = null;
+            IDictionary<string, string> registry = null;
             string fileName = Path.Combine(Path.GetDirectoryName(metadata.Source), CSharpConstants.ProjectLockFileName);
             
             if (File.Exists(fileName))
@@ -80,16 +80,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
 
                     registry = assemblyReferences.Where(reference => File.Exists(reference)).Union(frameworkAssemblyReferences.Distinct())
-                        .ToDictionary(s => Path.IsPathRooted(s) ? AssemblyName.GetAssemblyName(s) : new AssemblyName(s), s => s);
+                        .ToDictionary(s => Path.IsPathRooted(s) ? AssemblyName.GetAssemblyName(s).FullName : new AssemblyName(s).FullName, s => s,
+                        StringComparer.OrdinalIgnoreCase);
                 }
             }
 
-            return registry ?? new Dictionary<AssemblyName, string>();
+            return registry ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryResolveAssembly(string name, out string path)
         {
-            var assemblyName = new AssemblyName(name);
+            var assemblyName = new AssemblyName(name).FullName;
             return _assemblyRegistry.TryGetValue(assemblyName, out path);
         }
     }
