@@ -175,6 +175,182 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 "returning it?");
         }
 
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskDelayTask_ReturnsCompletedTask()
+        {
+            // Arrange
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                Task innerTask = Task.Delay(1);
+                Assert.False(innerTask.GetType().IsGenericType); // Guard
+                return innerTask;
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllTask_ReturnsCompletedTask()
+        {
+            // Arrange
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                Task innerTask = Task.WhenAll(Task.Delay(1));
+                Assert.False(innerTask.GetType().IsGenericType); // Guard
+                return innerTask;
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllCancelledTask_ReturnsCancelledTask()
+        {
+            // Arrange
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                var cancellationSource = new System.Threading.CancellationTokenSource();
+                Task innerTask = new Task(() => { }, cancellationSource.Token);
+                Assert.False(innerTask.GetType().IsGenericType); // Guard
+                cancellationSource.Cancel();
+                return Task.WhenAll(innerTask);
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.Canceled, task.Status);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllFaultedTask_ReturnsFaultedTask()
+        {
+            // Arrange
+            Exception expectedException = new InvalidOperationException();
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                Task innerTask = new Task(() => { throw expectedException; });
+                innerTask.Start();
+                Assert.False(innerTask.GetType().IsGenericType); // Guard
+                return Task.WhenAll(innerTask);
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.Faulted, task.Status);
+            Assert.NotNull(task.Exception);
+            Assert.Same(expectedException, task.Exception.InnerException);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllTaskWithReturnTypes_ReturnsCompletedTask()
+        {
+            // Arrange
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                Task innerTask = Task.WhenAll(Task.FromResult(0));
+                return innerTask;
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllCancelledTaskWithReturnTypes_ReturnsCancelledTask()
+        {
+            // Arrange
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                TaskCompletionSource<object> source = new TaskCompletionSource<object>();
+                source.SetCanceled();
+                return Task.WhenAll(source.Task);
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.Canceled, task.Status);
+        }
+
+        [Fact]
+        public void InvokeAsync_IfLambdaReturnsTaskWhenAllFaultedTaskWithReturnTypes_ReturnsFaultedTask()
+        {
+            // Arrange
+            Exception expectedException = new InvalidOperationException();
+            Func<object, object[], Task> lambda = (i1, i2) =>
+            {
+                TaskCompletionSource<object> source = new TaskCompletionSource<object>();
+                source.SetException(expectedException);
+                return Task.WhenAll(source.Task);
+            };
+
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            object instance = null;
+            object[] arguments = null;
+
+            // Act
+            Task task = invoker.InvokeAsync(instance, arguments);
+
+            // Assert
+            Assert.NotNull(task);
+            task.WaitUntilCompleted();
+            Assert.Equal(TaskStatus.Faulted, task.Status);
+            Assert.NotNull(task.Exception);
+            Assert.Same(expectedException, task.Exception.InnerException);
+        }
+
         private static TaskMethodInvoker<object> CreateProductUnderTest(Func<object, object[], Task> lambda)
         {
             return new TaskMethodInvoker<object>(lambda);

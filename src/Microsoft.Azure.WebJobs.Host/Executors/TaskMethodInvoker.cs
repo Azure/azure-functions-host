@@ -52,6 +52,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 return null;
             }
 
+            // Secondary check: static Task methods sometimes return nested Task types which
+            // fail the first check, but aren't generic types and throw an exception below.
+            if (!taskType.IsGenericType)
+            {
+                return null;
+            }
+
             Debug.Assert(taskType.IsGenericType);
             Debug.Assert(!taskType.IsGenericTypeDefinition);
             Type genericTypeDefinition = taskType.GetGenericTypeDefinition();
