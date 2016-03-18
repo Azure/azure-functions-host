@@ -116,12 +116,12 @@ namespace Dashboard.Data
 
         IResultSegment<FunctionIndexEntry> IFunctionIndexReader.Read(int maximumResults, string continuationToken)
         {
-            var theTask = Task.Run(() => Read1Async(maximumResults, continuationToken));
+            var theTask = Task.Run(() => Read1Async());
             var retVal = theTask.GetAwaiter().GetResult();
             return retVal;
         }
 
-        private async Task<IResultSegment<FunctionIndexEntry>> Read1Async(int maximumResults, string continuationToken)
+        private async Task<IResultSegment<FunctionIndexEntry>> Read1Async()
         {
             var snapshots = await GetSnapshotsAsync();
             var results = Array.ConvertAll(snapshots, x =>

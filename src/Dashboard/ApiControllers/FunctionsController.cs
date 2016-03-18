@@ -218,6 +218,10 @@ namespace Dashboard.ApiControllers
             {
                 start = end.Value.AddDays(-7);
             }
+            if (pagingInfo == null)
+            {
+                return BadRequest();
+            }
 
             var segment = await _reader.GetAggregateStatsAsync(functionId, start.Value, end.Value, null);
             var entities = segment.Results;
@@ -248,6 +252,10 @@ namespace Dashboard.ApiControllers
             if (start == null)
             {
                 start = end.Value.AddDays(-7);
+            }
+            if (pagingInfo == null)
+            {
+                return BadRequest();
             }
 
             var segment = await _reader.GetActiveContainerTimelineAsync(start.Value, end.Value, null);
