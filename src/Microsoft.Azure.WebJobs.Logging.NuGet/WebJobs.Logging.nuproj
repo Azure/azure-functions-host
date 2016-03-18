@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), WebJobs.sln))\tools\NuGetProj.settings.targets"/>
+  <PropertyGroup>
+    <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
+    <NuGetPackageId>Microsoft.Azure.WebJobs.Logging</NuGetPackageId>
+    <NuGetPackageVersion>$(WebJobsPackageVersion)</NuGetPackageVersion>
+    <NuGetPackSymbols>false</NuGetPackSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Logging\WebJobs.Logging.csproj">
+      <Project>{B5A04006-AB0C-4800-AE4C-080D31867DE3}</Project>
+      <Name>WebJobs.Logging</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <NuGetContent Include="$(WebJobsRootPath)\src\Microsoft.Azure.WebJobs.Logging\bin\$(Configuration)\Microsoft.Azure.WebJobs.Logging.dll">
+      <Destination>lib\net45\Microsoft.Azure.WebJobs.Logging.dll</Destination>
+    </NuGetContent>
+    <NuGetContent Include="$(WebJobsRootPath)\src\Microsoft.Azure.WebJobs.Logging\bin\$(Configuration)\Microsoft.Azure.WebJobs.Logging.xml">
+      <Destination>lib\net45\Microsoft.Azure.WebJobs.Logging.xml</Destination>
+    </NuGetContent>
+  </ItemGroup>
+  <Import Project="$(WebJobsToolsPath)NuGetProj.targets"/>
+  <Target Name="BeforeBuild">
+    <PropertyGroup>
+      <!-- Define properties you want to use inside your nuspec file. -->
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(WebJobsPackageEULA);WebJobsPackageVersion=$(WebJobsPackageVersion)</NuSpecProperties>
+    </PropertyGroup>
+  </Target>
+</Project>
