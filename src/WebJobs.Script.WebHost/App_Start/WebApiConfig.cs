@@ -85,10 +85,9 @@ namespace WebJobs.Script.WebHost
 
         private static void PrependFoldersToEnvironmentPath()
         {
-            string home = Environment.GetEnvironmentVariable("HOME");
-
             // Only do this when %HOME% is defined (normally on Azure)
-            if (!String.IsNullOrEmpty("HOME"))
+            string home = Environment.GetEnvironmentVariable("HOME");
+            if (!string.IsNullOrEmpty(home))
             {
                 // Create the tools folder if it doesn't exist
                 string toolsPath = Path.Combine(home, @"site\tools");

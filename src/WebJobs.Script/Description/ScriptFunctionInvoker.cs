@@ -138,9 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 startedEvent.Success = false;
 
-                string error = process.StandardError.ReadToEnd();
-                TraceWriter.Error(error);
                 TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
+
+                string error = process.StandardError.ReadToEnd();
                 throw new ApplicationException(error);
             }
 

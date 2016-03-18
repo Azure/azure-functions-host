@@ -182,6 +182,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-Node", "Document
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-Node\function.json = sample\DocumentDB-Node\function.json
 		sample\DocumentDB-Node\index.js = sample\DocumentDB-Node\index.js
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-CSharp", "QueueTrigger-CSharp", "{C11EBC32-877C-4EBA-85B2-14720555BB71}"
+	ProjectSection(SolutionItems) = preProject
+		sample\QueueTrigger-CSharp\function.json = sample\QueueTrigger-CSharp\function.json
+		sample\QueueTrigger-CSharp\run.csx = sample\QueueTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
 Global
@@ -246,5 +250,6 @@ Global
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

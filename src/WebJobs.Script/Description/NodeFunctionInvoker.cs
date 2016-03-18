@@ -118,10 +118,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
             }
-            catch (Exception ex)
+            catch
             {
                 startedEvent.Success = false;
-                TraceWriter.Error(ex.Message, ex);
                 TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
                 throw;
             }

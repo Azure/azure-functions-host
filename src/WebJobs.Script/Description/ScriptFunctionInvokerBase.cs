@@ -44,6 +44,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return NullTraceWriter.Instance;
         }
 
+        /// <summary>
+        /// All unhandled invocation exceptions will flow through this method.
+        /// We format the error and write it to our function specific <see cref="TraceWriter"/>.
+        /// </summary>
+        /// <param name="ex"></param>
+        public virtual void OnError(Exception ex)
+        {
+            string error = Utility.FlattenException(ex);
+            TraceWriter.Error(error);
+        }
+
         protected void InitializeFileWatcherIfEnabled()
         {
             if (Host.ScriptConfig.FileWatchingEnabled)

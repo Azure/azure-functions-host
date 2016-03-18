@@ -11,7 +11,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -34,30 +36,97 @@ namespace Microsoft.Azure.WebJobs.Script
             : base(scriptConfig.HostConfig)
         {
             ScriptConfig = scriptConfig;
+            FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
+        }
 
-            if (scriptConfig.FileLoggingEnabled)
+        public TraceWriter TraceWriter { get; private set; }
+
+        public ScriptHostConfiguration ScriptConfig { get; private set; }
+
+        public Collection<FunctionDescriptor> Functions { get; private set; }
+
+        public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
+
+        public AutoResetEvent RestartEvent
+        {
+            get
             {
-                string hostLogFilePath = Path.Combine(scriptConfig.RootLogPath, "Host");
+                return _restartEvent;
+            }
+        }
+
+        internal void AddFunctionError(string functionName, string error)
+        {
+            functionName = Utility.GetFunctionShortName(functionName);
+
+            Collection<string> functionErrors = new Collection<string>();
+            if (!FunctionErrors.TryGetValue(functionName, out functionErrors))
+            {
+                FunctionErrors[functionName] = functionErrors = new Collection<string>();
+            }
+            functionErrors.Add(error);
+        }
+
+        public async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // TODO: Don't hardcode Functions Type name
+            // TODO: Validate inputs
+            // TODO: Cache this lookup result
+            string typeName = "Functions";
+            method = method.ToLowerInvariant();
+            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == typeName);
+            MethodInfo methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
+
+            await CallAsync(methodInfo, arguments, cancellationToken);
+        }
+
+        protected virtual void Initialize()
+        {
+            // read host.json and apply to JobHostConfiguration
+            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostConfigFileName);
+
+            // If it doesn't exist, create an empty JSON file
+            if (!File.Exists(hostConfigFilePath))
+            {
+                File.WriteAllText(hostConfigFilePath, "{}");
+            }
+
+            string json = File.ReadAllText(hostConfigFilePath);
+            JObject hostConfig = JObject.Parse(json);
+            ApplyConfiguration(hostConfig, ScriptConfig);
+
+            // Set up a host level TraceMonitor that will receive notificaition
+            // of ALL errors that occur. This allows us to inspect/log errors.
+            var traceMonitor = new TraceMonitor()
+                .Filter(p => { return true; })
+                .Subscribe(HandleHostError);
+            ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
+
+            if (ScriptConfig.FileLoggingEnabled)
+            {
+                string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
                 TraceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose);
-                scriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
+                ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
             }
             else
             {
                 TraceWriter = NullTraceWriter.Instance;
             }
 
-            if (scriptConfig.TraceWriter != null)
+            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
+
+            if (ScriptConfig.TraceWriter != null)
             {
-                scriptConfig.HostConfig.Tracing.Tracers.Add(scriptConfig.TraceWriter);
+                ScriptConfig.HostConfig.Tracing.Tracers.Add(ScriptConfig.TraceWriter);
             }
             else
             {
-                scriptConfig.TraceWriter = NullTraceWriter.Instance;
+                ScriptConfig.TraceWriter = NullTraceWriter.Instance;
             }
 
-            if (scriptConfig.FileWatchingEnabled)
+            if (ScriptConfig.FileWatchingEnabled)
             {
-                _fileWatcher = new FileSystemWatcher(scriptConfig.RootScriptPath)
+                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
                 {
                     IncludeSubdirectories = true,
                     EnableRaisingEvents = true
@@ -86,52 +155,11 @@ namespace Microsoft.Azure.WebJobs.Script
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
 
-            FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        public TraceWriter TraceWriter { get; private set; }
-
-        public ScriptHostConfiguration ScriptConfig { get; private set; }
-
-        public Collection<FunctionDescriptor> Functions { get; private set; }
-
-        public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
-
-        public AutoResetEvent RestartEvent
-        {
-            get
-            {
-                return _restartEvent;
-            }
-        }
-
-        public async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            // TODO: Don't hardcode Functions Type name
-            // TODO: Validate inputs
-            // TODO: Cache this lookup result
-            string typeName = "Functions";
-            method = method.ToLowerInvariant();
-            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == typeName);
-            MethodInfo methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
-
-            await CallAsync(methodInfo, arguments, cancellationToken);
-        }
-
-        protected virtual void Initialize()
-        {
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             if (metricsLogger == null)
             {
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
-
-            List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
-            {
-                new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-                new NodeFunctionDescriptorProvider(this, ScriptConfig),
-                new CSharpFunctionDescriptionProvider(this, ScriptConfig)
-            };
 
             if (ScriptConfig.HostConfig.IsDevelopment)
             {
@@ -157,19 +185,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ScriptConfig.HostConfig.NameResolver = nameResolver;
 
-            // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostConfigFileName);
-
-            // If it doesn't exist, create an empty JSON file
-            if (!File.Exists(hostConfigFilePath))
+            List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
-                File.WriteAllText(hostConfigFilePath, "{}");
-            }
-
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
-            string json = File.ReadAllText(hostConfigFilePath);
-            JObject hostConfig = JObject.Parse(json);
-            ApplyConfiguration(hostConfig, ScriptConfig);
+                new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+                new NodeFunctionDescriptorProvider(this, ScriptConfig),
+                new CSharpFunctionDescriptionProvider(this, ScriptConfig)
+            };
 
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
@@ -548,14 +569,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             hostConfig.UseServiceBus(serviceBusConfig);
 
-            // Apply Tracing configuration
+            // Apply Tracing/Logging configuration
             configSection = (JObject)config["tracing"];
-            if (configSection != null && configSection.TryGetValue("consoleLevel", out value))
+            if (configSection != null)
             {
-                TraceLevel consoleLevel;
-                if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
+                if (configSection.TryGetValue("consoleLevel", out value))
                 {
-                    hostConfig.Tracing.ConsoleLevel = consoleLevel;
+                    TraceLevel consoleLevel;
+                    if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
+                    {
+                        hostConfig.Tracing.ConsoleLevel = consoleLevel;
+                    }
+                }
+
+                if (configSection.TryGetValue("fileLoggingEnabled", out value))
+                {
+                    scriptConfig.FileLoggingEnabled = (bool)value;
                 }
             }
 
@@ -563,16 +592,43 @@ namespace Microsoft.Azure.WebJobs.Script
             hostConfig.UseCore();
         }
 
-        private void AddFunctionError(string functionName, string error)
+        private void HandleHostError(Microsoft.Azure.WebJobs.Extensions.TraceFilter traceFilter)
         {
-            Collection<string> errors = null;
-            if (!FunctionErrors.TryGetValue(functionName, out errors))
+            foreach (TraceEvent traceEvent in traceFilter.Events)
             {
-                errors = new Collection<string>();
-                FunctionErrors[functionName] = errors;
-            }
+                if (traceEvent.Exception is FunctionInvocationException)
+                {
+                    // For all function invocation events, we notify the invoker so it can
+                    // log the error as needed to its function specific logs.
+                    FunctionInvocationException invocationException = traceEvent.Exception as FunctionInvocationException;
+                    NotifyInvoker(invocationException.MethodName, invocationException);
+                }
+                else if (traceEvent.Exception is FunctionIndexingException)
+                {
+                    // For all startup time indexing errors, we accumulate them per function
+                    FunctionIndexingException indexingException = traceEvent.Exception as FunctionIndexingException;
+                    string formattedError = Utility.FlattenException(indexingException);
+                    AddFunctionError(indexingException.MethodName, formattedError);
 
-            errors.Add(error);
+                    // Also notify the invoker so the error can also be written to the function
+                    // log file
+                    NotifyInvoker(indexingException.MethodName, indexingException);
+
+                    // Mark the error as handled so indexing will continue
+                    indexingException.Handled = true;
+                }
+            }
+        }
+
+        private void NotifyInvoker(string functionName, Exception ex)
+        {
+            functionName = Utility.GetFunctionShortName(functionName);
+
+            FunctionDescriptor functionDescriptor = this.Functions.SingleOrDefault(p => string.Compare(functionName, p.Name, StringComparison.OrdinalIgnoreCase) == 0);
+            if (functionDescriptor != null)
+            {
+                functionDescriptor.Invoker.OnError(ex);
+            }
         }
 
         private void OnFileChanged(object sender, FileSystemEventArgs e)

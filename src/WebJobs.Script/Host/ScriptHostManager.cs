@@ -78,10 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     newInstance = _scriptHostFactory.Create(_config);
                     _traceWriter = newInstance.TraceWriter;
 
+                    newInstance.StartAsync(cancellationToken).Wait();
+
                     // write any function initialization errors to the log file
                     LogErrors(newInstance);
 
-                    newInstance.StartAsync(cancellationToken).Wait();
                     lock (_liveInstances)
                     {
                         _liveInstances.Add(newInstance);

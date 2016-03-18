@@ -99,11 +99,31 @@ namespace WebJobs.Script.Tests
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
 
             Assert.Equal(TraceLevel.Info, scriptConfig.HostConfig.Tracing.ConsoleLevel);
+            Assert.False(scriptConfig.FileLoggingEnabled);
 
             tracing["consoleLevel"] = "Verbose";
+            tracing["fileLoggingEnabled"] = true;
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TraceLevel.Verbose, scriptConfig.HostConfig.Tracing.ConsoleLevel);
+            Assert.True(scriptConfig.FileLoggingEnabled);
+        }
+
+        [Fact]
+        public void ApplyFunctionsFilter()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.Null(scriptConfig.Functions);
+
+            config["functions"] = new JArray("Function1", "Function2");
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(2, scriptConfig.Functions.Count);
+            Assert.Equal("Function1", scriptConfig.Functions[0]);
+            Assert.Equal("Function2", scriptConfig.Functions[1]);
         }
     }
 }

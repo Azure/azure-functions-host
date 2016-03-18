@@ -171,21 +171,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override async Task Invoke(object[] parameters)
         {
-            // Separate system parameters from the actual method parameters
-            object[] originalParameters = parameters;
-            MethodInfo function = await GetFunctionTargetAsync();
-            int actualParameterCount = function.GetParameters().Length;
-            object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
-            parameters = parameters.Take(actualParameterCount).ToArray();
-            
-            ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
-            string invocationId = functionExecutionContext.InvocationId.ToString();
-
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
-            _metrics.BeginEvent(startedEvent);
+            FunctionStartedEvent startedEvent = null;
+            string invocationId = null;
 
             try
             {
+                // Separate system parameters from the actual method parameters
+                object[] originalParameters = parameters;
+                MethodInfo function = await GetFunctionTargetAsync();
+                int actualParameterCount = function.GetParameters().Length;
+                object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
+                parameters = parameters.Take(actualParameterCount).ToArray();
+
+                ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
+                invocationId = functionExecutionContext.InvocationId.ToString();
+
+                startedEvent = new FunctionStartedEvent(Metadata);
+                _metrics.BeginEvent(startedEvent);
+
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
                 parameters = ProcessInputParameters(parameters);
@@ -211,19 +214,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
             }
-            catch (Exception ex)
+            catch
             {
-                TraceWriter.Error(ex.Message, ex is CompilationErrorException ? null : ex);
-
-                startedEvent.Success = false;
-                TraceWriter.Error(ex.Message, ex);
-
-                TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
+                if (startedEvent != null)
+                {
+                    startedEvent.Success = false;
+                    TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
+                }
+                else
+                {
+                    TraceWriter.Verbose("Function completed (Failure)");
+                }
                 throw;
             }
             finally
             {
-                _metrics.EndEvent(startedEvent);
+                if (startedEvent != null)
+                {
+                    _metrics.EndEvent(startedEvent);
+                }
             }
         }
 
