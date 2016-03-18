@@ -182,6 +182,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-Node", "Document
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-Node\function.json = sample\DocumentDB-Node\function.json
 		sample\DocumentDB-Node\index.js = sample\DocumentDB-Node\index.js
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-CSharp", "QueueTrigger-CSharp", "{C11EBC32-877C-4EBA-85B2-14720555BB71}"
 	ProjectSection(SolutionItems) = preProject
 		sample\QueueTrigger-CSharp\function.json = sample\QueueTrigger-CSharp\function.json
