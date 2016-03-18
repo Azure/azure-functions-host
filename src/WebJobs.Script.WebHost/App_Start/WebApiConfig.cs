@@ -114,6 +114,7 @@ namespace WebJobs.Script.WebHost
             WebHostSettings settings = new WebHostSettings();
 
             string home = Environment.GetEnvironmentVariable("HOME");
+            string scriptPath = Environment.GetEnvironmentVariable("SCRIPTPATH");
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
