@@ -10,21 +10,21 @@ namespace WebJobs.Script.WebHost.Diagnostics
     {
         public void BeginEvent(MetricEvent metricEvent)
         {
-            // TODO
             FunctionStartedEvent startedEvent = metricEvent as FunctionStartedEvent;
             if (startedEvent != null)
             {
                 startedEvent.StartTime = DateTime.Now;
+                MetricsEventManager.FunctionStarted();
             }
         }
 
         public void EndEvent(MetricEvent metricEvent)
         {
-            // TODO
             FunctionStartedEvent startedEvent = metricEvent as FunctionStartedEvent;
             if (startedEvent != null)
             {
                 startedEvent.EndTime = DateTime.Now;
+                MetricsEventManager.FunctionCompleted();
             }
         }
     }
