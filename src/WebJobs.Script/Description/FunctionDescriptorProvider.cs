@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
+using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.ServiceBus.Messaging;
@@ -134,6 +135,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     break;
                 case BindingType.ManualTrigger:
                     triggerParameter = ParseManualTrigger(triggerMetadata);
+                    break;
+                case BindingType.ApiHubTrigger:
+                    triggerParameter = ParseApiHubTrigger((ApiHubBindingMetadata)triggerMetadata, typeof(Stream));
                     break;
             }
 
@@ -352,6 +356,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
+        }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters")]
+        protected ParameterDescriptor ParseApiHubTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
+        {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string) });
+
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path });
+            string parameterName = trigger.Name;
+            var attributes = new Collection<CustomAttributeBuilder>
+            {
+                attributeBuilder
+            };
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
     }
 }

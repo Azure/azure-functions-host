@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+      "type": "apiHubTrigger",
+      "connectionString": "%dropbox%",
+      "direction": "in",
+      "path": "test/{name}",
+    },
+    {
+      "type": "apiHub",
+      "name" : "output",
+      "connectionString": "%dropbox%",
+      "direction": "out",
+      "path": "testOutBatch/{name}"
+    }
+  ]
+}

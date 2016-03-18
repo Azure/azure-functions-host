@@ -356,6 +356,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 case BindingType.NotificationHub:
                     bindingMetadata = binding.ToObject<NotificationHubBindingMetadata>();
                     break;
+                case BindingType.ApiHub:
+                case BindingType.ApiHubTrigger:
+                    bindingMetadata = binding.ToObject<ApiHubBindingMetadata>();
+                    break;
             }
 
             bindingMetadata.Type = bindingType;

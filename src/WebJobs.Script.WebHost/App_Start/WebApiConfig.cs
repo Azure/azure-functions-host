@@ -114,10 +114,11 @@ namespace WebJobs.Script.WebHost
             WebHostSettings settings = new WebHostSettings();
 
             string home = Environment.GetEnvironmentVariable("HOME");
+            string scriptPath = Environment.GetEnvironmentVariable("SCRIPTPATH");
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
-                settings.ScriptPath = Path.Combine(HostingEnvironment.ApplicationPhysicalPath, @"..\..\sample");
+                settings.ScriptPath = string.IsNullOrEmpty(scriptPath) ? Path.Combine(HostingEnvironment.ApplicationPhysicalPath, @"..\..\sample") : scriptPath;
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
             }
