@@ -19,6 +19,11 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -155,6 +160,17 @@ namespace Microsoft.Azure.WebJobs.Script
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
 
+            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
+
+            var config = ScriptConfig.HostConfig;
+            if (dashboardString != null)
+            {
+                var fastLogger = new FastLogger(dashboardString);
+                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+            }
+            config.DashboardConnectionString = null; // disable slow logging 
+
+
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             if (metricsLogger == null)
             {
@@ -175,14 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Disable core storage 
                 ScriptConfig.HostConfig.StorageConnectionString = null;
             }
-
-            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
-            if (dashboardString == null)
-            {
-                // Disable logging if no storage account provided
-                ScriptConfig.HostConfig.DashboardConnectionString = null;
-            }
-
+                      
             ScriptConfig.HostConfig.NameResolver = nameResolver;
 
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
