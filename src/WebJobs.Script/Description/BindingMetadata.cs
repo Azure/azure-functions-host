@@ -7,6 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         public string Name { get; set; }
 
+        public string StorageAccount { get; set; }
+
         public BindingType Type { get; set; }
 
         public BindingDirection Direction { get; set; }
