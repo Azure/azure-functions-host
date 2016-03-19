@@ -37,16 +37,16 @@ namespace Dashboard
                 return;
             }
 
+            CloudTableClient tableClient = account.CreateCloudTableClient();            
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
             Bind<CloudStorageAccount>().ToConstant(account);
             Bind<CloudBlobClient>().ToConstant(blobClient);
 
-            string tableLog = ConfigurationManager.AppSettings["AzureWebJobsLogTableName"];
-            if (!string.IsNullOrWhiteSpace(tableLog))
+            CloudTable logTable = TryGetLogTableName(tableClient);
+
+            if (logTable != null)
             {
-                // fast table reader. 
-                var client = account.CreateCloudTableClient();
-                CloudTable logTable = client.GetTableReference(tableLog);
+                // fast table reader.                 
                 var reader = LogFactory.NewReader(logTable);
                 Bind<ILogReader>().ToConstant(reader);
 
@@ -66,7 +66,7 @@ namespace Dashboard
                 Bind<IRecentInvocationIndexByParentReader>().To<NullInvocationIndexReader>();
 
                 Bind<IHeartbeatValidityMonitor>().To<NullHeartbeatValidityMonitor>();
-                            
+
                 Bind<IAborter>().To<NullAborter>();
 
                 // for diagnostics
@@ -119,6 +119,30 @@ namespace Dashboard
                 Bind<IIndexerLogWriter>().To<IndexerBlobLogWriter>();
                 Bind<IIndexerLogReader>().To<IndexerBlobLogReader>();
             }
+        }
+
+        // Get a fast log table name 
+        // OR return null to use traditional logging. 
+        private static CloudTable TryGetLogTableName(CloudTableClient tableClient)
+        {
+            string logTableName = ConfigurationManager.AppSettings["AzureWebJobsLogTableName"];
+            if (string.IsNullOrWhiteSpace(logTableName))
+            {
+                // Check for default name
+                string defaultName = LogFactory.DefaultLogTableName;
+                var table = tableClient.GetTableReference(defaultName);
+                if (table.Exists())
+                {
+                    return table;
+                }
+            }
+            else
+            {
+                var logTable = tableClient.GetTableReference(logTableName);
+                return logTable;
+            }
+
+            return null;
         }
 
         private static DashboardAccountContext TryCreateAccount()

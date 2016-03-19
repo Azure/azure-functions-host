@@ -15,8 +15,16 @@ namespace Microsoft.Azure.WebJobs.Logging
 {
     // Fast logger. 
     // Exposes a single AddAsync() to log one item, and then this will batch them up and write tables in bulk. 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
     internal class LogWriter : ILogWriter
     {
+        // Logs from AddAsync() are batched up. They can be explicitly flushed via FlushAsync() and 
+        // they get autotmatically flushed at Interval. 
+        // Calling AddAsync() will startup the background flusher. Calling FlushAsync() explicitly will disable it. 
+        private static TimeSpan _flushInterval = TimeSpan.FromSeconds(45);
+        private CancellationTokenSource _cancelBackgroundFlusher = null;
+        private Task _backgroundFlusherTask = null;
+
         // All writing goes to 1 table. 
         private readonly CloudTable _instanceTable;
         private readonly string _containerName; // compute container (not Blob Container) that we're logging for. 
@@ -53,6 +61,58 @@ namespace Microsoft.Azure.WebJobs.Logging
             this._instanceTable = table;
         }
 
+        // Background flusher. 
+        // Adds() are batched up.  So flush them automatically every interval. 
+        // Keeps looping until somebody explicitly calls Flush().
+        // Its possible there could be multiple flushers running concurrently. 
+        private async Task BackgroundFlushWorkerAsync(CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                try
+                {
+                    await Task.Delay(_flushInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Don't return yet. One last chance to flush 
+                    return;
+                }
+
+                await this.FlushCoreAsync();
+            }
+        }
+
+        // Call this under the lock 
+        private void StartBackgroundFlusher()
+        {
+            // Start background object. Do this under a lock to ensure only 1 gets started.             
+            if (_backgroundFlusherTask == null)
+            {
+                _cancelBackgroundFlusher = new CancellationTokenSource();
+                _backgroundFlusherTask = BackgroundFlushWorkerAsync(_cancelBackgroundFlusher.Token);
+            }
+        }
+
+        private async Task StopBackgroundFlusher()
+        {
+            Task task = null;
+            lock(_lock)
+            {
+                if (_backgroundFlusherTask != null)
+                {
+                    // Clear the flag before waiting, since the background flusher may call back into Flush()
+                    task = _backgroundFlusherTask;
+                    _backgroundFlusherTask = null;
+                    _cancelBackgroundFlusher.Cancel();                    
+                }
+            }
+            if (task != null)
+            {
+                await task; // don't wait under a lock. 
+            }
+        }
+
         public async Task AddAsync(FunctionInstanceLogItem item, CancellationToken cancellationToken = default(CancellationToken))
         {
             item.Validate();
@@ -60,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             {
                 lock(_lock)
                 {
+                    StartBackgroundFlusher();
                     if (_container == null)
                     {
                         _container = new ContainerActiveLogger(_containerName, _instanceTable);
@@ -93,7 +154,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                 _instances.Add(InstanceTableEntity.New(item));
                 _recents.Add(RecentPerFuncEntity.New(_containerName, item));
             }
-
 
             // Time aggregate is flushed later. 
             // Don't flush until we've moved onto the next interval. 
@@ -178,12 +238,23 @@ namespace Microsoft.Azure.WebJobs.Logging
             await Task.WhenAll(t1, t2, t3);
         }
 
-        public async Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
+        private async Task FlushCoreAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             await FlushTimelineAggregateAsync(true);
             await FlushIntancesAsync(true);
 
-            await _container.StopAsync();
+            if (_container != null)
+            {
+                await _container.StopAsync();
+            }
+        }
+
+        // Flush async can also stop the background flusher. 
+        public async Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await StopBackgroundFlusher();
+
+            await FlushCoreAsync();
         }
 
         private static void Increment(FunctionInstanceLogItem item, TimelineAggregateEntity x)
@@ -200,15 +271,10 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
         }
 
-        private Task WriteBatchAsync<T>(IEnumerable<T> e1) where T : TableEntity
-        {
-            return WriteBatch2Async(e1);
-        }
-
         // Limit of 100 per batch. 
         // Parallel uploads. 
-        private async Task WriteBatch2Async<T>(IEnumerable<T> e1) where T : TableEntity
-        {
+        private async Task WriteBatchAsync<T>(IEnumerable<T> e1) where T : TableEntity
+        {            
             HashSet<string> rowKeys = new HashSet<string>();
 
             int batchSize = 90;

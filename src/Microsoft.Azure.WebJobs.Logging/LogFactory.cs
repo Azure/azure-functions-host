@@ -34,5 +34,9 @@ namespace Microsoft.Azure.WebJobs.Logging
             return new LogWriter(computerContainerName, table);
         }
 
+        /// <summary>
+        /// Default name for fast log tables.
+        /// </summary>
+        public const string DefaultLogTableName = "AzureFunctionsLogTable";
     }
 }

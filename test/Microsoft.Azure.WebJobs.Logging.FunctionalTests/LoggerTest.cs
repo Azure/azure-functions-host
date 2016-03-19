@@ -111,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 };
                 await WriteAsync(writer, l1);
 
+                await writer.FlushAsync(); // Multiple flushes; test starting & stopping the backgrounf worker. 
+
                 FunctionInstanceLogItem l2 = new FunctionInstanceLogItem
                 {
                     FunctionInstanceId = Guid.NewGuid(),
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     ErrorDetails = "this failed"
                 };
                 await WriteAsync(writer, l3);
-
+                                
                 await writer.FlushAsync();
 
                 // Now read 
