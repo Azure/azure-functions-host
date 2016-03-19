@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             await Task.WhenAll(t1, t2, t3);
         }
 
-        private async Task FlushCoreAsync(CancellationToken cancellationToken = default(CancellationToken))
+        private async Task FlushCoreAsync()
         {
             await FlushTimelineAggregateAsync(true);
             await FlushIntancesAsync(true);
