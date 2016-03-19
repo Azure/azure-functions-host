@@ -3,7 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.NotificationHub;
+using Microsoft.Azure.WebJobs.Extensions.NotificationHubs;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("configBuilder");
             }
 
-            NotificationHubConfiguration config = new NotificationHubConfiguration();
+            NotificationHubsConfiguration config = new NotificationHubsConfiguration();
             if (!string.IsNullOrEmpty(ConnectionString))
             {
                 config.ConnectionString = ConnectionString;
