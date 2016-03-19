@@ -204,6 +204,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 attributeBuilder
             };
+
+            if (!string.IsNullOrEmpty(trigger.StorageAccount))
+            {
+                ctorInfo = typeof(StorageAccountAttribute).GetConstructor(new Type[] { typeof(string) });
+                attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.StorageAccount });
+                attributes.Add(attributeBuilder);
+            }
+
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
