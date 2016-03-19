@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = parameter

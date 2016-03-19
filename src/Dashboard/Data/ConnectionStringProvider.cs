@@ -35,7 +35,12 @@ namespace Dashboard.Data
             return Environment.GetEnvironmentVariable(prefixedConnectionStringName) ?? connectionStringInConfig;
         }
 
-        public static IReadOnlyDictionary<string, string> GetConnectionStrings()
+        /// <summary>
+        /// Return a dictionary of all app settings and connection strings. Since for multi storage
+        /// account support the SDK supports arbitrarily named connection string settings, we must
+        /// optimistically include ALL App Settings / Connection Strings in the result.
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> GetPossibleConnectionStrings()
         {
             Dictionary<string, string> connectionStrings = new Dictionary<string, string>(
                 StringComparer.OrdinalIgnoreCase);
@@ -43,19 +48,14 @@ namespace Dashboard.Data
 
             foreach (string key in environmentVariables.Keys)
             {
-                if (key.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    connectionStrings[key.Substring(Prefix.Length)] = (string)environmentVariables[key];
-                }
+                connectionStrings[key] = (string)environmentVariables[key];
             }
 
-            // Connection string settings take precedence over environment variables.
+            // Connection string settings take precedence over environment variables in
+            // case of name conflicts
             foreach (ConnectionStringSettings setting in ConfigurationManager.ConnectionStrings)
             {
-                if (setting.Name.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    connectionStrings[setting.Name.Substring(Prefix.Length)] = setting.ConnectionString;
-                }
+                connectionStrings[setting.Name] = setting.ConnectionString;
             }
 
             return connectionStrings;

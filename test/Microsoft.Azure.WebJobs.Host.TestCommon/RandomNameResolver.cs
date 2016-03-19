@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 return _randomString;
             }
 
-            throw new NotSupportedException("Cannot resolve name: " + name);
+            return null;
         }
 
         public string ResolveInString(string input)

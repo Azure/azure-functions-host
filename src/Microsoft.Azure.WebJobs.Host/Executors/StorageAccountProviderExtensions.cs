@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return provider.GetAccountAsync(ConnectionStringNames.Storage, cancellationToken);
         }
 
-        public static Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, ParameterInfo parameter, CancellationToken cancellationToken)
+        public static Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, ParameterInfo parameter, CancellationToken cancellationToken, INameResolver nameResolver = null)
         {
             if (provider == null)
             {
@@ -43,6 +43,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (string.IsNullOrEmpty(connectionStringName))
             {
                 connectionStringName = ConnectionStringNames.Storage;
+            }
+
+            if (nameResolver != null)
+            {
+                string resolved = null;
+                if (nameResolver.TryResolveWholeString(connectionStringName, out resolved))
+                {
+                    connectionStringName = resolved;
+                }
             }
 
             return provider.GetAccountAsync(connectionStringName, cancellationToken);

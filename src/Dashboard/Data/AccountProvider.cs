@@ -50,7 +50,7 @@ namespace Dashboard.Data
             if (_accounts == null)
             {
                 Dictionary<string, CloudStorageAccount> accounts = new Dictionary<string, CloudStorageAccount>();
-                IReadOnlyDictionary<string, string> connectionStrings = ConnectionStringProvider.GetConnectionStrings();
+                IReadOnlyDictionary<string, string> connectionStrings = ConnectionStringProvider.GetPossibleConnectionStrings();
 
                 foreach (KeyValuePair<string, string> item in connectionStrings)
                 {

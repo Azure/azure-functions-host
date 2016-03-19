@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                     "Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = parameter

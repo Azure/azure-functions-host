@@ -149,8 +149,7 @@ namespace Dashboard
         {
             DashboardAccountContext context = new DashboardAccountContext();
 
-            string connectionString = ConnectionStringProvider.GetConnectionString(
-                DashboardAccountContext.ConnectionStringName);
+            string connectionString = ConnectionStringProvider.GetConnectionString(DashboardAccountContext.ConnectionStringName);
             if (String.IsNullOrEmpty(connectionString))
             {
                 context.ConnectionStringState = ConnectionStringState.Missing;

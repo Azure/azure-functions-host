@@ -2,13 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -38,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await TestHelpers.Await(() =>
             {
-                resultBlob = (CloudBlockBlob)_fixture.OutputContainer2.ListBlobs().SingleOrDefault();
+                resultBlob = (CloudBlockBlob)_fixture.OutputContainer2.ListBlobs("blob1").SingleOrDefault();
                 return resultBlob != null;
             });
 
@@ -75,6 +78,39 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             });
 
             Assert.Equal(TestData, resultMessage.AsString);
+        }
+
+        [Theory]
+        [InlineData("QueueToBlob_DifferentAccounts_PrimaryToSecondary_NameResolver")]
+        [InlineData("QueueToBlob_DifferentAccounts_PrimaryToSecondary_FullSettingName")]
+        public async Task QueueToBlob_DifferentAccounts_PrimaryToSecondary_NameResolver_Succeeds(string methodName)
+        {
+            var method = typeof(MultipleStorageAccountsEndToEndTests).GetMethod(methodName);
+            string name = Guid.NewGuid().ToString();
+            JObject jObject = new JObject
+            {
+                { "Name", name },
+                { "Value", TestData }
+            };
+            await _fixture.Host.CallAsync(method, new { input = jObject.ToString() });
+
+            var blobReference = _fixture.OutputContainer2.GetBlobReferenceFromServer(name);
+            await TestHelpers.Await(() =>
+            {
+                return blobReference.Exists();
+            });
+
+            string data;
+            using (var memoryStream = new MemoryStream())
+            {
+                blobReference.DownloadToStream(memoryStream);
+                memoryStream.Position = 0;
+                using (var reader = new StreamReader(memoryStream, Encoding.Unicode))
+                {
+                    data = reader.ReadToEnd();
+                }
+            }
+            Assert.Equal(TestData, data);
         }
 
         [Fact]
@@ -150,6 +186,22 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             output = input;
         }
 
+        [NoAutomaticTrigger]
+        public static void QueueToBlob_DifferentAccounts_PrimaryToSecondary_NameResolver(
+            [QueueTrigger("test")] Message input,
+            [Blob(Output + "/{Name}"), StorageAccount("%test_account%")] out string output)
+        {
+            output = input.Value;
+        }
+
+        [NoAutomaticTrigger]
+        public static void QueueToBlob_DifferentAccounts_PrimaryToSecondary_FullSettingName(
+            [QueueTrigger("test")] Message input,
+            [Blob(Output + "/{Name}"), StorageAccount("AzureWebJobsSecondaryStorage")] out string output)
+        {
+            output = input.Value;
+        }
+
         public static void QueueToQueue_DifferentAccounts_SecondaryToPrimary(
             [QueueTrigger(Input), StorageAccount(Secondary)] string input,
             [Queue(Output)] out string output)
@@ -181,11 +233,23 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             SecondaryAccountResult = secondary;
         }
 
+        private class TestNameResolver : RandomNameResolver
+        {
+            public override string Resolve(string name)
+            {
+                if (name == "test_account")
+                {
+                    return "SecondaryStorage";
+                }
+                return base.Resolve(name);
+            }
+        }
+
         public class TestFixture : IDisposable
         {
             public TestFixture()
             {
-                RandomNameResolver nameResolver = new RandomNameResolver();
+                RandomNameResolver nameResolver = new TestNameResolver();
                 JobHostConfiguration hostConfiguration = new JobHostConfiguration()
                 {
                     NameResolver = nameResolver,
@@ -309,6 +373,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public class TestTableEntity : TableEntity
         {
             public string Text { get; set; }
+        }
+
+        public class Message
+        {
+            public string Name { get; set; }
+            public string Value { get; set; }
         }
     }
 }
