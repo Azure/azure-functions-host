@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return _context; }
         }
 
-        public Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
+        public Task<IBinding> BindAsync<TValue>(RuntimeBindingContext context, CancellationToken cancellationToken)
         {
-            ParameterInfo parameterInfo = new FakeParameterInfo(typeof(TValue), _memberInfo, attribute);
+            ParameterInfo parameterInfo = new FakeParameterInfo(typeof(TValue), _memberInfo, context.Attribute, context.AdditionalAttributes.ToArray());
             BindingProviderContext bindingProviderContext =
                 new BindingProviderContext(parameterInfo, bindingDataContract: null, cancellationToken: cancellationToken);
 
@@ -53,25 +55,29 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
         // A non-reflection based implementation
         private class FakeParameterInfo : ParameterInfo
         {
-            private readonly Attribute _attribute;
+            private readonly Collection<Attribute> _attributes = new Collection<Attribute>();
 
-            public FakeParameterInfo(Type parameterType, MemberInfo memberInfo, Attribute attribute)
+            public FakeParameterInfo(Type parameterType, MemberInfo memberInfo, Attribute attribute, Attribute[] additionalAttributes)
             {
                 ClassImpl = parameterType;
-                _attribute = attribute;
                 AttrsImpl = ParameterAttributes.In;
                 NameImpl = "?";
                 MemberImpl = memberInfo;
+
+                // union all the parameter attributes
+                _attributes.Add(attribute);
+                if (additionalAttributes != null)
+                {
+                    foreach (var additionalAttribute in additionalAttributes)
+                    {
+                        _attributes.Add(additionalAttribute);
+                    }
+                }
             }
 
             public override object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-                if (attributeType == _attribute.GetType())
-                {
-                    return new Attribute[] { _attribute };
-                }
-
-                return new Attribute[0];
+                return _attributes.Where(p => p.GetType() == attributeType).ToArray();
             }
         }
     }

@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
-    internal sealed class RuntimeValueProvider : IValueBinder, IWatchable, IDisposable, IBinder
+    internal sealed class RuntimeValueProvider : IValueBinder, IWatchable, IDisposable, IBinder, IBinderEx
     {
         private readonly IAttributeBindingSource _bindingSource;
         private readonly IList<IValueBinder> _binders = new List<IValueBinder>();
@@ -34,6 +34,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return _watcher; }
         }
 
+        public AmbientBindingContext BindingContext
+        {
+            get
+            {
+                return _bindingSource.AmbientBindingContext;
+            }
+        }
+
         public object GetValue()
         {
             return this;
@@ -53,13 +61,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             return null;
         }
 
-        public async Task<TValue> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
+        public async Task<TValue> BindAsync<TValue>(RuntimeBindingContext context, CancellationToken cancellationToken = default(CancellationToken))
         {
-            IBinding binding = await _bindingSource.BindAsync<TValue>(attribute, cancellationToken);
+            IBinding binding = await _bindingSource.BindAsync<TValue>(context, cancellationToken);
 
             if (binding == null)
             {
-                throw new InvalidOperationException("No binding found for attribute '" + attribute.GetType() + "'.");
+                throw new InvalidOperationException("No binding found for attribute '" + context.Attribute.GetType() + "'.");
             }
 
             IValueProvider provider = await binding.BindAsync(new BindingContext(
@@ -97,6 +105,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             }
 
             return (TValue)provider.GetValue();
+        }
+
+        public async Task<TValue> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
+        {
+            RuntimeBindingContext context = new RuntimeBindingContext(attribute);
+
+            return await BindAsync<TValue>(context, cancellationToken);
         }
 
         public void Dispose()
