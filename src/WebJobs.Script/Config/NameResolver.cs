@@ -24,21 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 }
             }
 
-            string value = ConfigurationManager.AppSettings[name];
-            if (!string.IsNullOrEmpty(value))
-            {
-                return value;
-            }
-
-            // Check env var
-            value = Environment.GetEnvironmentVariable(name);
-            if (value != null)
-            {
-                return value;
-            }
-
             // contract is to return null if not found. 
-            return null;
+            return Utility.GetAppSettingOrEnvironmentValue(name);
         }
     }
 }

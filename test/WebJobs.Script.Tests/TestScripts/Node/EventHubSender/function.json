@@ -8,7 +8,7 @@
       "type": "eventHub",
       "name": "output",
       "direction": "out",
-      "connectionString": "%AzureWebJobsEventHubSender%",
+      "connection": "AzureWebJobsEventHubSender",
       "path": "%AzureWebJobsEventHubPath%"
     }
   ]

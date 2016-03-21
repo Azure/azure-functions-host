@@ -14,9 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public bool CreateIfNotExists { get; set; }
 
-        [AllowNameResolution]
-        public string ConnectionString { get; set; }
-
         public override void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
         {
             if (configBuilder == null)
@@ -25,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             DocumentDBConfiguration config = new DocumentDBConfiguration();
-            if (!string.IsNullOrEmpty(ConnectionString))
+            if (!string.IsNullOrEmpty(Connection))
             {
-                config.ConnectionString = ConnectionString;
+                config.ConnectionString = Utility.GetAppSettingOrEnvironmentValue(Connection);
             }
 
             configBuilder.Config.UseDocumentDB(config);

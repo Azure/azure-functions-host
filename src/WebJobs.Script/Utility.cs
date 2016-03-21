@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -28,6 +29,25 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return formattedError;
+        }
+
+        public static string GetAppSettingOrEnvironmentValue(string name)
+        {
+            // first check app settings
+            string value = ConfigurationManager.AppSettings[name];
+            if (!string.IsNullOrEmpty(value))
+            {
+                return value;
+            }
+
+            // Check environment variables
+            value = Environment.GetEnvironmentVariable(name);
+            if (value != null)
+            {
+                return value;
+            }
+
+            return null;
         }
     }
 }
