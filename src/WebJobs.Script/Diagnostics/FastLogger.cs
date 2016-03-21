@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     // Adapter for capturing SDK events and logging them to tables.
-    class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
+    internal class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
     {
         private readonly ILogWriter _writer;
 
