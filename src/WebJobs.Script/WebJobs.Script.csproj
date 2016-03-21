@@ -274,10 +274,6 @@
     <Compile Include="Description\TableBindingMetadata.cs" />
     <Compile Include="Description\TimerBindingMetadata.cs" />
     <Compile Include="Diagnostics\FastLogger.cs" />
-    <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
-    <Compile Include="Diagnostics\IMetricsLogger.cs" />
-    <Compile Include="Diagnostics\MetricEvent.cs" />
-    <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\ScriptHost.cs" />
