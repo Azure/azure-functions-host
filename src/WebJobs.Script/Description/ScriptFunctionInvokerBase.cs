@@ -7,9 +7,9 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json.Linq;
 
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected static Dictionary<string, string> GetBindingData(object value, IBinder binder, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        protected static Dictionary<string, string> GetBindingData(object value, IBinderEx binder, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             Dictionary<string, string> bindingData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -139,9 +139,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// TEMP: We might find a better way to do this in the future, perhaps via core
         /// SDK changes.
         /// </summary>
-        protected static void ApplyAmbientBindingData(IBinder binder, IDictionary<string, string> bindingData)
+        protected static void ApplyAmbientBindingData(IBinderEx binder, IDictionary<string, string> bindingData)
         {
-            var ambientBindingData = GetAmbientBindingData(binder);
+            var ambientBindingData = binder.BindingContext.BindingData;
             if (ambientBindingData != null)
             {
                 // apply the binding data to ours
@@ -153,29 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
             }
-        }
-
-        private static IDictionary<string, object> GetAmbientBindingData(IBinder binder)
-        {
-            IDictionary<string, object> ambientBindingData = null;
-
-            try
-            {
-                // TEMP HACK: Dig the ambient binding data out of the binder
-                FieldInfo fieldInfo = binder.GetType().GetField("_bindingSource", BindingFlags.NonPublic | BindingFlags.Instance);
-                var bindingSource = fieldInfo.GetValue(binder);
-                PropertyInfo propertyInfo = bindingSource.GetType().GetProperty("AmbientBindingContext");
-                var ambientBindingContext = propertyInfo.GetValue(bindingSource);
-                propertyInfo = ambientBindingContext.GetType().GetProperty("BindingData");
-                ambientBindingData = (IDictionary<string, object>)propertyInfo.GetValue(ambientBindingContext);
-            }
-            catch
-            {
-                // If this fails for whatever reason we just won't
-                // have any binding data
-            }
-
-            return ambientBindingData;
         }
 
         protected static bool IsJson(string input)

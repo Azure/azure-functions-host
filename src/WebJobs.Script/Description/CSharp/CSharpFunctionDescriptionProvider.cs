@@ -108,13 +108,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         }
 
                         var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
-                        var binding = bindings.FirstOrDefault(b => string.Compare(b.Name, parameter.Name, StringComparison.Ordinal) == 0);
+                        var binding = bindings.FirstOrDefault(b => string.Compare(b.Metadata.Name, parameter.Name, StringComparison.Ordinal) == 0);
                         if (binding != null)
                         {
-                            CustomAttributeBuilder customAttribute = binding.GetCustomAttribute();
-                            if (customAttribute != null)
+                            Collection<CustomAttributeBuilder> customAttributes = binding.GetCustomAttributes();
+                            if (customAttributes != null)
                             {
-                                descriptor.CustomAttributes.Add(customAttribute);
+                                foreach (var customAttribute in customAttributes)
+                                {
+                                    descriptor.CustomAttributes.Add(customAttribute);
+                                }
                             }
                         }
 

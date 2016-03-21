@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -19,7 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
 
-        public HttpBinding(ScriptHostConfiguration config, string name, FileAccess access, bool isTrigger) : base(config, name, BindingType.Http, access, isTrigger)
+        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) : 
+            base(config, metadata, access)
         {
         }
 
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public override CustomAttributeBuilder GetCustomAttribute()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             return null;
         }

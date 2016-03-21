@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -22,31 +24,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly BindingTemplate _rowKeyBindingTemplate;
         private readonly TableQuery _tableQuery;
 
-        public TableBinding(ScriptHostConfiguration config, string name, string tableName, string partitionKey, string rowKey, FileAccess access, TableQuery tableQuery = null) 
-            : base(config, name, BindingType.Table, access, false)
+        public TableBinding(ScriptHostConfiguration config, TableBindingMetadata metadata, FileAccess access) 
+            : base(config, metadata, access)
         {
-            if (string.IsNullOrEmpty(tableName))
+            if (string.IsNullOrEmpty(metadata.TableName))
             {
                 throw new ArgumentException("The table name cannot be null or empty.");
             }
 
-            TableName = tableName;
-            PartitionKey = partitionKey;
-            RowKey = rowKey;
+            TableName = metadata.TableName;
+            PartitionKey = metadata.PartitionKey;
+            RowKey = metadata.RowKey;
             _partitionKeyBindingTemplate = BindingTemplate.FromString(PartitionKey);
             if (!string.IsNullOrEmpty(RowKey))
             {
                 _rowKeyBindingTemplate = BindingTemplate.FromString(RowKey);
             }
 
-            _tableQuery = tableQuery;
-            if (_tableQuery == null)
+            _tableQuery = new TableQuery
             {
-                _tableQuery = new TableQuery
-                {
-                    TakeCount = 50
-                };
-            }
+                TakeCount = metadata.Take ?? 50,
+                FilterString = metadata.Filter
+            };
         }
 
         public string TableName { get; private set; }
@@ -62,8 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public override CustomAttributeBuilder GetCustomAttribute()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
+            Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
+
             Type[] constructorTypes = null;
             object[] constructorArguments = null;
             if (Access == FileAccess.Write)
@@ -77,7 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 constructorArguments = new object[] { TableName, PartitionKey, RowKey };
             }
 
-            return new CustomAttributeBuilder(typeof(TableAttribute).GetConstructor(constructorTypes), constructorArguments);
+            attributes.Add(new CustomAttributeBuilder(typeof(TableAttribute).GetConstructor(constructorTypes), constructorArguments));
+
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                AddStorageAccountAttribute(attributes, Metadata.Connection);
+            }
+
+            return attributes;
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -99,6 +107,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 boundRowKey = Resolve(boundRowKey);
             }
 
+            Attribute[] additionalAttributes = null;
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                additionalAttributes = new Attribute[]
+                {
+                    new StorageAccountAttribute(Metadata.Connection)
+                };
+            }
+
             // TODO: Need to handle Stream conversions properly
             Stream valueStream = context.Value as Stream;
 
@@ -114,8 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 // TODO: If RowKey has not been specified in the binding, try to
                 // derive from the object properties (e.g. "rowKey" or "id" properties);
-
-                IAsyncCollector<DynamicTableEntity> collector = context.Binder.Bind<IAsyncCollector<DynamicTableEntity>>(new TableAttribute(TableName));
+                RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName), additionalAttributes);
+                IAsyncCollector<DynamicTableEntity> collector = await context.Binder.BindAsync<IAsyncCollector<DynamicTableEntity>>(runtimeContext);
                 DynamicTableEntity tableEntity = new DynamicTableEntity(boundPartitionKey, boundRowKey);
                 foreach (JProperty property in jsonObject.Properties())
                 {
@@ -131,7 +148,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     !string.IsNullOrEmpty(boundRowKey))
                 {
                     // singleton
-                    DynamicTableEntity tableEntity = context.Binder.Bind<DynamicTableEntity>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName, boundPartitionKey, boundRowKey), additionalAttributes);
+                    DynamicTableEntity tableEntity = await context.Binder.BindAsync<DynamicTableEntity>(runtimeContext);
                     if (tableEntity != null)
                     {
                         string json = ConvertEntityToJObject(tableEntity).ToString();
@@ -144,7 +162,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else
                 {
                     // binding to entire table (query multiple table entities)
-                    CloudTable table = context.Binder.Bind<CloudTable>(new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName, boundPartitionKey, boundRowKey), additionalAttributes);
+                    CloudTable table = await context.Binder.BindAsync<CloudTable>(runtimeContext);
                     var entities = table.ExecuteQuery(_tableQuery);
 
                     JArray entityArray = new JArray();

@@ -204,6 +204,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 attributeBuilder
             };
+
+            if (!string.IsNullOrEmpty(trigger.Connection))
+            {
+                FunctionBinding.AddStorageAccountAttribute(attributes, trigger.Connection);
+            }
+
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
@@ -228,6 +234,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 attributeBuilder
             };
+
+            if (!string.IsNullOrEmpty(trigger.Connection))
+            {
+                FunctionBinding.AddStorageAccountAttribute(attributes, trigger.Connection);
+            }
+
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 

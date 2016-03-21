@@ -5,12 +5,6 @@
       "schedule": "0 * * * * *",
       "runOnStartup": true,
       "direction": "in"
-    },
-    {
-      "type": "queue",
-      "name": "message",
-      "queueName": "samples-csharp",
-      "direction": "out"
     }
   ]
 }

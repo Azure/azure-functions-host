@@ -291,6 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script
             BindingMetadata bindingMetadata = null;
             string bindingTypeValue = (string)binding["type"];
             string bindingDirectionValue = (string)binding["direction"];
+            string connection = (string)binding["connection"];
             BindingType bindingType = default(BindingType);
             BindingDirection bindingDirection = default(BindingDirection);
 
@@ -349,6 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             bindingMetadata.Type = bindingType;
             bindingMetadata.Direction = bindingDirection;
+            bindingMetadata.Connection = connection;
 
             nameResolver.ResolveAllProperties(bindingMetadata);
 

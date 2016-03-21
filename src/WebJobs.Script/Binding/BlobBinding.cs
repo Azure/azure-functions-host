@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -15,14 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _pathBindingTemplate;
 
-        public BlobBinding(ScriptHostConfiguration config, string name, string path, FileAccess access, bool isTrigger) : base(config, name, BindingType.Blob, access, isTrigger)
+        public BlobBinding(ScriptHostConfiguration config, BlobBindingMetadata metadata, FileAccess access) : base(config, metadata, access)
         {
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(metadata.Path))
             {
                 throw new ArgumentException("The blob path cannot be null or empty.");
             }
 
-            Path = path;
+            Path = metadata.Path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
         }
 
@@ -49,7 +52,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // TODO: Need to handle Stream conversions properly
             Stream valueStream = context.Value as Stream;
 
-            Stream blobStream = context.Binder.Bind<Stream>(new BlobAttribute(boundBlobPath, Access));
+            var attribute = new BlobAttribute(boundBlobPath, Access);
+            Attribute[] additionalAttributes = null;
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                additionalAttributes = new Attribute[]
+                {
+                    new StorageAccountAttribute(Metadata.Connection)
+                };
+            }
+
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
+            Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
             if (Access == FileAccess.Write)
             {
                 await valueStream.CopyToAsync(blobStream);
@@ -60,12 +74,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public override CustomAttributeBuilder GetCustomAttribute()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
+            Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
+
             var constructorTypes = new Type[] { typeof(string), typeof(FileAccess) };
             var constructorArguments = new object[] { Path, Access };
+            var attribute = new CustomAttributeBuilder(typeof(BlobAttribute).GetConstructor(constructorTypes), constructorArguments);
 
-            return new CustomAttributeBuilder(typeof(BlobAttribute).GetConstructor(constructorTypes), constructorArguments);
+            attributes.Add(attribute);
+
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                AddStorageAccountAttribute(attributes, Metadata.Connection);
+            }
+
+            return attributes;
         }
     }
 }

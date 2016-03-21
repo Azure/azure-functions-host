@@ -351,18 +351,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
             }
 
-            var bindings = _inputBindings.Where(b => !b.IsTrigger).Union(_outputBindings);
+            var bindings = _inputBindings.Where(b => !b.Metadata.IsTrigger).Union(_outputBindings);
 
             foreach (var binding in bindings)
             {
-                if (binding.Type == BindingType.Http)
+                if (binding.Metadata.Type == BindingType.Http)
                 {
                     continue;
                 }
 
-                if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Name, StringComparison.Ordinal) == 0))
+                if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Metadata.Name, StringComparison.Ordinal) == 0))
                 {
-                    string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Name);
+                    string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Metadata.Name);
                     var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingBindingArgumentCompilationCode,
                         "Missing binding argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 

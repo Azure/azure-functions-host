@@ -3,12 +3,13 @@
 
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class BindingContext
     {
-        public IBinder Binder { get; set; }
+        public IBinderEx Binder { get; set; }
 
         public object Input { get; set; }
 

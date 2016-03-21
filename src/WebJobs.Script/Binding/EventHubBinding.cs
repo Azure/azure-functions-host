@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -15,15 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingTemplate _eventHubNameBindingTemplate;
 
-        public EventHubBinding(ScriptHostConfiguration config, string name, string eventHubName, FileAccess access, bool isTrigger) : 
-            base(config, name, BindingType.EventHub, access, isTrigger)
+        public EventHubBinding(ScriptHostConfiguration config, EventHubBindingMetadata metadata, FileAccess access) : 
+            base(config, metadata, access)
         {
-            if (string.IsNullOrEmpty(eventHubName))
+            if (string.IsNullOrEmpty(metadata.Path))
             {
                 throw new ArgumentException("The event hub path cannot be null or empty.");
             }
 
-            EventHubName = eventHubName;
+            EventHubName = metadata.Path;
             _eventHubNameBindingTemplate = BindingTemplate.FromString(EventHubName);
         }
 
@@ -37,12 +39,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public override CustomAttributeBuilder GetCustomAttribute()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             var constructorTypes = new Type[] { typeof(string) };
             var constructorArguments = new object[] { EventHubName };
 
-            return new CustomAttributeBuilder(typeof(ServiceBus.EventHubAttribute).GetConstructor(constructorTypes), constructorArguments);
+            return new Collection<CustomAttributeBuilder>
+            {
+                new CustomAttributeBuilder(typeof(ServiceBus.EventHubAttribute).GetConstructor(constructorTypes), constructorArguments)
+            };
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -55,8 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             eventHubName = Resolve(eventHubName);
 
+            var attribute = new ServiceBus.EventHubAttribute(eventHubName);
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+
             // only an output binding is supported
-            IAsyncCollector<byte[]> collector = context.Binder.Bind<IAsyncCollector<byte[]>>(new ServiceBus.EventHubAttribute(eventHubName));
+            IAsyncCollector<byte[]> collector = await context.Binder.BindAsync<IAsyncCollector<byte[]>>(runtimeContext);
             byte[] bytes;
             using (MemoryStream ms = new MemoryStream())
             {

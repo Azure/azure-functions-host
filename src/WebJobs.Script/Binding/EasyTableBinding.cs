@@ -1,11 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 
@@ -15,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly BindingDirection _bindingDirection;
 
-        public EasyTableBinding(ScriptHostConfiguration config, string name, string tableName, string id, FileAccess access, BindingDirection direction) :
-            base(config, name, BindingType.EasyTable, access, false)
+        public EasyTableBinding(ScriptHostConfiguration config, EasyTableBindingMetadata metadata, FileAccess access) :
+            base(config, metadata, access)
         {
-            TableName = tableName;
-            Id = id;
-            _bindingDirection = direction;
+            TableName = metadata.TableName;
+            Id = metadata.Id;
+            _bindingDirection = metadata.Direction;
         }
 
         public string TableName { get; private set; }
@@ -35,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public override CustomAttributeBuilder GetCustomAttribute()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             PropertyInfo[] props = new[]
             {
@@ -51,21 +53,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             ConstructorInfo constructor = typeof(EasyTableAttribute).GetConstructor(System.Type.EmptyTypes);
 
-            return new CustomAttributeBuilder(constructor, new object[] { }, props, propValues);
+            return new Collection<CustomAttributeBuilder>
+            {
+                new CustomAttributeBuilder(constructor, new object[] { }, props, propValues)
+            };
         }
 
         public override async Task BindAsync(BindingContext context)
         {
-            EasyTableAttribute attribute = new EasyTableAttribute
-            {
-                TableName = TableName,
-                Id = Id
-            };
-
             // Only output bindings are supported.
             if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
             {
-                IAsyncCollector<JObject> collector = context.Binder.Bind<IAsyncCollector<JObject>>(attribute);
+                EasyTableAttribute attribute = new EasyTableAttribute
+                {
+                    TableName = TableName,
+                    Id = Id
+                };
+
+                RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+                IAsyncCollector<JObject> collector = await context.Binder.BindAsync<IAsyncCollector<JObject>>(runtimeContext);
                 byte[] bytes;
                 using (MemoryStream ms = new MemoryStream())
                 {

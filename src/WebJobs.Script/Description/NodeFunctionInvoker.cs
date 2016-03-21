@@ -15,6 +15,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Newtonsoft.Json;
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
-            IBinder binder = (IBinder)parameters[2];
+            IBinderEx binder = (IBinderEx)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
@@ -104,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
-                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, binder, functionExecutionContext);
+                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, functionExecutionContext);
 
                 Dictionary<string, string> bindingData = GetBindingData(input, binder, _inputBindings, _outputBindings);
                 bindingData["InvocationId"] = invocationId;
@@ -130,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task ProcessInputBindingsAsync(IBinder binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
+        private async Task ProcessInputBindingsAsync(IBinderEx binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
         {
             var bindings = (Dictionary<string, object>)executionContext["bindings"];
 
@@ -140,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             List<object> inputs = new List<object>();
             inputs.Add(bindings[_trigger.Name]);
 
-            var nonTriggerInputBindings = _inputBindings.Where(p => !p.IsTrigger);
+            var nonTriggerInputBindings = _inputBindings.Where(p => !p.Metadata.IsTrigger);
             foreach (var inputBinding in nonTriggerInputBindings)
             {
                 string value = null;
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     value = sr.ReadToEnd();
                 }
 
-                bindings.Add(inputBinding.Name, value);
+                bindings.Add(inputBinding.Metadata.Name, value);
 
                 inputs.Add(value);
             }
@@ -167,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             executionContext["inputs"] = inputs;
         }
 
-        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, IBinder binder, 
+        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, IBinderEx binder, 
             Dictionary<string, string> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
         {
             if (outputBindings == null)
@@ -191,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // get the output value from the script
                 object value = null;
-                if (bindings.TryGetValue(binding.Name, out value))
+                if (bindings.TryGetValue(binding.Metadata.Name, out value))
                 {
                     if (value.GetType() == typeof(ExpandoObject))
                     {
@@ -242,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, IBinder binder, ExecutionContext functionExecutionContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>

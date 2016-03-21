@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = invocationParameters[0];
             TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
-            IBinder binder = (IBinder)invocationParameters[2];
+            IBinderEx binder = (IBinderEx)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var outputBinding in _outputBindings)
             {
-                environmentVariables[outputBinding.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+                environmentVariables[outputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
             }
 
             Type triggerParameterType = input.GetType();
@@ -181,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, IBinder binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
+        private async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, IBinderEx binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
         {
             // if there are any input or output bindings declared, set up the temporary
             // output directory
@@ -193,14 +194,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // process input bindings
             foreach (var inputBinding in _inputBindings)
             {
-                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Metadata.Name);
                 using (FileStream stream = File.OpenWrite(filePath))
                 {
                     // If this is the trigger input, write it directly to the stream.
                     // The trigger binding is a special case because it is early bound
                     // rather than late bound as is the case with all the other input
                     // bindings.
-                    if (inputBinding.IsTrigger)
+                    if (inputBinding.Metadata.IsTrigger)
                     {
                         if (input is string)
                         {
@@ -233,12 +234,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
 
-                environmentVariables[inputBinding.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Name);
+                environmentVariables[inputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Metadata.Name);
             }
         }
 
         private static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
-            object input, IBinder binder, Dictionary<string, string> bindingData)
+            object input, IBinderEx binder, Dictionary<string, string> bindingData)
         {
             if (outputBindings == null)
             {
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 foreach (var outputBinding in outputBindings)
                 {
-                    string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Name);
+                    string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
                     if (File.Exists(filePath))
                     {
                         using (FileStream stream = File.OpenRead(filePath))
