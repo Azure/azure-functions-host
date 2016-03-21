@@ -345,6 +345,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 case BindingType.DocumentDB:
                     bindingMetadata = binding.ToObject<DocumentDBBindingMetadata>();
                     break;
+                case BindingType.NotificationHub:
+                    bindingMetadata = binding.ToObject<NotificationHubBindingMetadata>();
+                    break;
             }
 
             bindingMetadata.Type = bindingType;
