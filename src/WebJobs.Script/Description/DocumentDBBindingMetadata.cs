@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public bool CreateIfNotExists { get; set; }
 
-        [AllowNameResolution]
         public string ConnectionString { get; set; }
 
         public override void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
@@ -27,7 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             DocumentDBConfiguration config = new DocumentDBConfiguration();
             if (!string.IsNullOrEmpty(ConnectionString))
             {
-                config.ConnectionString = ConnectionString;
+                // Directly resolve this. Ideally this would be handled with 
+                // [AllowNameResolution]. We can do that when the following
+                // issue is resolved:
+                // https://github.com/projectkudu/WebJobsPortal/issues/117
+                INameResolver resolver = configBuilder.Config.NameResolver;
+                config.ConnectionString = resolver.Resolve(ConnectionString);
             }
 
             configBuilder.Config.UseDocumentDB(config);
