@@ -6,6 +6,11 @@
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
+    <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
+    <SiteExtensionVersion>0.1.$(BuildNumber)</SiteExtensionVersion>
+    <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
+    <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
+    <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
     <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
     <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
   </PropertyGroup>
@@ -106,6 +111,23 @@
       InputPath=".\src\WebJobs.Script.WebHost\Publish"
       OutputFileName="$(PublishPath)\Packages\Functions.Private.zip"
       OverwriteExistingFile="true"/>
+    
+    <!--Create site extension package  -->
+    <MakeDir Directories="@(SiteExtensionPath)"/>
+    
+    <ItemGroup>
+        <SiteExtensionSource Include=".\src\WebJobs.Script.WebHost\Publish\SiteExtensions\Functions\**\*.*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(SiteExtensionSource)" DestinationFiles="@(SiteExtensionSource->'$(SiteExtensionPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(ExtensionXml)" DestinationFolder="$(SiteExtensionBasePath)" />
+    
+    <Zip
+      InputPath="$(SiteExtensionBasePath)"
+      OutputFileName="$(PublishPath)\Packages\Functions.$(SiteExtensionVersion).zip"
+      OverwriteExistingFile="true"/>
+      
+    <RemoveDir Directories="$(SiteExtensionBasePath)" />
   </Target>
 
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
