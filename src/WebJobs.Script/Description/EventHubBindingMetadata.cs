@@ -9,9 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class EventHubBindingMetadata : BindingMetadata
     {
         [AllowNameResolution]
-        public string ConnectionString { get; set; }
-
-        [AllowNameResolution]
         public string Path { get; set; }
 
         public override void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
@@ -21,6 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("configBuilder");
             }
             EventHubConfiguration eventHubConfig = configBuilder.EventHubConfiguration;
+
+            string connectionString = null;
+            if (!string.IsNullOrEmpty(Connection))
+            {
+                connectionString = Utility.GetAppSettingOrEnvironmentValue(Connection);
+            }
 
             if (this.IsTrigger)
             {
@@ -32,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                      eventProcessorHostName,
                      this.Path,
                      Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName,
-                     this.ConnectionString,
+                     connectionString,
                      storageConnectionString);
 
                 eventHubConfig.AddEventProcessorHost(this.Path, eventProcessorHost);
@@ -40,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             else
             {                
                 var client = Microsoft.ServiceBus.Messaging.EventHubClient.CreateFromConnectionString(
-                    this.ConnectionString, this.Path);
+                    connectionString, this.Path);
 
                 eventHubConfig.AddEventHubClient(this.Path, client);
             }
