@@ -205,7 +205,6 @@ namespace WebJobs.Script.Tests
                 Thread runLoopThread = new Thread(_ =>
                 {
                     manager.RunAndBlock(CancellationToken.None);
-
                 });
                 runLoopThread.IsBackground = true;
                 runLoopThread.Start();

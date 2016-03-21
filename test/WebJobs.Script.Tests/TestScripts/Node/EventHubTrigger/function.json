@@ -3,7 +3,7 @@
     {
       "type": "eventHubTrigger",
       "direction": "in",
-      "connectionString": "%AzureWebJobsEventHubReceiver%",
+      "connection": "AzureWebJobsEventHubReceiver",
       "path": "%AzureWebJobsEventHubPath%"
     },
     {
