@@ -39,11 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            if (functionMetadata.IsDisabled)
-            {
-                return false;
-            }
-
             // Default the trigger binding name if a name hasn't
             // been specified
             // TODO: Remove this logic and always require it to be explicitly
@@ -135,12 +130,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, typeof(TimerInfo));
                     break;
                 case BindingType.HttpTrigger:
-                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, typeof(HttpRequestMessage));
+                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, typeof(HttpRequestMessage));
                     break;
                 case BindingType.ManualTrigger:
-                    triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes);
+                    triggerParameter = ParseManualTrigger(triggerMetadata);
                     break;
             }
+
+            ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
 
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
             triggerParameter.IsTrigger = true;
@@ -156,6 +153,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
 
             return parameters;
+        }
+
+        protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
+        {
+            if (functionMetadata.IsDisabled ||
+                (triggerMetadata.Type == BindingType.HttpTrigger || triggerMetadata.Type == BindingType.ManualTrigger))
+            {
+                // the function can be run manually, but there will be no automatic
+                // triggering
+                ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
+                CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
+                methodAttributes.Add(attributeBuilder);
+            }
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
@@ -314,16 +324,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Type triggerParameterType = null)
         {
             if (trigger == null)
             {
                 throw new ArgumentNullException("trigger");
-            }
-
-            if (methodAttributes == null)
-            {
-                throw new ArgumentNullException("methodAttributes");
             }
 
             if (triggerParameterType == null)
@@ -331,28 +336,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerParameterType = typeof(string);
             }
 
-            ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
-            methodAttributes.Add(attributeBuilder);
-
-            ctorInfo = typeof(TraceLevelAttribute).GetConstructor(new Type[] { typeof(TraceLevel) });
-            attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { TraceLevel.Off });
-            methodAttributes.Add(attributeBuilder);
-
-            string parameterName = trigger.Name;
-            return new ParameterDescriptor(parameterName, triggerParameterType);
+            return new ParameterDescriptor(trigger.Name, triggerParameterType);
         }
 
-        protected ParameterDescriptor ParseManualTrigger(BindingMetadata trigger, Collection<CustomAttributeBuilder> methodAttributes, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseManualTrigger(BindingMetadata trigger, Type triggerParameterType = null)
         {
             if (trigger == null)
             {
                 throw new ArgumentNullException("trigger");
-            }
-
-            if (methodAttributes == null)
-            {
-                throw new ArgumentNullException("methodAttributes");
             }
 
             if (triggerParameterType == null)
@@ -360,12 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerParameterType = typeof(string);
             }
 
-            ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
-            methodAttributes.Add(attributeBuilder);
-
-            string parameterName = trigger.Name;
-            return new ParameterDescriptor(parameterName, triggerParameterType);
+            return new ParameterDescriptor(trigger.Name, triggerParameterType);
         }
     }
 }
