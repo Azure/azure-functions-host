@@ -64,9 +64,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IMethodSymbol entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
 
             var signature = new CSharpFunctionSignature(entryPointReference.Parameters);
-            signature.HasLocalTypeReference = entryPointReference.Parameters.Any(p => p.Type.ContainingAssembly == entryPointReference.ContainingAssembly);
+            signature.HasLocalTypeReference = entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
 
             return signature;
+        }
+
+        private static bool IsOrUsesAssemblyType(ITypeSymbol typeSymbol, IAssemblySymbol assemblySymbol)
+        {
+            if (typeSymbol.ContainingAssembly == assemblySymbol)
+            {
+                return true;
+            }
+
+            INamedTypeSymbol namedTypeSymbol = typeSymbol as INamedTypeSymbol;
+            return namedTypeSymbol != null && namedTypeSymbol.IsGenericType
+                && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
         private static bool AreParametersEquivalent(IParameterSymbol param1, IParameterSymbol param2)

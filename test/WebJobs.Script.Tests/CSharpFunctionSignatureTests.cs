@@ -96,5 +96,79 @@ public class Test
 
             Assert.True(signature1.HasLocalTypeReference);
         }
+
+        [Fact]
+        public void Matches_IsTrue_WhenUsingLocalTypesAsGenericArguments()
+        {
+            var function1 = @"using System;
+using System.Collections.Generic;
+public static void Run(string id, ICollection<Test> test1)
+{
+    
+}
+
+public class Test 
+{
+    public string Id { get; set; }
+}";
+
+            var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+            var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
+            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+
+            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+
+            Assert.True(signature1.HasLocalTypeReference);
+        }
+
+        [Fact]
+        public void Matches_IsTrue_WhenUsingLocalTypesAsDeepGenericArguments()
+        {
+            var function1 = @"using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+public static void Run(string id, ICollection<Task<Test>> test1)
+{
+    
+}
+
+public class Test 
+{
+    public string Id { get; set; }
+}";
+
+            var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+            var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
+            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+
+            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+
+            Assert.True(signature1.HasLocalTypeReference);
+        }
+
+        [Fact]
+        public void Matches_IsFalse_WhenNotUsingLocalTypes()
+        {
+            var function1 = @"using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+public static void Run(string id, int test1)
+{
+    
+}
+
+public class Test 
+{
+    public string Id { get; set; }
+}";
+
+            var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+            var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
+            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+
+            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+
+            Assert.False(signature1.HasLocalTypeReference);
+        }
     }
 }
