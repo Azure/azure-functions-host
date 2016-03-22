@@ -68,9 +68,9 @@ namespace WebJobs.Script.WebHost.WebHooks
             // so our custom WebHookHandler can invoke it at the right time
             request.Properties.Add(AzureFunctionsCallbackKey, invokeFunction);
 
-            // TODO: Is there a better way? Requests content can't be read multiple
+            // Request content can't be read multiple
             // times, so this forces it to buffer
-            await request.Content.ReadAsStringAsync();
+            await request.Content.LoadIntoBufferAsync();
 
             string receiverId = function.Name.ToLowerInvariant();
             return await receiver.ReceiveAsync(receiverId, context, request);

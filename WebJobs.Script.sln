@@ -202,6 +202,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-Node", "Not
 		sample\NotificationHub-Node\index.js = sample\NotificationHub-Node\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp", "WebHook-Generic-CSharp", "{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7E}"
+	ProjectSection(SolutionItems) = preProject
+		sample\WebHook-Generic-CSharp\function.json = sample\WebHook-Generic-CSharp\function.json
+		sample\WebHook-Generic-CSharp\run.csx = sample\WebHook-Generic-CSharp\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -267,5 +273,6 @@ Global
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{ACEE40C6-DA72-422E-99B6-2FA3824733CE} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
