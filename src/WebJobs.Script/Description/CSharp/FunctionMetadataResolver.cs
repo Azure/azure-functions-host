@@ -47,7 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static readonly Assembly[] SharedAssemblies =
             {
-                typeof(Newtonsoft.Json.JsonConvert).Assembly /*Newtonsoft.Json*/
+                typeof(Newtonsoft.Json.JsonConvert).Assembly, /*Newtonsoft.Json*/
+                typeof(AspNet.WebHooks.IWebHookReceiver).Assembly, /*Microsoft.AspNet.WebHooks.Receivers*/
+                typeof(AspNet.WebHooks.Config.WebHooksConfig).Assembly /*Microsoft.AspNet.WebHooks.Common*/
             };
 
         private static readonly string[] DefaultNamespaceImports =
