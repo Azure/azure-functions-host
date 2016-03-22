@@ -88,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
+                ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
+
                 MethodInfo functionTarget = csharpInvoker.GetFunctionTargetAsync().Result;
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
@@ -97,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Is it the trigger parameter?
                     if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
                     {
-                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata, methodAttributes));
+                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata));
                     }
                     else
                     {
@@ -152,8 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
         }
 
-        private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata,
-            Collection<CustomAttributeBuilder> methodAttributes)
+        private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata)
         {
             ParameterDescriptor triggerParameter = null;
             switch (triggerMetadata.Type)
@@ -174,10 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, parameter.ParameterType);
                     break;
                 case BindingType.HttpTrigger:
-                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, methodAttributes, parameter.ParameterType);
+                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, parameter.ParameterType);
                     break;
                 case BindingType.ManualTrigger:
-                    triggerParameter = ParseManualTrigger(triggerMetadata, methodAttributes, parameter.ParameterType);
+                    triggerParameter = ParseManualTrigger(triggerMetadata, parameter.ParameterType);
                     break;
             }
 

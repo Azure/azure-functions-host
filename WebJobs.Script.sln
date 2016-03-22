@@ -208,6 +208,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp", "W
 		sample\WebHook-Generic-CSharp\run.csx = sample\WebHook-Generic-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "HttpTrigger-Disabled", "{97B9DB7D-8014-46A0-9E51-6C02A99E4D38}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Disabled\function.json = sample\HttpTrigger-Disabled\function.json
+		sample\HttpTrigger-Disabled\index.js = sample\HttpTrigger-Disabled\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -274,5 +280,6 @@ Global
 		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{ACEE40C6-DA72-422E-99B6-2FA3824733CE} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

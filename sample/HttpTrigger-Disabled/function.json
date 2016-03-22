@@ -1,0 +1,14 @@
+﻿{
+  "disabled": true,
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "direction": "in",
+      "methods": [ "get" ]
+    },
+    {
+      "type": "http",
+      "direction": "out"
+    }
+  ]
+}
