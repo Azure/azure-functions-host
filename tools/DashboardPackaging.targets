@@ -2,7 +2,7 @@
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
 	<BUILD_NUMBER Condition=" '$(BUILD_NUMBER)' == '' ">local</BUILD_NUMBER>
-	<SiteExtensionVersion>1.1.$(BUILD_NUMBER)</SiteExtensionVersion>
+	<SiteExtensionVersion>1.2.$(BUILD_NUMBER)-beta</SiteExtensionVersion>
 	<OutputPath>bin</OutputPath>
   </PropertyGroup>
 </Project>
