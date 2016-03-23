@@ -21,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public void Done()
         {
             this.Config.UseEventHub(this.EventHubConfiguration);
+            this.Config.UseEasyTables();
+            this.Config.UseDocumentDB();
+            this.Config.UseNotificationHubs();
         }
     }
 }

@@ -22,12 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             TableName = metadata.TableName;
             Id = metadata.Id;
+            MobileAppUri = metadata.Connection;
+            ApiKey = metadata.ApiKey;
+
             _bindingDirection = metadata.Direction;
         }
 
         public string TableName { get; private set; }
 
         public string Id { get; private set; }
+
+        public string MobileAppUri { get; private set; }
+
+        public string ApiKey { get; private set; }
 
         public override bool HasBindingParameters
         {
@@ -42,13 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             PropertyInfo[] props = new[]
             {
                 typeof(EasyTableAttribute).GetProperty("TableName"),
-                typeof(EasyTableAttribute).GetProperty("Id")
+                typeof(EasyTableAttribute).GetProperty("Id"),
+                typeof(EasyTableAttribute).GetProperty("MobileAppUri"),
+                typeof(EasyTableAttribute).GetProperty("ApiKey"),
             };
 
             object[] propValues = new[]
             {
                 TableName,
-                Id
+                Id,
+                MobileAppUri,
+                ApiKey
             };
 
             ConstructorInfo constructor = typeof(EasyTableAttribute).GetConstructor(System.Type.EmptyTypes);
@@ -67,7 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 EasyTableAttribute attribute = new EasyTableAttribute
                 {
                     TableName = TableName,
-                    Id = Id
+                    Id = Id,
+                    MobileAppUri = MobileAppUri,
+                    ApiKey = ApiKey
                 };
 
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);

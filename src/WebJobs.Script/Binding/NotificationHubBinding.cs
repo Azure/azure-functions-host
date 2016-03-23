@@ -21,10 +21,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             base(config, metadata, access)
         {
             TagExpression = metadata.TagExpression;
+            ConnectionString = metadata.Connection;
+            HubName = metadata.HubName;
+
             _bindingDirection = metadata.Direction;
         }
 
         public string TagExpression { get; private set; }
+
+        public string ConnectionString { get; private set; }
+
+        public string HubName { get; private set; }
 
         public override bool HasBindingParameters
         {
@@ -39,12 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Type attributeType = typeof(NotificationHubAttribute);
             PropertyInfo[] props = new[]
             {
-                attributeType.GetProperty("TagExpression")
+                attributeType.GetProperty("TagExpression"),
+                attributeType.GetProperty("ConnectionString"),
+                attributeType.GetProperty("HubName")
             };
 
             object[] propValues = new object[]
             {
-                TagExpression
+                TagExpression,
+                ConnectionString,
+                HubName
             };
 
             ConstructorInfo constructor = attributeType.GetConstructor(System.Type.EmptyTypes);
@@ -61,7 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 NotificationHubAttribute attribute = new NotificationHubAttribute
                 {
-                    TagExpression = TagExpression
+                    TagExpression = TagExpression,
+                    ConnectionString = ConnectionString,
+                    HubName = HubName
                 };
 
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);

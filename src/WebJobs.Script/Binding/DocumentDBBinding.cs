@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             DatabaseName = metadata.DatabaseName;
             CollectionName = metadata.CollectionName;
             CreateIfNotExists = metadata.CreateIfNotExists;
+            ConnectionString = metadata.Connection;
             _bindingDirection = metadata.Direction;
         }
 
@@ -32,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public string CollectionName { get; private set; }
 
         public bool CreateIfNotExists { get; private set; }
+
+        public string ConnectionString { get; private set; }
 
         public override bool HasBindingParameters
         {
@@ -44,24 +47,29 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             Type attributeType = typeof(DocumentDBAttribute);
+
+            object[] constructorValues = new object[]
+            {
+                DatabaseName,
+                CollectionName
+            };
+
             PropertyInfo[] props = new[]
             {
-                attributeType.GetProperty("DatabaseName"),
-                attributeType.GetProperty("CollectionName"),
-                attributeType.GetProperty("CreateIfNotExists")
+                attributeType.GetProperty("CreateIfNotExists"),
+                attributeType.GetProperty("ConnectionString")
             };
 
             object[] propValues = new object[]
             {
-                DatabaseName,
-                CollectionName,
-                CreateIfNotExists
+                CreateIfNotExists,
+                ConnectionString
             };
 
-            ConstructorInfo constructor = attributeType.GetConstructor(System.Type.EmptyTypes);
+            ConstructorInfo constructor = attributeType.GetConstructor(new[] { typeof(string), typeof(string) });
             return new Collection<CustomAttributeBuilder>()
             {
-                new CustomAttributeBuilder(constructor, new object[] { }, props, propValues)
+                new CustomAttributeBuilder(constructor, constructorValues, props, propValues)
             };
         }
 
@@ -70,11 +78,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // Only output bindings are supported.
             if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
             {
-                DocumentDBAttribute attribute = new DocumentDBAttribute
+                DocumentDBAttribute attribute = new DocumentDBAttribute(DatabaseName, CollectionName)
                 {
-                    DatabaseName = DatabaseName,
-                    CollectionName = CollectionName,
-                    CreateIfNotExists = CreateIfNotExists
+                    CreateIfNotExists = CreateIfNotExists,
+                    ConnectionString = ConnectionString
                 };
 
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
