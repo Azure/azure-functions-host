@@ -27,10 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             this._writer = LogFactory.NewWriter(containerName, table);
         }
 
-
         // SDK notification gives us the full name, which came from Ref.Emit.
         // It's 'Type.Method'.  We just want 'Method'
-        static string GetShortName(string fullname)
+        private static string GetShortName(string fullname)
         {
             int i = fullname.LastIndexOf('.');
             if (i != -1)

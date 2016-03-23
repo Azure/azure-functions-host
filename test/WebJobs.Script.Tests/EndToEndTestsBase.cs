@@ -48,9 +48,9 @@ namespace WebJobs.Script.Tests
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
             Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
 
-            string trace = TestHelpers.RemoveByteOrderMarkAndWhitespace(scriptTrace.Message);
-            Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace("script processed queue message")));
-            Assert.True(trace.Contains(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent)));
+            string trace = scriptTrace.Message;
+            Assert.True(trace.Contains("script processed queue message"));
+            Assert.True(trace.Replace(" ", string.Empty).Contains(messageContent.Replace(" ", string.Empty)));
         }
 
         protected async Task DocumentDBTest()
