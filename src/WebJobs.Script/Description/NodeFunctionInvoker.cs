@@ -248,9 +248,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
             {
-                string text = (string)p;
-                traceWriter.Verbose(text);
-                fileTraceWriter.Verbose(text);
+                string text = p as string;
+                if (text != null)
+                {
+                    traceWriter.Verbose(text);
+                    fileTraceWriter.Verbose(text);
+                } 
+
                 return Task.FromResult<object>(null);
             });
 
