@@ -321,6 +321,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 input = inputValues;
             }
+            else if (typeof(Stream).IsAssignableFrom(triggerParameterType))
+            {
+                Stream inputStream = (Stream)input;
+                using (StreamReader sr = new StreamReader(inputStream))
+                {
+                    input = sr.ReadToEnd();
+                }
+            }
 
             bindings.Add(_trigger.Name, input);
 
