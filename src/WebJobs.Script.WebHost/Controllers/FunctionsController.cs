@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -70,6 +71,10 @@ namespace WebJobs.Script.WebHost.Controllers
                     // then invoke this callback.
                     Func<HttpRequestMessage, Task<HttpResponseMessage>> invokeFunction = async (req) =>
                     {
+                        // Reset the content stream before passing the request down to the function
+                        Stream stream = await req.Content.ReadAsStreamAsync();
+                        stream.Seek(0, SeekOrigin.Begin);
+
                         return await _scriptHostManager.HandleRequestAsync(function, req, cancellationToken);
                     };
                     response = await _webHookReceiverManager.HandleRequestAsync(function, request, invokeFunction);
