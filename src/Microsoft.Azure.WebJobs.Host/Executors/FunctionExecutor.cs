@@ -138,9 +138,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 fastItem.EndTime = DateTime.UtcNow;
                 fastItem.Arguments = functionCompletedMessage.Arguments;
                 
-                if (functionCompletedMessage != null && functionCompletedMessage.Failure != null)
+                if (exceptionInfo != null)
                 {
-                    fastItem.ErrorDetails = functionCompletedMessage.Failure.ExceptionDetails;
+                    var ex = exceptionInfo.SourceException;
+                    if (ex.InnerException != null)
+                    {
+                        ex = ex.InnerException;
+                    }
+                    fastItem.ErrorDetails = ex.Message;
                 }
                 await _fastLogger.AddAsync(fastItem);
             }

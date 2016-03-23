@@ -17,7 +17,7 @@ namespace Dashboard.Data
                 FunctionShortName = entity.DisplayName,
                 DisplayTitle = entity.DisplayName, // skips Argument check
                 StartTime = entity.StartTime,
-                Succeeded = true, // Must be set to T/F if EndTime is set
+                Succeeded = entity.IsSucceeded(),
                 EndTime = entity.EndTime
             };
         }
@@ -33,16 +33,19 @@ namespace Dashboard.Data
             return new FunctionInstanceSnapshot
             {
                 Id = entity.FunctionInstanceId,
+                ParentId = entity.ParentId,
                 FunctionFullName = entity.FunctionName,
                 FunctionShortName = entity.FunctionName,
 
                 StartTime = entity.StartTime,
-                EndTime = entity.EndTime,
+                EndTime = entity.EndTime,                
 
+                Reason = entity.TriggerReason,
                 InlineOutputText = entity.LogOutput,
 
                 Succeeded = entity.IsSucceeded(),
                 ExceptionMessage = entity.ErrorDetails,
+                ExceptionType = "Failure", // generic failure message                
 
                 Arguments = arguments
             };

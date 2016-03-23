@@ -150,7 +150,7 @@ namespace Dashboard.Data
                 functionName => _reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
                 {
                     FunctionName = functionName,
-                    MaximumResults = 100,
+                    MaximumResults = maximumResults,
                     Start = DateTime.MinValue, 
                     End = endTime                    
                 }, null));

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         /// <summary>
         /// Maximum length of LogOutput that will be captured. 
         /// </summary>
-        public const int MaxLogOutputLength = 1000;
+        public const int MaxLogOutputLength = 2000;
 
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }

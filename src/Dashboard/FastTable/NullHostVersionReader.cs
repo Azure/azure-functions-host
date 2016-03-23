@@ -5,12 +5,10 @@ namespace Dashboard.Data
 {
     internal class NullHostVersionReader : IHostVersionReader
     {
+        // contract is to only report unsupported versions. 
         public HostVersion[] ReadAll()
         {
-            return new HostVersion[]
-                {
-                     new HostVersion { Label = "Azure", Link = "http://Azure.com" }
-                };
+            return new HostVersion[] { };
         }
     }
 }

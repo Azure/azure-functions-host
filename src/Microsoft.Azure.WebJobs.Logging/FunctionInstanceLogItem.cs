@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
         /// <summary>true if this function succeeded.</summary>
-        public static bool IsSucceeded(this FunctionInstanceLogItem item)
+        public static bool IsSucceeded(this IFunctionInstanceBaseEntry item)
         {
             if (item == null)
             {
