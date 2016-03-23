@@ -3,12 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -92,6 +94,12 @@ namespace WebJobs.Script.Tests
                 { "input", testData }
             };
             await Fixture.Host.CallAsync("ManualTrigger", arguments);
+
+            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
+            Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
+            JObject logEntry = JObject.Parse(scriptTrace.Message);
+            Assert.Equal("Node.js manually triggered function called!", logEntry["message"]);
+            Assert.Equal(testData, logEntry["input"]);
         }
 
         [Fact]

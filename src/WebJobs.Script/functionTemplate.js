@@ -1,9 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-var f = require('{0}');
+var f = require('{0}'),
+    util = require('util');
 
 return function (context, callback) {{
+    var origLog = context.log;
+    context.log = function(value) {{
+        origLog(util.inspect(value));
+    }};
+
     context.done = function(err, result) {{
         if (err) {{
             callback(err);
