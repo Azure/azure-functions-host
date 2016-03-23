@@ -69,7 +69,7 @@ namespace WebJobs.Script.Tests
             Assert.Equal(doc.Id, id);
         }
 
-        protected async Task NotificationHubTest()
+        protected async Task NotificationHubTest(string functionName)
         {
             // NotificationHub tests need the following environment vars:
             // "AzureWebJobsNotificationHubsConnectionString" -- the connection string for NotificationHubs
@@ -78,11 +78,27 @@ namespace WebJobs.Script.Tests
             {
                 { "input",  "Hello" }
             };
-            
-            //Only verifying the call succeeds. It is not possible to verify
-            //actual push notificaiton is delivered as they are sent only to 
-            //client applications that registered with NotificationHubs
-            await Fixture.Host.CallAsync("NotificationHubOut", arguments);
+
+            try
+            {
+                //Only verifying the call succeeds. It is not possible to verify
+                //actual push notificaiton is delivered as they are sent only to 
+                //client applications that registered with NotificationHubs
+                await Fixture.Host.CallAsync(functionName, arguments);
+            }
+            catch (Exception ex)
+            {
+                // Node: Check innerException, CSharp: check innerExcpetion.innerException
+                if (VerifyNotificationHubExceptionMessage(ex.InnerException)
+                    || VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException))
+                {
+                    //Expected if using NH without any registrations
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         protected async Task EasyTablesTest(bool writeToQueue = true)
@@ -196,6 +212,17 @@ namespace WebJobs.Script.Tests
         {
             string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
             return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
+        }
+
+        protected static bool VerifyNotificationHubExceptionMessage(Exception exception)
+        {
+            if ((exception.Source == "Microsoft.Azure.NotificationHubs")
+                && exception.Message.Contains("notification has no target applications"))
+            {
+                //Expected if using NH without any registrations
+                return true;
+            }
+            return false;
         }
     }
 }

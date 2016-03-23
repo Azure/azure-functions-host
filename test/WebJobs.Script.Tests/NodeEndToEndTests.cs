@@ -45,10 +45,10 @@ namespace WebJobs.Script.Tests
             await DocumentDBTest();
         }
 
-        [Fact(Skip = "Currently broken")]
+        [Fact]
         public async Task NotificationHub()
         {
-            await NotificationHubTest();
+            await NotificationHubTest("NotificationHubOut");
         }
 
         [Fact]
