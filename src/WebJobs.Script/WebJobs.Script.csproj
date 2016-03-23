@@ -288,6 +288,7 @@
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
+    <Compile Include="Diagnostics\ScriptHostStartedEvent.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\ScriptHost.cs" />

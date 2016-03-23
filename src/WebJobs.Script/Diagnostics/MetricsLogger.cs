@@ -15,5 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public void EndEvent(MetricEvent metricEvent)
         {
         }
+
+        public void HostStartedEvent(MetricEvent metricEvent)
+        {
+        }
     }
 }

@@ -2,9 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Diagnostics.Tracing;
 
 namespace WebJobs.Script.WebHost.Diagnostics
@@ -41,6 +47,64 @@ namespace WebJobs.Script.WebHost.Diagnostics
                     }
                 }
             }
+        }
+
+        public static void HostStartedEvent(ScriptHost scriptHost)
+        {
+            if (scriptHost == null
+                || scriptHost.Functions == null)
+            {
+                return;
+            }
+
+            var siteName = GetNormalizedString(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+
+            foreach (var function in scriptHost.Functions)
+            {
+                if (function == null)
+                {
+                    continue;
+                }
+                string fileExtension = null;
+                if (function.Metadata != null
+                    && !string.IsNullOrEmpty(function.Metadata.Source))
+                {
+                    fileExtension = Path.GetExtension(function.Metadata.Source);
+                    if (!string.IsNullOrEmpty(fileExtension))
+                    {
+                        fileExtension = fileExtension.ToLower(CultureInfo.InvariantCulture).TrimStart(new[] { '.' });
+                    }
+                }
+
+                MetricEventSource.Log.RaiseFunctionsInfoEvent(
+                    siteName,
+                    GetNormalizedString(function.Name),
+                    function.Metadata != null
+                        ? SerializeBindings(function.Metadata.InputBindings)
+                        : GetNormalizedString(null),
+                    function.Metadata != null
+                        ? SerializeBindings(function.Metadata.OutputBindings) 
+                        : GetNormalizedString(null),
+                    GetNormalizedString(fileExtension),
+                    function.Metadata != null ? function.Metadata.IsDisabled : false);
+            }
+        }
+
+        private static string SerializeBindings(IEnumerable<BindingMetadata> bindings)
+        {
+            if (bindings != null)
+            {
+                return string.Join(",", bindings.ToList().Select(b => b.Type.ToString()));
+            }
+            else
+            {
+                return GetNormalizedString(null);
+            }
+        }
+
+        private static string GetNormalizedString(string input)
+        {
+            return input ?? string.Empty;
         }
 
         private class FunctionActivityTracker : IDisposable
@@ -132,19 +196,28 @@ namespace WebJobs.Script.WebHost.Diagnostics
             {
                 MetricEventSource.Log.RaiseFunctionsMetricEvent(executionId, executionTimeSpan, executionCount, executionStage);
             }
+        }
 
-            [EventSource(Guid = "08D0D743-5C24-43F9-9723-98277CEA5F9B")]
-            private sealed class MetricEventSource : EventSource
+        [EventSource(Guid = "08D0D743-5C24-43F9-9723-98277CEA5F9B")]
+        private sealed class MetricEventSource : EventSource
+        {
+            internal static readonly MetricEventSource Log = new MetricEventSource();
+
+            [Event(57906, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
+            public void RaiseFunctionsMetricEvent(string executionId, ulong executionTimeSpan, ulong executionCount, string executionStage)
             {
-                internal static readonly MetricEventSource Log = new MetricEventSource();
-
-                [Event(57906, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-                public void RaiseFunctionsMetricEvent(string executionId, ulong executionTimeSpan, ulong executionCount, string executionStage)
+                if (IsEnabled())
                 {
-                    if (IsEnabled())
-                    {
-                        WriteEvent(57906, executionId, executionTimeSpan, executionCount, executionStage);
-                    }
+                    WriteEvent(57906, executionId, executionTimeSpan, executionCount, executionStage);
+                }
+            }
+
+            [Event(57908, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
+            public void RaiseFunctionsInfoEvent(string siteName, string functionName, string inputBindings, string outputBindings, string fileExtension, bool isDisabled)
+            {
+                if (IsEnabled())
+                {
+                    WriteEvent(57908, siteName, functionName, inputBindings, outputBindings, fileExtension, isDisabled);
                 }
             }
         }

@@ -20,5 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// </summary>
         /// <param name="metricEvent">A previously started event.</param>
         void EndEvent(MetricEvent metricEvent);
+
+        /// <summary>
+        /// Singleton event that gets called when Host is started
+        /// </summary>
+        /// <param name="metricEvent">Script Host instance</param>
+        void HostStartedEvent(MetricEvent metricEvent);
     }
 }

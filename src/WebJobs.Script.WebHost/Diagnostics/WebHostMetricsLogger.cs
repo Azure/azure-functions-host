@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace WebJobs.Script.WebHost.Diagnostics
@@ -25,6 +27,15 @@ namespace WebJobs.Script.WebHost.Diagnostics
             {
                 startedEvent.EndTime = DateTime.Now;
                 MetricsEventManager.FunctionCompleted();
+            }
+        }
+
+        public void HostStartedEvent(MetricEvent metricEvent)
+        {
+            ScriptHostStartedEvent scriptHostStartedEvent = metricEvent as ScriptHostStartedEvent;
+            if (scriptHostStartedEvent != null)
+            {
+                MetricsEventManager.HostStartedEvent(scriptHostStartedEvent.ScriptHost);
             }
         }
     }
