@@ -6,10 +6,8 @@ var f = require('{0}'),
 
 return function (context, callback) {{
     var origLog = context.log;
-    context.log = function(value) {{
-        if (!util.isString(value)) {{
-            value = util.inspect(value);
-        }}
+    context.log = function() {{
+        value = util.format.apply(null, arguments);
         origLog(value);
     }};
 

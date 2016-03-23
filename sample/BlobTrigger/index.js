@@ -1,5 +1,5 @@
 ﻿module.exports = function (context, blob) {
-    console.log('Node.js blob trigger function processed blob ' + blob);
+    context.log('Node.js blob trigger function processed blob %s' , blob);
     context.done(null, {
         output: blob
     });

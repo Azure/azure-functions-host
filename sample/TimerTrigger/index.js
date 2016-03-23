@@ -1,10 +1,10 @@
 ﻿module.exports = function (context, timerInfo) {
     var timeStamp = new Date().toISOString();
-    context.log('Node.js timer trigger function ran! ' + timeStamp);
+    context.log('Node.js timer trigger function ran! %s', timeStamp);
 
-    console.log('PastDue: ' + timerInfo.isPastDue);
-    console.log('Last: ' + timerInfo.last);
-    console.log('Next: ' + timerInfo.next);
+    context.log('PastDue: %s', timerInfo.isPastDue);
+    context.log('Last: %s', timerInfo.last);
+    context.log('Next: %s', timerInfo.next);
 
     context.bindings.message = {
         id: Math.floor(Math.random() * 10000) + 1,
