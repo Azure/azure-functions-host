@@ -7,7 +7,10 @@ var f = require('{0}'),
 return function (context, callback) {{
     var origLog = context.log;
     context.log = function(value) {{
-        origLog(util.inspect(value));
+        if (!util.isString(value)) {{
+            value = util.inspect(value);
+        }}
+        origLog(value);
     }};
 
     context.done = function(err, result) {{
