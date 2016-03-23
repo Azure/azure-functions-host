@@ -55,26 +55,42 @@ namespace WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/functions/{name}")]
-        public FunctionStatus Get(string name)
+        [Route("admin/functions/{name}/status")]
+        public FunctionStatus GetFunctionStatus(string name)
         {
             FunctionStatus status = new FunctionStatus();
             Collection<string> functionErrors = null;
 
-            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
-            if (function == null)
+            // first see if the function has any errors
+            if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
             {
-                // if the function doesn't exist in the host, see if it the function
-                // has errors
-                if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
+                status.Errors = functionErrors;
+            }
+            else
+            {
+                // if we don't have any errors registered, make sure the function exists
+                // before returning empty errors
+                FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+                if (function == null)
                 {
-                    status.Errors = functionErrors;
-                }
-                else
-                {
-                    // we don't know anything about this function
                     throw new HttpResponseException(HttpStatusCode.NotFound);
                 }
+            }
+
+            return status;
+        }
+
+        [HttpGet]
+        [Route("admin/host/status")]
+        public HostStatus GetHostStatus()
+        {
+            HostStatus status = new HostStatus();
+
+            var lastError = _scriptHostManager.LastError;
+            if (lastError != null)
+            {
+                status.Errors = new Collection<string>();
+                status.Errors.Add(lastError.Message);
             }
 
             return status;

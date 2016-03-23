@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -58,6 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        /// <summary>
+        /// Gets the last host <see cref="Exception"/> that has occurred.
+        /// </summary>
+        public Exception LastError { get; private set; }
+
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
             // Start the host and restart it if requested. Host Restarts will happen when
@@ -92,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // only after ALL initialization is complete do we set this flag
                     IsRunning = true;
+                    LastError = null;
 
                     // Wait for a restart signal. This event will automatically reset.
                     // While we're restarting, it is possible for another restart to be
@@ -112,6 +119,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (Exception ex)
                 {
+                    IsRunning = false;
+                    LastError = ex;
+
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
                     if (_traceWriter != null)

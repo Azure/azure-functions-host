@@ -286,6 +286,7 @@
     <Compile Include="HostSecrets.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Models\FunctionStatus.cs" />
+    <Compile Include="Models\HostStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SecretManager.cs" />
     <Compile Include="SuspendedSynchronizationContextScope.cs" />

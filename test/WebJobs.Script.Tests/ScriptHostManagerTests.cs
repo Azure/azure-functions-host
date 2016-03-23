@@ -87,6 +87,48 @@ namespace WebJobs.Script.Tests
             hostMock.Protected().Verify("Dispose", Times.Once(), true);
         }
 
+        [Fact]
+        public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
+        {
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                TraceWriter = NullTraceWriter.Instance
+            };
+
+            var exception = new Exception("Kaboom!");
+            var hostMock = new Mock<TestScriptHost>(config);
+            var factoryMock = new Mock<IScriptHostFactory>();
+            factoryMock.Setup(f => f.Create(It.IsAny<ScriptHostConfiguration>()))
+                .Returns(() =>
+                {
+                    if (exception != null)
+                    {
+                        throw exception;
+                    }
+                    return hostMock.Object;
+                });
+
+            var target = new Mock<ScriptHostManager>(config, factoryMock.Object);
+            Task taskIgnore = Task.Run(() => target.Object.RunAndBlock());
+
+            // we expect a host exception immediately
+            await Task.Delay(2000);
+
+            Assert.False(target.Object.IsRunning);
+            Assert.Same(exception, target.Object.LastError);
+
+            // now verify that if no error is thrown on the next iteration
+            // the cached error is cleared
+            exception = null;
+            await TestHelpers.Await(() =>
+            {
+                return target.Object.IsRunning;
+            });
+
+            Assert.Null(target.Object.LastError);
+        }
+
         // Update the manifest for the timer function
         // - this will cause a file touch which cause ScriptHostManager to notice and update
         // - set to a new output location so that we can ensure we're getting new changes. 

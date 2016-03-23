@@ -246,7 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             catch (Exception ex)
             {
-                scriptHost.TraceWriter.Error("ScriptHost initialization failed", ex);
+                if (scriptHost.TraceWriter != null)
+                {
+                    scriptHost.TraceWriter.Error("ScriptHost initialization failed", ex);
+                }
                 throw;
             }
 
