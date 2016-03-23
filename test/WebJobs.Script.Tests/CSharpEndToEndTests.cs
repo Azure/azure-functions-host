@@ -31,17 +31,17 @@ namespace WebJobs.Script.Tests
             await DocumentDBTest();
         }
 
-        [Fact(Skip = "Currently broken")]
+        [Fact]
         public async Task NotificationHub()
         {
-            await NotificationHubTest();
+            await NotificationHubTest("NotificationHubOut");
         }
 
-        [Fact(Skip = "Currently broken")]
+        [Fact]
         public async Task NotificationHub_Out_Notification()
         {
             await Fixture.TouchProjectJson("NotificationHubOutNotification");
-            await NotificationHubTest();
+            await NotificationHubTest("NotificationHubOutNotification");
         }
 
         [Fact]
