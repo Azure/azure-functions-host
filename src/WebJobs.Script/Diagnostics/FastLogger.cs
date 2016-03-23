@@ -27,12 +27,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             this._writer = LogFactory.NewWriter(containerName, table);
         }
 
+
+        // SDK notification gives us the full name, which came from Ref.Emit.
+        // It's 'Type.Method'.  We just want 'Method'
+        static string GetShortName(string fullname)
+        {
+            int i = fullname.LastIndexOf('.');
+            if (i != -1)
+            {
+                return fullname.Substring(i + 1);
+            }
+            return fullname;
+        }
+
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Convert Host to Protocol so we can log it 
             var settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
             var jsonClone = JsonConvert.SerializeObject(item, settings);
             var item2 = JsonConvert.DeserializeObject<FunctionInstanceLogItem>(jsonClone);
+            item2.FunctionName = GetShortName(item2.FunctionName);
             await _writer.AddAsync(item2);
         }
 
