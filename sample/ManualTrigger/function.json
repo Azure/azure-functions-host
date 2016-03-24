@@ -3,6 +3,18 @@
     {
       "type": "manualTrigger",
       "direction": "in"
+    },
+    {
+      "type": "blob",
+      "name": "status",
+      "direction": "in",
+      "path": "samples-input/status"
+    },
+    {
+      "type": "blob",
+      "name": "result",
+      "direction": "out",
+      "path": "samples-output/result"
     }
   ]
 }

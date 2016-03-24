@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var nonTriggerInputBindings = _inputBindings.Where(p => !p.Metadata.IsTrigger);
             foreach (var inputBinding in nonTriggerInputBindings)
             {
-                string value = null;
+                string stringValue = null;
                 using (MemoryStream stream = new MemoryStream())
                 {
                     BindingContext bindingContext = new BindingContext
@@ -157,12 +157,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                     stream.Seek(0, SeekOrigin.Begin);
                     StreamReader sr = new StreamReader(stream);
-                    value = sr.ReadToEnd();
+                    stringValue = sr.ReadToEnd();
                 }
 
-                bindings.Add(inputBinding.Metadata.Name, value);
+                // if the string input is json, convert to an object
+                object convertedValue = stringValue;
+                convertedValue = TryConvertJsonToObject(stringValue);
 
-                inputs.Add(value);
+                bindings.Add(inputBinding.Metadata.Name, convertedValue);
+                inputs.Add(convertedValue);
             }
 
             executionContext["inputs"] = inputs;
@@ -280,12 +283,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Type triggerParameterType = input.GetType();
             if (triggerParameterType == typeof(string))
             {
-                // if the input is json, convert to a json object
-                Dictionary<string, object> jsonObject;
-                if (TryDeserializeJsonObject((string)input, out jsonObject))
-                {
-                    input = jsonObject;
-                }
+                // if the input is json, convert to an object
+                input = TryConvertJsonToObject((string)input);
             }
             else if (triggerParameterType == typeof(HttpRequestMessage))
             {
@@ -333,6 +332,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindings.Add(_trigger.Name, input);
 
             return context;
+        }
+
+        private object TryConvertJsonToObject(string input)
+        {
+            object result = input;
+
+            // if the input is json, convert to an object
+            Dictionary<string, object> jsonObject;
+            if (TryDeserializeJsonObject(input, out jsonObject))
+            {
+                result = jsonObject;
+            }
+
+            return result;
         }
 
         private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request)

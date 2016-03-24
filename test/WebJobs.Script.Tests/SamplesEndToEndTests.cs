@@ -30,6 +30,31 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ManualTrigger_Invoke_Succeeds()
+        {
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference("result");
+            outputBlob.DeleteIfExists();
+
+            CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-input");
+            CloudBlockBlob statusBlob = inputContainer.GetBlockBlobReference("status");
+            statusBlob.UploadText("{ \"level\": 4, \"detail\": \"All systems are normal :)\" }");
+
+            string uri = "admin/functions/manualtrigger";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+            request.Content = new StringContent("{ 'input': 'Hello Manual Trigger!' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+            // wait for completion
+            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+            Assert.Equal("All systems are normal :)", result);
+        }
+
+        [Fact]
         public async Task Home_Get_Succeeds()
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
