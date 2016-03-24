@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     stringValue = sr.ReadToEnd();
                 }
 
-                // if the string input is json, convert to an object
+                // if the input is json, try converting to an object
                 object convertedValue = stringValue;
                 convertedValue = TryConvertJsonToObject(stringValue);
 
@@ -280,13 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "bind", bind }
             };
 
-            Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(string))
-            {
-                // if the input is json, convert to an object
-                input = TryConvertJsonToObject((string)input);
-            }
-            else if (triggerParameterType == typeof(HttpRequestMessage))
+            if (input is HttpRequestMessage)
             {
                 // convert the request to a json object
                 HttpRequestMessage request = (HttpRequestMessage)input;
@@ -306,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     context["req"] = requestObject;
                 }
             }
-            else if (triggerParameterType == typeof(TimerInfo))
+            else if (input is TimerInfo)
             {
                 TimerInfo timerInfo = (TimerInfo)input;
                 var inputValues = new Dictionary<string, object>()
@@ -320,13 +314,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 input = inputValues;
             }
-            else if (typeof(Stream).IsAssignableFrom(triggerParameterType))
+            else if (input is Stream)
             {
                 Stream inputStream = (Stream)input;
                 using (StreamReader sr = new StreamReader(inputStream))
                 {
                     input = sr.ReadToEnd();
                 }
+            }
+            else
+            {
+                // TODO: Handle case where the input type is something
+                // that we can't convert properly
+            }
+
+            if (input is string)
+            {
+                // if the input is json, try converting to an object
+                input = TryConvertJsonToObject((string)input);
             }
 
             bindings.Add(_trigger.Name, input);
@@ -338,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object result = input;
 
-            // if the input is json, convert to an object
+            // if the input is json, try converting to an object
             Dictionary<string, object> jsonObject;
             if (TryDeserializeJsonObject(input, out jsonObject))
             {
