@@ -18,6 +18,8 @@ namespace WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
+        private IMetricsLogger _metricsLogger;
+
         public WebScriptHostManager(ScriptHostConfiguration config) : base(config)
         {
         }
@@ -86,15 +88,18 @@ namespace WebJobs.Script.WebHost
         protected override void OnInitializeConfig(JobHostConfiguration config)
         {
             base.OnInitializeConfig(config);
-
+            _metricsLogger = new WebHostMetricsLogger();
             // Add our WebHost specific services
-            config.AddService<IMetricsLogger>(new WebHostMetricsLogger());
+            config.AddService<IMetricsLogger>(_metricsLogger);
         }
 
         protected override void OnHostStarted()
         {
             base.OnHostStarted();
-
+            if (_metricsLogger != null)
+            {
+                _metricsLogger.HostStartedEvent(new ScriptHostStartedEvent(Instance));
+            }
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
