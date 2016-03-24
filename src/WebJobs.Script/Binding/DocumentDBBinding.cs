@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             CollectionName = metadata.CollectionName;
             CreateIfNotExists = metadata.CreateIfNotExists;
             ConnectionString = metadata.Connection;
+            Id = metadata.Id;
             _bindingDirection = metadata.Direction;
         }
 
@@ -35,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public bool CreateIfNotExists { get; private set; }
 
         public string ConnectionString { get; private set; }
+
+        public string Id { get; private set; }
 
         public override bool HasBindingParameters
         {
@@ -57,13 +60,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             PropertyInfo[] props = new[]
             {
                 attributeType.GetProperty("CreateIfNotExists"),
-                attributeType.GetProperty("ConnectionString")
+                attributeType.GetProperty("ConnectionString"),
+                attributeType.GetProperty("Id")
             };
 
             object[] propValues = new object[]
             {
                 CreateIfNotExists,
-                ConnectionString
+                ConnectionString,
+                Id
             };
 
             ConstructorInfo constructor = attributeType.GetConstructor(new[] { typeof(string), typeof(string) });
@@ -75,16 +80,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            // Only output bindings are supported.
-            if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
+            DocumentDBAttribute attribute = new DocumentDBAttribute(DatabaseName, CollectionName)
             {
-                DocumentDBAttribute attribute = new DocumentDBAttribute(DatabaseName, CollectionName)
-                {
-                    CreateIfNotExists = CreateIfNotExists,
-                    ConnectionString = ConnectionString
-                };
+                CreateIfNotExists = CreateIfNotExists,
+                ConnectionString = ConnectionString,
+                Id = Id
+            };
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
 
-                RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+            if (Access == FileAccess.Read && _bindingDirection == BindingDirection.In)
+            {
+                JObject input = await context.Binder.BindAsync<JObject>(runtimeContext);
+                if (input != null)
+                {
+                    byte[] byteArray = Encoding.UTF8.GetBytes(input.ToString());
+                    using (MemoryStream stream = new MemoryStream(byteArray))
+                    {
+                        stream.CopyTo(context.Value);
+                    }
+                }
+            }
+            else if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
+            {
                 IAsyncCollector<JObject> collector = await context.Binder.BindAsync<IAsyncCollector<JObject>>(runtimeContext);
                 byte[] bytes;
                 using (MemoryStream ms = new MemoryStream())

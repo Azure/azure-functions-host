@@ -22,7 +22,7 @@ namespace WebJobs.Script.Tests
         [Fact]
         public async Task EasyTables()
         {
-            await EasyTablesTest();
+            await EasyTablesTest(isCSharp: true);
         }
 
         [Fact]
