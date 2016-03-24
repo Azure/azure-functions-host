@@ -26,6 +26,7 @@ namespace Dashboard.Filters
                 throw new ArgumentNullException("filterContext");
             }
 
+            filterContext.Controller.ViewBag.DisableInvoke = _context.DisableInvoke;
             filterContext.Controller.ViewBag.DashboardHasSetupError = _context.HasSetupError;
             filterContext.Controller.ViewBag.DashboardConnectionStringName = 
                 DashboardAccountContext.PrefixedConnectionStringName;

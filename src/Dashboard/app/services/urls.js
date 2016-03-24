@@ -1,4 +1,4 @@
-﻿angular.module('dashboard').service('urls', function(siteRoot) {
+﻿angular.module('dashboard').service('urls', function (siteRoot, disableInvoke) {
     return {
         jobs: function() {
             return "#/jobs";
@@ -21,11 +21,11 @@
         functionDefinition: function(functionId) {
             return '#/functions/definitions/' + encodeURIComponent(functionId);
         },
-        replayFunction: function(invocationId) {
+        replayFunction: disableInvoke ? null : function (invocationId) {
             //return '#/functions/invocations/' + encodeURIComponent(functionId) + '/replay;
             return siteRoot + 'function/replay?parentId=' + encodeURIComponent(invocationId);
         },
-        runFunction: function(functionId) {
+        runFunction: disableInvoke ? null : function(functionId) {
             //return '#/functions/definitions/' + encodeURIComponent(functionId) + '/run;
             return siteRoot + 'function/run?functionId=' + encodeURIComponent(functionId);
         },

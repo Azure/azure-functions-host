@@ -10,7 +10,7 @@
         </h3>
 
         <p>
-            <a class="btn btn-primary" href="{{_urls.replayFunction(invocationId)}}">Replay Function</a>
+            <a class="btn btn-primary" ng-if="_urls.replayFunction!=null" href="{{_urls.replayFunction(invocationId)}}">Replay Function</a>
 
             <span ng-if="model.invocation.isRunning()">
                 <button ng-if="!model.isAborted && !aborting" class="btn btn-danger" ng-click="abort()"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>

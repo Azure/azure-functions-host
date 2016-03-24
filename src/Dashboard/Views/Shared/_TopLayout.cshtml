@@ -12,6 +12,7 @@
     <script>
         var dashboard = angular.module('dashboard');
         dashboard.value('siteRoot', '@Url.Content("~/")');
+        dashboard.value('disableInvoke', @(ViewBag.DisableInvoke ? "true" : "false"));
         @if (ViewBag.DashboardHasSetupError)
         {
             <text>

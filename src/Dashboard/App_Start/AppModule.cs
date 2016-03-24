@@ -46,6 +46,8 @@ namespace Dashboard
 
             if (logTable != null)
             {
+                context.DisableInvoke = true;
+
                 // fast table reader.                 
                 var reader = LogFactory.NewReader(logTable);
                 Bind<ILogReader>().ToConstant(reader);

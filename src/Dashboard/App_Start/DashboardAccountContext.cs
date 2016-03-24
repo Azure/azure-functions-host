@@ -30,5 +30,8 @@ namespace Dashboard
 
         [CLSCompliant(false)]
         public CloudStorageAccount StorageAccount { get; internal set; }
+
+        // True for hosts that don't support invoke from the dashboard. 
+        public bool DisableInvoke { get; set; }
     }
 }
