@@ -20,5 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// </summary>
         /// <param name="metricEvent">A previously started event.</param>
         void EndEvent(MetricEvent metricEvent);
+
+        /// <summary>
+        /// Raises an event.
+        /// </summary>
+        /// <param name="metricEvent">The event.</param>
+        void LogEvent(MetricEvent metricEvent);
     }
 }

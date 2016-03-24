@@ -281,6 +281,7 @@
     <Compile Include="Description\HttpBindingMetadata.cs" />
     <Compile Include="Description\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\QueueBindingMetadata.cs" />
+    <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Description\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\TableBindingMetadata.cs" />
     <Compile Include="Description\TimerBindingMetadata.cs" />
@@ -289,6 +290,7 @@
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
+    <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\ScriptHost.cs" />

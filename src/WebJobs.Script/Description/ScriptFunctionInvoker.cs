@@ -22,9 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
-        private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
+        private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.Powershell, ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash, ScriptType.FSharp };
         private readonly string _scriptFilePath;
-        private readonly string _scriptType;
         private readonly IMetricsLogger _metrics;
 
         private readonly Collection<FunctionBinding> _inputBindings;
@@ -34,51 +33,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             : base(host, functionMetadata)
         {
             _scriptFilePath = scriptFilePath;
-            _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
         }
 
-        public static bool IsSupportedScriptType(string extension)
+        public static bool IsSupportedScriptType(ScriptType scriptType)
         {
-            if (string.IsNullOrEmpty(extension))
-            {
-                throw new ArgumentNullException("extension");
-            }
-
-            string scriptType = extension.ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             return _supportedScriptTypes.Contains(scriptType);
         }
 
         public override async Task Invoke(object[] parameters)
         {
             string scriptHostArguments;
-            switch (_scriptType)
+            switch (Metadata.ScriptType)
             {
-                case "ps1":
+                case ScriptType.Powershell:
                     scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, parameters);
                     break;
-                case "cmd":
-                case "bat":
+                case ScriptType.WindowsBatch:
                     scriptHostArguments = string.Format("/c \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;
-                case "py":
+                case ScriptType.Python:
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("python.exe", scriptHostArguments, parameters);
                     break;
-                case "php":
+                case ScriptType.PHP:
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("php.exe", scriptHostArguments, parameters);
                     break;
-                case "sh":
+                case ScriptType.Bash:
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     string bashPath = ResolveBashPath();
                     await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
                     break;
-                case "fsx":
+                case ScriptType.FSharp:
                     scriptHostArguments = string.Format("/c fsi.exe \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
                     break;

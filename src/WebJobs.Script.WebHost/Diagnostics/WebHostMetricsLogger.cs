@@ -27,5 +27,14 @@ namespace WebJobs.Script.WebHost.Diagnostics
                 MetricsEventManager.FunctionCompleted();
             }
         }
+
+        public void LogEvent(MetricEvent metricEvent)
+        {
+            HostStarted hostStartedEvent = metricEvent as HostStarted;
+            if (hostStartedEvent != null)
+            {
+                MetricsEventManager.HostStarted(hostStartedEvent.Host);
+            }
+        }
     }
 }

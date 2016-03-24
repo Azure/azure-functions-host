@@ -25,8 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(functionMetadata.Source).ToLower(CultureInfo.InvariantCulture);
-            if (!ScriptFunctionInvoker.IsSupportedScriptType(extension))
+            if (!ScriptFunctionInvoker.IsSupportedScriptType(functionMetadata.ScriptType))
             {
                 return false;
             }

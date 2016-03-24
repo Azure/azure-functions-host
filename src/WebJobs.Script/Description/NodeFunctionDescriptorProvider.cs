@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -25,8 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(functionMetadata.Source).ToLower(CultureInfo.InvariantCulture);
-            if (!(extension == ".js" || string.IsNullOrEmpty(extension)))
+            if (functionMetadata.ScriptType != ScriptType.Javascript)
             {
                 return false;
             }
