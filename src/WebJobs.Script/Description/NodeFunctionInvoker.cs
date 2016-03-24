@@ -280,13 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "bind", bind }
             };
 
-            Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(string))
-            {
-                // if the input is json, convert to an object
-                input = TryConvertJsonToObject((string)input);
-            }
-            else if (triggerParameterType == typeof(HttpRequestMessage))
+            if (input is HttpRequestMessage)
             {
                 // convert the request to a json object
                 HttpRequestMessage request = (HttpRequestMessage)input;
@@ -306,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     context["req"] = requestObject;
                 }
             }
-            else if (triggerParameterType == typeof(TimerInfo))
+            else if (input is TimerInfo)
             {
                 TimerInfo timerInfo = (TimerInfo)input;
                 var inputValues = new Dictionary<string, object>()
@@ -320,13 +314,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 input = inputValues;
             }
-            else if (typeof(Stream).IsAssignableFrom(triggerParameterType))
+            else if (input is Stream)
             {
                 Stream inputStream = (Stream)input;
                 using (StreamReader sr = new StreamReader(inputStream))
                 {
                     input = sr.ReadToEnd();
                 }
+            }
+
+            if (input is string)
+            {
+                // if the input is json, convert to an object
+                input = TryConvertJsonToObject((string)input);
             }
 
             bindings.Add(_trigger.Name, input);
