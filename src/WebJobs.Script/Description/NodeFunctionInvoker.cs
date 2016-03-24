@@ -334,6 +334,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 input = TryConvertJsonToObject((string)input);
             }
 
+            if (input is string)
+            {
+                // if the input is json, convert to an object
+                input = TryConvertJsonToObject((string)input);
+            }
+
             bindings.Add(_trigger.Name, input);
 
             return context;
