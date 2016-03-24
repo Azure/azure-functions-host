@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             try
             {
                 string projectPath = Path.Combine(Path.GetDirectoryName(_functionMetadata.Source), CSharpConstants.ProjectFileName);
+                string nugetHome = GetNugetPackagesPath();
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -43,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     ErrorDialog = false,
-                    Arguments = "restore \"" + projectPath + "\""
+                    Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" -PackagesDirectory \"{1}\"", projectPath, nugetHome)
                 };
 
                 var process = new Process { StartInfo = startInfo };
@@ -92,6 +94,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Return the resolved value or expect NuGet.exe to be present in the path.
             return path ?? NuGetFileName;
+        }
+
+        internal static string GetNugetPackagesPath()
+        {
+            string nugetHome = null;
+            string home = Environment.GetEnvironmentVariable("HOME");
+            if (!string.IsNullOrEmpty(home))
+            {
+                // We're hosted in Azure
+                // Set the NuGet path to %home%\data\Functions\packages\nuget
+                // (i.e. d:\home\data\Functions\packages\nuget)
+                nugetHome = Path.Combine(home, "data\\Functions\\packages\\nuget");
+            }
+            else
+            {
+                string userProfile = Environment.ExpandEnvironmentVariables("%userprofile%");
+                nugetHome = Path.Combine(userProfile, ".nuget\\packages");
+            }
+
+            return nugetHome;
         }
 
         private void ProcessDataReceived(object sender, DataReceivedEventArgs e)
