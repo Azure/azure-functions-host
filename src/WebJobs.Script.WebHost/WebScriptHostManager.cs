@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 
 namespace WebJobs.Script.WebHost
 {
@@ -87,10 +89,14 @@ namespace WebJobs.Script.WebHost
         {
             base.OnInitializeConfig(config);
 
-            // Add our WebHost specific services
-            config.AddService<IMetricsLogger>(new WebHostMetricsLogger());
+            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
+            if (dashboardString != null)
+            {
+                var fastLogger = new MetricsFastLogger(dashboardString);
+                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+            }            
         }
-
+        
         protected override void OnHostStarted()
         {
             base.OnHostStarted();

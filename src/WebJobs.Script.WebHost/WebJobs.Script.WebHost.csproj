@@ -284,7 +284,7 @@
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Diagnostics\MetricsEventManager.cs" />
-    <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
+    <Compile Include="Diagnostics\MetricsFastLogger.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
     <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">

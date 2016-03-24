@@ -25,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string[] _supportedScriptTypes = new string[] { "ps1", "cmd", "bat", "py", "php", "sh", "fsx" };
         private readonly string _scriptFilePath;
         private readonly string _scriptType;
-        private readonly IMetricsLogger _metrics;
 
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -36,8 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptFilePath = scriptFilePath;
             _scriptType = Path.GetExtension(_scriptFilePath).ToLower(CultureInfo.InvariantCulture).TrimStart('.');
             _inputBindings = inputBindings;
-            _outputBindings = outputBindings;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            _outputBindings = outputBindings;            
         }
 
         public static bool IsSupportedScriptType(string extension)
@@ -93,9 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
-            _metrics.BeginEvent(startedEvent);
-
             // perform any required input conversions
             object convertedInput = input;
             if (input != null)
@@ -132,13 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             process.WaitForExit();
 
             bool failed = process.ExitCode != 0;
-            startedEvent.Success = !failed;
-            _metrics.EndEvent(startedEvent);
 
             if (failed)
             {
-                startedEvent.Success = false;
-
                 TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
 
                 string error = process.StandardError.ReadToEnd();

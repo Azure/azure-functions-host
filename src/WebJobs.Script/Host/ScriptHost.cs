@@ -166,12 +166,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             config.DashboardConnectionString = null; // disable slow logging 
 
-            IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-            if (metricsLogger == null)
-            {
-                ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
-            }
-
             if (ScriptConfig.HostConfig.IsDevelopment)
             {
                 ScriptConfig.HostConfig.UseDevelopmentSettings();

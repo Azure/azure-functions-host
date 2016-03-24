@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private readonly IMetricsLogger _metrics;
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
 
         private CSharpFunctionSignature _functionSignature;
@@ -56,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = GetTriggerInputName(functionMetadata);
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcherIfEnabled();
             _resultProcessor = CreateResultProcessor();
@@ -171,7 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override async Task Invoke(object[] parameters)
         {
-            FunctionStartedEvent startedEvent = null;
             string invocationId = null;
 
             try
@@ -185,10 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
                 invocationId = functionExecutionContext.InvocationId.ToString();
-
-                startedEvent = new FunctionStartedEvent(Metadata);
-                _metrics.BeginEvent(startedEvent);
-
+                             
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
                 parameters = ProcessInputParameters(parameters);
@@ -216,23 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch
             {
-                if (startedEvent != null)
-                {
-                    startedEvent.Success = false;
-                    TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
-                }
-                else
-                {
-                    TraceWriter.Verbose("Function completed (Failure)");
-                }
+                TraceWriter.Verbose("Function completed (Failure)");                
                 throw;
-            }
-            finally
-            {
-                if (startedEvent != null)
-                {
-                    _metrics.EndEvent(startedEvent);
-                }
             }
         }
 

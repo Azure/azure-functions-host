@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _script;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
-        private readonly IMetricsLogger _metrics;
 
         private Func<object, Task<object>> _scriptFunc;
         private Func<object, Task<object>> _clearRequireCache;
@@ -58,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcherIfEnabled();
         }
@@ -97,10 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IBinderEx binder = (IBinderEx)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
-
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
-            _metrics.BeginEvent(startedEvent);
-
+                        
             try
             {
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
@@ -120,15 +115,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
             }
             catch
-            {
-                startedEvent.Success = false;
+            {                
                 TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
                 throw;
-            }
-            finally
-            {
-                _metrics.EndEvent(startedEvent);
-            }
+            }         
         }
 
         private async Task ProcessInputBindingsAsync(IBinderEx binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)

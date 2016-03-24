@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     // Adapter for capturing SDK events and logging them to tables.
-    internal class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
+    public class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
     {
         private readonly ILogWriter _writer;
 
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             this._writer = LogFactory.NewWriter(containerName, table);
         }
 
-        public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Convert Host to Protocol so we can log it 
             var settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
