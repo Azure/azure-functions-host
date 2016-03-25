@@ -103,9 +103,12 @@ namespace WebJobs.Script.WebHost.Diagnostics
             private const int MetricEventIntervalInSeconds = 5;
             private CancellationTokenSource etwTaskcancellationSource = new CancellationTokenSource();
             private ConcurrentQueue<FunctionMetrics> functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
+            private string siteName;
 
             internal FunctionActivityTracker()
             {
+                siteName = GetNormalizedString(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+
                 Task.Run(
                     async () =>
                     {
@@ -203,17 +206,16 @@ namespace WebJobs.Script.WebHost.Diagnostics
                 List<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
 
                 var aggregatedEventsPerFunction = from item in metricsEventsList
-                                                  group item by new { item.FunctionName } into FunctionGroups
+                                                  group item by item.FunctionName into FunctionGroups
                                                   select new
                                                   {
-                                                      FunctionName = FunctionGroups.Key.FunctionName,
+                                                      FunctionName = FunctionGroups.Key,
                                                       StartedCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
                                                       FailedCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
                                                       SucceededCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
                                                       TotalExectionTimeInMs = Convert.ToUInt64(FunctionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
                                                   };
-
-                string siteName = GetNormalizedString(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+                
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {
                     MetricEventSource.Log.RaiseMetricsPerFunctionEvent(siteName, functionEvent.FunctionName, functionEvent.TotalExectionTimeInMs, functionEvent.StartedCount, functionEvent.SucceededCount, functionEvent.FailedCount);
