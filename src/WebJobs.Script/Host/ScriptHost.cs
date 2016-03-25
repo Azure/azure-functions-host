@@ -444,6 +444,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         metadata.Source = functionPrimary;
                     }
 
+                    metadata.ScriptType = ParseScriptType(metadata.Source);
+
                     metadatas.Add(metadata);
                 }
                 catch (Exception ex)
@@ -454,6 +456,35 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return ReadFunctions(metadatas, descriptorProviders);
+        }
+
+        private static ScriptType ParseScriptType(string scriptFilePath)
+        {
+            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+
+            switch (extension)
+            {
+                case "csx":
+                case "cs":
+                    return ScriptType.CSharp;
+                case "js":
+                    return ScriptType.Javascript;
+                case "ps1":
+                    return ScriptType.Powershell;
+                case "cmd":
+                case "bat":
+                    return ScriptType.WindowsBatch;
+                case "py":
+                    return ScriptType.Python;
+                case "php":
+                    return ScriptType.PHP;
+                case "sh":
+                    return ScriptType.Bash;
+                case "fsx":
+                    return ScriptType.FSharp;
+                default:
+                    return ScriptType.Unknown;
+            }
         }
 
         internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)

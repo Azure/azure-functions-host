@@ -19,6 +19,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -41,6 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Action _restorePackages;
         private Action<MethodInfo, object[], object> _resultProcessor;
         private FunctionValueLoader _functionValueLoader;
+
+        private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
+            = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private static readonly string[] WatchedFileTypes = { ".cs", ".csx", ".dll", ".exe" };
 
@@ -407,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Script<object> CreateScript()
         {
             string code = GetFunctionSource();
-            return CSharpScript.Create(code, options: _metadataResolver.FunctionScriptOptions);
+            return CSharpScript.Create(code, options: _metadataResolver.FunctionScriptOptions, assemblyLoader: AssemblyLoader.Value);
         }
 
         private static object GetTaskResult(Task task)

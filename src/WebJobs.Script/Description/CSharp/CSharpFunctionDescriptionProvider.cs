@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -46,8 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            string extension = Path.GetExtension(functionMetadata.Source).ToLower(CultureInfo.InvariantCulture);
-            if (string.Compare(extension, ".csx", StringComparison.OrdinalIgnoreCase) != 0)
+            if (functionMetadata.ScriptType != ScriptType.CSharp)
             {
                 return false;
             }

@@ -10,5 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public string CollectionName { get; set; }
 
         public bool CreateIfNotExists { get; set; }
+
+        public string Id { get; set; }
     }
 }

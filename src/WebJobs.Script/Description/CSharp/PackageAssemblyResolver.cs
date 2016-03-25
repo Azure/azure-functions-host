@@ -47,8 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (target != null)
                 {
-                    string userProfile = Environment.ExpandEnvironmentVariables("%userprofile%");
-                    string nugetHome = Path.Combine(userProfile, ".nuget\\packages");
+                    string nugetHome = PackageManager.GetNugetPackagesPath();
 
                     List<string> assemblyReferences = new List<string>();
                     List<string> frameworkAssemblyReferences = new List<string>();

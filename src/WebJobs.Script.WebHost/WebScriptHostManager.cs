@@ -18,8 +18,11 @@ namespace WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
+        private IMetricsLogger _metricsLogger;
+
         public WebScriptHostManager(ScriptHostConfiguration config) : base(config)
         {
+            _metricsLogger = new WebHostMetricsLogger();
         }
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
@@ -86,9 +89,9 @@ namespace WebJobs.Script.WebHost
         protected override void OnInitializeConfig(JobHostConfiguration config)
         {
             base.OnInitializeConfig(config);
-
+            
             // Add our WebHost specific services
-            config.AddService<IMetricsLogger>(new WebHostMetricsLogger());
+            config.AddService<IMetricsLogger>(_metricsLogger);
         }
 
         protected override void OnHostStarted()

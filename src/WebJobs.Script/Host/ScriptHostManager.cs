@@ -3,13 +3,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -237,6 +237,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void OnHostStarted()
         {
+            var metricsLogger = _config.HostConfig.GetService<IMetricsLogger>();
+            metricsLogger.LogEvent(new HostStarted(Instance));
         }
 
         public void Dispose()

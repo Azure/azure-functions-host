@@ -112,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("traceEvent");
             }
 
-            // TODO: buffer logs and write only periodically
             AppendLine(traceEvent.Message);
             if (traceEvent.Exception != null)
             {

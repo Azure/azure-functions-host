@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public string Source { get; set; }
 
+        public ScriptType ScriptType { get; set; }
+
         public bool IsDisabled { get; set; }
 
         public Collection<BindingMetadata> Bindings { get; private set; }

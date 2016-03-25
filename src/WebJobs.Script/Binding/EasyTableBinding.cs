@@ -72,18 +72,30 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            // Only output bindings are supported.
-            if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
+            EasyTableAttribute attribute = new EasyTableAttribute
             {
-                EasyTableAttribute attribute = new EasyTableAttribute
-                {
-                    TableName = TableName,
-                    Id = Id,
-                    MobileAppUri = MobileAppUri,
-                    ApiKey = ApiKey
-                };
+                TableName = TableName,
+                Id = Id,
+                MobileAppUri = MobileAppUri,
+                ApiKey = ApiKey
+            };
 
-                RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+
+            if (Access == FileAccess.Read && _bindingDirection == BindingDirection.In)
+            {
+                JObject input = await context.Binder.BindAsync<JObject>(runtimeContext);
+                if (input != null)
+                {
+                    byte[] byteArray = Encoding.UTF8.GetBytes(input.ToString());
+                    using (MemoryStream stream = new MemoryStream(byteArray))
+                    {
+                        stream.CopyTo(context.Value);
+                    }
+                }
+            }
+            else if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
+            {
                 IAsyncCollector<JObject> collector = await context.Binder.BindAsync<IAsyncCollector<JObject>>(runtimeContext);
                 byte[] bytes;
                 using (MemoryStream ms = new MemoryStream())

@@ -67,6 +67,16 @@ namespace WebJobs.Script.Tests
             Document doc = await WaitForDocumentAsync(id);
 
             Assert.Equal(doc.Id, id);
+
+            // Now add that Id to a Queue
+            var queue = Fixture.GetNewQueue("documentdb-input");
+            await queue.AddMessageAsync(new CloudQueueMessage(id));
+
+            // And wait for the text to be updated
+            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
+
+            Assert.Equal(updatedDoc.Id, doc.Id);
+            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
         }
 
         protected async Task NotificationHubTest(string functionName)
@@ -101,7 +111,7 @@ namespace WebJobs.Script.Tests
             }
         }
 
-        protected async Task EasyTablesTest(bool writeToQueue = true)
+        protected async Task EasyTablesTest(bool isCSharp = false)
         {
             // EasyTables needs the following environment vars:
             // "AzureWebJobsMobileAppUri" - the URI to the mobile app
@@ -119,17 +129,18 @@ namespace WebJobs.Script.Tests
 
             Assert.Equal(item["id"], id);
 
-            if (!writeToQueue)
-            {
-                return;
-            }
-
             // Now add that Id to a Queue
             var queue = Fixture.GetNewQueue("easytables-input");
             await queue.AddMessageAsync(new CloudQueueMessage(id));
 
             // And wait for the text to be updated
-            await WaitForEasyTableRecordAsync("Item", id, "This was updated!");
+
+            // Only CSharp fully supports updating from input bindings. Others will
+            // create a new item with -success appended to the id.
+            // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
+            var idToCheck = id + (isCSharp ? string.Empty : "-success");
+            var textToCheck = isCSharp ? "This was updated!" : null;
+            await WaitForEasyTableRecordAsync("Item", idToCheck, textToCheck);
         }
 
         protected async Task<JToken> WaitForEasyTableRecordAsync(string tableName, string itemId, string textToMatch = null)
@@ -164,12 +175,12 @@ namespace WebJobs.Script.Tests
                 }
 
                 return result;
-            }, 10 * 1000);
+            });
 
             return item;
         }
 
-        protected async Task<Document> WaitForDocumentAsync(string itemId)
+        protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)
         {
             var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
@@ -188,14 +199,22 @@ namespace WebJobs.Script.Tests
                 {
                     var response = Task.Run(() => client.ReadDocumentAsync(docUri)).Result;
                     doc = response.Resource;
-                    result = true;
+
+                    if (textToMatch != null)
+                    {
+                        result = doc.GetPropertyValue<string>("text") == textToMatch;
+                    }
+                    else
+                    {
+                        result = true;
+                    }
                 }
                 catch (Exception)
                 {
                 }
 
                 return result;
-            }, 10 * 1000);
+            });
 
             return doc;
         }
