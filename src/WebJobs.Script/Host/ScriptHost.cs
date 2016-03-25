@@ -92,6 +92,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 File.WriteAllText(hostConfigFilePath, "{}");
             }
 
+            if (ScriptConfig.HostConfig.IsDevelopment)
+            {
+                ScriptConfig.HostConfig.UseDevelopmentSettings();
+            }
+            else
+            {
+                // TEMP: Until https://github.com/Azure/azure-webjobs-sdk-script/issues/100 is addressed
+                // we're using some presets that are a good middle ground
+                ScriptConfig.HostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(10);
+                ScriptConfig.HostConfig.Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
+            }
+
             string json = File.ReadAllText(hostConfigFilePath);
             JObject hostConfig = JObject.Parse(json);
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -170,11 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script
             if (metricsLogger == null)
             {
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
-            }
-
-            if (ScriptConfig.HostConfig.IsDevelopment)
-            {
-                ScriptConfig.HostConfig.UseDevelopmentSettings();
             }
 
             // Bindings may use name resolution, so provide this before reading the bindings. 
