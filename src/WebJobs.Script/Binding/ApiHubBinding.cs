@@ -10,6 +10,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -27,10 +28,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             if (string.IsNullOrEmpty(apiHubBindingMetadata.Path))
             {
-                throw new ArgumentException("The Apihub path cannot be null or empty.");
+                throw new ArgumentException("The ApiHub path cannot be null or empty.");
             }
 
-            KeyName = apiHubBindingMetadata.Key;
+            Key = apiHubBindingMetadata.Key;
             Path = apiHubBindingMetadata.Path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
         }
@@ -43,24 +44,49 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public string KeyName { get; private set; }
+        public string Key { get; private set; }
 
         public string Path { get; private set; }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
-            var constructorTypes = new Type[] { typeof(string), typeof(string), typeof(FileAccess) };
-            var constructorArguments = new object[] { KeyName, Path, FileAccess.Read };
+            Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 
-            return new Collection<CustomAttributeBuilder>
-            {
-                new CustomAttributeBuilder(typeof(ApiHubFileAttribute).GetConstructor(constructorTypes), constructorArguments)
-            };
+            var constructorTypes = new Type[] { typeof(string), typeof(string), typeof(FileAccess) };
+            var constructorArguments = new object[] { Key, Path, FileAccess.Read };
+
+            var attribute = new CustomAttributeBuilder(typeof(ApiHubFileAttribute).GetConstructor(constructorTypes), constructorArguments);
+
+            attributes.Add(attribute);
+
+            return attributes;
         }
 
-        public override Task BindAsync(BindingContext context)
+        public override async Task BindAsync(BindingContext context)
         {
-            return Task.FromResult(0);
+            string boundBlobPath = Path;
+            if (context.BindingData != null)
+            {
+                boundBlobPath = _pathBindingTemplate.Bind(context.BindingData);
+            }
+
+            boundBlobPath = Resolve(boundBlobPath);
+
+            // TODO: Need to handle Stream conversions properly
+            Stream valueStream = context.Value as Stream;
+
+            var attribute = new ApiHubFileAttribute(Key, boundBlobPath, Access);
+
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+            Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
+            if (Access == FileAccess.Write)
+            {
+                await valueStream.CopyToAsync(blobStream);
+            }
+            else
+            {
+                await blobStream.CopyToAsync(valueStream);
+            }
         }
     }
 }

@@ -13,14 +13,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             this.Config = config;
             this.EventHubConfiguration = new EventHubConfiguration();
-            this.ApiHubConfig = new ApiHubConfiguration();
+            this.ApiHubConfiguration = new ApiHubConfiguration();
         }
 
         internal JobHostConfiguration Config { get; private set; }
 
         internal EventHubConfiguration EventHubConfiguration { get; private set; }
 
-        internal ApiHubConfiguration ApiHubConfig { get; set; }
+        internal ApiHubConfiguration ApiHubConfiguration { get; set; }
 
         public void Done()
         {
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             this.Config.UseEasyTables();
             this.Config.UseDocumentDB();
             this.Config.UseNotificationHubs();
-            this.Config.UseApiHub(this.ApiHubConfig);
+            this.Config.UseApiHub(this.ApiHubConfiguration);
         }
     }
 }

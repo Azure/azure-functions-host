@@ -226,6 +226,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger-Batch", "ApiH
 		sample\ApiHubTrigger-Batch\run.bat = sample\ApiHubTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger", "ApiHubTrigger", "{5FBF4581-318C-4320-81AA-6B2F02AF34EC}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ApiHubTrigger\function.json = sample\ApiHubTrigger\function.json
+		sample\ApiHubTrigger\index.js = sample\ApiHubTrigger\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -295,5 +301,6 @@ Global
 		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

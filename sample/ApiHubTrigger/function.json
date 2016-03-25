@@ -4,14 +4,14 @@
       "type": "apiHubTrigger",
       "connection": "AzureWebJobsDropBox",
       "direction": "in",
-      "path": "testin/{name}"
+      "path": "testinnode/{name}"
     },
     {
       "type": "apiHub",
       "name" : "output",
       "connection": "AzureWebJobsDropBox",
       "direction": "out",
-      "path": "testOutBatch/{name}"
+      "path": "testoutnode/{name}"
     }
   ]
 }

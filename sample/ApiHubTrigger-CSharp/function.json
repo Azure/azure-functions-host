@@ -2,7 +2,7 @@
   "bindings": [
     {
       "type": "apiHubTrigger",
-      "connectionString": "%dropbox%",
+      "connection": "AzureWebJobsDropBox",
       "direction": "in",
       "path": "test/{name}",
       "name" : "input"
@@ -10,7 +10,7 @@
     {
       "name" : "output",
       "type": "apiHub",
-      "connectionString": "%dropbox%",
+      "connection": "AzureWebJobsDropBox",
       "direction": "out",
       "path": "testOut/{name}"
     }
