@@ -13,9 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class ApiHubBindingMetadata : BindingMetadata
     {
         [AllowNameResolution]
-        public string ConnectionString { get; set; }
-        
-        [AllowNameResolution]
         public string Path { get; set; }
 
         [JsonIgnore]
@@ -28,9 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("configBuilder");
             }
 
-            var apiHubConfig = configBuilder.ApiHubConfig;
+            var apiHubConfig = configBuilder.ApiHubConfiguration;
 
-            apiHubConfig.AddKeyPath(this.Key, this.ConnectionString);
+            string connectionString = null;
+            if (!string.IsNullOrEmpty(this.Connection))
+            {
+                connectionString = Utility.GetAppSettingOrEnvironmentValue(Connection);
+            }
+
+            apiHubConfig.AddKeyPath(this.Key, connectionString);
         }
     }
 }
