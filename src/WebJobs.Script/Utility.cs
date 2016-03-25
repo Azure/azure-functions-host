@@ -6,7 +6,7 @@ using System.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal static class Utility
+    public static class Utility
     {
         public static string GetFunctionShortName(string functionName)
         {
@@ -21,14 +21,46 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string FlattenException(Exception ex)
         {
-            string formattedError = ex.Message;
+            string flattenedErrors = string.Empty;
+            string lastError = null;
 
-            while ((ex = ex.InnerException) != null)
+            if (ex is AggregateException)
             {
-                formattedError += ". " + ex.Message;
+                ex = ex.InnerException;
             }
 
-            return formattedError;
+            do
+            {
+                string currentError = string.Empty;
+                if (!string.IsNullOrEmpty(ex.Source))
+                {
+                    currentError += ex.Source + ": ";
+                }
+
+                currentError += ex.Message;
+
+                if (!currentError.EndsWith("."))
+                {
+                    currentError += ".";
+                }
+
+                // sometimes inner exceptions are exactly the same
+                // so first check before duplicating
+                if (lastError == null ||
+                    string.Compare(lastError.Trim(), currentError.Trim()) != 0)
+                {
+                    if (flattenedErrors.Length > 0)
+                    {
+                        flattenedErrors += " ";
+                    }
+                    flattenedErrors += currentError;
+                }
+
+                lastError = currentError;
+            }
+            while ((ex = ex.InnerException) != null);
+
+            return flattenedErrors;
         }
 
         public static string GetAppSettingOrEnvironmentValue(string name)

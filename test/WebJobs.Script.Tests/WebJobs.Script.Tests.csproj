@@ -13,6 +13,7 @@
     <AssemblyName>WebJobs.Script.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
@@ -232,6 +233,7 @@
     <Compile Include="TestHelpers.cs" />
     <Compile Include="TestInvoker.cs" />
     <Compile Include="TestTraceWriter.cs" />
+    <Compile Include="UtilityTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup>
