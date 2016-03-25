@@ -90,7 +90,7 @@ namespace WebJobs.Script.WebHost.Controllers
             if (lastError != null)
             {
                 status.Errors = new Collection<string>();
-                status.Errors.Add(lastError.Message);
+                status.Errors.Add(Utility.FlattenException(lastError));
             }
 
             return status;
