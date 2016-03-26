@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace WebJobs.Script.WebHost.WebHooks
@@ -54,7 +56,10 @@ namespace WebJobs.Script.WebHost.WebHooks
             IWebHookReceiver receiver = null;
             if (string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
             {
-                // If the function is a not a correctly configured WebHook return 500
+                // The function is not correctly configured. Log an error and return 500
+                string configurationError = string.Format(CultureInfo.InvariantCulture, "Invalid WebHook configuration. Unable to find a receiver for WebHook type '{0}'", webHookReceiver);
+                function.Invoker.OnError(new FunctionInvocationException(configurationError));
+
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
             }
 
