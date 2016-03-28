@@ -3,6 +3,9 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Newtonsoft.Json.Linq;
@@ -124,6 +127,34 @@ namespace WebJobs.Script.Tests
             Assert.Equal(2, scriptConfig.Functions.Count);
             Assert.Equal("Function1", scriptConfig.Functions[0]);
             Assert.Equal("Function2", scriptConfig.Functions[1]);
+        }
+
+        [Fact]
+        public void HostLimitsNumberOfFunctionsToMaxFunctionCount()
+        {
+            int maximumFunctionCount = 2;
+            int unrestrictedFunctionCount = 0;
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = @"TestScripts\Node",
+                FileLoggingEnabled = true
+            };
+
+            using (var host = ScriptHost.Create(config))
+            {
+                unrestrictedFunctionCount = host.Functions.Count + host.FunctionErrors.Count;
+            }
+
+            Assert.True(unrestrictedFunctionCount > maximumFunctionCount);
+
+            config.MaxFunctionCount = maximumFunctionCount;
+
+            using (var host = ScriptHost.Create(config))
+            {
+                Assert.Equal(maximumFunctionCount, host.Functions.Count);
+                Assert.Equal(unrestrictedFunctionCount - maximumFunctionCount, host.FunctionErrors.Count);
+            }
         }
     }
 }
