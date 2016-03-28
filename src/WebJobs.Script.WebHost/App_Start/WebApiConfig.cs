@@ -117,7 +117,7 @@ namespace WebJobs.Script.WebHost
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
-                settings.ScriptPath = Path.Combine(HostingEnvironment.ApplicationPhysicalPath, @"..\..\sample");
+                settings.ScriptPath = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
             }
@@ -127,6 +127,11 @@ namespace WebJobs.Script.WebHost
                 settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
                 settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
                 settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
+            }
+
+            if (string.IsNullOrEmpty(settings.ScriptPath))
+            {
+                throw new InvalidOperationException("Unable to determine function script root directory.");
             }
 
             return settings;

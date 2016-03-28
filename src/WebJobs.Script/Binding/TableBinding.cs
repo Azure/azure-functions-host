@@ -144,6 +144,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else
             {
+                string json = null;
+
                 if (!string.IsNullOrEmpty(boundPartitionKey) &&
                     !string.IsNullOrEmpty(boundRowKey))
                 {
@@ -152,11 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     DynamicTableEntity tableEntity = await context.Binder.BindAsync<DynamicTableEntity>(runtimeContext);
                     if (tableEntity != null)
                     {
-                        string json = ConvertEntityToJObject(tableEntity).ToString();
-                        using (StreamWriter sw = new StreamWriter(valueStream))
-                        {
-                            await sw.WriteAsync(json);
-                        }
+                        json = ConvertEntityToJObject(tableEntity).ToString();
                     }
                 }
                 else
@@ -172,11 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         entityArray.Add(ConvertEntityToJObject(entity));
                     }
 
-                    string json = entityArray.ToString(Formatting.None);
-                    using (StreamWriter sw = new StreamWriter(valueStream))
-                    {
-                        await sw.WriteAsync(json);
-                    }
+                    json = entityArray.ToString(Formatting.None);
+                }
+
+                if (json != null)
+                {
+                    // We're explicitly NOT disposing the StreamWriter because
+                    // we don't want to close the underlying Stream
+                    StreamWriter sw = new StreamWriter(valueStream);
+                    await sw.WriteAsync(json);
+                    sw.Flush();
                 }
             }
         }
