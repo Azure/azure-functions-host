@@ -377,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             string scriptRootPath = config.RootScriptPath;
-            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
+            List<FunctionMetadata> functions = new List<FunctionMetadata>();
 
             foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
             {
@@ -403,11 +403,18 @@ namespace Microsoft.Azure.WebJobs.Script
                         continue;
                     }
 
+                    if (functions.Count == ScriptConfig.MaxFunctionCount)
+                    {
+                        AddFunctionError(functionName, string.Format(CultureInfo.InvariantCulture,
+                            "Maximum number of functions ({0}) exceeded. Ignoring function.", ScriptConfig.MaxFunctionCount));
+                        continue;
+                    }
+
                     // TODO: we need to define a json schema document and do
                     // schema validation
                     string json = File.ReadAllText(functionConfigPath);
                     JObject configMetadata = JObject.Parse(json);
-                    FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
+                    FunctionMetadata function = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
 
                     // determine the primary script
                     string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != FunctionConfigFileName).ToArray();
@@ -419,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     else if (functionFiles.Length == 1)
                     {
                         // if there is only a single file, that file is primary
-                        metadata.Source = functionFiles[0];
+                        function.Source = functionFiles[0];
                     }
                     else
                     {
@@ -448,12 +455,12 @@ namespace Microsoft.Azure.WebJobs.Script
                             AddFunctionError(functionName, "Unable to determine primary function script.");
                             continue;
                         }
-                        metadata.Source = functionPrimary;
+                        function.Source = functionPrimary;
                     }
 
-                    metadata.ScriptType = ParseScriptType(metadata.Source);
+                    function.ScriptType = ParseScriptType(function.Source);
 
-                    metadatas.Add(metadata);
+                    functions.Add(function);
                 }
                 catch (Exception ex)
                 {
@@ -462,7 +469,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            return ReadFunctions(metadatas, descriptorProviders);
+            return ReadFunctions(functions, descriptorProviders);
         }
 
         private static ScriptType ParseScriptType(string scriptFilePath)
@@ -494,17 +501,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            foreach (FunctionMetadata metadata in metadatas)
+            foreach (FunctionMetadata function in functions)
             {
                 try
                 {
                     FunctionDescriptor descriptor = null;
                     foreach (var provider in descriptorProviders)
                     {
-                        if (provider.TryCreate(metadata, out descriptor))
+                        if (provider.TryCreate(function, out descriptor))
                         {
                             break;
                         }
@@ -518,7 +525,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(metadata.Name, ex.Message);
+                    AddFunctionError(function.Name, ex.Message);
                 }
             }
 

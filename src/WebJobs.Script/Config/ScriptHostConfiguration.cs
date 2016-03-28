@@ -10,12 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHostConfiguration
     {
+        public const int DefaultMaxFunctionCount = 100;
+
         public ScriptHostConfiguration()
         {
             HostConfig = new JobHostConfiguration();
             FileWatchingEnabled = true;
             RootScriptPath = Environment.CurrentDirectory;
-            RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");            
+            RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            MaxFunctionCount = DefaultMaxFunctionCount;
         }
 
         /// <summary>
@@ -60,5 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// be run.
         /// </summary>
         public Collection<string> Functions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of functions the script host can load.
+        /// </summary>
+        public int MaxFunctionCount { get; set; }
     }
 }
