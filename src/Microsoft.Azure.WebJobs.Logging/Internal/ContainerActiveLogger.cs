@@ -13,6 +13,9 @@ namespace Microsoft.Azure.WebJobs.Logging
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
     internal class ContainerActiveLogger
     {
+        // MAximum length of an ActivationEvent. This aides in querying backwards. 
+        private const int LengthThreshold = 50;
+
         private static TimeSpan _interval = TimeSpan.FromSeconds(5);
 
         // Track functionInstanceGuids (instead of just a single integer counter) in case we missed an event or double reported an event. 
@@ -106,6 +109,13 @@ namespace Microsoft.Azure.WebJobs.Logging
                     if (prevEntry == null)
                     {
                         prevEntry = await TryGetAsync(currentBucket);
+                    }
+                    if (prevEntry != null)
+                    {
+                        if (prevEntry.GetLength() > LengthThreshold)
+                        {
+                            prevEntry = null;
+                        }
                     }
 
                     if (prevEntry == null)

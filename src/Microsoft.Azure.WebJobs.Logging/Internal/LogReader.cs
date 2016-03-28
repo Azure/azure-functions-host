@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         // All writing goes to 1 table. 
         private readonly CloudTable _instanceTable;
 
-        
         public LogReader(CloudTable table)
         {
             if (table == null)
@@ -27,14 +26,22 @@ namespace Microsoft.Azure.WebJobs.Logging
             this._instanceTable = table;
         }
 
-        public Task<string[]> GetFunctionNamesAsync()
+        public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
             var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
             var results = _instanceTable.ExecuteQuery(query).ToArray();
 
-            var functionNames = Array.ConvertAll(results, entity => entity.GetFunctionName());
-
-            return Task.FromResult(functionNames);
+            DateTime min = DateTime.MinValue;
+            foreach (var entity in results)
+            {
+                if (entity.Timestamp > min)
+                {
+                    min = entity.Timestamp.DateTime;
+                }
+            }
+            
+            var segment = new Segment<IFunctionDefinition>(results);
+            return Task.FromResult(segment);
         }
 
         // Lookup a single instance by id. 

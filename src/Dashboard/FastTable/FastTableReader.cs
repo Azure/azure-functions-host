@@ -23,7 +23,7 @@ namespace Dashboard.Data
         // Underlying reader. 
         private readonly ILogReader _reader;
 
-        private DateTimeOffset _version = DateTimeOffset.UtcNow;
+        private DateTime _version = DateTime.MinValue ;
 
         private FunctionSnapshot[] _snapshots = null; // Cache of function definitions 
 
@@ -39,19 +39,39 @@ namespace Dashboard.Data
 
         private async Task<FunctionSnapshot[]> GetSnapshotsAsync()
         {
-            if (_snapshots == null)
-            {
-                string[] results = await _reader.GetFunctionNamesAsync();
+            var segment = await _reader.GetFunctionDefinitionsAsync(null);
+            var definitions = segment.Results;
 
-                _snapshots = Array.ConvertAll(results, name => new FunctionSnapshot
+            var current = _snapshots;
+
+            DateTime latest = GetLatestModifiedTime(definitions);            
+
+            if ((_snapshots == null) || (latest > _version))
+            {          
+                _snapshots = Array.ConvertAll(definitions, definition => new FunctionSnapshot
                 {
-                    Id = name,
-                    FullName = name,
-                    ShortName = name,
-                    Parameters = new Dictionary<string, ParameterSnapshot>()
+                    Id = definition.Name,
+                    FullName = definition.Name,
+                    ShortName = definition.Name,
+                    Parameters = new Dictionary<string, ParameterSnapshot>(),
+                    HostVersion = definition.LastModified
                 });
+                _version = latest;
             }
             return _snapshots;
+        }
+
+        private static DateTime GetLatestModifiedTime(IFunctionDefinition[] definitions)
+        {
+            DateTime min = DateTime.MinValue;
+            foreach (var definition in definitions)
+            {
+                if (definition.LastModified > min)
+                {
+                    min = definition.LastModified;
+                }
+            }
+            return min;
         }
 
         FunctionInstanceSnapshot IFunctionInstanceLookup.Lookup(Guid id)
@@ -126,7 +146,7 @@ namespace Dashboard.Data
             var snapshots = await GetSnapshotsAsync();
             var results = Array.ConvertAll(snapshots, x =>
                   FunctionIndexEntry.Create(
-                        FunctionIndexEntry.CreateOtherMetadata(x), _version));
+                        FunctionIndexEntry.CreateOtherMetadata(x), x.HostVersion ));
 
             return new ResultSegment<FunctionIndexEntry>(results, null);
         }

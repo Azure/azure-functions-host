@@ -20,7 +20,7 @@ namespace Dashboard
             throw new NotImplementedException();
         }
 
-        public Task<string[]> GetFunctionNamesAsync()
+        public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
             throw new NotImplementedException();
         }

@@ -135,7 +135,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 await writer.FlushAsync();
 
                 // Now read 
-                string[] functionNames = await reader.GetFunctionNamesAsync();
+                var definitionSegment = await reader.GetFunctionDefinitionsAsync(null);
+                string[] functionNames = Array.ConvertAll(definitionSegment.Results, definition => definition.Name);
                 Array.Sort(functionNames);
                 Assert.Equal(Func1, functionNames[0]);
                 Assert.Equal(Func2, functionNames[1]);

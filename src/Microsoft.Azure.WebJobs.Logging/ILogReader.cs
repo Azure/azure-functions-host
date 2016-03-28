@@ -26,16 +26,17 @@ namespace Microsoft.Azure.WebJobs.Logging
         Task<Segment<ActivationEvent>> GetActiveContainerTimelineAsync(DateTime startTime, DateTime endTime, string continuationToken);
 
         /// <summary>
-        /// Provides source of function Names.
+        /// Provides function definitions.
         /// The names are needed to drill down in future queries. 
         /// </summary>
-        /// <returns>list of available function names.</returns>
-        Task<string[]> GetFunctionNamesAsync();
+        /// <param name="continuationToken"></param>
+        /// <returns>list of available function definitions.</returns>
+        Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken);
         
         /// <summary>
         /// Drill down to function-instances of a given type within a timeline. 
         /// This returns a sparse array of entries. 
-        /// To get total functions, must issue parallel queries for all function names (function names can be obtained from <see cref="GetFunctionNamesAsync"/> ). 
+        /// To get total functions, must issue parallel queries for all function names (function names can be obtained from <see cref="GetFunctionDefinitionsAsync"/> ). 
         /// </summary>
         /// <param name="functionName">name of the function to query for.</param>
         /// <param name="startTime"></param>

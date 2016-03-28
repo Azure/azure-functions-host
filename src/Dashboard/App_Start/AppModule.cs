@@ -42,7 +42,7 @@ namespace Dashboard
             Bind<CloudStorageAccount>().ToConstant(account);
             Bind<CloudBlobClient>().ToConstant(blobClient);
 
-            CloudTable logTable = TryGetLogTableName(tableClient);
+            CloudTable logTable = TryGetLogTable(tableClient);
 
             if (logTable != null)
             {
@@ -123,16 +123,40 @@ namespace Dashboard
             }
         }
 
+        // Optional Appsetting to explicitly set the table name to use with fast logging. 
+        const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
+
+        // Optional Appsetting to control site extension versioning. We can infer log mode from this. 
+        const string FunctionExtensionVersionAppSettingName = "FUNCTIONS_EXTENSION_VERSION";
+        const string FunctionExtensionVersionDisabled = "disabled";
+
         // Get a fast log table name 
         // OR return null to use traditional logging. 
-        private static CloudTable TryGetLogTableName(CloudTableClient tableClient)
+        private static CloudTable TryGetLogTable(CloudTableClient tableClient)
         {
-            string logTableName = ConfigurationManager.AppSettings["AzureWebJobsLogTableName"];
+            string logTableName = ConfigurationManager.AppSettings[FunctionLogTableAppSettingName];
             if (string.IsNullOrWhiteSpace(logTableName))
             {
                 // Check for default name
                 string defaultName = LogFactory.DefaultLogTableName;
                 var table = tableClient.GetTableReference(defaultName);
+
+                var ver = ConfigurationManager.AppSettings[FunctionExtensionVersionAppSettingName];
+                if (!string.IsNullOrWhiteSpace(ver))
+                {
+                    if (string.Equals(ver, FunctionExtensionVersionDisabled, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Explicitly set to old mode. 
+                        return null;
+                    }
+                    else
+                    {
+                        // Appsetting specifically opts us in. Use fast-tables.
+                        table.CreateIfNotExists();
+                        return table;
+                    }
+                }
+
                 if (table.Exists())
                 {
                     return table;
@@ -140,6 +164,7 @@ namespace Dashboard
             }
             else
             {
+                // Name is explicitly supplied in an appsetting. Definitely using the fast tables. 
                 var logTable = tableClient.GetTableReference(logTableName);
                 return logTable;
             }

@@ -85,6 +85,7 @@
   <ItemGroup>
     <Compile Include="ActivationEvent.cs" />
     <Compile Include="FunctionInstanceStatus.cs" />
+    <Compile Include="IFunctionDefinition.cs" />
     <Compile Include="IFunctionInstanceBaseEntry.cs" />
     <Compile Include="Internal\ContainerActiveLogger.cs" />
     <Compile Include="Entities\ContainerActiveEntity.cs" />
