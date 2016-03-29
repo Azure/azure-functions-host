@@ -70,6 +70,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     response = new HttpResponseMessage(statusCode);
                     response.Content = new StringContent(body);
 
+                    // we default the Content-Type here, but we override below with any
+                    // Content-Type header the user might have set themselves
+                    if (Utility.IsJson(body))
+                    {
+                        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                    }
+
+                    // apply any user specified headers
                     JObject headers = (JObject)jsonObject["headers"];
                     if (headers != null)
                     {

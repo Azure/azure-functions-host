@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // if the input value is a JSON string, extract additional
                     // binding data from it
                     string json = value as string;
-                    if (!string.IsNullOrEmpty(json) && IsJson(json))
+                    if (!string.IsNullOrEmpty(json) && Utility.IsJson(json))
                     {
                         // parse the object skipping any nested objects (binding data
                         // only includes top level properties)
@@ -153,13 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
             }
-        }
-
-        protected static bool IsJson(string input)
-        {
-            input = input.Trim();
-            return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
-                || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
         }
 
         protected virtual void Dispose(bool disposing)

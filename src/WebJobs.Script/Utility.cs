@@ -83,5 +83,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return null;
         }
+
+        public static bool IsJson(string input)
+        {
+            input = input.Trim();
+            return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
+                || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
+        }
     }
 }
