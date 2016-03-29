@@ -72,6 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                     // we default the Content-Type here, but we override below with any
                     // Content-Type header the user might have set themselves
+                    // TODO: rather than newing up an HttpResponseMessage investigate using
+                    // request.CreateResponse, which should allow WebApi Content negotiation to
+                    // take place.
                     if (Utility.IsJson(body))
                     {
                         response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");

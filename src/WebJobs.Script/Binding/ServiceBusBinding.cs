@@ -45,10 +45,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var constructorTypes = new Type[] { typeof(string) };
             var constructorArguments = new object[] { QueueOrTopicName };
 
-            return new Collection<CustomAttributeBuilder>
+            var attributes = new Collection<CustomAttributeBuilder>
             {
                 new CustomAttributeBuilder(typeof(ServiceBusAttribute).GetConstructor(constructorTypes), constructorArguments)
             };
+
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                AddServiceBusAccountAttribute(attributes, Metadata.Connection);
+            }
+
+            return attributes;
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -65,7 +72,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Stream valueStream = context.Value as Stream;
 
             var attribute = new ServiceBusAttribute(boundQueueName);
-            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+            Attribute[] additionalAttributes = null;
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                additionalAttributes = new Attribute[]
+                {
+                    new ServiceBusAccountAttribute(Metadata.Connection)
+                };
+            }
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
             // only an output binding is supported
             using (StreamReader reader = new StreamReader(valueStream))
@@ -75,6 +90,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 string data = reader.ReadToEnd();
                 await collector.AddAsync(data);
             }
+        }
+
+        internal static void AddServiceBusAccountAttribute(Collection<CustomAttributeBuilder> attributes, string connection)
+        {
+            var constructorTypes = new Type[] { typeof(string) };
+            var constructorArguments = new object[] { connection };
+            var attribute = new CustomAttributeBuilder(typeof(ServiceBusAccountAttribute).GetConstructor(constructorTypes), constructorArguments);
+            attributes.Add(attribute);
         }
     }
 }

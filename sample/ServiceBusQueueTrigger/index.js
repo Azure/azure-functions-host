@@ -10,8 +10,9 @@
         result = {
             message: JSON.stringify(message)
         };
+
+        context.bindings.message = result;
     }
-    context.bindings.output = result;
 
     context.done();
 }

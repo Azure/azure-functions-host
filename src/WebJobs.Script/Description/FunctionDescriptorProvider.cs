@@ -291,6 +291,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 attributeBuilder
             };
+
+            if (!string.IsNullOrEmpty(trigger.Connection))
+            {
+                ServiceBusBinding.AddServiceBusAccountAttribute(attributes, trigger.Connection);
+            }
+
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
