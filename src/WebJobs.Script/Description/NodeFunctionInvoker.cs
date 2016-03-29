@@ -395,7 +395,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             result = null;
 
-            if (!IsJson(json))
+            if (!Utility.IsJson(json))
             {
                 return false;
             }
