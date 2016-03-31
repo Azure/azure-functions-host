@@ -286,12 +286,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException("Invalid ServiceBus trigger configuration.");
             }
 
-            string parameterName = trigger.Name;
             var attributes = new Collection<CustomAttributeBuilder>
             {
                 attributeBuilder
             };
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
+
+            if (!string.IsNullOrEmpty(trigger.Connection))
+            {
+                ServiceBusBinding.AddServiceBusAccountAttribute(attributes, trigger.Connection);
+            }
+
+            return new ParameterDescriptor(trigger.Name, triggerParameterType, attributes);
         }
 
         protected ParameterDescriptor ParseTimerTrigger(TimerBindingMetadata trigger, Type triggerParameterType = null)
