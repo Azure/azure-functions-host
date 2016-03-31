@@ -62,10 +62,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("value");
             }
-            if (value.Context == null)
-            {
-                throw new InvalidOperationException("Missing PartitionContext");
-            }
+
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
             bindingData[DataContractPartitionContext] = value.Context;
             return bindingData;
