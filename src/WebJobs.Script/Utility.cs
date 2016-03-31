@@ -3,10 +3,11 @@
 
 using System;
 using System.Configuration;
+using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal static class Utility
+    public static class Utility
     {
         public static string GetFunctionShortName(string functionName)
         {
@@ -21,14 +22,47 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string FlattenException(Exception ex)
         {
-            string formattedError = ex.Message;
+            StringBuilder flattenedErrorsBuilder = new StringBuilder();
+            string lastError = null;
 
-            while ((ex = ex.InnerException) != null)
+            if (ex is AggregateException)
             {
-                formattedError += ". " + ex.Message;
+                ex = ex.InnerException;
             }
 
-            return formattedError;
+            do
+            {
+                StringBuilder currentErrorBuilder = new StringBuilder();
+                if (!string.IsNullOrEmpty(ex.Source))
+                {
+                    currentErrorBuilder.AppendFormat("{0}: ", ex.Source);
+                }
+
+                currentErrorBuilder.Append(ex.Message);
+
+                if (!ex.Message.EndsWith("."))
+                {
+                    currentErrorBuilder.Append(".");
+                }
+
+                // sometimes inner exceptions are exactly the same
+                // so first check before duplicating
+                string currentError = currentErrorBuilder.ToString();
+                if (lastError == null ||
+                    string.Compare(lastError.Trim(), currentError.Trim()) != 0)
+                {
+                    if (flattenedErrorsBuilder.Length > 0)
+                    {
+                        flattenedErrorsBuilder.Append(" ");
+                    }
+                    flattenedErrorsBuilder.Append(currentError);
+                }
+
+                lastError = currentError;
+            }
+            while ((ex = ex.InnerException) != null);
+
+            return flattenedErrorsBuilder.ToString();
         }
 
         public static string GetAppSettingOrEnvironmentValue(string name)

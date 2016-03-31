@@ -469,6 +469,7 @@ namespace Microsoft.Azure.WebJobs.Script
             switch (extension)
             {
                 case "csx":
+                case "cs":
                     return ScriptType.CSharp;
                 case "js":
                     return ScriptType.Javascript;

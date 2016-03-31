@@ -150,8 +150,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-CSharp", "BlobT
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{B80C88CF-68EE-4400-A68D-216F1F85179C}"
 	ProjectSection(SolutionItems) = preProject
-		function.json = function.json
-		index.js = index.js
+		sample\EventHubTrigger\function.json = sample\EventHubTrigger\function.json
+		sample\EventHubTrigger\index.js = sample\EventHubTrigger\index.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-Batch", "BlobTrigger-Batch", "{C23BB3D1-6921-4FCF-8E45-09540E1F986E}"
