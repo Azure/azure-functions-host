@@ -60,6 +60,12 @@ namespace WebJobs.Script.Tests
             await WaitForEasyTableRecordAsync("Item", id);
         }
 
+        [Fact]
+        public async Task ApiHub()
+        {
+            await ApiHubTest();
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\CSharp")
