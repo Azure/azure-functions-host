@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
@@ -141,6 +142,44 @@ namespace WebJobs.Script.Tests
             var idToCheck = id + (isCSharp ? string.Empty : "-success");
             var textToCheck = isCSharp ? "This was updated!" : null;
             await WaitForEasyTableRecordAsync("Item", idToCheck, textToCheck);
+        }
+
+        protected async Task ApiHubTest()
+        {
+            // ApiHub needs the following environment vars:
+            // "AzureWebJobsDropBox" - the connection string for drop box
+            // TODO: this environment variable will be removed once local file based implementation of ApiHub SDK is used,
+
+            string testBlob = "teste2e";
+            string apiHubFile = "teste2e/test.txt";
+            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testBlob);
+            resultBlob.DeleteIfExists();
+
+            var root = ItemFactory.Parse(Environment.GetEnvironmentVariable("AzureWebJobsDropBox"));
+            if (root.FileExists(apiHubFile))
+            {
+                var file = await root.CreateFileAsync(apiHubFile);
+                // TODO: this will be removed once updated Api SDK is referenced.
+                await file.HandleId;
+                await file.DeleteAsync();
+            }
+
+            // Test both writing and reading from ApiHub.
+            // First, manually invoke a function that has an output binding to write to Dropbox.
+            string testData = Guid.NewGuid().ToString();
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", testData },
+            };
+            await Fixture.Host.CallAsync("ApiHubSender", arguments);
+
+            // Second, there's an ApiHub trigger which will write a blob. 
+            // Once the blob is written, we know both sender & listener are working.
+            // TODO: removing the BOM character from result.
+            string result = (await TestHelpers.WaitForBlobAsync(resultBlob)).Remove(0, 1);
+
+            Assert.Equal(testData, result);
         }
 
         protected async Task<JToken> WaitForEasyTableRecordAsync(string tableName, string itemId, string textToMatch = null)
