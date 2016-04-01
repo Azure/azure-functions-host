@@ -70,7 +70,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Stream valueStream = context.Value as Stream;
 
             var attribute = new QueueAttribute(boundQueueName);
-            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
+            Attribute[] additionalAttributes = null;
+            if (!string.IsNullOrEmpty(Metadata.Connection))
+            {
+                additionalAttributes = new Attribute[]
+                {
+                    new StorageAccountAttribute(Metadata.Connection)
+                };
+            }
+            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
             // only an output binding is supported
             IAsyncCollector<byte[]> collector = await context.Binder.BindAsync<IAsyncCollector<byte[]>>(runtimeContext);
