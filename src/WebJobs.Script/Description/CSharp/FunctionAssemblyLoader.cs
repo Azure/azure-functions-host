@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -23,9 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private readonly ConcurrentDictionary<string, FunctionAssemblyLoadContext> _functionContexts = new ConcurrentDictionary<string, FunctionAssemblyLoadContext>();
         private readonly Regex _functionNameFromAssemblyRegex;
+        private readonly Uri _rootScriptUri;
 
-        public FunctionAssemblyLoader()
+        public FunctionAssemblyLoader(string rootScriptPath)
         {
+            _rootScriptUri = new Uri(rootScriptPath, UriKind.RelativeOrAbsolute);
             AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
             _functionNameFromAssemblyRegex = new Regex(string.Format(CultureInfo.InvariantCulture, "^{0}(?<name>.*?)#", AssemblyPrefix), RegexOptions.Compiled);
         }
@@ -85,21 +86,48 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private FunctionAssemblyLoadContext GetFunctionContext(Assembly requestingAssembly)
-        {
+        { 
+            if (requestingAssembly == null)
+            {
+                return null;
+            }
+
+            FunctionAssemblyLoadContext context = null;
             string functionName = GetFunctionNameFromAssembly(requestingAssembly);
             if (functionName != null)
             {
-                FunctionAssemblyLoadContext context = GetFunctionContext(functionName);
+                context = GetFunctionContext(functionName);
 
-                if (context != null && context.FunctionAssembly == requestingAssembly)
+                // If the context is for a different assembly 
+                if (context != null && context.FunctionAssembly != requestingAssembly)
                 {
-                    return context;
+                    return null;
+                }
+            }
+            else
+            {
+                context = GetFunctionContextFromDependency(requestingAssembly);
+            }
+
+            return context;
+        }
+
+        private FunctionAssemblyLoadContext GetFunctionContextFromDependency(Assembly requestingAssembly)
+        {
+            // If this is a private reference, get the context based on the CodeBase
+            if (Uri.IsWellFormedUriString(requestingAssembly.CodeBase, UriKind.RelativeOrAbsolute))
+            {
+                var codebaseUri = new Uri(requestingAssembly.CodeBase, UriKind.RelativeOrAbsolute);
+
+                if (_rootScriptUri.IsBaseOf(codebaseUri))
+                {
+                    return _functionContexts.Values.FirstOrDefault(c => c.FunctionBaseUri.IsBaseOf(codebaseUri));
                 }
             }
 
-            return null;
+            return _functionContexts.Values.FirstOrDefault(c => c.LoadedAssemblies.Any(a => a == requestingAssembly));
         }
-        
+
         private FunctionAssemblyLoadContext GetFunctionContext(string functionName)
         {
             FunctionAssemblyLoadContext context;
@@ -127,5 +155,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return null;
         }
-    }
+    }   
 }

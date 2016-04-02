@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public CSharpFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)
             : base(host, config)
         {
-            _assemblyLoader = new FunctionAssemblyLoader();
+            _assemblyLoader = new FunctionAssemblyLoader(config.RootScriptPath);
         }
 
         public void Dispose()
