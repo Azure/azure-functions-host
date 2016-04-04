@@ -63,15 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var attribute = new ServiceBus.EventHubAttribute(eventHubName);
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
 
-            // only an output binding is supported
-            IAsyncCollector<byte[]> collector = await context.Binder.BindAsync<IAsyncCollector<byte[]>>(runtimeContext);
-            byte[] bytes;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                context.Value.CopyTo(ms);
-                bytes = ms.ToArray();
-            }
-            await collector.AddAsync(bytes);
+            await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
         }
     }
 }

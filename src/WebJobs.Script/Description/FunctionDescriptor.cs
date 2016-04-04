@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reflection.Emit;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
+    [DebuggerDisplay("{Metadata.Name} ({Metadata.ScriptType})")]
     public class FunctionDescriptor
     {
         public FunctionDescriptor(string name, IFunctionInvoker invoker, FunctionMetadata metadata, Collection<ParameterDescriptor> parameters)

@@ -5,15 +5,19 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Extensions.EasyTables;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
@@ -77,6 +81,47 @@ namespace WebJobs.Script.Tests
 
             Assert.Equal(updatedDoc.Id, doc.Id);
             Assert.NotEqual(doc.ETag, updatedDoc.ETag);
+        }
+
+        protected async Task ServiceBusQueueTriggerToBlobTestImpl()
+        {
+            // ServiceBus tests need the following environment var:
+            // "AzureWebJobsServiceBus" -- the connection string for the ServiceBus account
+            string testQueueName = "test-input";
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+
+            await namespaceManager.DeleteQueueAsync(testQueueName);
+            await namespaceManager.CreateQueueAsync(testQueueName);
+
+            QueueClient queueClient = QueueClient.CreateFromConnectionString(connectionString, testQueueName);
+
+            var resultBlob = Fixture.TestContainer.GetBlockBlobReference("completed");
+            await resultBlob.DeleteIfExistsAsync();
+
+            string id = Guid.NewGuid().ToString();
+            JObject message = new JObject
+            {
+                { "count", 0 },
+                { "id", id }
+            };
+
+            using (Stream stream = new MemoryStream())
+            using (TextWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(message.ToString());
+                writer.Flush();
+                stream.Position = 0;
+
+                await queueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            }
+
+            queueClient.Close();
+
+            // now wait for function to be invoked
+            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
+
+            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
 
         protected async Task NotificationHubTest(string functionName)

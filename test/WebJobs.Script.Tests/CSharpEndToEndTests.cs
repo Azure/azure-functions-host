@@ -20,6 +20,12 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ServiceBusQueueTriggerToBlobTest()
+        {
+            await ServiceBusQueueTriggerToBlobTestImpl();
+        }
+
+        [Fact]
         public async Task EasyTables()
         {
             await EasyTablesTest(isCSharp: true);

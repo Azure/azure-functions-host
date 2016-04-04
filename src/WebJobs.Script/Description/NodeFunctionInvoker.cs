@@ -194,20 +194,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             foreach (FunctionBinding binding in outputBindings)
             {
                 // get the output value from the script
+                // we support primatives (int, string, object) as well as arrays of these
                 object value = null;
                 if (bindings.TryGetValue(binding.Metadata.Name, out value))
                 {
-                    if (value.GetType() == typeof(ExpandoObject))
+                    // we only support strings, objects, or arrays of those (not primitive types like int)
+                    if (value.GetType() == typeof(ExpandoObject) ||
+                        value is Array)
                     {
                         value = JsonConvert.SerializeObject(value);
                     }
 
-                    byte[] bytes = null;
-                    if (value.GetType() == typeof(string))
+                    if (!(value is string))
                     {
-                        bytes = Encoding.UTF8.GetBytes((string)value);
+                        throw new InvalidOperationException(string.Format("Invalid value specified for binding '{0}'", binding.Metadata.Name));
                     }
 
+                    byte[] bytes = Encoding.UTF8.GetBytes((string)value);
                     using (MemoryStream ms = new MemoryStream(bytes))
                     {
                         BindingContext bindingContext = new BindingContext

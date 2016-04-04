@@ -66,9 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundQueueName = Resolve(boundQueueName);
             
-            // TODO: Need to handle Stream conversions properly
-            Stream valueStream = context.Value as Stream;
-
             var attribute = new QueueAttribute(boundQueueName);
             Attribute[] additionalAttributes = null;
             if (!string.IsNullOrEmpty(Metadata.Connection))
@@ -80,15 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
-            // only an output binding is supported
-            IAsyncCollector<byte[]> collector = await context.Binder.BindAsync<IAsyncCollector<byte[]>>(runtimeContext);
-            byte[] bytes;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                valueStream.CopyTo(ms);
-                bytes = ms.ToArray();
-            }
-            await collector.AddAsync(bytes);
+            await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
         }
     }
 }

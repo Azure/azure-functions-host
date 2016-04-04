@@ -25,6 +25,12 @@ namespace WebJobs.Script.Tests
         {
         }
 
+        [Fact]
+        public async Task ServiceBusQueueTriggerToBlobTest()
+        {
+            await ServiceBusQueueTriggerToBlobTestImpl();
+        }
+
         /// <summary>
         /// Function "Invalid" has a binding error. This function validates that the error
         /// is cached, and the fact that all the other tests in this suite run verifies that
