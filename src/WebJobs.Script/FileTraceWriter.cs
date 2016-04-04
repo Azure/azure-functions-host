@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -15,10 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FileTraceWriter : TraceWriter, IDisposable
     {
+        internal const int MaxLogFileCount = 3;
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
         private const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
         private readonly string _instanceId;
+        private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
         private FileInfo _currentLogFileInfo;
         private bool _disposed = false;
@@ -31,16 +34,17 @@ namespace Microsoft.Azure.WebJobs.Script
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
 
-            DirectoryInfo directory = new DirectoryInfo(logFilePath);
-            if (!directory.Exists)
+            _logDirectory = new DirectoryInfo(logFilePath);
+            if (!_logDirectory.Exists)
             {
-                Directory.CreateDirectory(logFilePath);
+                _logDirectory.Create();
             }
             else
             {
-                // get the last log file written to (or null)
-                string pattern = string.Format(CultureInfo.InvariantCulture, "*-{0}.log", _instanceId);
-                _currentLogFileInfo = directory.GetFiles(pattern).OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+                // query for all existing log files for this instance
+                // sorted by date, and get the last log file written to (or null)
+                var files = GetLogFiles(_logDirectory);
+                _currentLogFileInfo = files.FirstOrDefault();
             }
 
             if (_currentLogFileInfo == null)
@@ -178,15 +182,43 @@ namespace Microsoft.Azure.WebJobs.Script
             FlushToFile();
         }
 
-        private void SetNewLogFile()
+        internal void SetNewLogFile()
         {
+            // purge any log files over our retention count
+            // we keep MaxLogFileCount - 1 since we're moving to a new log file below
+            // and once it is written to we'll be at MaxLogFileCount files
+            var files = GetLogFiles(_logDirectory);
+            var filesToPurge = files.Skip(MaxLogFileCount - 1);
+            DeleteFiles(filesToPurge);
+
             // we include a machine identifier in the log file name to ensure we don't have any
             // log file contention between scaled out instances
             string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", Guid.NewGuid(), _instanceId));
             _currentLogFileInfo = new FileInfo(filePath);
         }
 
-        private static string GetInstanceId()
+        private IEnumerable<FileInfo> GetLogFiles(DirectoryInfo directory)
+        {
+            string pattern = string.Format(CultureInfo.InvariantCulture, "*-{0}.log", _instanceId);
+            return directory.GetFiles(pattern).OrderByDescending(p => p.LastWriteTime);
+        }
+
+        private static void DeleteFiles(IEnumerable<FileInfo> filesToPurge)
+        {
+            foreach (var file in filesToPurge)
+            {
+                try
+                {
+                    file.Delete();
+                }
+                catch
+                {
+                    // best effort
+                }
+            }
+        }
+
+        internal static string GetInstanceId()
         {
             string instanceId = System.Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID");
             if (string.IsNullOrEmpty(instanceId))
