@@ -8,7 +8,7 @@
     },
     {
       "type": "queue",
-      "name": "message",
+      "name": "messages",
       "direction": "out",
       "queueName": "samples-fsharp"
     }

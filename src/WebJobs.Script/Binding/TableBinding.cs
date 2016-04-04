@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -33,9 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             TableName = metadata.TableName;
+
             PartitionKey = metadata.PartitionKey;
+            if (!string.IsNullOrEmpty(PartitionKey))
+            {
+                _partitionKeyBindingTemplate = BindingTemplate.FromString(PartitionKey);
+            }
+
             RowKey = metadata.RowKey;
-            _partitionKeyBindingTemplate = BindingTemplate.FromString(PartitionKey);
             if (!string.IsNullOrEmpty(RowKey))
             {
                 _rowKeyBindingTemplate = BindingTemplate.FromString(RowKey);
@@ -56,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             get
             {
-                return _partitionKeyBindingTemplate.ParameterNames.Any() ||
+                return (_partitionKeyBindingTemplate != null && _partitionKeyBindingTemplate.ParameterNames.Any()) ||
                        (_rowKeyBindingTemplate != null && _rowKeyBindingTemplate.ParameterNames.Any());
             }
         }
@@ -94,14 +100,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             string boundRowKey = RowKey;
             if (context.BindingData != null)
             {
-                boundPartitionKey = _partitionKeyBindingTemplate.Bind(context.BindingData);
+                if (_partitionKeyBindingTemplate != null)
+                {
+                    boundPartitionKey = _partitionKeyBindingTemplate.Bind(context.BindingData);
+                }
+                
                 if (_rowKeyBindingTemplate != null)
                 {
                     boundRowKey = _rowKeyBindingTemplate.Bind(context.BindingData);
                 }
             }
 
-            boundPartitionKey = Resolve(boundPartitionKey);
+            if (!string.IsNullOrEmpty(boundPartitionKey))
+            {
+                boundPartitionKey = Resolve(boundPartitionKey);
+            }
+
             if (!string.IsNullOrEmpty(boundRowKey))
             {
                 boundRowKey = Resolve(boundRowKey);
@@ -116,31 +130,39 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
             }
 
-            // TODO: Need to handle Stream conversions properly
-            Stream valueStream = context.Value as Stream;
-
             if (Access == FileAccess.Write)
             {
-                // read the content as a JObject
-                JObject jsonObject = null;
-                using (StreamReader streamReader = new StreamReader(valueStream))
-                {
-                    string content = await streamReader.ReadToEndAsync();
-                    jsonObject = JObject.Parse(content);
-                }
-
-                // TODO: If RowKey has not been specified in the binding, try to
-                // derive from the object properties (e.g. "rowKey" or "id" properties);
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName), additionalAttributes);
                 IAsyncCollector<DynamicTableEntity> collector = await context.Binder.BindAsync<IAsyncCollector<DynamicTableEntity>>(runtimeContext);
-                DynamicTableEntity tableEntity = new DynamicTableEntity(boundPartitionKey, boundRowKey);
-                foreach (JProperty property in jsonObject.Properties())
-                {
-                    EntityProperty entityProperty = EntityProperty.CreateEntityPropertyFromObject((object)property.Value);
-                    tableEntity.Properties.Add(property.Name, entityProperty);
-                }
+                ICollection<JToken> entities = ReadAsCollection(context.Value);
 
-                await collector.AddAsync(tableEntity);
+                foreach (JObject entity in entities)
+                {
+                    // any key values specified on the entity override any values
+                    // specified in the binding
+                    string keyValue = (string)entity["partitionKey"];
+                    if (!string.IsNullOrEmpty(keyValue))
+                    {
+                        boundPartitionKey = Resolve(keyValue);
+                        entity.Remove("partitionKey");
+                    }
+
+                    keyValue = (string)entity["rowKey"];
+                    if (!string.IsNullOrEmpty(keyValue))
+                    {
+                        boundRowKey = Resolve(keyValue);
+                        entity.Remove("rowKey");
+                    }
+
+                    DynamicTableEntity tableEntity = new DynamicTableEntity(boundPartitionKey, boundRowKey);
+                    foreach (JProperty property in entity.Properties())
+                    {
+                        EntityProperty entityProperty = EntityProperty.CreateEntityPropertyFromObject((object)property.Value);
+                        tableEntity.Properties.Add(property.Name, entityProperty);
+                    }
+
+                    await collector.AddAsync(tableEntity);
+                }
             }
             else
             {
@@ -177,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     // We're explicitly NOT disposing the StreamWriter because
                     // we don't want to close the underlying Stream
-                    StreamWriter sw = new StreamWriter(valueStream);
+                    StreamWriter sw = new StreamWriter(context.Value);
                     await sw.WriteAsync(json);
                     sw.Flush();
                 }

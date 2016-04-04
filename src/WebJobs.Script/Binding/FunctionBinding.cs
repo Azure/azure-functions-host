@@ -6,9 +6,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection.Emit;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -132,6 +135,70 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var constructorArguments = new object[] { connection };
             var attribute = new CustomAttributeBuilder(typeof(StorageAccountAttribute).GetConstructor(constructorTypes), constructorArguments);
             attributes.Add(attribute);
+        }
+
+        internal static ICollection<JToken> ReadAsCollection(Stream valueStream)
+        {
+            // first deserialize the byte stream as a string
+            byte[] bytes;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                valueStream.CopyTo(ms);
+                bytes = ms.ToArray();
+            }
+            string stringValue = Encoding.UTF8.GetString(bytes);
+
+            JArray values = null;
+            if (Utility.IsJson(stringValue))
+            {
+                // json values can either be singleton objects,
+                // or arrays of objects/values
+                JToken token = JToken.Parse(stringValue);
+                values = token as JArray;
+                if (token.Type != JTokenType.Array)
+                {
+                    // not an array so create a new array and add
+                    // the singleton
+                    values = new JArray();
+                    values.Add(token);
+                }
+            }
+            else
+            {
+                // not json, so add the singleton value to the array
+                values = new JArray();
+                values.Add(stringValue);
+            }
+
+            return values;
+        }
+
+        internal static async Task BindAsyncCollectorAsync<T>(Stream stream, IBinderEx binder, RuntimeBindingContext runtimeContext)
+        {
+            IAsyncCollector<T> collector = await binder.BindAsync<IAsyncCollector<T>>(runtimeContext);
+
+            // first read the input stream as a collection
+            ICollection<JToken> values = ReadAsCollection(stream);
+
+            // convert values as necessary and add to the collector
+            foreach (var value in values)
+            {
+                object converted = null;
+                if (typeof(T) == typeof(string))
+                {
+                    converted = value.ToString();
+                }
+                else if (typeof(T) == typeof(JObject))
+                {
+                    converted = (JObject)value;
+                }
+                else
+                {
+                    throw new ArgumentException("Unsupported collection type.");
+                }
+
+                await collector.AddAsync((T)converted);
+            }
         }
     }
 }
