@@ -220,6 +220,7 @@
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
+    <Compile Include="FunctionBindingTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="SamplesEndToEndTests.cs" />
     <Compile Include="PhpEndToEndTests.cs" />
@@ -310,6 +311,12 @@
     <None Include="TestScripts\CSharp\EasyTableIn\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\ServiceBusQueueTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\ServiceBusQueueTriggerToBlob\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\FSharp\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -361,6 +368,9 @@
     <None Include="TestScripts\Node\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="TestScripts\Node\ServiceBusQueueTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="TestScripts\Node\WebHookTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -454,6 +464,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\QueueTriggerToBlob\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\Node\ServiceBusQueueTriggerToBlob\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\TimerTrigger\index.js">

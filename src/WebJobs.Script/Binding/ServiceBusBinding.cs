@@ -68,9 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundQueueName = Resolve(boundQueueName);
 
-            // TODO: Need to handle Stream conversions properly
-            Stream valueStream = context.Value as Stream;
-
             var attribute = new ServiceBusAttribute(boundQueueName);
             Attribute[] additionalAttributes = null;
             if (!string.IsNullOrEmpty(Metadata.Connection))
@@ -82,14 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
-            // only an output binding is supported
-            using (StreamReader reader = new StreamReader(valueStream))
-            {
-                // TODO: only string supported currently - need to support other types
-                IAsyncCollector<string> collector = await context.Binder.BindAsync<IAsyncCollector<string>>(runtimeContext);
-                string data = reader.ReadToEnd();
-                await collector.AddAsync(data);
-            }
+            await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
         }
 
         internal static void AddServiceBusAccountAttribute(Collection<CustomAttributeBuilder> attributes, string connection)
