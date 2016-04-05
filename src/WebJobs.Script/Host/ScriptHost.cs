@@ -324,7 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrEmpty(connection) && 
                 string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
             {
-                throw new FormatException(string.Format("Connection value '{0}' is invalid.", connection));
+                throw new FormatException("Invalid Connection value specified.");
             }
 
             switch (bindingType)
