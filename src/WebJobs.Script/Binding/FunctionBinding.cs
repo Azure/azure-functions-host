@@ -112,6 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             NotificationHubBindingMetadata notificationHubMetadata = (NotificationHubBindingMetadata)bindingMetadata;
                             bindings.Add(new NotificationHubBinding(config, notificationHubMetadata, fileAccess));
                             break;
+                        case BindingType.ApiHub:
+                        case BindingType.ApiHubTrigger:
+                            ApiHubBindingMetadata apiHubBindingMetadata = (ApiHubBindingMetadata)bindingMetadata;
+                            apiHubBindingMetadata.Key = Guid.NewGuid().ToString();
+                            bindings.Add(new ApiHubBinding(config, apiHubBindingMetadata, fileAccess));
+                            break;
                     }
                 }
             }
