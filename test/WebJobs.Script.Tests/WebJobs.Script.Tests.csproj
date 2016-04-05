@@ -269,6 +269,15 @@
     <None Include="TestScripts\CSharp\DocumentDBIn\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\LoadScriptReference\class.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\LoadScriptReference\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\LoadScriptReference\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\CSharp\NotificationHubOutNotification\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

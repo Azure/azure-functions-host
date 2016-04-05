@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -426,17 +427,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             OptimizationLevel compilationOptimizationLevel = OptimizationLevel.Release;
             if (debug)
             {
-                SyntaxTree scriptTree = compilation.SyntaxTrees.First();
-                scriptTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
-                      encoding: Encoding.UTF8,
-                      path: Path.GetFileName(Metadata.Source),
-                      options: new CSharpParseOptions(kind: SourceCodeKind.Script));
-
+                SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
+                var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
+                  encoding: Encoding.UTF8,
+                  path: Path.GetFileName(Metadata.Source),
+                  options: new CSharpParseOptions(kind: SourceCodeKind.Script));
+                
                 compilationOptimizationLevel = OptimizationLevel.Debug;
 
                 compilation = compilation
                     .RemoveAllSyntaxTrees()
-                    .AddSyntaxTrees(scriptTree);
+                    .AddSyntaxTrees(debugTree);
             }
 
             return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel))

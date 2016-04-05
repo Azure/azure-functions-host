@@ -66,6 +66,20 @@ namespace WebJobs.Script.Tests
             await WaitForEasyTableRecordAsync("Item", id);
         }
 
+        [Fact]
+        public async Task ScriptReference_LoadsScript()
+        {
+            var request = new System.Net.Http.HttpRequestMessage();
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
+
+            await Fixture.Host.CallAsync("LoadScriptReference", arguments);
+
+            Assert.Equal("TestClass", request.Properties["LoadedScriptResponse"]);
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\CSharp")

@@ -80,7 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return ScriptOptions.Default
                         .WithMetadataResolver(this)
                         .WithReferences(GetCompilationReferences())
-                        .WithImports(DefaultNamespaceImports);
+                        .WithImports(DefaultNamespaceImports)
+                        .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.Source)));
             }
         }
 
