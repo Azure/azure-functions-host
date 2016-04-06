@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -19,26 +20,39 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string EmptyFolderFileMarker = "_._";
         private const string FrameworkTargetName = ".NETFramework,Version=v4.6";
 
-        private readonly IDictionary<string, string> _assemblyRegistry;
-        
+        private readonly ImmutableArray<PackageReference> _packages;
+
         public PackageAssemblyResolver(FunctionMetadata metadata)
         {
-            _assemblyRegistry = InitializeAssemblyRegistry(metadata);
+            _packages = InitializeAssemblyRegistry(metadata);
         }
 
-        public IDictionary<string, string> AssemblyRegistry
+        public ImmutableArray<PackageReference> Packages
         {
             get
             {
-                return _assemblyRegistry;
+                return _packages;
             }
         }
 
-        private static IDictionary<string, string> InitializeAssemblyRegistry(FunctionMetadata metadata)
+        public IEnumerable<string> AssemblyReferences
         {
-            IDictionary<string, string> registry = null;
+            get
+            {
+                return _packages.Aggregate(new List<string>(), (assemblies, p) =>
+                {
+                    assemblies.AddRange(p.Assemblies.Values);
+                    assemblies.AddRange(p.FrameworkAssemblies.Values);
+                    return assemblies;
+                });
+            }
+        }
+
+        private static ImmutableArray<PackageReference> InitializeAssemblyRegistry(FunctionMetadata metadata)
+        {
+            var builder = ImmutableArray<PackageReference>.Empty.ToBuilder();
             string fileName = Path.Combine(Path.GetDirectoryName(metadata.Source), CSharpConstants.ProjectLockFileName);
-            
+
             if (File.Exists(fileName))
             {
                 var jobject = JObject.Parse(File.ReadAllText(fileName));
@@ -49,11 +63,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     string nugetHome = PackageManager.GetNugetPackagesPath();
 
-                    List<string> assemblyReferences = new List<string>();
-                    List<string> frameworkAssemblyReferences = new List<string>();
-
                     foreach (JProperty token in target)
                     {
+                        var referenceNameParts = token.Name.Split('/');
+                        if (referenceNameParts.Length != 2)
+                        {
+                            throw new FormatException(string.Format(CultureInfo.InvariantCulture, "The package name '{0}' is not correctly formatted.", token.Name));
+                        }
+
+                        var package = new PackageReference(referenceNameParts[0], referenceNameParts[1]);
+
                         var references = token.SelectTokens("$..compile").FirstOrDefault();
                         if (references != null)
                         {
@@ -63,7 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                                 {
                                     string path = Path.Combine(nugetHome, token.Name, reference.Name);
                                     path = path.Replace('/', '\\');
-                                    assemblyReferences.Add(path);
+
+                                    if (File.Exists(path))
+                                    {
+                                        package.Assemblies.Add(AssemblyName.GetAssemblyName(path), path);
+                                    }
                                 }
                             }
                         }
@@ -73,24 +96,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             foreach (var assembly in frameworkAssemblies)
                             {
-                                frameworkAssemblyReferences.Add(assembly.ToString());
+                                string assemblyName = assembly.ToString();
+                                package.FrameworkAssemblies.Add(new AssemblyName(assemblyName), assemblyName);
                             }
                         }
-                    }
 
-                    registry = assemblyReferences.Where(reference => File.Exists(reference)).Union(frameworkAssemblyReferences.Distinct())
-                        .ToDictionary(s => Path.IsPathRooted(s) ? AssemblyName.GetAssemblyName(s).FullName : new AssemblyName(s).FullName, s => s,
-                        StringComparer.OrdinalIgnoreCase);
+                        builder.Add(package);
+                    }
                 }
             }
 
-            return registry ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            return builder.ToImmutableArray();
         }
 
         public bool TryResolveAssembly(string name, out string path)
         {
-            var assemblyName = new AssemblyName(name).FullName;
-            return _assemblyRegistry.TryGetValue(assemblyName, out path);
+            path = null;
+            var assemblyName = new AssemblyName(name);
+
+            foreach (var package in _packages)
+            {
+                if (package.Assemblies.TryGetValue(assemblyName, out path) ||
+                    package.FrameworkAssemblies.TryGetValue(assemblyName, out path))
+                {
+                    break;
+                }
+            }
+
+            return path != null;
         }
     }
 }

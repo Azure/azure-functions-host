@@ -274,6 +274,7 @@
     <Compile Include="Description\CSharp\MethodReference.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolver.cs" />
     <Compile Include="Description\CSharp\PackageManager.cs" />
+    <Compile Include="Description\CSharp\PackageReference.cs" />
     <Compile Include="Description\NotificationHubBindingMetadata.cs" />
     <Compile Include="Description\DocumentDBBindingMetadata.cs" />
     <Compile Include="Description\EasyTableBindingMetadata.cs" />

@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -338,7 +339,41 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
                 TraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
+
+                ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
+
+                if (!scriptDiagnostics.IsEmpty)
+                {
+                    TraceCompilationDiagnostics(scriptDiagnostics);
+                }
             }
+        }
+
+        private ImmutableArray<Diagnostic> GetFunctionDiagnostics(Diagnostic diagnostic)
+        {
+            // If metadata file not found
+            if (string.Compare(diagnostic.Id, "CS0006", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                string messagePattern = diagnostic.Descriptor.MessageFormat.ToString().Replace("{0}", "(?<arg>.*)");
+
+                Match match = Regex.Match(diagnostic.GetMessage(), messagePattern);
+
+                PackageReference package;
+                // If we have the assembly name argument, and it is a package assembly, add a compilation warning
+                if (match.Success && match.Groups["arg"] != null && _metadataResolver.TryGetPackageReference(match.Groups["arg"].Value, out package))
+                {
+                    string message = string.Format(CultureInfo.InvariantCulture,
+                        "The reference '{0}' is part of the referenced NuGet package '{1}'. Package assemblies are automatically referenced by your Function and do not require a '#r' directive.",
+                        match.Groups["arg"].Value, package.Name);
+
+                    var descriptor = new DiagnosticDescriptor(CSharpConstants.RedundantPackageAssemblyReference,
+                       "Redundant assembly reference", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
+
+                    return ImmutableArray.Create(Diagnostic.Create(descriptor, diagnostic.Location));
+                }
+            }
+
+            return ImmutableArray<Diagnostic>.Empty;
         }
 
         private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(CSharpFunctionSignature functionSignature,

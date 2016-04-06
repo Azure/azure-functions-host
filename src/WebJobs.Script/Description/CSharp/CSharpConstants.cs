@@ -18,5 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string MissingTriggerArgumentCompilationCode = "AF003";
 
         public const string MissingBindingArgumentCompilationCode = "AF004";
+
+        public const string RedundantPackageAssemblyReference = "AF005";
     }
 }
