@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FileTraceWriter : TraceWriter, IDisposable
     {
-        internal const int MaxLogFileCount = 3;
+        internal const int LastModifiedCutoffDays = 1;
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
         private const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
@@ -184,11 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal void SetNewLogFile()
         {
-            // purge any log files over our retention count
-            // we keep MaxLogFileCount - 1 since we're moving to a new log file below
-            // and once it is written to we'll be at MaxLogFileCount files
-            var files = GetLogFiles(_logDirectory);
-            var filesToPurge = files.Skip(MaxLogFileCount - 1);
+            // purge any log files (regardless of instance ID) whose last write time was earlier
+            // than our retention policy
+            var filesToPurge = _logDirectory.GetFiles("*.log").Where(p => (DateTime.Now - p.LastWriteTime).TotalDays > LastModifiedCutoffDays);
             DeleteFiles(filesToPurge);
 
             // we include a machine identifier in the log file name to ensure we don't have any
