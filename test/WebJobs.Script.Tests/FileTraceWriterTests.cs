@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -52,14 +54,26 @@ namespace WebJobs.Script.Tests
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
 
-            int initialCount = FileTraceWriter.MaxLogFileCount + 5;
+            // below test expects the retention days to be set to 1
+            Assert.Equal(1, FileTraceWriter.LastModifiedCutoffDays);
+
+            // create some log files
+            List<FileInfo> logFiles = new List<FileInfo>();
+            int initialCount = 5;
             for (int i = 0; i < initialCount; i++)
             {
                 string fileName = string.Format("{0}-{1}.log", i, FileTraceWriter.GetInstanceId());
                 string path = Path.Combine(_logFilePath, fileName);
                 Thread.Sleep(50);
                 File.WriteAllText(path, "Test Logs");
+                logFiles.Add(new FileInfo(path));
             }
+
+            // mark some of the files as old - we expect
+            // all of these to be purged
+            File.SetLastWriteTime(logFiles[2].FullName, DateTime.Now.Subtract(TimeSpan.FromDays(1)));
+            File.SetLastWriteTime(logFiles[1].FullName, DateTime.Now.Subtract(TimeSpan.FromDays(1)));
+            File.SetLastWriteTime(logFiles[0].FullName, DateTime.Now.Subtract(TimeSpan.FromDays(2)));
 
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(initialCount, files.Length);
@@ -69,13 +83,11 @@ namespace WebJobs.Script.Tests
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
 
-            // verify log files are purged
-            Assert.Equal(FileTraceWriter.MaxLogFileCount - 1, files.Length);
-            for (int i = 0; i < FileTraceWriter.MaxLogFileCount - 1; i++)
-            {
-                string expectedFilePrefix = (initialCount - 1 - i).ToString();
-                Assert.True(files[i].Name.StartsWith(expectedFilePrefix));
-            }
+            // verify the correct log files were purged and the 2
+            // most recent files were retained
+            Assert.Equal(2, files.Length);
+            Assert.True(files[0].Name.StartsWith("4"));
+            Assert.True(files[1].Name.StartsWith("3"));
         }
 
         [Fact]
