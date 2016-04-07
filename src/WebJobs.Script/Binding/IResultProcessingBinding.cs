@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
+
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     public interface IResultProcessingBinding
     {
-        void ProcessResult(object inputValue, object result);
+        void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result);
 
         bool CanProcessResult(object result);
     }

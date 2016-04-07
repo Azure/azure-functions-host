@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string HostAssemblyName = "ScriptHost";
         private const string HostConfigFileName = "host.json";
-        internal const string FunctionConfigFileName = "function.json";
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
@@ -382,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 try
                 {
                     // read the function config
-                    string functionConfigPath = Path.Combine(scriptDir, FunctionConfigFileName);
+                    string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionConfigFileName);
                     if (!File.Exists(functionConfigPath))
                     {
                         // not a function directory
@@ -406,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
 
                     // determine the primary script
-                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != FunctionConfigFileName).ToArray();
+                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionConfigFileName).ToArray();
                     if (functionFiles.Length == 0)
                     {
                         AddFunctionError(functionName, "No function script files present.");
@@ -748,7 +747,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string fileName = Path.GetFileName(e.Name);
 
-            if (((string.Compare(fileName, HostConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) || string.Compare(fileName, FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+            if (((string.Compare(fileName, HostConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+                string.Compare(fileName, ScriptConstants.FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 (Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot))
             {
                 // a host level configuration change has been made which requires a

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -232,6 +232,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger", "ApiHubTrig
 		sample\ApiHubTrigger\index.js = sample\ApiHubTrigger\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-CSharp", "HttpTriggerWithObject-CSharp", "{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTriggerWithObject-CSharp\function.json = sample\HttpTriggerWithObject-CSharp\function.json
+		sample\HttpTriggerWithObject-CSharp\run.csx = sample\HttpTriggerWithObject-CSharp\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -302,5 +308,6 @@ Global
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

@@ -327,6 +327,7 @@
     <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />
     <Compile Include="Host\ScriptHostFactory.cs" />
+    <Compile Include="ScriptConstants.cs" />
     <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>

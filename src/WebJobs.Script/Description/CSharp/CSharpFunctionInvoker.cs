@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private FunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
         private Action _restorePackages;
-        private Action<MethodInfo, object[], object> _resultProcessor;
+        private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private FunctionValueLoader _functionValueLoader;
 
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (functionResult != null)
                 {
-                    _resultProcessor(function, parameters, functionResult);
+                    _resultProcessor(function, parameters, systemParameters, functionResult);
                 }
 
                 TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
@@ -467,33 +467,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return null;
         }
 
-        private Action<MethodInfo, object[], object> CreateResultProcessor()
+        private Action<MethodInfo, object[], object[], object> CreateResultProcessor()
         {
             var bindings = _inputBindings.Union(_outputBindings).OfType<IResultProcessingBinding>();
 
-            Action<MethodInfo, object[], object> processor = null;
+            Action<MethodInfo, object[], object[], object> processor = null;
             if (bindings.Any())
             {
-                processor = (function, args, result) =>
+                processor = (function, args, systemArgs, result) =>
                 {
-                    ParameterInfo parameter = function.GetParameters()
-                    .FirstOrDefault(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0);
-
-                    if (parameter != null)
+                    // Find the binding parameter input by
+                    // checking if we have the raw value (passed as the DefaultSystemTriggerParameterName)
+                    // or getting the function input parameter
+                    ParameterInfo[] parameters = function.GetParameters();
+                    IDictionary<string, object> functionArguments = parameters.ToDictionary(p => p.Name, p => args[p.Position]);
+                    foreach (var processingBinding in bindings)
                     {
-                        foreach (var processingBinding in bindings)
+                        if (processingBinding.CanProcessResult(result))
                         {
-                            if (processingBinding.CanProcessResult(result))
-                            {
-                                processingBinding.ProcessResult(args[parameter.Position], result);
-                                break;
-                            }
+                            processingBinding.ProcessResult(functionArguments, systemArgs, _triggerInputName, result);
+                            break;
                         }
                     }
                 };
             }
 
-            return processor ?? ((_, __, ___) => { /*noop*/ });
+            return processor ?? ((_, __, ___, ____) => { /*noop*/ });
         }
 
         private static TraceLevel GetTraceLevelFromDiagnostic(Diagnostic diagnostic)

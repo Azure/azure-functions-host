@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
@@ -18,8 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
-        internal const string HttpResponsePropertyKey = "MS_AzureFunctionsHttpResponse";
-
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) : 
             base(config, metadata, access)
         {
@@ -107,22 +107,41 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
             }
 
-            request.Properties[HttpResponsePropertyKey] = response;
+            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
-
-        public void ProcessResult(object inputValue, object result)
+        
+        public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
         {
-            HttpRequestMessage request = inputValue as HttpRequestMessage;
-
-            if (request != null && result is HttpResponseMessage)
+            if (result == null)
             {
-                request.Properties[HttpResponsePropertyKey] = result;
+                return;
+            }
+
+            HttpRequestMessage request;
+
+            if (!functionArguments.TryGetValue(triggerInputName, out request))
+            {
+                // No argument is bound to the request message, so we should have 
+                // it in the system arguments
+                request = systemArguments.FirstOrDefault(a => a is HttpRequestMessage) as HttpRequestMessage;
+            }
+
+            if (request != null)
+            {
+                HttpResponseMessage response = result as HttpResponseMessage;
+                if (response == null)
+                {
+                    response = request.CreateResponse(HttpStatusCode.OK);
+                    response.Content = new ObjectContent(result.GetType(), result, new JsonMediaTypeFormatter());
+                }
+
+                request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
             }
         }
 
         public bool CanProcessResult(object result)
         {
-            return result is HttpResponseMessage;
+            return result != null;
         }
 
         private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, JToken> header)

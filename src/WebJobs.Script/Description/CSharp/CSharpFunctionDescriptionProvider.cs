@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -92,12 +93,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
+                bool addHttpRequestSystemParameter = false;
                 foreach (var parameter in parameters)
                 {
                     // Is it the trigger parameter?
                     if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
                     {
                         descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata));
+
+                        if (triggerMetadata.Type == BindingType.HttpTrigger && 
+                            parameter.ParameterType != typeof(HttpRequestMessage))
+                        {
+                            addHttpRequestSystemParameter = true;
+                        }
                     }
                     else
                     {
@@ -133,6 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // Add any additional common System parameters
                 // Add ExecutionContext to provide access to InvocationId, etc.
                 descriptors.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
+                
+                // If we have an HTTP trigger binding but we're not binding
+                // to the HttpRequestMessage, require it as a system parameter
+                if (addHttpRequestSystemParameter)
+                {
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.DefaultSystemTriggerParameterName, typeof(HttpRequestMessage)));
+                }
 
                 return descriptors;
             }

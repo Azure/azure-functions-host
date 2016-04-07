@@ -111,6 +111,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTriggerWithObject_CSharp_Post_Succeeds()
+        {
+            string uri = "api/httptriggerwithobject-csharp?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent("{ 'SenderName': 'Fabio' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Hello, Fabio", jsonObject["Greeting"]);
+        }
+
+        [Fact]
         public async Task GenericWebHook_Post_Succeeds()
         {
             string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5";

@@ -3,8 +3,7 @@
     {
       "type": "httpTrigger",
       "direction": "in",
-      "webHookType": "genericJson",
-      "name": "payload"
+      "methods": [ "post" ]
     },
     {
       "type": "http",

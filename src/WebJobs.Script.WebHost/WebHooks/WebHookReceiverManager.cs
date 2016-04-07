@@ -14,6 +14,7 @@ using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace WebJobs.Script.WebHost.WebHooks
@@ -25,7 +26,7 @@ namespace WebJobs.Script.WebHost.WebHooks
     public class WebHookReceiverManager : IDisposable
     {
         internal const string AzureFunctionsCallbackKey = "MS_AzureFunctionsCallback";
-
+        
         private readonly Dictionary<string, IWebHookReceiver> _receiverLookup;
         private HttpConfiguration _httpConfiguration;
         private bool disposedValue = false;
@@ -119,6 +120,8 @@ namespace WebJobs.Script.WebHost.WebHooks
                 // get the callback from request properties
                 var requestHandler = (Func<HttpRequestMessage, Task<HttpResponseMessage>>)
                     context.Request.Properties[AzureFunctionsCallbackKey];
+
+                context.Request.Properties.Add(ScriptConstants.AzureFunctionsWebHookContextKey, context);
 
                 // Invoke the function
                 context.Response = await requestHandler(context.Request);

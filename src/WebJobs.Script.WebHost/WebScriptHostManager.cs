@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -18,6 +20,7 @@ namespace WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
+        private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
         private IMetricsLogger _metricsLogger;
 
         public WebScriptHostManager(ScriptHostConfiguration config) : base(config)
@@ -32,12 +35,7 @@ namespace WebJobs.Script.WebHost
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
 
-            // Invoke the function
-            ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { triggerParameter.Name, request }
-            };
+            Dictionary<string, object> arguments = await GetFunctionArgumentsAsync(function, request);
 
             // Suspend the current synchronization context so we don't pass the ASP.NET
             // context down to the function.
@@ -55,6 +53,53 @@ namespace WebJobs.Script.WebHost
             }
 
             return response;
+        }
+
+        private static MethodInfo CreateGetWebHookDataMethodInfo()
+        {
+            return typeof(WebHookHandlerContextExtensions).GetMethod("GetDataOrDefault", BindingFlags.Public | BindingFlags.Static);
+        }
+
+        private static async Task<Dictionary<string, object>> GetFunctionArgumentsAsync(FunctionDescriptor function, HttpRequestMessage request)
+        {
+            ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
+            Dictionary<string, object> arguments = new Dictionary<string, object>();
+            object triggerArgument = null;
+            if (triggerParameter.Type == typeof(HttpRequestMessage))
+            {
+                triggerArgument = request;
+            }
+            else
+            {
+                // We'll replace the trigger argument but still want to flow the request
+                // so add it to the arguments, as a system argument
+                arguments.Add(ScriptConstants.DefaultSystemTriggerParameterName, request);
+
+                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+                if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
+                {
+                    WebHookHandlerContext webHookContext;
+                    if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsWebHookContextKey, out webHookContext))
+                    {
+                        triggerArgument = GetWebHookData(triggerParameter.Type, webHookContext);
+                    }
+                }
+
+                if (triggerArgument == null)
+                {
+                    triggerArgument = await request.Content.ReadAsAsync(triggerParameter.Type);
+                }
+            }
+
+            arguments.Add(triggerParameter.Name, triggerArgument);
+
+            return arguments;
+        }
+
+        private static object GetWebHookData(Type dataType, WebHookHandlerContext context)
+        {
+            MethodInfo getDataMethod = _getWebHookDataMethod.Value.MakeGenericMethod(dataType);
+            return getDataMethod.Invoke(null, new object[] { context });
         }
 
         public FunctionDescriptor GetHttpFunctionOrNull(Uri uri)

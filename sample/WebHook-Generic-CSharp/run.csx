@@ -2,20 +2,16 @@
 
 using System;
 using System.Net;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
+public static JObject Run(Payload payload)
 {
-    string json = await req.Content.ReadAsStringAsync();
-    Payload payload = JsonConvert.DeserializeObject<Payload>(json);
-
     JObject body = new JObject()
     {
         { "result", $"Value: {payload.Value}" }
     };
-    return req.CreateResponse(HttpStatusCode.OK, body, "application/json");
+    return body;
 }
 
 public class Payload
