@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -134,6 +133,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     break;
                 case BindingType.ManualTrigger:
                     triggerParameter = ParseManualTrigger(triggerMetadata);
+                    break;
+                case BindingType.ApiHubTrigger:
+                    triggerParameter = ParseApiHubTrigger((ApiHubBindingMetadata)triggerMetadata, typeof(Stream));
                     break;
             }
 
@@ -357,6 +359,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
+        }
+
+        protected ParameterDescriptor ParseApiHubTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
+        {
+            if (trigger == null)
+            {
+                throw new ArgumentNullException("trigger");
+            }
+
+            if (triggerParameterType == null)
+            {
+                triggerParameterType = typeof(string);
+            }
+
+            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string) });
+
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path });
+            string parameterName = trigger.Name;
+            var attributes = new Collection<CustomAttributeBuilder>
+            {
+                attributeBuilder
+            };
+            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
     }
 }

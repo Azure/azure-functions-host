@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+      "type": "apiHubTrigger",
+      "connection": "AzureWebJobsDropBox",
+      "direction": "in",
+      "path": "testinnode/{name}"
+    },
+    {
+      "type": "apiHub",
+      "name": "output",
+      "connection": "AzureWebJobsDropBox",
+      "direction": "out",
+      "path": "testoutnode/{name}"
+    }
+  ]
+}

@@ -53,6 +53,9 @@
       <HintPath>..\..\packages\Edge.js.5.9.1\lib\EdgeJs.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Azure.ApiHub.Sdk">
+      <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.3\tools\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-rc1\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
       <Private>True</Private>
@@ -74,23 +77,27 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.1.0.2-alpha-10266\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.1.0.2-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10266\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.EasyTables, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EasyTables.1.0.0-alpha-10266\lib\net45\Microsoft.Azure.WebJobs.Extensions.EasyTables.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EasyTables.1.0.0-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.EasyTables.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10266\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.1.0.2-alpha-10266\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.1.0.2-alpha-10267\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=1.1.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -240,6 +247,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizationLevel.cs" />
+    <Compile Include="Binding\ApiHubBinding.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\BlobBinding.cs" />
     <Compile Include="Binding\NotificationHubBinding.cs" />
@@ -256,6 +264,7 @@
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\AllowNameResolutionAttribute.cs" />
     <Compile Include="Config\NameResolver.cs" />
+    <Compile Include="Description\ApiHubBindingMetadata.cs" />
     <Compile Include="Description\BindingDirection.cs" />
     <Compile Include="Description\BindingMetadata.cs" />
     <Compile Include="Description\BindingType.cs" />

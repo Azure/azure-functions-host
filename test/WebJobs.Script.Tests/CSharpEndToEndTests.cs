@@ -80,6 +80,12 @@ namespace WebJobs.Script.Tests
             Assert.Equal("TestClass", request.Properties["LoadedScriptResponse"]);
         }
 
+        [Fact]
+        public async Task ApiHub()
+        {
+            await ApiHubTest();
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\CSharp")
