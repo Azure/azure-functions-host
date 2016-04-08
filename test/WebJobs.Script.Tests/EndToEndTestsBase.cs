@@ -50,10 +50,10 @@ namespace WebJobs.Script.Tests
             string result = await TestHelpers.WaitForBlobAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
-            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message.Contains(id));
-            Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
+            TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id));
+            Assert.Equal(TraceLevel.Verbose, traceEvent.Level);
 
-            string trace = scriptTrace.Message;
+            string trace = traceEvent.Message;
             Assert.True(trace.Contains("script processed queue message"));
             Assert.True(trace.Replace(" ", string.Empty).Contains(messageContent.Replace(" ", string.Empty)));
         }
@@ -303,14 +303,6 @@ namespace WebJobs.Script.Tests
             return doc;
         }
 
-        protected async Task WaitForTraceAsync()
-        {
-            await TestHelpers.Await(() =>
-            {
-                return Fixture.TraceWriter.Traces.Any(t => t.Message.Contains("Here."));
-            });
-        }
-
         protected static string RemoveByteOrderMarkAndWhitespace(string s)
         {
             string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
@@ -326,6 +318,19 @@ namespace WebJobs.Script.Tests
                 return true;
             }
             return false;
+        }
+
+        protected async Task<TraceEvent> WaitForTraceAsync(Func<TraceEvent, bool> filter)
+        {
+            TraceEvent traceEvent = null;
+
+            await TestHelpers.Await(() =>
+            {
+                traceEvent = Fixture.TraceWriter.Traces.SingleOrDefault(filter);
+                return traceEvent != null;
+            });
+
+            return traceEvent;
         }
     }
 }
