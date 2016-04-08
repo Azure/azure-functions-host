@@ -34,20 +34,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private Func<object, Task<object>> _scriptFunc;
         private Func<object, Task<object>> _clearRequireCache;
+        private static Func<object, Task<object>> _globalInitializationFunc;
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
+        private static string _globalInitializationScript;
 
         static NodeFunctionInvoker()
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.functionTemplate.js")))
-            {
-                _functionTemplate = reader.ReadToEnd();
-            }
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream("Microsoft.Azure.WebJobs.Script.clearRequireCache.js")))
-            {
-                _clearRequireCacheScript = reader.ReadToEnd();
-            }
+            _functionTemplate = ReadResourceString("functionTemplate.js");
+            _clearRequireCacheScript = ReadResourceString("clearRequireCache.js");
+            _globalInitializationScript = ReadResourceString("globalInitialization.js");
+
+            Initialize();
         }
 
         internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
@@ -61,6 +59,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcherIfEnabled();
+        }
+
+        /// <summary>
+        /// Event raised whenever an unhandled Node exception occurs at the
+        /// global level (e.g. an unhandled async exception).
+        /// </summary>
+        public static event UnhandledExceptionEventHandler UnhandledException;
+
+        private static Func<object, Task<object>> GlobalInitializationFunc
+        {
+            get
+            {
+                if (_globalInitializationFunc == null)
+                {
+                    _globalInitializationFunc = Edge.Func(_globalInitializationScript);
+                }
+                return _globalInitializationFunc;
+            }
         }
 
         private Func<object, Task<object>> ScriptFunc
@@ -411,6 +427,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Performs required static initialization in the Edge context.
+        /// </summary>
+        private static void Initialize()
+        {
+            var handle = (Func<object, Task<object>>)(err =>
+            {
+                if (UnhandledException != null)
+                {
+                    // raise the event to allow subscribers to handle
+                    var ex = new InvalidOperationException((string)err);
+                    UnhandledException(null, new UnhandledExceptionEventArgs(ex, true));
+
+                    // Ensure that we allow the unhandled exception to kill the process.
+                    // unhandled Node global exceptions should never be swallowed.
+                    throw ex;
+                }
+                return Task.FromResult<object>(null);
+            });
+            var context = new Dictionary<string, object>()
+            {
+                { "handleUncaughtException", handle }
+            };
+
+            GlobalInitializationFunc(context).Wait();
+        }
+
+        private static string ReadResourceString(string fileName)
+        {
+            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.{0}", fileName);
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
+            {
+                return reader.ReadToEnd();
             }
         }
     }

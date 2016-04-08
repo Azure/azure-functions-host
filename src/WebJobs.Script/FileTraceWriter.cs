@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _flushTimer.Start();
         }
 
-        public void FlushToFile()
+        public override void Flush()
         {
             if (_logBuffer.Count == 0)
             {
@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // ensure any remaining logs are flushed
-                    FlushToFile();
+                    Flush();
                 }
 
                 _disposed = true;
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {
-            FlushToFile();
+            Flush();
         }
 
         internal void SetNewLogFile()

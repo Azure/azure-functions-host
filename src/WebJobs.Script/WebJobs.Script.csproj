@@ -353,6 +353,7 @@
       <Link>edge\edge.js</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="globalInitialization.js" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">

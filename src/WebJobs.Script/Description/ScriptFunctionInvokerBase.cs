@@ -53,6 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             string error = Utility.FlattenException(ex);
             TraceWriter.Error(error);
+
+            // when any errors occur, we want to flush immediately
+            TraceWriter.Flush();
         }
 
         protected void InitializeFileWatcherIfEnabled()
