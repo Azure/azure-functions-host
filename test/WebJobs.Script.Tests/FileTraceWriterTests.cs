@@ -103,7 +103,7 @@ namespace WebJobs.Script.Tests
             Assert.Equal(0, files.Length);
 
             traceWriter.Verbose("Test log");
-            traceWriter.FlushToFile();
+            traceWriter.Flush();
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(1, files.Length);
@@ -118,7 +118,7 @@ namespace WebJobs.Script.Tests
                 traceWriter.Verbose(string.Format("Test message {0} {1}", Thread.CurrentThread.ManagedThreadId, i));
             }
 
-            traceWriter.FlushToFile();
+            traceWriter.Flush();
         }
     }
 }

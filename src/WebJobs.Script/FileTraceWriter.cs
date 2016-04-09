@@ -62,17 +62,30 @@ namespace Microsoft.Azure.WebJobs.Script
             _flushTimer.Start();
         }
 
-        public void FlushToFile()
+        public override void Flush()
         {
             if (_logBuffer.Count == 0)
             {
                 return;
             }
 
-            // snapshot the current set of buffered logs
-            // and set a new bag
-            ConcurrentQueue<string> currentBuffer = _logBuffer;
-            _logBuffer = new ConcurrentQueue<string>();
+            ConcurrentQueue<string> currentBuffer = null;
+            lock (_syncLock)
+            {
+                // Snapshot the current set of buffered logs
+                // and set a new queue. This ensures that any new
+                // logs are written to the new buffer.
+                // We do this snapshot in a lock since Flush might be
+                // called by multiple threads concurrently, and we need
+                // to ensure we only log each log once.
+                currentBuffer = _logBuffer;
+                _logBuffer = new ConcurrentQueue<string>();
+            }
+
+            if (currentBuffer.Count == 0)
+            {
+                return;
+            }
 
             // concatenate all lines into one string
             StringBuilder sb = new StringBuilder();
@@ -151,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // ensure any remaining logs are flushed
-                    FlushToFile();
+                    Flush();
                 }
 
                 _disposed = true;
@@ -179,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {
-            FlushToFile();
+            Flush();
         }
 
         internal void SetNewLogFile()

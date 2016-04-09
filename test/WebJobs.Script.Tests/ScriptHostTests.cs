@@ -2,9 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -124,6 +125,57 @@ namespace WebJobs.Script.Tests
             Assert.Equal(2, scriptConfig.Functions.Count);
             Assert.Equal("Function1", scriptConfig.Functions[0]);
             Assert.Equal("Function2", scriptConfig.Functions[1]);
+        }
+
+        [Fact]
+        public void TryGetFunctionFromException_FunctionMatch()
+        {
+            string stack = "TypeError: Cannot read property 'is' of undefined\n" +
+                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js:7:35)\n" +
+                           "at tryOnTimeout (timers.js:224:11)\n" +
+                           "at Timer.listOnTimeout(timers.js:198:5)";
+            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            var exception = new InvalidOperationException(stack);
+
+            // no match - empty functions
+            FunctionDescriptor functionResult = null;
+            bool result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
+            Assert.False(result);
+            Assert.Null(functionResult);
+
+            // no match - one non-matching function
+            FunctionMetadata metadata = new FunctionMetadata
+            {
+                Name = "SomeFunction",
+                Source = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
+            };
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
+            functions.Add(function);
+            result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
+            Assert.False(result);
+            Assert.Null(functionResult);
+
+            // match - exact
+            metadata = new FunctionMetadata
+            {
+                Name = "HttpTriggerNode",
+                Source = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
+            };
+            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
+            functions.Add(function);
+            result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
+            Assert.True(result);
+            Assert.Same(function, functionResult);
+
+            // match - different file from the same function
+            stack = "TypeError: Cannot read property 'is' of undefined\n" +
+                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\npm\\lib\\foo.js:7:35)\n" +
+                           "at tryOnTimeout (timers.js:224:11)\n" +
+                           "at Timer.listOnTimeout(timers.js:198:5)";
+            exception = new InvalidOperationException(stack);
+            result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
+            Assert.True(result);
+            Assert.Same(function, functionResult);
         }
     }
 }

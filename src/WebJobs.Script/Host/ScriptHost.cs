@@ -203,6 +203,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 new CSharpFunctionDescriptionProvider(this, ScriptConfig)
             };
 
+            NodeFunctionInvoker.UnhandledException += OnUnhandledException;
+
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
@@ -217,6 +219,11 @@ namespace Microsoft.Azure.WebJobs.Script
             ApplyBindingConfiguration(functions, ScriptConfig.HostConfig);
 
             Functions = functions;
+        }
+
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            HandleHostError((Exception)e.ExceptionObject);
         }
 
         // Bindings may require us to update JobHostConfiguration. 
@@ -656,28 +663,75 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             foreach (TraceEvent traceEvent in traceFilter.Events)
             {
-                if (traceEvent.Exception is FunctionInvocationException)
-                {
-                    // For all function invocation events, we notify the invoker so it can
-                    // log the error as needed to its function specific logs.
-                    FunctionInvocationException invocationException = traceEvent.Exception as FunctionInvocationException;
-                    NotifyInvoker(invocationException.MethodName, invocationException);
-                }
-                else if (traceEvent.Exception is FunctionIndexingException)
-                {
-                    // For all startup time indexing errors, we accumulate them per function
-                    FunctionIndexingException indexingException = traceEvent.Exception as FunctionIndexingException;
-                    string formattedError = Utility.FlattenException(indexingException);
-                    AddFunctionError(indexingException.MethodName, formattedError);
+                HandleHostError(traceEvent.Exception);
+            }
+        }
 
-                    // Also notify the invoker so the error can also be written to the function
-                    // log file
-                    NotifyInvoker(indexingException.MethodName, indexingException);
+        private void HandleHostError(Exception exception)
+        {
+            // First, ensure that we've logged to the host log
+            // Also ensure we flush immediately to ensure any buffered logs
+            // are written
+            TraceWriter.Error("An ScriptHost error has occurred", exception);
+            TraceWriter.Flush();
 
-                    // Mark the error as handled so indexing will continue
-                    indexingException.Handled = true;
+            if (exception is FunctionInvocationException)
+            {
+                // For all function invocation errors, we notify the invoker so it can
+                // log the error as needed to its function specific logs.
+                FunctionInvocationException invocationException = exception as FunctionInvocationException;
+                NotifyInvoker(invocationException.MethodName, invocationException);
+            }
+            else if (exception is FunctionIndexingException)
+            {
+                // For all startup time indexing errors, we accumulate them per function
+                FunctionIndexingException indexingException = exception as FunctionIndexingException;
+                string formattedError = Utility.FlattenException(indexingException);
+                AddFunctionError(indexingException.MethodName, formattedError);
+
+                // Also notify the invoker so the error can also be written to the function
+                // log file
+                NotifyInvoker(indexingException.MethodName, indexingException);
+
+                // Mark the error as handled so indexing will continue
+                indexingException.Handled = true;
+            }
+            else
+            {
+                // See if we can identify which function caused the error, and if we can
+                // log the error as needed to its function specific logs.
+                FunctionDescriptor function = null;
+                if (TryGetFunctionFromException(Functions, exception, out function))
+                {
+                    NotifyInvoker(function.Name, exception);
                 }
             }
+        }
+
+        internal static bool TryGetFunctionFromException(Collection<FunctionDescriptor> functions, Exception exception, out FunctionDescriptor function)
+        {
+            function = null;
+
+            string errorStack = exception.ToString().ToLowerInvariant();
+            foreach (var currFunction in functions)
+            {
+                // For each function, we search the entire error stack trace to see if it contains
+                // the function entry/primary script path. If it does, we're virtually certain that
+                // that function caused the error (e.g. as in the case of global unhandled exceptions
+                // coming from Node.js scripts).
+                // We use the directory name for the script rather than the full script path itself to ensure
+                // that we handle cases where the error might be coming from some other script (e.g. an NPM
+                // module) that is part of the function.
+                string absoluteScriptPath = Path.GetFullPath(currFunction.Metadata.Source).ToLowerInvariant();
+                string functionDirectory = Path.GetDirectoryName(absoluteScriptPath);
+                if (errorStack.Contains(functionDirectory))
+                {
+                    function = currFunction;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void NotifyInvoker(string functionName, Exception ex)
