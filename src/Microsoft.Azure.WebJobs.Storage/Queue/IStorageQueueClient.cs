@@ -28,6 +28,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         /// <summary>Gets a queue reference.</summary>
         /// <param name="queueName">The queue name.</param>
         /// <returns>A queue reference.</returns>
-        IStorageQueue GetQueueReference(string queueName);
+        IStorageQueue GetQueueReference(string queueName);     
     }
 }

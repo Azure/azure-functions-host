@@ -49,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
+                "IAttributeInvokeDescriptor`1",
+                "AutoResolveAttribute",
                 "BinderExtensions",
                 "BlobAttribute",
                 "BlobTriggerAttribute",

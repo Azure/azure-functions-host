@@ -168,9 +168,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         // Queue inputs with implicit names.
-        public static void QueueOutput([Queue("inputQueue")] out int inputQueue)
+        public static void QueueOutput([Queue("inputQueue")] out string inputQueue)
         {
-            inputQueue = 0;
+            inputQueue = "0";
         }
 
         [Fact]

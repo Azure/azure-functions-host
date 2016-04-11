@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             this.AddEventProcessorHost(eventHubName, eventProcessorHost);
         }
         
-        EventHubClient IEventHubProvider.GetEventHubClient(string eventHubName)
+        private EventHubClient GetEventHubClient(string eventHubName)
         {
             EventHubClient client;
             if (_senders.TryGetValue(eventHubName, out client))             
@@ -210,15 +210,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             cm.AddConverter<EventData, string>(ConvertEventData2String);
             cm.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations
 
+            var bf = new BindingFactory(nameResolver, cm);
+
             // register our trigger binding provider
             var triggerBindingProvider = new EventHubTriggerAttributeBindingProvider(nameResolver, cm, this);
             extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
 
             // register our binding provider
-            var bindingProvider = new EventHubAttributeBindingProvider(nameResolver, cm, this);
-            extensions.RegisterExtension<IBindingProvider>(bindingProvider);
+            var ruleOutput = bf.BindToAsyncCollector<EventHubAttribute, EventData>(BuildFromAttribute);
+            extensions.RegisterBindingRules<EventHubAttribute>(ruleOutput);
         }
-        
+
+        private IAsyncCollector<EventData> BuildFromAttribute(EventHubAttribute attribute)
+        {
+            EventHubClient client = this.GetEventHubClient(attribute.EventHubName);
+            return new EventHubAsyncCollector(client);
+        }
+
         // EventData --> String
         private static string ConvertEventData2String(EventData x)
         {

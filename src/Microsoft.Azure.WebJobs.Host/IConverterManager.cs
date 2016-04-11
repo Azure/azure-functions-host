@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// General service for converting between types. 
+    /// General service for converting between types for parameter bindings.  
     /// Parameter bindings call this to convert from user parameter types to underlying binding types. 
     /// </summary>
     public interface IConverterManager
@@ -23,8 +23,10 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         /// <typeparam name="TSource">Source type.</typeparam>
         /// <typeparam name="TDestination">Destination type.</typeparam>
-        /// <returns></returns>
-        Func<TSource, TDestination> GetConverter<TSource, TDestination>();
+        /// <typeparam name="TAttribute">Attribute on the binding. </typeparam>
+        /// <returns>a converter function; or null if no converter is available.</returns>
+        Func<TSource, TAttribute, TDestination> GetConverter<TSource, TDestination, TAttribute>()
+            where TAttribute : Attribute;
 
         /// <summary>
         /// Register a new converter function. 
@@ -34,5 +36,16 @@ namespace Microsoft.Azure.WebJobs
         /// <typeparam name="TDestination">Destination type.</typeparam>
         /// <param name="converter">A function to convert from the source to the destination type.</param>
         void AddConverter<TSource, TDestination>(Func<TSource, TDestination> converter);
+
+        /// <summary>
+        /// Register a new converter function that is influenced by the attribute. 
+        /// If TSource is object, then this converter is applied to any attempt to convert to TDestination. 
+        /// </summary>
+        /// <typeparam name="TSource">Source type.</typeparam>
+        /// <typeparam name="TDestination">Destination type.</typeparam>
+        /// <typeparam name="TAttribute">Attribute on the binding. </typeparam>
+        /// <param name="converter">A function to convert from the source to the destination type.</param>
+        void AddConverter<TSource, TDestination, TAttribute>(Func<TSource, TAttribute, TDestination> converter)
+            where TAttribute : Attribute;
     }
 }

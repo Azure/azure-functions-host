@@ -12,14 +12,169 @@ using Microsoft.Azure.WebJobs.Host.Triggers;
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     /// <summary>
-    /// Helpers for creating bindings to common patterns such as Messaging or Streams.
-    /// This will add additional adapters to connect the user's parameter type to an IAsyncCollector. 
-    /// It will also see <see cref="IConverterManager"/> to convert 
-    /// from the user's type to the underlying IAsyncCollector's message type.
-    /// For example, for messaging patterns, if the user is a ICollector, this will add an adapter that implements ICollector and calls IAsyncCollector.  
+    /// Helper class for producing binding rules. 
     /// </summary>
-    public static class BindingFactory
+    public class BindingFactory
     {
+        private readonly INameResolver _nameResolver;
+        private readonly IConverterManager _converterManager;
+
+        /// <summary>
+        /// Constructor. 
+        /// </summary>
+        /// <param name="nameResolver">Name Resolver object for resolving %% tokens in a string.</param>
+        /// <param name="converterManager">Converter Manager object for resolving {} tokens in a string. </param>
+        public BindingFactory(INameResolver nameResolver, IConverterManager converterManager)
+        {
+            _nameResolver = nameResolver;
+            _converterManager = converterManager;
+        }
+
+        /// <summary>
+        /// Get the name resolver for resolving %% tokens. 
+        /// </summary>
+        public INameResolver NameResolver
+        {
+            get { return _nameResolver; }
+        }
+
+        /// <summary>
+        /// Get the converter manager for coercing types. 
+        /// </summary>
+        public IConverterManager ConverterManager
+        {
+            get { return _converterManager; }
+        }
+
+        /// <summary>
+        /// Creating a type filter predicate around another rule. 
+        /// </summary>
+        /// <param name="predicate">type predicate. Only apply inner rule if this predicate as applied to the user parameter type is true. </param>
+        /// <param name="innerRule">Inner rule. </param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
+        public IBindingProvider AddTypeFilter(Func<Type, bool> predicate, IBindingProvider innerRule)
+        {
+            return new FilteringBindingProvider(predicate, innerRule);
+        }
+        
+        /// <summary>
+        /// Create a rule that returns an IValueBinder from a resolved attribute. IValueBinder will let you have an OnCompleted hook that 
+        /// is invoked after the user function completes. 
+        /// </summary>
+        /// <typeparam name="TAttribute"></typeparam>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public IBindingProvider BindToGenericItem<TAttribute>(Func<TAttribute, Type, Task<IValueBinder>> builder)
+            where TAttribute : Attribute
+        {
+            return new ItemBindingProvider<TAttribute>(this._nameResolver, builder);
+        }
+
+        /// <summary>
+        /// Create a rule for binding a parameter to an <see cref="IAsyncCollector{TMEssage}"/>. 
+        /// Use the <see cref="IConverterManager"/> to convert form the user's parameter type to the TMessage type. 
+        /// </summary>
+        /// <typeparam name="TAttribute">type of binding attribute</typeparam>
+        /// <typeparam name="TMessage">'core type' for the IAsyncCollector.</typeparam>
+        /// <param name="buildFromAttribute">function to allocate the collector object given a resolved instance of the attribute.</param>
+        /// <param name="postResolveHook"></param>
+        /// <param name="buildParameterDescriptor"></param>
+        /// <returns></returns>
+        public IBindingProvider BindToAsyncCollector<TAttribute, TMessage>(
+            Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute, 
+            Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
+            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
+            where TAttribute : Attribute
+        {
+            return new AsyncCollectorWithConverterManagerBindingProvider<TAttribute, TMessage>(
+                _nameResolver, _converterManager, buildFromAttribute, buildParameterDescriptor, postResolveHook);
+        }
+
+        /// <summary>
+        /// Create a rule for binding a parameter to an <see cref="IAsyncCollector{T}"/> where T is the user parameter's type. 
+        /// </summary>
+        /// <typeparam name="TAttribute">type of binding attribute</typeparam>
+        /// <typeparam name="TConstructorArgument"></typeparam>
+        /// <param name="asyncCollectorType">type that implements <see cref="IAsyncCollector{T}"/>. Must have a constructor with exactly 1 parameter of type TConstructorArgument.</param>
+        /// <param name="constructorParameterBuilder">builder function to create an instance of the collector's constructor parameter from a resolved attribute.</param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter")]
+        public IBindingProvider BindToGenericAsyncCollector<TAttribute, TConstructorArgument>(
+            Type asyncCollectorType, 
+            Func<TAttribute, TConstructorArgument> constructorParameterBuilder)
+            where TAttribute : Attribute
+        {     
+            if (asyncCollectorType == null)
+            {
+                throw new ArgumentNullException("asyncCollectorType");
+            }
+            if (constructorParameterBuilder == null)
+            {
+                throw new ArgumentNullException("constructorParameterBuilder");
+            }
+
+            // Verify collector has appropriate constructor. 
+                if (!asyncCollectorType.IsGenericTypeDefinition)
+            {
+                string msg = string.Format(CultureInfo.InvariantCulture, 
+                    "Collector implementation type {0} should be a generic where the type will be resolved at runtime. " +
+                    "If you know the type at compile time, use a more specific binding rule.",
+                  asyncCollectorType.FullName);
+                throw new InvalidOperationException(msg);
+            }
+            var genArgs = asyncCollectorType.GetGenericArguments();
+            if (genArgs == null || genArgs.Length != 1)
+            {
+                string msg = string.Format(CultureInfo.InvariantCulture, "Collector implementation type {0} must have exactly 1 type argument.",
+                    asyncCollectorType.FullName);
+                throw new InvalidOperationException(msg);
+            }
+            var ctorInfo = asyncCollectorType.GetConstructor(new Type[] { typeof(TConstructorArgument) });
+            if (ctorInfo == null)
+            {
+                string msg = string.Format(CultureInfo.InvariantCulture, "Collector implementation type {0} must have a public constructor with exactly 2 parameters: {1}, {2}",
+                    asyncCollectorType.FullName,
+                    typeof(TAttribute).Name, typeof(TConstructorArgument).Name);
+                throw new InvalidOperationException(msg);
+            }
+
+            return new GenericAsyncCollectorBindingProvider<TAttribute, TConstructorArgument>(
+                _nameResolver, _converterManager, asyncCollectorType, constructorParameterBuilder);
+        }
+
+        /// <summary>
+        /// Create a binding rule that binds the parameter to an specific instance of TUserType. 
+        /// </summary>
+        /// <typeparam name="TAttribute">type of binding attribute</typeparam>
+        /// <typeparam name="TUserType"></typeparam>
+        /// <param name="buildFromAttribute">builder function to create the object that will get passed to the user function.</param>
+        /// <returns></returns>
+        public IBindingProvider BindToExactType<TAttribute, TUserType>(Func<TAttribute, TUserType> buildFromAttribute)
+            where TAttribute : Attribute
+        {
+            return this.BindToExactAsyncType<TAttribute, TUserType>((attr) => Task.FromResult(buildFromAttribute(attr)));
+        }
+
+        /// <summary>
+        /// Create a binding rule that binds the parameter to an specific instance of TUserType. 
+        /// </summary>
+        /// <typeparam name="TAttribute">type of binding attribute</typeparam>
+        /// <typeparam name="TUserType"></typeparam>
+        /// <param name="buildFromAttribute">builder function to create the object that will get passed to the user function.</param>
+        /// <param name="buildParameterDescriptor"></param>
+        /// <param name="postResolveHook"></param>
+        /// <returns></returns>
+        public IBindingProvider BindToExactAsyncType<TAttribute, TUserType>(
+            Func<TAttribute, Task<TUserType>> buildFromAttribute,
+            Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
+            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
+            where TAttribute : Attribute
+        {
+            var rule = new ExactTypeBindingProvider<TAttribute, TUserType>(_nameResolver, buildFromAttribute, buildParameterDescriptor, postResolveHook);
+            return rule;
+        }
+
         /// <summary>
         /// Bind a  parameter to an IAsyncCollector. Use this for things that have discrete output items (like sending messages or writing table rows)
         /// This will add additional adapters to connect the user's parameter type to an IAsyncCollector. 
@@ -47,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             bool singleDispatch;
-            var argumentBinding = BindingFactory.GetTriggerArgumentBinding(bindingStrategy, parameter, converterManager, out singleDispatch);
+            var argumentBinding = BindingFactoryHelpers.GetTriggerArgumentBinding(bindingStrategy, parameter, converterManager, out singleDispatch);
 
             var parameterDescriptor = new ParameterDescriptor
             {
@@ -62,381 +217,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 bindingStrategy, argumentBinding, createListener, parameterDescriptor, singleDispatch);
 
             return binding;
-        }
-
-        // Bind a trigger argument to various parameter types. 
-        // Handles either T or T[], 
-        private static ITriggerDataArgumentBinding<TTriggerValue> GetTriggerArgumentBinding<TMessage, TTriggerValue>(
-            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
-            ParameterInfo parameter,
-            IConverterManager converterManager,
-            out bool singleDispatch)
-        {
-            ITriggerDataArgumentBinding<TTriggerValue> argumentBinding = null;
-            if (parameter.ParameterType.IsArray)
-            {
-                // dispatch the entire batch in a single call. 
-                singleDispatch = false;
-
-                var elementType = parameter.ParameterType.GetElementType();
-
-                var innerArgumentBinding = GetTriggerArgumentElementBinding<TMessage, TTriggerValue>(elementType, bindingStrategy, converterManager);
-
-                argumentBinding = new ArrayTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, innerArgumentBinding, converterManager);
-
-                return argumentBinding;
-            }
-            else
-            {
-                // Dispatch each item one at a time
-                singleDispatch = true;
-
-                var elementType = parameter.ParameterType;
-                argumentBinding = GetTriggerArgumentElementBinding<TMessage, TTriggerValue>(elementType, bindingStrategy, converterManager);
-                return argumentBinding;
-            }
-        }
-
-        // Bind a T. 
-        private static SimpleTriggerArgumentBinding<TMessage, TTriggerValue> GetTriggerArgumentElementBinding<TMessage, TTriggerValue>(
-            Type elementType,
-            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
-            IConverterManager converterManager)
-        {
-            if (elementType == typeof(TMessage))
-            {
-                return new SimpleTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager);
-            }
-            if (elementType == typeof(string))
-            {
-                return new StringTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager);
-            }
-            else
-            {
-                // Default, assume a Poco
-                return new PocoTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager, elementType);
-            }
-        }
-
-        /// <summary>
-        /// Creates a binding that binds to an <see cref="IAsyncCollector{T}"/> with the specified argument type. Allows for a binding
-        /// to be generated for any POCO type.
-        /// </summary>
-        /// <param name="parameter">The ParameterInfo for the binding</param>
-        /// <param name="collectorGenericType">The generic type that must implement <see cref="IAsyncCollector{T}"/> and have a public constructor with at most one parameter.</param>
-        /// <param name="collectorGenericArgumentType">The generic argument type for the <see cref="IAsyncCollector{T}"/></param>
-        /// <param name="converterManager">A converter manager to pass along.</param>        
-        /// <param name="invokeStringBinder">A <see cref="Func{T, TContext}"/> that returns the TContext to be used by the <see cref="IAsyncCollector{T}"/></param>
-        /// <returns></returns>
-        public static IBinding BindGenericCollector<TContext>(ParameterInfo parameter, Type collectorGenericType, Type collectorGenericArgumentType,
-            IConverterManager converterManager, Func<string, TContext> invokeStringBinder)
-        {
-            if (collectorGenericType == null)
-            {
-                throw new ArgumentNullException("collectorGenericType");
-            }
-            if (!collectorGenericType.IsGenericTypeDefinition)
-            {
-                throw new ArgumentException("The parameter 'collectorGenericType' must be a generic type definition.");
-            }
-            if (collectorGenericType.GetInterface(typeof(IAsyncCollector<>).Name) == null)
-            {
-                throw new ArgumentException("The Type specified by parameter 'collectorGenericType' must implement IAsyncCollector<T>.");
-            }
-
-            Type asyncCollectorInterfaceType = typeof(IAsyncCollector<>).MakeGenericType(collectorGenericArgumentType);
-            Type actualCollectorType = collectorGenericType.MakeGenericType(collectorGenericArgumentType);
-
-            // Create a delegate to pass as the builder func to BindCollector
-            Type funcType = typeof(Func<,,>).MakeGenericType(typeof(object), typeof(ValueBindingContext), asyncCollectorInterfaceType);
-            MethodInfo getCollector = typeof(BindingFactory).GetMethod("GetCollector", BindingFlags.NonPublic | BindingFlags.Static)
-                .MakeGenericMethod(actualCollectorType, collectorGenericArgumentType);
-            var del = Delegate.CreateDelegate(funcType, getCollector);
-
-            // Create the method and parameters.
-            MethodInfo bindCollectorMethod = typeof(BindingFactory).GetMethod("BindCollector").MakeGenericMethod(collectorGenericArgumentType, typeof(TContext));
-            object[] parameters = new object[] { parameter, converterManager, del, null, invokeStringBinder };
-
-            return bindCollectorMethod.Invoke(null, parameters) as IBinding;
-        }
-
-        /// <summary>
-        /// A method that is used as a instantiated as a <see cref="Func{T1, T2, TResult}"/> to pass to BindCollector
-        /// </summary>
-        /// <typeparam name="TCollector">The type of collector to create for the binding.</typeparam>
-        /// <typeparam name="TCore">The 'core' type of the binding.</typeparam>
-        /// <param name="userContext">The object to pass to the constructor of TCollector.</param>
-        /// <param name="context">The ValueBindingContext (unused).</param>
-        /// <returns>An <see cref="IAsyncCollector{T}"/></returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
-        private static IAsyncCollector<TCore> GetCollector<TCollector, TCore>(object userContext, ValueBindingContext context)
-        {
-            return Activator.CreateInstance(typeof(TCollector), userContext) as IAsyncCollector<TCore>;
-        }
-
-        /// <summary>
-        /// Bind a  parameter to an IAsyncCollector. Use this for things that have discrete output items (like sending messages or writing table rows)
-        /// This will add additional adapters to connect the user's parameter type to an IAsyncCollector. 
-        /// </summary>
-        /// <typeparam name="TMessage">The native type of message. For example, for azure queues, this would be CloudQueueMessage.</typeparam>
-        /// <typeparam name="TContext">helper object to pass to the binding the configuration state. This can point back to context like secrets, configuration, etc.</typeparam>
-        /// <param name="parameter">parameter being bound.</param>
-        /// <param name="converterManager"></param>
-        /// <param name="builder">function to create a new instance of the underlying Collector object to pass to the parameter. 
-        /// This binder will wrap that in any adapters to make it match the requested parameter type.</param>
-        /// <param name="invokeString">a short string summary that describes this binding. That will display on the dashboard</param>
-        /// <param name="invokeStringBinder">retrieve a context from the invoke string. </param>
-        /// <returns></returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1720:IdentifiersShouldNotContainTypeNames", MessageId = "string")]
-        public static IBinding BindCollector<TMessage, TContext>(
-            ParameterInfo parameter,
-            IConverterManager converterManager,
-            Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-            string invokeString,
-            Func<string, TContext> invokeStringBinder)
-        {
-            if (builder == null)
-            {
-                throw new ArgumentNullException("builder");
-            }
-            if (invokeStringBinder == null)
-            {
-                throw new ArgumentNullException("invokeStringBinder");
-            }
-            if (parameter == null)
-            {
-                throw new ArgumentNullException("parameter");
-            }
-
-            Type parameterType = parameter.ParameterType;
-
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = null;
-
-            if (parameterType.IsGenericType)
-            {
-                var genericType = parameterType.GetGenericTypeDefinition();
-                var elementType = parameterType.GetGenericArguments()[0];
-
-                if (genericType == typeof(IAsyncCollector<>))
-                {
-                    if (elementType == typeof(TMessage))
-                    {
-                        // Bind to IAsyncCollector<TMessage>. This is the "purest" binding, no adaption needed. 
-                        argumentBuilder = (context, valueBindingContext) =>
-                        {
-                            IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                            return new AsyncCollectorValueProvider<IAsyncCollector<TMessage>, TMessage>(raw, raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // Bind to IAsyncCollector<T>
-                        // Get a converter from T to TMessage
-                        argumentBuilder = DynamicInvokeBuildIAsyncCollectorArgument(elementType, converterManager, builder, invokeString);
-                    }
-                }
-                else if (genericType == typeof(ICollector<>))
-                {
-                    if (elementType == typeof(TMessage))
-                    {
-                        // Bind to ICollector<TMessage> This just needs an Sync/Async wrapper
-                        argumentBuilder = (context, valueBindingContext) =>
-                        {
-                            IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                            ICollector<TMessage> obj = new SyncAsyncCollectorAdapter<TMessage>(raw);
-                            return new AsyncCollectorValueProvider<ICollector<TMessage>, TMessage>(obj, raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // Bind to ICollector<T>. 
-                        // This needs both a conversion from T to TMessage and an Sync/Async wrapper
-                        argumentBuilder = DynamicInvokeBuildICollectorArgument(elementType, converterManager, builder, invokeString);
-                    }
-                }
-            }
-
-            if (parameter.IsOut)
-            {
-                Type elementType = parameter.ParameterType.GetElementType();
-
-                if (elementType.IsArray)
-                {
-                    if (elementType == typeof(TMessage[]))
-                    {
-                        argumentBuilder = (context, valueBindingContext) =>
-                        {
-                            IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                            return new OutArrayValueProvider<TMessage>(raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // out TMessage[]
-                        var e2 = elementType.GetElementType();
-                        argumentBuilder = DynamicBuildOutArrayArgument(e2, converterManager, builder, invokeString);
-                    }
-                }
-                else
-                {
-                    // Single enqueue
-                    //    out TMessage
-                    if (elementType == typeof(TMessage))
-                    {
-                        argumentBuilder = (context, valueBindingContext) =>
-                        {
-                            IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                            return new OutValueProvider<TMessage>(raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // use JSon converter
-                        // out T
-                        argumentBuilder = DynamicInvokeBuildOutArgument(elementType, converterManager, builder, invokeString);
-                    }
-                }
-            }
-
-            if (argumentBuilder != null)
-            {
-                ParameterDescriptor param = new ParameterDescriptor
-                {
-                    Name = parameter.Name,
-                    DisplayHints = new ParameterDisplayHints
-                    {
-                        Description = "output"
-                    }
-                };
-
-                var initialClient = invokeStringBinder(invokeString);
-                return new AsyncCollectorBinding<TMessage, TContext>(initialClient, argumentBuilder, param, invokeStringBinder);
-            }
-
-            string msg = string.Format(CultureInfo.CurrentCulture, "Can't bind to {0}.", parameter);
-            throw new InvalidOperationException(msg);
-        }
-
-        // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicBuildOutArrayArgument<TContext, TMessage>(
-                Type typeMessageSrc,
-                IConverterManager cm,
-                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-                string invokeString)
-        {
-            var method = typeof(BindingFactory).GetMethod("BuildOutArrayArgument", BindingFlags.NonPublic | BindingFlags.Static);
-            method = method.MakeGenericMethod(typeof(TContext), typeMessageSrc, typeof(TMessage));
-            var argumentBuilder = (Func<TContext, ValueBindingContext, IValueProvider>)
-            method.Invoke(null, new object[] { cm, builder, invokeString });
-            return argumentBuilder;
-        }
-
-        private static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArrayArgument<TContext, TMessageSrc, TMessage>(
-            IConverterManager cm,
-            Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-            string invokeString)
-        {
-            // Other 
-            Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = (context, valueBindingContext) =>
-            {
-                IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                IAsyncCollector<TMessageSrc> obj = new TypedAsyncCollectorAdapter<TMessageSrc, TMessage>(raw, convert);
-
-                return new OutArrayValueProvider<TMessageSrc>(obj, invokeString);
-            };
-            return argumentBuilder;
-        }
-
-        // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildOutArgument<TContext, TMessage>(
-                Type typeMessageSrc,
-                IConverterManager cm,
-                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-                string invokeString)
-        {
-            var method = typeof(BindingFactory).GetMethod("BuildOutArgument", BindingFlags.NonPublic | BindingFlags.Static);
-            method = method.MakeGenericMethod(typeof(TContext), typeMessageSrc, typeof(TMessage));
-            var argumentBuilder = (Func<TContext, ValueBindingContext, IValueProvider>)
-            method.Invoke(null, new object[] { cm, builder, invokeString });
-            return argumentBuilder;
-        }
-
-        private static Func<TContext, ValueBindingContext, IValueProvider> BuildOutArgument<TContext, TMessageSrc, TMessage>(
-            IConverterManager cm,
-            Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-            string invokeString)
-        {
-            // Other 
-            Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = (context, valueBindingContext) =>
-            {
-                IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                IAsyncCollector<TMessageSrc> obj = new TypedAsyncCollectorAdapter<TMessageSrc, TMessage>(raw, convert);
-                return new OutValueProvider<TMessageSrc>(obj, invokeString);
-            };
-            return argumentBuilder;
-        }
-
-        // Helper to dynamically invoke BuildICollectorArgument with the proper generics
-        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildICollectorArgument<TContext, TMessage>(
-                Type typeMessageSrc,
-                IConverterManager cm,
-                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-                string invokeString)
-        {
-            var method = typeof(BindingFactory).GetMethod("BuildICollectorArgument", BindingFlags.NonPublic | BindingFlags.Static);
-            method = method.MakeGenericMethod(typeof(TContext), typeMessageSrc, typeof(TMessage));
-            var argumentBuilder = (Func<TContext, ValueBindingContext, IValueProvider>)
-            method.Invoke(null, new object[] { cm, builder, invokeString });
-            return argumentBuilder;
-        }
-
-        private static Func<TContext, ValueBindingContext, IValueProvider> BuildICollectorArgument<TContext, TMessageSrc, TMessage>(
-            IConverterManager cm,
-            Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-            string invokeString)
-        {
-            // Other 
-            Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = (context, valueBindingContext) =>
-            {
-                IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                IAsyncCollector<TMessageSrc> obj = new TypedAsyncCollectorAdapter<TMessageSrc, TMessage>(raw, convert);
-                ICollector<TMessageSrc> obj2 = new SyncAsyncCollectorAdapter<TMessageSrc>(obj);
-                return new AsyncCollectorValueProvider<ICollector<TMessageSrc>, TMessage>(obj2, raw, invokeString);
-            };
-            return argumentBuilder;
-        }
-
-        // Helper to dynamically invoke BuildIAsyncCollectorArgument with the proper generics
-        private static Func<TContext, ValueBindingContext, IValueProvider> DynamicInvokeBuildIAsyncCollectorArgument<TContext, TMessage>(
-                Type typeMessageSrc,
-                IConverterManager cm,
-                Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-                string invokeString)
-        {
-            var method = typeof(BindingFactory).GetMethod("BuildIAsyncCollectorArgument", BindingFlags.NonPublic | BindingFlags.Static);
-            method = method.MakeGenericMethod(typeof(TContext), typeMessageSrc, typeof(TMessage));
-            var argumentBuilder = (Func<TContext, ValueBindingContext, IValueProvider>)
-            method.Invoke(null, new object[] { cm, builder, invokeString });
-            return argumentBuilder;
-        }
-
-        // Helper to build an argument binder for IAsyncCollector<TMessageSrc>
-        private static Func<TContext, ValueBindingContext, IValueProvider> BuildIAsyncCollectorArgument<TContext, TMessageSrc, TMessage>(
-            IConverterManager cm,
-            Func<TContext, ValueBindingContext, IAsyncCollector<TMessage>> builder,
-            string invokeString)
-        {
-            Func<TMessageSrc, TMessage> convert = cm.GetConverter<TMessageSrc, TMessage>();
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder = (context, valueBindingContext) =>
-            {
-                IAsyncCollector<TMessage> raw = builder(context, valueBindingContext);
-                IAsyncCollector<TMessageSrc> obj = new TypedAsyncCollectorAdapter<TMessageSrc, TMessage>(raw, convert);
-                return new AsyncCollectorValueProvider<IAsyncCollector<TMessageSrc>, TMessage>(obj, raw, invokeString);
-            };
-            return argumentBuilder;
         }
     }
 }

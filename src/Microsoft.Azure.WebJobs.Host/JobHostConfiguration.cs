@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -224,6 +225,18 @@ namespace Microsoft.Azure.WebJobs
                     throw new ArgumentNullException("value");
                 }
                 AddService<INameResolver>(value);
+            }
+        }
+
+        /// <summary>
+        /// Gets a helper object for constructing common binding rules for extensions. 
+        /// </summary>
+        public BindingFactory BindingFactory
+        {
+            get
+            {
+                var converterManager = this.GetService<IConverterManager>();
+                return new BindingFactory(this.NameResolver, converterManager);
             }
         }
 

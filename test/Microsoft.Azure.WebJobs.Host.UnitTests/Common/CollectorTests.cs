@@ -32,6 +32,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         // Various flavors that all bind down to an IAsyncCollector 
         public class Functions
         {
+            public static async Task SendDirectClient(
+                [FakeQueue] FakeQueueClient client)
+            {
+                await client.AddAsync(new FakeQueueData { Message = "abc", ExtraPropertery = "def" });
+            }
+
             public static void SendDontQueue([FakeQueue] out Payload output)
             {
                 output = null;
@@ -146,7 +152,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
             extensions.RegisterExtension<IExtensionConfigProvider>(client);
 
-            JobHost host = new JobHost(config);
+            JobHost host = new JobHost(config);            
+            
+            var p7 = Invoke(host, client, "SendDirectClient");
+            Assert.Equal(1, p7.Length);
+            Assert.Equal("abc", p7[0].Message);
+            Assert.Equal("def", p7[0].ExtraPropertery);            
 
             var p8 = Invoke(host, client, "SendOneDerivedNative");
             Assert.Equal(1, p8.Length);

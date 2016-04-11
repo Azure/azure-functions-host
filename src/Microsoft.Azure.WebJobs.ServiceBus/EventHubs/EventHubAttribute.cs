@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <summary>
         /// The name of the event hub. This is resolved against the <see cref="EventHubConfiguration"/>
         /// </summary>
+        [AutoResolve]
         public string EventHubName { get; private set; }
     }    
 }

@@ -53,6 +53,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
         }
 
+        class FunctionsOutputUsesParams : FunctionsBase
+        {
+            public async Task SinglePocoTrigger([FakeQueueTrigger] Payload single, int val1,
+                [FakeQueue(Prefix = "x{val1}")] IAsyncCollector<FakeQueueData> q2)
+            {
+                await q2.AddAsync(new FakeQueueData { Message = "abc"});
+
+                this.Finished();
+            }
+        }
+
         class FunctionsSinglePoco : FunctionsBase
         {
             public void SinglePocoTrigger([FakeQueueTrigger] Payload single, int val1)
@@ -126,6 +137,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             // For a direct binding, should be the same instance and skip serialization altogether. 
             Assert.True(object.ReferenceEquals(e0, items[0]));
             Assert.True(object.ReferenceEquals(e1, items[1]));
+        }
+                
+        [Fact]
+        public void TestFunctionsOutputUsesParams()
+        {
+            var payload = new Payload { val1 = 123 };
+            var e0 = new FakeQueueData
+            {
+                Message = JsonConvert.SerializeObject(payload)
+            };
+
+            var items = Run<FunctionsOutputUsesParams>(e0);
+            Assert.Equal(1, items.Length);
+
+            // this trigger strongly binds to a poco and adds Payload.val1
+            var d = (FakeQueueData) (items[0]);
+            Assert.Equal("x123", d.ExtraPropertery);
+            Assert.Equal("abc", d.Message);
+            
         }
 
         // Queue 2 native events to a single-dispatch trigger and ensure they both fire. 
@@ -211,6 +241,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             host.Start();
             TestHelpers.WaitOne(func1._stopEvent);
             host.Stop();
+
+            // Add any items sent using [FakeQueue(Prefix=...)]
+            foreach (var kv in client._prefixedItems)
+            {
+                func1._collected.AddRange(kv.Value);
+            }
 
             return func1._collected.ToArray();
         }

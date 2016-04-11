@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 namespace Microsoft.Azure.WebJobs
-{
+{ 
     /// <summary>
     /// Attribute used to bind a parameter to an Azure Blob. The attribute supports binding
     /// to single blobs, blob containers, or collections of blobs.
@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>Gets the path of the blob to which to bind.</summary>
+        [AutoResolve]
         public string BlobPath
         {
             get { return _blobPath; }

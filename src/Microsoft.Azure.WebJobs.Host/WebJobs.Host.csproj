@@ -359,6 +359,16 @@
       <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\AttributeCloner.cs" />
+    <Compile Include="Bindings\BindingBase.cs" />
+    <Compile Include="Bindings\BindingFactory.cs" />
+    <Compile Include="Bindings\BindingProviders\AsyncCollectorWithConverterManagerBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\FilteringBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\GenericCompositeBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\GenericAsyncCollectorBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\ExactTypeBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\ItemBindingProvider.cs" />
+    <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\IBinderEx.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingContext.cs" />
@@ -382,7 +392,7 @@
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />
     <Compile Include="Bindings\ConverterManager.cs" />
-    <Compile Include="Bindings\BindingFactory.cs" />
+    <Compile Include="Bindings\BindingFactoryHelpers.cs" />
     <Compile Include="IConverterManager.cs" />
     <Compile Include="Triggers\ITriggerBindingStrategy.cs" />
     <Compile Include="Bindings\AsyncCollector\AsyncCollectorValueProvider.cs" />
@@ -777,7 +787,7 @@
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingDataProvider.cs" />
     <Compile Include="Bindings\BindingProviderContext.cs" />
-    <Compile Include="Bindings\CompositeBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\CompositeBindingProvider.cs" />
     <Compile Include="Bindings\IArgumentBinding.cs" />
     <Compile Include="Bindings\IBinding.cs" />
     <Compile Include="Bindings\IBindingProvider.cs" />

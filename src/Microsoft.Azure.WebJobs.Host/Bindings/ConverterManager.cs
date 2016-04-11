@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs
     internal class ConverterManager : IConverterManager
     {
         // Map from <TSrc,TDest> to a converter function. 
+        private Dictionary<string, object> _funcsWithAttr = new Dictionary<string, object>();
         private Dictionary<string, object> _funcs = new Dictionary<string, object>();
 
         public ConverterManager()
@@ -30,33 +31,58 @@ namespace Microsoft.Azure.WebJobs
         {
             return typeof(TSrc).FullName + "|" + typeof(TDest).FullName;
         }
+        private static string GetKey<TSrc, TDest, TAttribute>()
+        {
+            return typeof(TSrc).FullName + "|" + typeof(TDest).FullName + "|" + typeof(TAttribute).FullName;
+        }
 
         public void AddConverter<TSrc, TDest>(Func<TSrc, TDest> converter)
         {
             string key = GetKey<TSrc, TDest>();
             _funcs[key] = converter;
+            //Func<TSrc, Attribute, TDest> wrapper = (src, attr) => converter(src);
+            //this.AddConverter(wrapper);
         }
 
-        private Func<TSrc, TDest> TryGetConverter<TSrc, TDest>()
+        public void AddConverter<TSrc, TDest, TAttribute>(Func<TSrc, TAttribute, TDest> converter)
+            where TAttribute : Attribute
         {
-            string key = GetKey<TSrc, TDest>();
-
-            object obj;
-            if (!_funcs.TryGetValue(key, out obj))
-            {
-                return null;
-            }
-            var func2 = obj as Func<TSrc, TDest>;
-            return func2;
+            string key = GetKey<TSrc, TDest, TAttribute>();
+            _funcsWithAttr[key] = converter;
         }
 
-        public Func<TSrc, TDest> GetConverter<TSrc, TDest>()
+        private Func<TSrc, TAttribute, TDest> TryGetConverter<TSrc, TAttribute, TDest>()
+            where TAttribute : Attribute
+        {
+            string key1 = GetKey<TSrc, TDest, TAttribute>();
+
+            // First try specific that uses the TAttribute 
+            object obj;
+            if (_funcsWithAttr.TryGetValue(key1, out obj))
+            {
+                var func = (Func<TSrc, TAttribute, TDest>)obj;
+                return func;
+            }
+
+            // Fallback
+            string key2 = GetKey<TSrc, TDest>();
+            if (_funcs.TryGetValue(key2, out obj))
+            {
+                var func = (Func<TSrc, TDest>)obj;
+                return (TSrc src, TAttribute attr) => func(src);
+            }
+
+            return null;
+        }
+
+        public Func<TSrc, TAttribute, TDest> GetConverter<TSrc, TDest, TAttribute>()
+            where TAttribute : Attribute
         {
             // Give precedence to exact matches.
             // this lets callers override any other rules (like JSON binding) 
 
             // TSrc --> TDest
-            Func<TSrc, TDest> exactMatch = TryGetConverter<TSrc, TDest>();
+            Func<TSrc, TAttribute, TDest> exactMatch = TryGetConverter<TSrc, TAttribute, TDest>();
             if (exactMatch != null)
             {
                 return exactMatch;
@@ -64,12 +90,12 @@ namespace Microsoft.Azure.WebJobs
 
             // Object --> TDest
             // Catch all for any conversion to TDest
-            Func<object, TDest> objConversion = TryGetConverter<object, TDest>();
+            Func<object, TAttribute, TDest> objConversion = TryGetConverter<object, TAttribute, TDest>();
             if (objConversion != null)
             {
-                return (src) =>
+                return (src, attr) =>
                 {
-                    var result = objConversion(src);
+                    var result = objConversion(src, attr);
                     return result;
                 };
             }
@@ -77,7 +103,7 @@ namespace Microsoft.Azure.WebJobs
             // Inheritence (also covers idempotency)
             if (typeof(TDest).IsAssignableFrom(typeof(TSrc)))
             {
-                return (src) =>
+                return (src, attr) =>
                 {
                     object obj = (object)src;
                     return (TDest)obj;
@@ -85,19 +111,18 @@ namespace Microsoft.Azure.WebJobs
             }
 
             // string --> TDest
-            Func<string, TDest> fromString = TryGetConverter<string, TDest>();
+            Func<string, TAttribute, TDest> fromString = TryGetConverter<string, TAttribute, TDest>();
             if (fromString == null)
             {
-                string msg = string.Format(CultureInfo.CurrentCulture, "Can't convert from {0} to {1}", "string", typeof(TDest).FullName);
-                throw new NotImplementedException(msg);
+                return null;
             }
 
             // String --> TDest
             if (typeof(TSrc) == typeof(string))
             {
-                return src =>
+                return (src, attr) =>
                 {
-                    var result = fromString((string)(object)src);
+                    var result = fromString((string)(object)src, attr);
                     return result;
                 };
             }
@@ -108,22 +133,30 @@ namespace Microsoft.Azure.WebJobs
             // Byte[] --[builtin]--> String --> TDest
             if (typeof(TSrc) == typeof(byte[]))
             {
-                Func<byte[], string> bytes2string = TryGetConverter<byte[], string>();
+                Func<byte[], TAttribute, string> bytes2string = TryGetConverter<byte[], TAttribute, string>();
 
-                return src =>
+                return (src, attr) =>
                 {
                     byte[] bytes = (byte[])(object)src;
-                    string str = bytes2string(bytes);
-                    var result = fromString(str);
+                    string str = bytes2string(bytes, attr);
+                    var result = fromString(str, attr);
                     return result;
                 };
             }
 
+            // General JSON serialization rule. 
+
+            if (typeof(TSrc).IsPrimitive ||
+                   typeof(IEnumerable).IsAssignableFrom(typeof(TSrc)))
+            {
+                return null;
+            }
+
             // TSrc --[Json]--> string --> TDest
-            return (src) =>
+            return (src, attr) =>
             {
                 string json = JsonConvert.SerializeObject(src);
-                TDest obj = fromString(json);
+                TDest obj = fromString(json, attr);
                 return obj;
             };
         }

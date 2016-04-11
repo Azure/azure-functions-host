@@ -10,60 +10,24 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // Common binding to bind an AsyncCollector-compatible value to a user parameter. 
     // This binding is static per parameter, and then called on each invocation 
     // to produce a new parameter instance. 
-    internal class AsyncCollectorBinding<TMessage, TContext> : IBinding
+    internal class AsyncCollectorBinding<TAttribute, TMessage> : BindingBase<TAttribute>
+        where TAttribute : Attribute
     {
-        private readonly TContext _client;
-        private readonly ParameterDescriptor _param;
-        private readonly Func<TContext, ValueBindingContext, IValueProvider> _argumentBuilder;
-        private readonly Func<string, TContext> _invokeStringBinder;
+        private readonly Func<TAttribute, IValueProvider> _argumentBuilder;
 
         public AsyncCollectorBinding(
-            TContext client,
-            Func<TContext, ValueBindingContext, IValueProvider> argumentBuilder,
             ParameterDescriptor param,
-            Func<string, TContext> invokeStringBinder)
+            Func<TAttribute, IValueProvider> argumentBuilder,
+            AttributeCloner<TAttribute> cloner) 
+            : base(cloner, param)
         {
-            this._client = client;
             this._argumentBuilder = argumentBuilder;
-            this._param = param;
-            this._invokeStringBinder = invokeStringBinder;
         }
 
-        public bool FromAttribute
+        protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved)
         {
-            get
-            {
-                return true;
-            }
-        }
-
-        public Task<IValueProvider> BindAsync(BindingContext context)
-        {
-            if (context == null)
-            {
-                throw new ArgumentNullException("context");
-            }
-
-            return BindAsync(null, context.ValueContext);
-        }
-
-        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
-        {
-            TContext client = this._client;
-
-            string invokeString = value as string;
-            if (invokeString != null)
-            {
-                client = this._invokeStringBinder(invokeString);
-            }
-
-            IValueProvider valueProvider = _argumentBuilder(client, context);
-            return Task.FromResult(valueProvider);
-        }
-
-        public ParameterDescriptor ToParameterDescriptor()
-        {
-            return _param;
-        }
+            var value = _argumentBuilder(attrResolved);
+            return Task.FromResult(value);
+        }      
     }
 }

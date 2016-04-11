@@ -23,9 +23,10 @@ namespace Microsoft.Azure.WebJobs
     /// <item><description><see cref="IAsyncCollector{T}"/> of these types (to enqueue multiple messages via <see cref="IAsyncCollector{T}.AddAsync(T, System.Threading.CancellationToken)"/></description></item>
     /// </list>
     /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1813:AvoidUnsealedAttributes")]
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{QueueName,nq}")]
-    public sealed class QueueAttribute : Attribute
+    public class QueueAttribute : Attribute
     {
         private readonly string _queueName;
 
@@ -39,9 +40,10 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Gets the name of the queue to which to bind.
         /// </summary>
+        [AutoResolve]
         public string QueueName
         {
             get { return _queueName; }
-        }
+        }      
     }
 }

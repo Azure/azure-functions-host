@@ -157,7 +157,6 @@
     <Compile Include="Bindings\StringToBrokeredMessageConverter.cs" />
     <Compile Include="Bindings\UserTypeToBrokeredMessageConverter.cs" />
     <Compile Include="EventHubs\EventHubAttribute.cs" />
-    <Compile Include="EventHubs\EventHubAttributeBindingProvider.cs" />
     <Compile Include="EventHubs\EventHubTriggerAttribute.cs" />
     <Compile Include="EventHubs\EventHubTriggerInput.cs" />
     <Compile Include="EventHubs\EventHubAsyncCollector.cs" />

@@ -47,7 +47,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 _list.Clear();
             }
 
-            await _client.SendBatchAsync(batch);
+            if (batch.Length > 0)
+            {
+                await _client.SendBatchAsync(batch);
+            }
         }
     }
 }

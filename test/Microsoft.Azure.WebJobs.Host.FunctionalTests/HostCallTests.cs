@@ -585,7 +585,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [InlineData("FuncWithOutByteArray", TestQueueMessage)]
         [InlineData("FuncWithOutString", TestQueueMessage)]
         [InlineData("FuncWithICollector", TestQueueMessage)]
-        [InlineData("FuncWithOutTNull", "null")]
         public void Queue_IfBoundToTypeAndQueueIsMissing_CreatesAndSends(string methodName, string expectedMessage)
         {
             // Arrange
@@ -1566,7 +1565,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             public static void FuncWithOutTNull([Queue(OutputQueueName)] out PocoMessage value)
             {
-                value = default(PocoMessage);
+                value = null;
             }
 
             public static void FuncWithOutValueT([Queue(OutputQueueName)] out StructMessage value)
