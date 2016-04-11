@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         internal const int LastModifiedCutoffDays = 1;
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
-        private const int LogFlushIntervalMs = 1000;
+        internal const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
         private readonly string _instanceId;
         private readonly DirectoryInfo _logDirectory;

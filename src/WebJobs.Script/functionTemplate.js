@@ -12,6 +12,12 @@ return function (context, callback) {{
     }};
 
     context.done = function(err, result) {{
+        if (context._done) {{
+            context.log("Error: 'done' has already been called. Please check your script for extraneous calls to 'done'.");
+            return;
+        }}
+        context._done = true;
+
         if (err) {{
             callback(err);
         }}

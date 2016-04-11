@@ -5,7 +5,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -60,15 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
-            Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
-            if (Access == FileAccess.Write)
-            {
-                await context.Value.CopyToAsync(blobStream);
-            }
-            else
-            {
-                await blobStream.CopyToAsync(context.Value);
-            }
+            await BindStreamAsync(context.Value, Access, context.Binder, runtimeContext);
         }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
