@@ -73,16 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var attribute = new ApiHubFileAttribute(Key, boundBlobPath, Access);
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
-            Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
-
-            if (Access == FileAccess.Write)
-            {
-                await context.Value.CopyToAsync(blobStream);
-            }
-            else
-            {
-                await blobStream.CopyToAsync(context.Value);
-            }
+            await BindStreamAsync(context.Value, Access, context.Binder, runtimeContext);
         }
     }
 }

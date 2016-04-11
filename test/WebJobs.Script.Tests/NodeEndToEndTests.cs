@@ -109,6 +109,30 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Scenario_DoneCalledMultipleTimes_ErrorIsLogged()
+        {
+            ClearFunctionLogs("Scenarios");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", "doubleDone" }
+            };
+            await Fixture.Host.CallAsync("Scenarios", arguments);
+
+            var logs = await GetFunctionLogsAsync("Scenarios");
+
+            Assert.Equal(4, logs.Count);
+            Assert.True(logs.Any(p => p.Contains("Function started")));
+            Assert.True(logs.Any(p => p.Contains("Running scenario 'doubleDone'")));
+
+            // verify an error was written
+            Assert.True(logs.Any(p => p.Contains("Error: 'done' has already been called. Please check your script for extraneous calls to 'done'.")));
+
+            // verify the function completed successfully
+            Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
+        }
+
+        [Fact]
         public async Task HttpTrigger_Get()
         {
             HttpRequestMessage request = new HttpRequestMessage

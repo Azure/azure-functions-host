@@ -170,10 +170,10 @@ namespace WebJobs.Script.Tests
 
         private static MethodInfo GenerateMethod(BindingMetadata trigger)
         {
-            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts");
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
             FunctionMetadata metadata = new FunctionMetadata();
             metadata.Name = "Test";
-            metadata.Source = Path.Combine(rootPath, @"Node\Common\test.js");
+            metadata.Source = Path.Combine(rootPath, @"Common\test.js");
             metadata.Bindings.Add(trigger);
 
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();

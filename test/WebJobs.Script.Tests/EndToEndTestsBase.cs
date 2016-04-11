@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
@@ -17,6 +18,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Extensions.EasyTables;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
@@ -331,6 +333,39 @@ namespace WebJobs.Script.Tests
             });
 
             return traceEvent;
+        }
+
+        protected void ClearFunctionLogs(string functionName)
+        {
+            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
+            foreach (var file in directory.GetFiles())
+            {
+                file.Delete();
+            }
+        }
+
+        protected async Task<Collection<string>> GetFunctionLogsAsync(string functionName)
+        {
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+
+            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
+            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+
+            if (lastLogFile != null)
+            {
+                string[] logs = File.ReadAllLines(lastLogFile.FullName);
+                return new Collection<string>(logs.ToList());
+            }
+            else
+            {
+                throw new InvalidOperationException("No logs written!");
+            }
+        }
+
+        private DirectoryInfo GetFunctionLogFileDirectory(string functionName)
+        {
+            string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
+            return new DirectoryInfo(functionLogsPath);
         }
     }
 }

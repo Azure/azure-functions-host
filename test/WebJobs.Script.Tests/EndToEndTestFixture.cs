@@ -33,7 +33,8 @@ namespace WebJobs.Script.Tests
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath,
-                TraceWriter = TraceWriter
+                TraceWriter = TraceWriter,
+                FileLoggingEnabled = true
             };
 
             HostManager = new ScriptHostManager(config);

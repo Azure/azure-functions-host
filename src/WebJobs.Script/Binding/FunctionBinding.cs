@@ -206,5 +206,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 await collector.AddAsync((T)converted);
             }
         }
+
+        internal static async Task BindStreamAsync(Stream stream, FileAccess access, IBinderEx binder, RuntimeBindingContext runtimeContext)
+        {
+            Stream boundStream = await binder.BindAsync<Stream>(runtimeContext);
+            if (access == FileAccess.Write)
+            {
+                await stream.CopyToAsync(boundStream);
+            }
+            else
+            {
+                await boundStream.CopyToAsync(stream);
+            }
+        }
     }
 }
