@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
+            NodeFunctionInvoker.UnhandledException += OnUnhandledException;
         }
 
         public TraceWriter TraceWriter { get; private set; }
@@ -203,8 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 new CSharpFunctionDescriptionProvider(this, ScriptConfig)
             };
 
-            NodeFunctionInvoker.UnhandledException += OnUnhandledException;
-
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
@@ -219,26 +218,6 @@ namespace Microsoft.Azure.WebJobs.Script
             ApplyBindingConfiguration(functions, ScriptConfig.HostConfig);
 
             Functions = functions;
-        }
-
-        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-        {
-            HandleHostError((Exception)e.ExceptionObject);
-        }
-
-        // Bindings may require us to update JobHostConfiguration. 
-        private static void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
-        {
-            JobHostConfigurationBuilder builder = new JobHostConfigurationBuilder(hostConfig);
-
-            foreach (var func in functions)
-            {
-                foreach (var metadata in func.Metadata.InputBindings.Concat(func.Metadata.OutputBindings))
-                {
-                    metadata.ApplyToConfig(builder);
-                }
-            }
-            builder.Done();
         }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
@@ -659,6 +638,26 @@ namespace Microsoft.Azure.WebJobs.Script
             hostConfig.UseCore();
         }
 
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            HandleHostError((Exception)e.ExceptionObject);
+        }
+
+        // Bindings may require us to update JobHostConfiguration. 
+        private static void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
+        {
+            JobHostConfigurationBuilder builder = new JobHostConfigurationBuilder(hostConfig);
+
+            foreach (var func in functions)
+            {
+                foreach (var metadata in func.Metadata.InputBindings.Concat(func.Metadata.OutputBindings))
+                {
+                    metadata.ApplyToConfig(builder);
+                }
+            }
+            builder.Done();
+        }
+
         private void HandleHostError(Microsoft.Azure.WebJobs.Extensions.TraceFilter traceFilter)
         {
             foreach (TraceEvent traceEvent in traceFilter.Events)
@@ -822,6 +821,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     ((IDisposable)TraceWriter).Dispose();
                 }
+
+                NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
             }
         }
     }
