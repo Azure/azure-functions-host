@@ -13,7 +13,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionBindingTests
     {

@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestInvoker : IFunctionInvoker
     {

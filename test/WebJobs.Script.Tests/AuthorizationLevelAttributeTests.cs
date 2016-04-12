@@ -13,7 +13,7 @@ using WebJobs.Script.WebHost;
 using WebJobs.Script.WebHost.Filters;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AuthorizationLevelAttributeTests
     {

@@ -5,7 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Script;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class UtilityTests
     {

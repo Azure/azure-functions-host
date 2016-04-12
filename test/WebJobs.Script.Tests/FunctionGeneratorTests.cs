@@ -20,7 +20,7 @@ using Microsoft.WindowsAzure.Storage;
 using WebJobs.Script.WebHost;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait("Category", "E2E")]
     public class FunctionGeneratorTests

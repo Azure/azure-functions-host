@@ -26,7 +26,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait("Category", "E2E")]
     public abstract class EndToEndTestsBase<TTestFixture> :

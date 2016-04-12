@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("WebJobs.Script.WebHost")]
+[assembly: AssemblyTitle("Microsoft.Azure.WebJobs.Script.WebHost")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyTrademark("")]
@@ -29,4 +29,4 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
-[assembly: InternalsVisibleTo("WebJobs.Script.Tests")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]

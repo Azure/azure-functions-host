@@ -9,8 +9,8 @@
     <ProjectGuid>{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WebJobs.Script.Tests</RootNamespace>
-    <AssemblyName>WebJobs.Script.Tests</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>

@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Script;
 
-namespace WebJobs.Script.Host
+namespace Microsoft.Azure.WebJobs.Script.Host
 {
     public static class Program
     {

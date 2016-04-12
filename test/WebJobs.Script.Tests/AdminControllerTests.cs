@@ -8,7 +8,7 @@ using WebJobs.Script.WebHost.Controllers;
 using WebJobs.Script.WebHost.Filters;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AdminControllerTests
     {
