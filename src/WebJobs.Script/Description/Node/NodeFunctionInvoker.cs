@@ -23,7 +23,7 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    public class NodeFunctionInvoker : ScriptFunctionInvokerBase
+    public class NodeFunctionInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static string ReadResourceString(string fileName)
         {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.{0}", fileName);
+            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.Description.Node.Script.{0}", fileName);
             Assembly assembly = Assembly.GetExecutingAssembly();
             using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
             {

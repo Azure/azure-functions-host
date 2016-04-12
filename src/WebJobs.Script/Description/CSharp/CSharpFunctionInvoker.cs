@@ -25,7 +25,7 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class CSharpFunctionInvoker : ScriptFunctionInvokerBase
+    public class CSharpFunctionInvoker : FunctionInvokerBase
     {
         private const string ScriptClassName = "Submission#0";
 

@@ -15,12 +15,12 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public abstract class ScriptFunctionInvokerBase : IFunctionInvoker, IDisposable
+    public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private FileSystemWatcher _fileWatcher;
         private bool _disposed = false;
 
-        internal ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
         {
             Host = host;
             Metadata = functionMetadata;

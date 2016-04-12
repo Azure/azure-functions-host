@@ -18,7 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
+    public class ScriptFunctionInvoker : FunctionInvokerBase
     {
         private const string FsiPathEnvironmentKey = "AzureWebJobs_FsiPath";
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
