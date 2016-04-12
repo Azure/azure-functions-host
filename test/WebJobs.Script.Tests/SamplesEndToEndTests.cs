@@ -72,6 +72,7 @@ namespace WebJobs.Script.Tests
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Mathew", body);
         }
 
@@ -94,17 +95,35 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GenericWebHook_Post_Succeeds()
+        public async Task GenericWebHook_CSharp_Post_Succeeds()
         {
-            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5";
+            string uri = "api/webhook-generic-csharp?code=827bdzxhqy3xc62cxa2hmfsh6gxzhg30s5pi64tu";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Content = new StringContent("{ 'a': 'Foobar' }");
+            request.Content = new StringContent("{ 'Value': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
             string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("WebHook processed successfully! Foobar", body);
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
+        }
+
+        [Fact]
+        public async Task GenericWebHook_Post_Succeeds()
+        {
+            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent("{ 'value': 'Foobar' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
         }
 
         [Fact]
@@ -113,14 +132,17 @@ namespace WebJobs.Script.Tests
             // Verify that sending the admin key bypasses WebHook auth
             string uri = "api/webhook-generic?code=t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Content = new StringContent("{ 'a': 'Foobar' }");
+            request.Content = new StringContent("{ 'value': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
             string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("WebHook processed successfully! Foobar", body);
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
         }
+
         [Fact]
         public async Task QueueTriggerBatch_Succeeds()
         {

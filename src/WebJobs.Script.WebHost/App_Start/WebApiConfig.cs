@@ -130,6 +130,11 @@ namespace WebJobs.Script.WebHost
                 settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
             }
 
+            if (string.IsNullOrEmpty(settings.ScriptPath))
+            {
+                throw new InvalidOperationException("Unable to determine function script root directory.");
+            }
+
             return settings;
         }
     }

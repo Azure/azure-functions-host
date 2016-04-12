@@ -14,17 +14,17 @@ namespace WebJobs.Script.WebHost.Diagnostics
             if (startedEvent != null)
             {
                 startedEvent.StartTime = DateTime.Now;
-                MetricsEventManager.FunctionStarted();
+                MetricsEventManager.FunctionStarted(startedEvent);
             }
         }
 
         public void EndEvent(MetricEvent metricEvent)
         {
-            FunctionStartedEvent startedEvent = metricEvent as FunctionStartedEvent;
-            if (startedEvent != null)
+            FunctionStartedEvent completedEvent = metricEvent as FunctionStartedEvent;
+            if (completedEvent != null)
             {
-                startedEvent.EndTime = DateTime.Now;
-                MetricsEventManager.FunctionCompleted();
+                completedEvent.EndTime = DateTime.Now;
+                MetricsEventManager.FunctionCompleted(completedEvent);
             }
         }
 

@@ -301,6 +301,7 @@
     <Compile Include="Handlers\EnsureHostRunningHandler.cs" />
     <Compile Include="HostSecrets.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
+    <Compile Include="Models\FunctionMetrics.cs" />
     <Compile Include="Models\FunctionStatus.cs" />
     <Compile Include="Models\HostStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
