@@ -20,6 +20,12 @@ namespace WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ServiceBusQueueTriggerToBlobTest()
+        {
+            await ServiceBusQueueTriggerToBlobTestImpl();
+        }
+
+        [Fact]
         public async Task EasyTables()
         {
             await EasyTablesTest(isCSharp: true);
@@ -58,6 +64,20 @@ namespace WebJobs.Script.Tests
             await Fixture.Host.CallAsync("EasyTableTable", arguments);
 
             await WaitForEasyTableRecordAsync("Item", id);
+        }
+
+        [Fact]
+        public async Task ScriptReference_LoadsScript()
+        {
+            var request = new System.Net.Http.HttpRequestMessage();
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
+
+            await Fixture.Host.CallAsync("LoadScriptReference", arguments);
+
+            Assert.Equal("TestClass", request.Properties["LoadedScriptResponse"]);
         }
 
         [Fact]

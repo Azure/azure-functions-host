@@ -3,13 +3,11 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
-using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.ServiceBus.Messaging;
@@ -363,8 +361,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters")]
         protected ParameterDescriptor ParseApiHubTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
         {
             if (trigger == null)

@@ -80,7 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return ScriptOptions.Default
                         .WithMetadataResolver(this)
                         .WithReferences(GetCompilationReferences())
-                        .WithImports(DefaultNamespaceImports);
+                        .WithImports(DefaultNamespaceImports)
+                        .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.Source)));
             }
         }
 
@@ -109,12 +110,33 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public IReadOnlyCollection<string> GetCompilationReferences()
         {
             // Add package reference assemblies
-            var result = new List<string>(_packageAssemblyResolver.AssemblyRegistry.Values);
+            var result = new List<string>(_packageAssemblyResolver.AssemblyReferences);
 
             // Add default references
             result.AddRange(DefaultAssemblyReferences);
 
             return result.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Attempts to resolve a package reference based on a reference name.
+        /// </summary>
+        /// <param name="referenceName">The reference name</param>
+        /// <param name="package">The package reference, if the <paramref name="referenceName"/>
+        /// matches a NuGet package reference name or one of the assemblies referenced by the package; otherwise, null.</param>
+        /// <returns>True if a match is found; otherwise, null.</returns>
+        public bool TryGetPackageReference(string referenceName, out PackageReference package)
+        {
+            if (_assemblyExtensions.Contains(Path.GetExtension(referenceName)))
+            {
+                referenceName = Path.GetFileNameWithoutExtension(referenceName);
+            }
+
+            package = _packageAssemblyResolver.Packages.FirstOrDefault(p =>
+                string.Compare(referenceName, p.Name, StringComparison.OrdinalIgnoreCase) == 0 ||
+                p.Assemblies.Keys.Any(a => string.Compare(a.Name, referenceName) == 0));
+
+            return package != null;
         }
 
         public override ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string baseFilePath, MetadataReferenceProperties properties)

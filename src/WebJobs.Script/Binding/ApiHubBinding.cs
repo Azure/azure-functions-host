@@ -5,10 +5,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -72,20 +70,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            // TODO: Need to handle Stream conversions properly
-            Stream valueStream = context.Value as Stream;
-
             var attribute = new ApiHubFileAttribute(Key, boundBlobPath, Access);
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
             Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
+
             if (Access == FileAccess.Write)
             {
-                await valueStream.CopyToAsync(blobStream);
+                await context.Value.CopyToAsync(blobStream);
             }
             else
             {
-                await blobStream.CopyToAsync(valueStream);
+                await blobStream.CopyToAsync(context.Value);
             }
         }
     }

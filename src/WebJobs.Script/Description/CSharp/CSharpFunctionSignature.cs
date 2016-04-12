@@ -53,10 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentException("The provided compilation does not have a syntax tree.", "compilation");
             }
 
-            SyntaxTree tree = compilation.SyntaxTrees.First();
-            SemanticModel model = compilation.GetSemanticModel(tree);
-
-            var methods = ((INamedTypeSymbol)model.GetEnclosingSymbol(0))
+            var methods = compilation.ScriptClass
                 .GetMembers()
                 .OfType<IMethodSymbol>()
                 .Select(m => new MethodReference<IMethodSymbol>(m.Name, m.DeclaredAccessibility == Accessibility.Public, m));

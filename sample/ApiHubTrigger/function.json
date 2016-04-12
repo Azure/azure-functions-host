@@ -8,7 +8,7 @@
     },
     {
       "type": "apiHub",
-      "name" : "output",
+      "name": "output",
       "connection": "AzureWebJobsDropBox",
       "direction": "out",
       "path": "testoutnode/{name}"

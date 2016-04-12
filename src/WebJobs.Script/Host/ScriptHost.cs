@@ -318,7 +318,13 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrEmpty(bindingTypeValue) &&
                 !Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
             {
-                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding type.", bindingTypeValue));
+                throw new FormatException(string.Format("'{0}' is not a valid binding type.", bindingTypeValue));
+            }
+
+            if (!string.IsNullOrEmpty(connection) && 
+                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
+            {
+                throw new FormatException("Invalid Connection value specified.");
             }
 
             switch (bindingType)

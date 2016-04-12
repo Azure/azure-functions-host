@@ -49,9 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            // TODO: Need to handle Stream conversions properly
-            Stream valueStream = context.Value as Stream;
-
             var attribute = new BlobAttribute(boundBlobPath, Access);
             Attribute[] additionalAttributes = null;
             if (!string.IsNullOrEmpty(Metadata.Connection))
@@ -66,11 +63,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Stream blobStream = await context.Binder.BindAsync<Stream>(runtimeContext);
             if (Access == FileAccess.Write)
             {
-                await valueStream.CopyToAsync(blobStream);
+                await context.Value.CopyToAsync(blobStream);
             }
             else
             {
-                await blobStream.CopyToAsync(valueStream);
+                await blobStream.CopyToAsync(context.Value);
             }
         }
 

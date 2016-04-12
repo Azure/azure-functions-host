@@ -2,10 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
-using System.IO;
-using System.Threading;
-using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Description

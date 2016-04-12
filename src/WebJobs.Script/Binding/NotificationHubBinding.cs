@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -78,16 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
 
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
-                IAsyncCollector<string> collector = await context.Binder.BindAsync<IAsyncCollector<string>>(runtimeContext);
-                byte[] bytes;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    context.Value.CopyTo(ms);
-                    bytes = ms.ToArray();
-                }
-                var inputString = Encoding.UTF8.GetString(bytes);
-                //Only supports valid JSON string
-                await collector.AddAsync(inputString);
+                await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
             }
         }
     }

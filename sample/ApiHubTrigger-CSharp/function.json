@@ -5,10 +5,10 @@
       "connection": "AzureWebJobsDropBox",
       "direction": "in",
       "path": "test/{name}",
-      "name" : "input"
+      "name": "input"
     },
     {
-      "name" : "output",
+      "name": "output",
       "type": "apiHub",
       "connection": "AzureWebJobsDropBox",
       "direction": "out",
