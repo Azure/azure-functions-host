@@ -205,6 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         value = JsonConvert.SerializeObject(value);
                     }
 
+                    byte[] bytes = null;
                     if (!(value is string))
                     {
                         throw new InvalidOperationException(string.Format("Invalid value specified for binding '{0}'", binding.Metadata.Name));
@@ -214,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         bytes = (byte[])value;
                     }
 
-                    byte[] bytes = Encoding.UTF8.GetBytes((string)value);
+                    bytes = Encoding.UTF8.GetBytes((string)value);
                     using (MemoryStream ms = new MemoryStream(bytes))
                     {
                         BindingContext bindingContext = new BindingContext
