@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(Metadata);
+            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
             try
