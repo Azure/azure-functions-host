@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// or package assemblies.
     /// </summary>
     [CLSCompliant(false)]
-    public sealed class FunctionMetadataResolver : MetadataReferenceResolver
+    public sealed class FunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
     {
         private readonly string _privateAssembliesPath;
         private readonly string[] _assemblyExtensions = new[] { ".exe", ".dll" };

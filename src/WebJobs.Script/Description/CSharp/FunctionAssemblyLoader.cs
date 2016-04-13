@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Assembly ResolveAssembly(object sender, ResolveEventArgs args)
+        internal Assembly ResolveAssembly(object sender, ResolveEventArgs args)
         {
             FunctionAssemblyLoadContext context = GetFunctionContext(args.RequestingAssembly);
             Assembly result = null;
@@ -53,13 +54,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (context != null)
             {
                 result = context.ResolveAssembly(args.Name);
+
+                // Failed to resolve a function assembly dependency, log the failure as this
+                // is usually caused by missing private assemblies.
+                if (result == null)
+                {
+                    context.TraceWriter.Warning(string.Format(CultureInfo.InvariantCulture, "Unable to find assembly '{0}'. Are you missing a private assembly file?", args.Name));
+                }
             }
 
             return result;
         }
 
         [CLSCompliant(false)]
-        public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, FunctionMetadataResolver metadataResolver)
+        public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, IFunctionMetadataResolver metadataResolver, TraceWriter traceWriter)
         {
             if (metadata == null)
             {
@@ -73,8 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentNullException("metadataResolver");
             }
+            if (traceWriter == null)
+            {
+                throw new ArgumentNullException("traceWriter");
+            }
 
-            var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver);
+            var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver, traceWriter);
             
             return _functionContexts.AddOrUpdate(metadata.Name, context, (s, o) => context);
         }

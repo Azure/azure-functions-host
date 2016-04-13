@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
 
         private CSharpFunctionSignature _functionSignature;
-        private FunctionMetadataResolver _metadataResolver;
+        private IFunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
@@ -317,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         }
 
                         Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
-                        _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver);
+                        _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
                         // Get our function entry point
                         System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
