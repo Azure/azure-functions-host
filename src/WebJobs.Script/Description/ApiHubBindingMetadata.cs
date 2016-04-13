@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         [JsonIgnore]
         public string Key { get; set; }
 
+        public int PollIntervalInSeconds { get; set; }
+
         public override void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
         {
             if (configBuilder == null)

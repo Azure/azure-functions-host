@@ -1,6 +1,6 @@
-﻿module.exports = function (context, input) {
-    context.log('Node.js ApiHub trigger function processed ', input);
+﻿module.exports = function (context, apihub) {
+    context.log('Node.js apihub trigger function processed apihub', apihub);
     context.done(null, {
-        output: input
+        output: apihub
     });
 }

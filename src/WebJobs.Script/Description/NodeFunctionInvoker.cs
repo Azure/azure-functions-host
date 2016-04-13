@@ -205,12 +205,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         value = JsonConvert.SerializeObject(value);
                     }
 
+                    byte[] bytes = null;
                     if (!(value is string))
                     {
                         throw new InvalidOperationException(string.Format("Invalid value specified for binding '{0}'", binding.Metadata.Name));
                     }
+                    else if (value.GetType() == typeof(byte[]))
+                    {
+                        bytes = (byte[])value;
+                    }
 
-                    byte[] bytes = Encoding.UTF8.GetBytes((string)value);
+                    bytes = Encoding.UTF8.GetBytes((string)value);
                     using (MemoryStream ms = new MemoryStream(bytes))
                     {
                         BindingContext bindingContext = new BindingContext
@@ -320,9 +325,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             else if (input is Stream)
             {
                 Stream inputStream = (Stream)input;
-                using (StreamReader sr = new StreamReader(inputStream))
+
+                if (inputStream.Length > 0)
                 {
-                    input = sr.ReadToEnd();
+                    using (BinaryReader br = new BinaryReader(inputStream))
+                    {
+                        input = ReadAllBytes(br);
+                    }
+                }
+                else
+                {
+                    using (StreamReader sr = new StreamReader(inputStream))
+                    {
+                        input = sr.ReadToEnd();
+                    }
                 }
             }
             else
@@ -411,6 +427,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch
             {
                 return false;
+            }
+        }
+
+        private static byte[] ReadAllBytes(BinaryReader reader)
+        {
+            int bufferSize = 4096;
+            using (var ms = new MemoryStream())
+            {
+                byte[] buffer = new byte[bufferSize];
+                int count;
+                while ((count = reader.Read(buffer, 0, buffer.Length)) != 0)
+                {
+                    ms.Write(buffer, 0, count);
+                }
+                return ms.ToArray();
             }
         }
     }
