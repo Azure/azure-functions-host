@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void SetNewLogFile_PurgesOldLogFiles()
+        public async Task SetNewLogFile_PurgesOldLogFiles()
         {
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
@@ -83,9 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
 
+            await TestHelpers.Await(() =>
+            {
+                files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
+                return files.Length == 2;
+            }, timeout: 2000);
+
             // verify the correct log files were purged and the 2
             // most recent files were retained
-            Assert.Equal(2, files.Length);
             Assert.True(files[0].Name.StartsWith("4"));
             Assert.True(files[1].Name.StartsWith("3"));
         }
