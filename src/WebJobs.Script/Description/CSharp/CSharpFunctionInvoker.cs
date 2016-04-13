@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
                 invocationId = functionExecutionContext.InvocationId.ToString();
 
-                startedEvent = new FunctionStartedEvent(Metadata);
+                startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
                 _metrics.BeginEvent(startedEvent);
 
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
