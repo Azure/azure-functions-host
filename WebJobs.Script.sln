@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -214,22 +214,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "Htt
 		sample\HttpTrigger-Disabled\index.js = sample\HttpTrigger-Disabled\index.js
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger-CSharp", "ApiHubTrigger-CSharp", "{A308340E-16AC-47DA-9402-A279F681D5F3}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-CSharp", "ApiHubFileTrigger-CSharp", "{A308340E-16AC-47DA-9402-A279F681D5F3}"
 	ProjectSection(SolutionItems) = preProject
-		sample\ApiHubTrigger-CSharp\function.json = sample\ApiHubTrigger-CSharp\function.json
-		sample\ApiHubTrigger-CSharp\run.csx = sample\ApiHubTrigger-CSharp\run.csx
+		sample\ApiHubFileTrigger-CSharp\function.json = sample\ApiHubFileTrigger-CSharp\function.json
+		sample\ApiHubFileTrigger-CSharp\run.csx = sample\ApiHubFileTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger-Batch", "ApiHubTrigger-Batch", "{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-Batch", "ApiHubFileTrigger-Batch", "{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB}"
 	ProjectSection(SolutionItems) = preProject
-		sample\ApiHubTrigger-Batch\function.json = sample\ApiHubTrigger-Batch\function.json
-		sample\ApiHubTrigger-Batch\run.bat = sample\ApiHubTrigger-Batch\run.bat
+		sample\ApiHubFileTrigger-Batch\function.json = sample\ApiHubFileTrigger-Batch\function.json
+		sample\ApiHubFileTrigger-Batch\run.bat = sample\ApiHubFileTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubTrigger", "ApiHubTrigger", "{5FBF4581-318C-4320-81AA-6B2F02AF34EC}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger", "ApiHubFileTrigger", "{5FBF4581-318C-4320-81AA-6B2F02AF34EC}"
 	ProjectSection(SolutionItems) = preProject
-		sample\ApiHubTrigger\function.json = sample\ApiHubTrigger\function.json
-		sample\ApiHubTrigger\index.js = sample\ApiHubTrigger\index.js
+		sample\ApiHubFileTrigger\function.json = sample\ApiHubFileTrigger\function.json
+		sample\ApiHubFileTrigger\index.js = sample\ApiHubFileTrigger\index.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-CSharp", "HttpTriggerWithObject-CSharp", "{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E}"

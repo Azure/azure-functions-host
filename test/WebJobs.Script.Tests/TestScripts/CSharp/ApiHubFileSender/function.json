@@ -5,7 +5,7 @@
       "direction": "in"
     },
     {
-      "type": "apiHub",
+      "type": "apiHubFile",
       "name" : "item",
       "connection": "AzureWebJobsDropBox",
       "direction": "out",
