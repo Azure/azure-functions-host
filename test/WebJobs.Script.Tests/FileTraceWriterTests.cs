@@ -75,6 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             File.SetLastWriteTime(logFiles[1].FullName, DateTime.Now.Subtract(TimeSpan.FromDays(1)));
             File.SetLastWriteTime(logFiles[0].FullName, DateTime.Now.Subtract(TimeSpan.FromDays(2)));
 
+            await Task.Delay(2000);
+
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(initialCount, files.Length);
 
