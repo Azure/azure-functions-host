@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         EasyTable,
         DocumentDB,
         NotificationHub,        
-        ApiHub,
-        ApiHubTrigger
+        ApiHubFile,
+        ApiHubFileTrigger
     }
 }

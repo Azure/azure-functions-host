@@ -193,25 +193,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task ApiHubTest()
         {
-            // ApiHub needs the following environment vars:
-            // "AzureWebJobsDropBox" - the connection string for drop box
-            // TODO: this environment variable will be removed once local file based implementation of ApiHub SDK is used,
+            // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.           
+            // The format should be: Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}
+            // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
+            string apiHubConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsDropBox");
+
+            if (string.IsNullOrEmpty(apiHubConnectionString))
+            {
+                throw new ApplicationException("Missing AzureWebJobsDropBox environment variable.");
+            }
 
             string testBlob = "teste2e";
             string apiHubFile = "teste2e/test.txt";
             var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testBlob);
             resultBlob.DeleteIfExists();
 
-            var root = ItemFactory.Parse(Environment.GetEnvironmentVariable("AzureWebJobsDropBox"));
+            var root = ItemFactory.Parse(apiHubConnectionString);
             if (root.FileExists(apiHubFile))
             {
-                var file = await root.CreateFileAsync(apiHubFile);
-                // TODO: this will be removed once updated Api SDK is referenced.
-                await file.HandleId;
+                var file = await root.GetFileReferenceAsync(apiHubFile);
                 await file.DeleteAsync();
             }
 
-            // Test both writing and reading from ApiHub.
+            // Test both writing and reading from ApiHubFile.
             // First, manually invoke a function that has an output binding to write to Dropbox.
             string testData = Guid.NewGuid().ToString();
 
@@ -221,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("ApiHubSender", arguments);
 
-            // Second, there's an ApiHub trigger which will write a blob. 
+            // Second, there's an ApiHubFile trigger which will write a blob. 
             // Once the blob is written, we know both sender & listener are working.
             // TODO: removing the BOM character from result.
             string result = (await TestHelpers.WaitForBlobAsync(resultBlob)).Remove(0, 1);
