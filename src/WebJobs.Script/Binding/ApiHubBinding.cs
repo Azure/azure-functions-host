@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             if (string.IsNullOrEmpty(apiHubBindingMetadata.Path))
             {
-                throw new ArgumentException("The ApiHub path cannot be null or empty.");
+                throw new ArgumentException("The ApiHubFile path cannot be null or empty.");
             }
 
             Key = apiHubBindingMetadata.Key;

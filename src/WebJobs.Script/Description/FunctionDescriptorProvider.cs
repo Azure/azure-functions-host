@@ -134,8 +134,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 case BindingType.ManualTrigger:
                     triggerParameter = ParseManualTrigger(triggerMetadata);
                     break;
-                case BindingType.ApiHubTrigger:
-                    triggerParameter = ParseApiHubTrigger((ApiHubBindingMetadata)triggerMetadata, typeof(Stream));
+                case BindingType.ApiHubFileTrigger:
+                    triggerParameter = ParseApiHubFileTrigger((ApiHubBindingMetadata)triggerMetadata, typeof(Stream));
                     break;
             }
 
@@ -361,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
         }
 
-        protected ParameterDescriptor ParseApiHubTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseApiHubFileTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
         {
             if (trigger == null)
             {
@@ -373,9 +373,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerParameterType = typeof(string);
             }
 
-            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string) });
+            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(int) });
 
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path });
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path, trigger.PollIntervalInSeconds });
+
             string parameterName = trigger.Name;
             var attributes = new Collection<CustomAttributeBuilder>
             {
