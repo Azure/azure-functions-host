@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "input", testData },
             };
-            await Fixture.Host.CallAsync("ApiHubSender", arguments);
+            await Fixture.Host.CallAsync("ApiHubFileSender", arguments);
 
             // Second, there's an ApiHubFile trigger which will write a blob. 
             // Once the blob is written, we know both sender & listener are working.
