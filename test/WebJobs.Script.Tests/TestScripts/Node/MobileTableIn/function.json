@@ -2,18 +2,18 @@
   "bindings": [
     {
       "type": "queueTrigger",
-      "queueName": "easytables-input",
+      "queueName": "mobiletables-input",
       "direction": "in"
     },
     {
-      "type": "easyTable",
+      "type": "mobileTable",
       "name": "itemIn",
       "direction": "in",
       "tableName": "Item",
       "id": "{QueueTrigger}"
     },
     {
-      "type": "easyTable",
+      "type": "mobileTable",
       "direction": "out",
       "name": "itemOut",
       "tableName": "Item"

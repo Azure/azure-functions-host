@@ -16,7 +16,7 @@ using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
-using Microsoft.Azure.WebJobs.Extensions.EasyTables;
+using Microsoft.Azure.WebJobs.Extensions.MobileApps;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.ServiceBus;
@@ -159,12 +159,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        protected async Task EasyTablesTest(bool isCSharp = false)
+        protected async Task MobileTablesTest(bool isCSharp = false)
         {
-            // EasyTables needs the following environment vars:
+            // MobileApps needs the following environment vars:
             // "AzureWebJobsMobileAppUri" - the URI to the mobile app
 
-            // The Mobile App needs an anonymous 'Item' EasyTable
+            // The Mobile App needs an anonymous 'Item' table
 
             // First manually create an item. 
             string id = Guid.NewGuid().ToString();
@@ -172,13 +172,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "input",  id }
             };
-            await Fixture.Host.CallAsync("EasyTableOut", arguments);
-            var item = await WaitForEasyTableRecordAsync("Item", id);
+            await Fixture.Host.CallAsync("MobileTableOut", arguments);
+            var item = await WaitForMobileTableRecordAsync("Item", id);
 
             Assert.Equal(item["id"], id);
 
             // Now add that Id to a Queue
-            var queue = Fixture.GetNewQueue("easytables-input");
+            var queue = Fixture.GetNewQueue("mobiletables-input");
             await queue.AddMessageAsync(new CloudQueueMessage(id));
 
             // And wait for the text to be updated
@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
             var idToCheck = id + (isCSharp ? string.Empty : "-success");
             var textToCheck = isCSharp ? "This was updated!" : null;
-            await WaitForEasyTableRecordAsync("Item", idToCheck, textToCheck);
+            await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         }
 
         protected async Task ApiHubTest()
@@ -233,10 +233,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(testData, result);
         }
 
-        protected async Task<JToken> WaitForEasyTableRecordAsync(string tableName, string itemId, string textToMatch = null)
+        protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
         {
             // Get the URI by creating a config.
-            var config = new EasyTablesConfiguration();
+            var config = new MobileAppsConfiguration();
             var client = new MobileServiceClient(config.MobileAppUri);
             JToken item = null;
             var table = client.GetTable(tableName);

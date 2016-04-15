@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class EasyTableBindingMetadata : BindingMetadata
+    public class MobileTableBindingMetadata : BindingMetadata
     {
         public string TableName { get; set; }
 

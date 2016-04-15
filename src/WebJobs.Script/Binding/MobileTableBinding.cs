@@ -13,11 +13,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class EasyTableBinding : FunctionBinding
+    public class MobileTableBinding : FunctionBinding
     {
         private readonly BindingDirection _bindingDirection;
 
-        public EasyTableBinding(ScriptHostConfiguration config, EasyTableBindingMetadata metadata, FileAccess access) :
+        public MobileTableBinding(ScriptHostConfiguration config, MobileTableBindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
             TableName = metadata.TableName;
@@ -48,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             PropertyInfo[] props = new[]
             {
-                typeof(EasyTableAttribute).GetProperty("TableName"),
-                typeof(EasyTableAttribute).GetProperty("Id"),
-                typeof(EasyTableAttribute).GetProperty("MobileAppUri"),
-                typeof(EasyTableAttribute).GetProperty("ApiKey"),
+                typeof(MobileTableAttribute).GetProperty("TableName"),
+                typeof(MobileTableAttribute).GetProperty("Id"),
+                typeof(MobileTableAttribute).GetProperty("MobileAppUri"),
+                typeof(MobileTableAttribute).GetProperty("ApiKey"),
             };
 
             object[] propValues = new[]
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 ApiKey
             };
 
-            ConstructorInfo constructor = typeof(EasyTableAttribute).GetConstructor(System.Type.EmptyTypes);
+            ConstructorInfo constructor = typeof(MobileTableAttribute).GetConstructor(System.Type.EmptyTypes);
 
             return new Collection<CustomAttributeBuilder>
             {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            EasyTableAttribute attribute = new EasyTableAttribute
+            MobileTableAttribute attribute = new MobileTableAttribute
             {
                 TableName = TableName,
                 Id = Id,

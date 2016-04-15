@@ -3,10 +3,10 @@
     {
       "type": "queueTrigger",
       "direction": "in",
-      "queueName": "samples-easytables-csharp"
+      "queueName": "samples-mobiletables-csharp"
     },
     {
-      "type": "easyTable",
+      "type": "mobileTable",
       "name": "newItem",
       "direction": "out"
     }

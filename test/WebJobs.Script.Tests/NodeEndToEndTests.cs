@@ -58,9 +58,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task EasyTables()
+        public async Task MobileTables()
         {
-            await EasyTablesTest();
+            await MobileTablesTest();
         }
 
         [Fact]

@@ -1,4 +1,4 @@
-﻿// EasyTable node scripts cannot Update values 
+﻿// Mobile table node scripts cannot Update values 
 // because output bindings perform an insert rather
 // than an upsert.
 // So we'll insert with a known id that we can query

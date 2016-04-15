@@ -3,10 +3,10 @@
     {
       "type": "queueTrigger",
       "direction": "in",
-      "queueName": "samples-easytables-node"
+      "queueName": "samples-mobiletables-node"
     },
     {
-      "type": "easyTable",
+      "type": "mobileTable",
       "direction": "out",
       "name": "item",
       "tableName": "Item"

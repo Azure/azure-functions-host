@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task EasyTables()
+        public async Task MobileTables()
         {
-            await EasyTablesTest(isCSharp: true);
+            await MobileTablesTest(isCSharp: true);
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task EasyTablesTable()
+        public async Task MobileTablesTable()
         {
             var id = Guid.NewGuid().ToString();
             Dictionary<string, object> arguments = new Dictionary<string, object>()
@@ -59,11 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "input",  id }
             };
 
-            await Fixture.TouchProjectJson("EasyTableTable");
+            await Fixture.TouchProjectJson("MobileTableTable");
 
-            await Fixture.Host.CallAsync("EasyTableTable", arguments);
+            await Fixture.Host.CallAsync("MobileTableTable", arguments);
 
-            await WaitForEasyTableRecordAsync("Item", id);
+            await WaitForMobileTableRecordAsync("Item", id);
         }
 
         [Fact]

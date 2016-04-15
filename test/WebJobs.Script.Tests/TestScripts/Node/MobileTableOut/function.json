@@ -5,9 +5,10 @@
       "direction": "in"
     },
     {
-      "type": "easyTable",
-      "name": "table",
-      "direction": "in"
+      "type": "mobileTable",
+      "direction": "out",
+      "name": "item",
+      "tableName": "Item"
     }
   ]
 }

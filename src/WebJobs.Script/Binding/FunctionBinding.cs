@@ -100,9 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         case BindingType.HttpTrigger:
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Read));
                             break;
-                        case BindingType.EasyTable:
-                            EasyTableBindingMetadata easyTableMetadata = (EasyTableBindingMetadata)bindingMetadata;
-                            bindings.Add(new EasyTableBinding(config, easyTableMetadata, fileAccess));
+                        case BindingType.MobileTable:
+                            MobileTableBindingMetadata mobileTableMetadata = (MobileTableBindingMetadata)bindingMetadata;
+                            bindings.Add(new MobileTableBinding(config, mobileTableMetadata, fileAccess));
                             break;
                         case BindingType.DocumentDB:
                             DocumentDBBindingMetadata docDBMetadata = (DocumentDBBindingMetadata)bindingMetadata;

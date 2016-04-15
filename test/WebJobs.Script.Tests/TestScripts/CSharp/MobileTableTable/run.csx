@@ -17,6 +17,6 @@ public class Item
     public bool IsProcessed { get; set; }
     public DateTimeOffset ProcessedAt { get; set; }
 
-    // EasyTable properties
+    // Mobile table properties
     public DateTimeOffset CreatedAt { get; set; }
 }

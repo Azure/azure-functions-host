@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Table,
         ManualTrigger,
         TimerTrigger,
-        EasyTable,
+        MobileTable,
         DocumentDB,
         NotificationHub,        
         ApiHubFile,

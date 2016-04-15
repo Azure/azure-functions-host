@@ -5,7 +5,7 @@
       "direction": "in"      
     },
     {
-      "type": "easyTable",
+      "type": "mobileTable",
       "name": "item",
       "direction": "out"
     }

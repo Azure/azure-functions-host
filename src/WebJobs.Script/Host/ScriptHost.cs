@@ -345,8 +345,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 case BindingType.TimerTrigger:
                     bindingMetadata = binding.ToObject<TimerBindingMetadata>();
                     break;
-                case BindingType.EasyTable:
-                    bindingMetadata = binding.ToObject<EasyTableBindingMetadata>();
+                case BindingType.MobileTable:
+                    bindingMetadata = binding.ToObject<MobileTableBindingMetadata>();
                     break;
                 case BindingType.DocumentDB:
                     bindingMetadata = binding.ToObject<DocumentDBBindingMetadata>();
