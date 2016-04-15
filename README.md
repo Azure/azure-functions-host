@@ -2,13 +2,13 @@
 ===
 This repo contains libraries that enable a **light-weight scripting model** for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function **scripts** written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), C#, Python, F#, PowerShell, PHP, CMD, BAT, BASH scripts, etc.) along with a simple **function.json** metadata file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) runtime.
 
-This opens the door for interesting **UI driven scenarios**, where the user simply configures functions via drop-downs, provides a job script, and the corresponding function.json is generated behind the scenes. The scripting runtime is able to take these two simple inputs and set everything else up. The engine behind the scenes is the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/). 
+These libraries are the runtime used by [Azure Functions](https://azure.microsoft.com/en-us/services/functions/). The runtime builds upon the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/). 
 
 As an example, here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
 
 ```javascript
 module.exports = function (context, workItem) {
-    context.log('Node.js queue trigger function processed work item ' + workItem.id);
+    context.log('Node.js queue trigger function processed work item ', workItem.id);
     context.bindings.receipt = workItem;
     context.done();
 }
@@ -39,7 +39,7 @@ The `receipt` blob **output binding** that was referenced in the code above is a
 Here's a Windows Batch script that uses the **same function definition**, writing the incoming messages to blobs (it could process/modify the message in any way):
 
 ```batch
-SET /p workItem=
+SET /p workItem=<%input%
 echo Windows Batch script processed work item '%workItem%'
 echo %workItem% > %receipt%
 ```
@@ -50,7 +50,7 @@ And here's a Python function for the same function definition doing the same thi
 import os
 
 # read the queue message and write to stdout
-workItem = input();
+workItem = open(os.environ['input']).read()
 message = "Python script processed work item '{0}'".format(workItem)
 print(message)
 
@@ -59,7 +59,7 @@ f = open(os.environ['receipt'], 'w')
 f.write(workItem)
 ```
 
-Note that for all script types other than Node.js, trigger input is passed via STDIN, and output logs is written via STDOUT. You can see more script language [examples here](http://github.com/Azure/azure-webjobs-sdk-script/tree/master/sample).
+Note that for all script types other than Node.js, binding inputs are made available to the script via environment variables, and output logs is written via STDOUT. You can see more script language [examples here](http://github.com/Azure/azure-webjobs-sdk-script/tree/master/sample).
 
 The samples also includes a canonical [image resize sample](http://github.com/Azure/azure-webjobs-sdk-script/tree/master/sample/ResizeImage). This sample demonstrates both input and output bindings. Here's the **function.json**:
 
@@ -67,12 +67,7 @@ The samples also includes a canonical [image resize sample](http://github.com/Az
 {
   "bindings": [
     {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "image-resize"
-    },
-    {
-      "type": "blob",
+      "type": "blobTrigger",
       "name": "original",
       "direction": "in",
       "path": "images-original/{name}"
@@ -87,7 +82,7 @@ The samples also includes a canonical [image resize sample](http://github.com/Az
 }
 ```
 
-When the script receives a queue message on queue `image-resize`, the input binding reads the original image from blob storage (binding to the `name` property from the queue message), sets up the output binding, and invokes the script. Here's the batch script (resize.bat):
+When the script is triggered by a new image in `images-original`, the input binding reads the original image from blob storage (binding to the `name` property from the blob path), sets up the output binding, and invokes the script. Here's the batch script (resize.bat):
 
 ```batch
 .\Resizer\Resizer.exe %original% %resized% 200
