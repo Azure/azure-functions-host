@@ -80,8 +80,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else
             {
+                string partitionKey = string.IsNullOrEmpty(PartitionKey) ? null : PartitionKey;
+                string rowKey = string.IsNullOrEmpty(RowKey) ? null : RowKey;
+
                 constructorTypes = new Type[] { typeof(string), typeof(string), typeof(string) };
-                constructorArguments = new object[] { TableName, PartitionKey, RowKey };
+                constructorArguments = new object[] { TableName, partitionKey, rowKey };
             }
 
             attributes.Add(new CustomAttributeBuilder(typeof(TableAttribute).GetConstructor(constructorTypes), constructorArguments));
