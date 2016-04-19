@@ -4,7 +4,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -29,14 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         public string Path { get; private set; }
-
-        public override bool HasBindingParameters
-        {
-            get
-            {
-                return _pathBindingTemplate.ParameterNames.Any();
-            }
-        }
 
         public override async Task BindAsync(BindingContext context)
         {

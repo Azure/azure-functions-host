@@ -4,7 +4,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -31,14 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         public string QueueOrTopicName { get; private set; }
-
-        public override bool HasBindingParameters
-        {
-            get
-            {
-                return _queueOrTopicNameBindingTemplate.ParameterNames.Any();
-            }
-        }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {

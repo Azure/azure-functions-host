@@ -4,7 +4,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -32,14 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Key = apiHubBindingMetadata.Key;
             Path = apiHubBindingMetadata.Path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
-        }
-
-        public override bool HasBindingParameters
-        {
-            get
-            {
-                return _pathBindingTemplate.ParameterNames.Any();
-            }
         }
 
         public string Key { get; private set; }

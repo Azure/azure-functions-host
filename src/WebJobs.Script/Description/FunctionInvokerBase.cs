@@ -3,14 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -81,54 +79,50 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected static Dictionary<string, string> GetBindingData(object value, IBinderEx binder, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        /// <summary>
+        /// Get the binding data. In dynamic script cases we need
+        /// to parse this POCO data ourselves - it won't be in the existing
+        /// binding data because all the POCO binders require strong
+        /// typing
+        /// </summary>
+        protected static Dictionary<string, string> GetBindingData(object value, IBinderEx binder)
         {
+            // First apply any existing binding data. Any additional binding
+            // data coming from the message will take precedence
             Dictionary<string, string> bindingData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ApplyAmbientBindingData(binder, bindingData);
 
-            // If there are any parameters in the bindings,
-            // get the binding data. In dynamic script cases we need
-            // to parse this POCO data ourselves - it won't be in the existing
-            // binding data because all the POCO binders require strong
-            // typing
-            if (outputBindings.Any(p => p.HasBindingParameters) ||
-                inputBindings.Any(p => p.HasBindingParameters))
+            try
             {
-                // First apply any existing binding data. Any additional binding
-                // data coming from the message will take precedence
-                ApplyAmbientBindingData(binder, bindingData);
-
-                try
+                // if the input value is a JSON string, extract additional
+                // binding data from it
+                string json = value as string;
+                if (!string.IsNullOrEmpty(json) && Utility.IsJson(json))
                 {
-                    // if the input value is a JSON string, extract additional
-                    // binding data from it
-                    string json = value as string;
-                    if (!string.IsNullOrEmpty(json) && Utility.IsJson(json))
-                    {
-                        // parse the object skipping any nested objects (binding data
-                        // only includes top level properties)
-                        JObject parsed = JObject.Parse(json);
-                        var additionalBindingData = parsed.Children<JProperty>()
-                            .Where(p => p.Value.Type != JTokenType.Object)
-                            .ToDictionary(p => p.Name, p => (string)p);
+                    // parse the object skipping any nested objects (binding data
+                    // only includes top level properties)
+                    JObject parsed = JObject.Parse(json);
+                    var additionalBindingData = parsed.Children<JProperty>()
+                        .Where(p => p.Value.Type != JTokenType.Object)
+                        .ToDictionary(p => p.Name, p => (string)p);
 
-                        if (additionalBindingData != null)
+                    if (additionalBindingData != null)
+                    {
+                        foreach (var item in additionalBindingData)
                         {
-                            foreach (var item in additionalBindingData)
+                            if (item.Value != null)
                             {
-                                if (item.Value != null)
-                                {
-                                    bindingData[item.Key] = item.Value.ToString();
-                                }
+                                bindingData[item.Key] = item.Value.ToString();
                             }
                         }
                     }
                 }
-                catch
-                {
-                    // it's not an error if the incoming message isn't JSON
-                    // there are cases where there will be output binding parameters
-                    // that don't bind to JSON properties
-                }
+            }
+            catch
+            {
+                // it's not an error if the incoming message isn't JSON
+                // there are cases where there will be output binding parameters
+                // that don't bind to JSON properties
             }
 
             return bindingData;

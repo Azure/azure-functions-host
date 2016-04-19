@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
-            Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder, _inputBindings, _outputBindings);
+            Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
             bindingData["InvocationId"] = invocationId;
 
             await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, bindingData, environmentVariables);

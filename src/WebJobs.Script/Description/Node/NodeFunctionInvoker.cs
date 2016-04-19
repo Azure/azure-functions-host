@@ -121,11 +121,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
 
-                var scriptExecutionContext = CreateScriptExecutionContext(input, traceWriter, TraceWriter, functionExecutionContext);
-
-                Dictionary<string, string> bindingData = GetBindingData(input, binder, _inputBindings, _outputBindings);
+                var scriptExecutionContext = CreateScriptExecutionContext(input, binder, traceWriter, TraceWriter, functionExecutionContext);
+                var bindingData = (Dictionary<string, string>)scriptExecutionContext["bindingData"];
                 bindingData["InvocationId"] = invocationId;
-                scriptExecutionContext["bindingData"] = bindingData;
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
 
@@ -264,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, IBinderEx binder, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -298,12 +296,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "bind", bind }
             };
 
+            // This is the input value that we will use to extract binding data.
+            // Since binding data extraction is based on JSON parsing, in the
+            // various conversions below, we set this to the appropriate JSON
+            // string when possible.
+            object bindDataInput = input;
+
             if (input is HttpRequestMessage)
             {
                 // convert the request to a json object
                 HttpRequestMessage request = (HttpRequestMessage)input;
-                var requestObject = CreateRequestObject(request);
+                string rawBody = null;
+                var requestObject = CreateRequestObject(request, out rawBody);
                 input = requestObject;
+
+                if (rawBody != null)
+                {
+                    bindDataInput = rawBody;
+                }
 
                 // If this is a WebHook function, the input should be the
                 // request body
@@ -337,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Stream inputStream = (Stream)input;
                 using (StreamReader sr = new StreamReader(inputStream))
                 {
-                    input = sr.ReadToEnd();
+                    bindDataInput = input = sr.ReadToEnd();
                 }
             }
             else
@@ -345,6 +355,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // TODO: Handle case where the input type is something
                 // that we can't convert properly
             }
+
+            context["bindingData"] = GetBindingData(bindDataInput, binder);
 
             if (input is string)
             {
@@ -357,13 +369,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return context;
         }
 
-        private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request)
+        private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
         {
+            rawBody = null;
+
             // TODO: need to provide access to remaining request properties
-            Dictionary<string, object> inputDictionary = new Dictionary<string, object>();
-            inputDictionary["originalUrl"] = request.RequestUri.ToString();
-            inputDictionary["method"] = request.Method.ToString().ToUpperInvariant();
-            inputDictionary["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, object> requestObject = new Dictionary<string, object>();
+            requestObject["originalUrl"] = request.RequestUri.ToString();
+            requestObject["method"] = request.Method.ToString().ToUpperInvariant();
+            requestObject["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
             Dictionary<string, string> headers = new Dictionary<string, string>();
             foreach (var header in request.Headers)
@@ -372,27 +386,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // as does Node.js request object
                 headers.Add(header.Key.ToLowerInvariant(), header.Value.First());
             }
-            inputDictionary["headers"] = headers;
+            requestObject["headers"] = headers;
 
             // if the request includes a body, add it to the request object 
             if (request.Content != null && request.Content.Headers.ContentLength > 0)
             {
                 string body = request.Content.ReadAsStringAsync().Result;
+                rawBody = body;
                 MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
                 Dictionary<string, object> jsonObject;
                 if (contentType != null && contentType.MediaType == "application/json" &&
                     TryDeserializeJson(body, out jsonObject))
                 {
                     // if the content - type of the request is json, deserialize into an object
-                    inputDictionary["body"] = jsonObject;
+                    requestObject["body"] = jsonObject;
                 }
                 else
                 {
-                    inputDictionary["body"] = body;
+                    requestObject["body"] = body;
                 }
             }
 
-            return inputDictionary;
+            return requestObject;
         }
 
         private object TryConvertJson(string input)
