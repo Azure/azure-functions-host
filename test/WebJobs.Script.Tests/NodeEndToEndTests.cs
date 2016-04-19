@@ -224,6 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject resultObject = JObject.Parse(body);
             Assert.Equal((string)resultObject["reqBodyType"], "object");
             Assert.Equal((string)resultObject["reqBody"]["testData"], testData);
+            Assert.Equal((string)resultObject["bindingData"]["testData"], testData);
         }
 
         [Fact]

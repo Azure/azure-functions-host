@@ -6,7 +6,8 @@
         body: {
             reqBodyType: typeof req.body,
             reqBody: req.body,
-            reqHeaders: req.headers
+            reqHeaders: req.headers,
+            bindingData: context.bindingData
         },
         headers: {
             'test-header': 'Test Response Header'

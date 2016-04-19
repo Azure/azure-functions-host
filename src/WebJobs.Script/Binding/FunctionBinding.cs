@@ -30,8 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public FileAccess Access { get; private set; }
 
-        public abstract bool HasBindingParameters { get; }
-
         public abstract Task BindAsync(BindingContext context);
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes();

@@ -36,14 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string ApiKey { get; private set; }
 
-        public override bool HasBindingParameters
-        {
-            get
-            {
-                return false;
-            }
-        }
-
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             PropertyInfo[] props = new[]

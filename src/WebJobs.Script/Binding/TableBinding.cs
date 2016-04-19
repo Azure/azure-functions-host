@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -60,16 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public string RowKey { get; private set; }
         public int Take { get; private set; }
         public string Filter { get; private set; }
-
-        public override bool HasBindingParameters
-        {
-            get
-            {
-                return (_partitionKeyBindingTemplate != null && _partitionKeyBindingTemplate.ParameterNames.Any()) ||
-                       (_rowKeyBindingTemplate != null && _rowKeyBindingTemplate.ParameterNames.Any()) ||
-                       (_filterBindingTemplate != null && _filterBindingTemplate.ParameterNames.Any());
-            }
-        }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
