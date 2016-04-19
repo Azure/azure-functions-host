@@ -75,8 +75,6 @@
       <Word>Debounce</Word>
       <Word>ScriptHost</Word>
       <Word>EventHub</Word>
-	    <Word>Signaling</Word>
-	    <Word>Startup</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>

@@ -27,6 +27,7 @@
     <TargetFrameworkProfile />
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisCulture>en-US</CodeAnalysisCulture>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
   </PropertyGroup>
