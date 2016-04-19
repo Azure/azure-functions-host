@@ -26,6 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             CreateIfNotExists = metadata.CreateIfNotExists;
             ConnectionString = metadata.Connection;
             Id = metadata.Id;
+            PartitionKey = metadata.PartitionKey;
+            CollectionThroughput = metadata.CollectionThroughput;
+
             _bindingDirection = metadata.Direction;
         }
 
@@ -53,14 +56,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 attributeType.GetProperty("CreateIfNotExists"),
                 attributeType.GetProperty("ConnectionString"),
-                attributeType.GetProperty("Id")
+                attributeType.GetProperty("Id"),
+                attributeType.GetProperty("PartitionKey"),
+                attributeType.GetProperty("CollectionThroughput")
             };
 
             object[] propValues = new object[]
             {
                 CreateIfNotExists,
                 ConnectionString,
-                Id
+                Id,
+                PartitionKey,
+                CollectionThroughput
             };
 
             ConstructorInfo constructor = attributeType.GetConstructor(new[] { typeof(string), typeof(string) });
@@ -76,7 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 CreateIfNotExists = CreateIfNotExists,
                 ConnectionString = ConnectionString,
-                Id = Id
+                Id = Id,
+                PartitionKey = PartitionKey,
+                CollectionThroughput = CollectionThroughput
             };
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
 

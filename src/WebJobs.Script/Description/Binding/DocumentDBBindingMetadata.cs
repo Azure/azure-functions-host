@@ -12,5 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public bool CreateIfNotExists { get; set; }
 
         public string Id { get; set; }
+
+        public string PartitionKey { get; set; }
+
+        public int CollectionThroughput { get; set; }
     }
 }
