@@ -34,7 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                string projectPath = Path.Combine(Path.GetDirectoryName(_functionMetadata.Source), CSharpConstants.ProjectFileName);
+                string functionDirectory = Path.GetDirectoryName(_functionMetadata.Source);
+                string projectPath = Path.Combine(functionDirectory, CSharpConstants.ProjectFileName);
                 string nugetHome = GetNugetPackagesPath();
 
                 var startInfo = new ProcessStartInfo
@@ -45,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     ErrorDialog = false,
+                    WorkingDirectory = functionDirectory,
                     Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" -PackagesDirectory \"{1}\"", projectPath, nugetHome)
                 };
 
