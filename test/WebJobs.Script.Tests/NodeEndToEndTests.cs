@@ -46,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task TableInput()
+        {
+            await TableInputTest();
+        }
+
+        [Fact]
         public async Task DocumentDB()
         {
             await DocumentDBTest();

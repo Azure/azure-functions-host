@@ -39,6 +39,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected TTestFixture Fixture { get; private set; }
 
+        protected async Task TableInputTest()
+        {
+            ClearFunctionLogs("TableIn");
+
+            var args = new Dictionary<string, object>()
+            {
+                { "input", "{ \"Region\": \"West\" }" }
+            };
+            await Fixture.Host.CallAsync("TableIn", args);
+
+            var logs = await GetFunctionLogsAsync("TableIn");
+            string result = logs.Where(p => p.Contains("Result:")).Single();
+            result = result.Substring(result.IndexOf('{'));
+
+            // verify singleton binding
+            JObject resultObject = JObject.Parse(result);
+            JObject single = (JObject)resultObject["single"];
+            Assert.Equal("AAA", (string)single["PartitionKey"]);
+            Assert.Equal("001", (string)single["RowKey"]);
+
+            // verify partition binding
+            JArray partition = (JArray)resultObject["partition"];
+            Assert.Equal(3, partition.Count);
+            foreach (var entity in partition)
+            {
+                Assert.Equal("BBB", (string)entity["PartitionKey"]);
+            }
+
+            // verify query binding
+            JArray query = (JArray)resultObject["query"];
+            Assert.Equal(2, query.Count);
+            Assert.Equal("003", (string)query[0]["RowKey"]);
+            Assert.Equal("004", (string)query[1]["RowKey"]);
+        }
+
         [Fact]
         public async Task QueueTriggerToBlobTest()
         {

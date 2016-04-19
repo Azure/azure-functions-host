@@ -176,9 +176,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     stringValue = sr.ReadToEnd();
                 }
 
-                // if the input is json, try converting to an object
-                object convertedValue = stringValue;
-                convertedValue = TryConvertJsonToObject(stringValue);
+                // if the input is json, try converting to an object or array
+                object convertedValue = TryConvertJson(stringValue);
 
                 bindings.Add(inputBinding.Metadata.Name, convertedValue);
                 inputs.Add(convertedValue);
@@ -349,27 +348,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (input is string)
             {
-                // if the input is json, try converting to an object
-                input = TryConvertJsonToObject((string)input);
+                // if the input is json, try converting to an object or array
+                input = TryConvertJson((string)input);
             }
 
             bindings.Add(_trigger.Name, input);
 
             return context;
-        }
-
-        private object TryConvertJsonToObject(string input)
-        {
-            object result = input;
-
-            // if the input is json, try converting to an object
-            Dictionary<string, object> jsonObject;
-            if (TryDeserializeJsonObject(input, out jsonObject))
-            {
-                result = jsonObject;
-            }
-
-            return result;
         }
 
         private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request)
@@ -396,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
                 Dictionary<string, object> jsonObject;
                 if (contentType != null && contentType.MediaType == "application/json" &&
-                    TryDeserializeJsonObject(body, out jsonObject))
+                    TryDeserializeJson(body, out jsonObject))
                 {
                     // if the content - type of the request is json, deserialize into an object
                     inputDictionary["body"] = jsonObject;
@@ -410,18 +395,35 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return inputDictionary;
         }
 
-        private bool TryDeserializeJsonObject(string json, out Dictionary<string, object> result)
+        private object TryConvertJson(string input)
         {
-            result = null;
+            object result = input;
 
-            if (!Utility.IsJson(json))
+            if (Utility.IsJson(input))
             {
-                return false;
+                // if the input is json, try converting to an object or array
+                Dictionary<string, object> jsonObject;
+                Dictionary<string, object>[] jsonObjectArray;
+                if (TryDeserializeJson(input, out jsonObject))
+                {
+                    result = jsonObject;
+                }
+                else if (TryDeserializeJson(input, out jsonObjectArray))
+                {
+                    result = jsonObjectArray;
+                }
             }
+
+            return result;
+        }
+
+        private bool TryDeserializeJson<TResult>(string json, out TResult result)
+        {
+            result = default(TResult);
 
             try
             {
-                result = JsonConvert.DeserializeObject<Dictionary<string, object>>(json, _dictionaryJsonConverter);
+                result = JsonConvert.DeserializeObject<TResult>(json, _dictionaryJsonConverter);
                 return true;
             }
             catch

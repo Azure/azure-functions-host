@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private CloudQueueClient _queueClient;
         private CloudBlobClient _blobClient;
+        private CloudTableClient _tableClient;
 
         protected EndToEndTestFixture(string rootPath)
         {
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             _queueClient = storageAccount.CreateCloudQueueClient();
             _blobClient = storageAccount.CreateCloudBlobClient();
+            _tableClient = storageAccount.CreateCloudTableClient();
 
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
@@ -54,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudQueue TestQueue { get; private set; }
 
+        public CloudTable TestTable { get; private set; }
+
         public ScriptHost Host
         {
             get { return HostManager.Instance; }
@@ -77,12 +82,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestContainer = _blobClient.GetContainerReference("test-output");
             TestContainer.CreateIfNotExists();
+
+            TestTable = _tableClient.GetTableReference("test");
+            TestTable.CreateIfNotExists();
+
+            DeleteEntities("AAA");
+            DeleteEntities("BBB");
+
+            var batch = new TableBatchOperation();
+            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 });
+            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "002", Region = "East", Name = "Test Entity 2", Status = 1 });
+            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 1 });
+            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "004", Region = "West", Name = "Test Entity 4", Status = 1 });
+            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "005", Region = "East", Name = "Test Entity 5", Status = 0 });
+            TestTable.ExecuteBatch(batch);
+
+            batch = new TableBatchOperation();
+            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "001", Region = "South", Name = "Test Entity 1", Status = 0 });
+            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 });
+            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
+            TestTable.ExecuteBatch(batch);
         }
 
         public void Dispose()
         {
             HostManager.Stop();
             HostManager.Dispose();
+        }
+
+        private void DeleteEntities(string partition)
+        {
+            var batch = new TableBatchOperation();
+            var query = TestTable.CreateQuery<TestEntity>();
+            var entities = query.Execute().Where(p => p.PartitionKey == partition);
+            if (entities.Any())
+            {
+                foreach (var entity in entities)
+                {
+                    batch.Delete(entity);
+                }
+                TestTable.ExecuteBatch(batch);
+            }
+        }
+
+        private class TestEntity : TableEntity
+        {
+            public string Name { get; set; }
+            public string Region { get; set; }
+            public int Status { get; set; }
         }
     }
 }
