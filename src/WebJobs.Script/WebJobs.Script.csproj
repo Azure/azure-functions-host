@@ -263,6 +263,9 @@
     <Compile Include="Binding\ServiceBusBinding.cs" />
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Description\CSharp\IFunctionMetadataResolver.cs" />
+    <Compile Include="Description\CSharp\ISharedAssemblyProvider.cs" />
+    <Compile Include="Description\CSharp\LocalSharedAssemblyProvider.cs" />
+    <Compile Include="Description\CSharp\DirectSharedAssemblyProvider.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\AllowNameResolutionAttribute.cs" />

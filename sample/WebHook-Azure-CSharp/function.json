@@ -1,0 +1,14 @@
+{
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "direction": "in",
+      "webHookType": "azurealert",
+      "name": "payload"
+    },
+    {
+      "type": "http",
+      "direction": "out"
+    }
+  ]
+}

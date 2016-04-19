@@ -321,6 +321,7 @@
     </Content>
     <None Include="App_Data\secrets\host.json" />
     <None Include="App_Data\secrets\HttpTrigger.json" />
+    <Content Include="App_Data\secrets\webhook-azure-csharp.json" />
     <None Include="App_Data\secrets\WebHook-Generic-CSharp.json" />
     <None Include="App_Data\secrets\WebHook-Generic.json" />
     <None Include="Properties\PublishProfiles\FileSystem.pubxml" />

@@ -45,11 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
             };
 
-        private static readonly Assembly[] SharedAssemblies =
+        private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
             {
-                typeof(Newtonsoft.Json.JsonConvert).Assembly, /*Newtonsoft.Json*/
-                typeof(AspNet.WebHooks.IWebHookReceiver).Assembly, /*Microsoft.AspNet.WebHooks.Receivers*/
-                typeof(AspNet.WebHooks.Config.WebHooksConfig).Assembly /*Microsoft.AspNet.WebHooks.Common*/
+                new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
+                new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.Table.ITableEntity).Assembly), /* Microsoft.WindowsAzure.Storage */
+                new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
             };
 
         private static readonly string[] DefaultNamespaceImports =
@@ -155,10 +155,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // check if this is one of host's shared assemblies
                 if (result.IsEmpty)
                 {
-                    Assembly assembly = SharedAssemblies
-                        .FirstOrDefault(m => string.Compare(m.GetName().Name, reference, StringComparison.OrdinalIgnoreCase) == 0);
+                    Assembly assembly = null;
 
-                    if (assembly != null)
+                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, out assembly)))
                     {
                         result = ImmutableArray.Create(MetadataReference.CreateFromFile(assembly.Location));
                     }

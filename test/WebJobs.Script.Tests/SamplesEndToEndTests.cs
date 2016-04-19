@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -108,6 +109,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             JObject jsonObject = JObject.Parse(body);
             Assert.Equal("Value: Foobar", jsonObject["result"]);
+        }
+
+        [Fact]
+        public async Task AzureWebHook_CSharp_Post_Succeeds()
+        {
+            string uri = "api/webhook-azure-csharp?code=yKjiimZjC1FQoGlaIj8TUfGltnPE/f2LhgZNq6Fw9/XfAOGHmSgUlQ==";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent(Resources.AzureWebHookEventRequest);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Unresolved", jsonObject["status"]);
         }
 
         [Fact]
