@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly IMetricsLogger _metrics;
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
+        // TODO:Get this from some context set in/by the host.
+        private bool _compileWithDebugOptmization = true;
 
         private CSharpFunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
@@ -113,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter.Verbose("Compiling function script.");
 
             Script<object> script = CreateScript();
-            Compilation compilation = script.GetCompilation();
+            Compilation compilation = GetScriptCompilation(script, _compileWithDebugOptmization);
             ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
 
             CSharpFunctionSignature signature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
@@ -288,15 +290,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private MethodInfo CreateFunctionTarget(CancellationToken cancellationToken)
         {
-            // TODO:Get this from some context set in/by the host.
-            bool debug = true;
             MemoryStream assemblyStream = null;
             MemoryStream pdbStream = null;
 
             try
             {
                 Script<object> script = CreateScript();
-                Compilation compilation = GetScriptCompilation(script, debug);
+                Compilation compilation = GetScriptCompilation(script, _compileWithDebugOptmization);
                 CSharpFunctionSignature functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
 
                 ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
