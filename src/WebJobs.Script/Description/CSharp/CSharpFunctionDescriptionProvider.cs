@@ -99,7 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Is it the trigger parameter?
                     if (string.Compare(parameter.Name, triggerMetadata.Name, StringComparison.Ordinal) == 0)
                     {
-                        descriptors.Add(CreateTriggerParameterDescriptor(parameter, triggerMetadata));
+                        ParameterDescriptor triggerParameter = CreateTriggerParameter(triggerMetadata, parameter.ParameterType);
+                        descriptors.Add(triggerParameter);
 
                         if (triggerMetadata.Type == BindingType.HttpTrigger && 
                             parameter.ParameterType != typeof(HttpRequestMessage))
@@ -165,42 +166,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // We were unable to compile the function to get its signature,
             // setup the descriptor with the default parameters
             return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
-        }
-
-        private ParameterDescriptor CreateTriggerParameterDescriptor(ParameterInfo parameter, BindingMetadata triggerMetadata)
-        {
-            ParameterDescriptor triggerParameter = null;
-            switch (triggerMetadata.Type)
-            {
-                case BindingType.QueueTrigger:
-                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.EventHubTrigger:
-                    triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.BlobTrigger:
-                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.ServiceBusTrigger:
-                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.TimerTrigger:
-                    triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.HttpTrigger:
-                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.ManualTrigger:
-                    triggerParameter = ParseManualTrigger(triggerMetadata, parameter.ParameterType);
-                    break;
-                case BindingType.ApiHubFileTrigger:
-                    triggerParameter = ParseApiHubFileTrigger((ApiHubBindingMetadata)triggerMetadata, parameter.ParameterType);
-                    break;
-            }
-
-            triggerParameter.IsTrigger = true;
-
-            return triggerParameter;
         }
     }
 }
