@@ -42,6 +42,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string Id { get; private set; }
 
+        public string PartitionKey { get; private set; }
+
+        public int CollectionThroughput { get; private set; }
+
         public override Collection<CustomAttributeBuilder> GetCustomAttributes()
         {
             Type attributeType = typeof(DocumentDBAttribute);
