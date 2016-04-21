@@ -10,7 +10,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,55 +17,48 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
-using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class CSharpFunctionInvoker : FunctionInvokerBase
+    public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
-        private const string ScriptClassName = "Submission#0";
-
         private readonly FunctionAssemblyLoader _assemblyLoader;
-        private readonly ScriptHost _host;
         private readonly string _triggerInputName;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly IMetricsLogger _metrics;
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
-        // TODO:Get this from some context set in/by the host.
-        private bool _compileWithDebugOptmization = true;
+        private readonly ICompilationService _compilationService;
 
-        private CSharpFunctionSignature _functionSignature;
+        private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private FunctionValueLoader _functionValueLoader;
+        private string[] _watchedFileTypes;
 
-        private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
-            = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly string[] AssemblyFileTypes = { ".dll", ".exe" };
 
-        private static readonly string[] WatchedFileTypes = { ".cs", ".csx", ".dll", ".exe" };
-
-        internal CSharpFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
+        internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader)
+            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
+            ICompilationServiceFactory compilationServiceFactory)
             : base(host, functionMetadata)
         {
-            _host = host;
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
             _metadataResolver = new FunctionMetadataResolver(functionMetadata, TraceWriter);
+            _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = GetTriggerInputName(functionMetadata);
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+                        
+            InitializeFileWatcher();
 
-            InitializeFileWatcherIfEnabled();
             _resultProcessor = CreateResultProcessor();
 
             _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
@@ -92,15 +84,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return triggerName ?? FunctionDescriptorProvider.DefaultInputParameterName;
         }
 
+        private void InitializeFileWatcher()
+        {
+            if (InitializeFileWatcherIfEnabled())
+            {
+                _watchedFileTypes = AssemblyFileTypes
+                    .Concat(_compilationService.SupportedFileTypes)
+                    .ToArray();
+            }
+        }
+
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileExtension = Path.GetExtension(e.Name);
-            if (WatchedFileTypes.Contains(fileExtension))
+            if (_watchedFileTypes.Contains(fileExtension))
             {
                 _reloadScript();
             }
-            else if (string.Compare(CSharpConstants.ProjectFileName, e.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Compare(DotNetConstants.ProjectFileName, e.Name, StringComparison.OrdinalIgnoreCase) == 0)
             {
                 _restorePackages();
             }
@@ -114,11 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             TraceWriter.Info("Compiling function script.");
 
-            Script<object> script = CreateScript();
-            Compilation compilation = GetScriptCompilation(script, _compileWithDebugOptmization);
+            ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
             ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
 
-            CSharpFunctionSignature signature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+            FunctionSignature signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
             compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
 
             TraceCompilationDiagnostics(compilationResult);
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                _host.RestartEvent.Set();
+                Host.RestartEvent.Set();
             }
         }
 
@@ -295,9 +296,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                Script<object> script = CreateScript();
-                Compilation compilation = GetScriptCompilation(script, _compileWithDebugOptmization);
-                CSharpFunctionSignature functionSignature = CSharpFunctionSignature.FromCompilation(compilation, _functionEntryPointResolver);
+                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
                 ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
 
@@ -305,23 +305,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     using (pdbStream = new MemoryStream())
                     {
-                        var result = compilation.Emit(assemblyStream, pdbStream);
-
+                        compilation.Emit(assemblyStream, pdbStream, cancellationToken);
+                
                         // Check if cancellation was requested while we were compiling, 
                         // and if so quit here. 
                         cancellationToken.ThrowIfCancellationRequested();
-
-                        if (!result.Success)
-                        {
-                            throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
-                        }
 
                         Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
                         _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
                         // Get our function entry point
-                        System.Reflection.TypeInfo scriptType = assembly.DefinedTypes.FirstOrDefault(t => string.Compare(t.Name, ScriptClassName, StringComparison.Ordinal) == 0);
                         _functionSignature = functionSignature;
+                        System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
+                            .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
+
                         return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
                     }
                 }
@@ -367,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         "The reference '{0}' is part of the referenced NuGet package '{1}'. Package assemblies are automatically referenced by your Function and do not require a '#r' directive.",
                         match.Groups["arg"].Value, package.Name);
 
-                    var descriptor = new DiagnosticDescriptor(CSharpConstants.RedundantPackageAssemblyReference,
+                    var descriptor = new DiagnosticDescriptor(DotNetConstants.RedundantPackageAssemblyReference,
                        "Redundant assembly reference", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 
                     return ImmutableArray.Create(Diagnostic.Create(descriptor, diagnostic.Location));
@@ -377,7 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<Diagnostic>.Empty;
         }
 
-        private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(CSharpFunctionSignature functionSignature,
+        private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {
             var resultBuilder = builder ?? ImmutableArray<Diagnostic>.Empty.ToBuilder();
@@ -385,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
             {
                 string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", _triggerInputName);
-                var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingTriggerArgumentCompilationCode,
+                var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingTriggerArgumentCompilationCode,
                     "Missing trigger argument", message, "AzureFunctions", DiagnosticSeverity.Error, true);
 
                 resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
@@ -403,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Metadata.Name, StringComparison.Ordinal) == 0))
                 {
                     string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Metadata.Name);
-                    var descriptor = new DiagnosticDescriptor(CSharpConstants.MissingBindingArgumentCompilationCode,
+                    var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,
                         "Missing binding argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 
                     resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
@@ -418,36 +415,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return resultBuilder.ToImmutable();
-        }
-
-        private Compilation GetScriptCompilation(Script<object> script, bool debug)
-        {
-            Compilation compilation = script.GetCompilation();
-
-            OptimizationLevel compilationOptimizationLevel = OptimizationLevel.Release;
-            if (debug)
-            {
-                SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
-                var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
-                  encoding: Encoding.UTF8,
-                  path: Path.GetFileName(Metadata.Source),
-                  options: new CSharpParseOptions(kind: SourceCodeKind.Script));
-                
-                compilationOptimizationLevel = OptimizationLevel.Debug;
-
-                compilation = compilation
-                    .RemoveAllSyntaxTrees()
-                    .AddSyntaxTrees(debugTree);
-            }
-
-            return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel))
-                .WithAssemblyName(FunctionAssemblyLoader.GetAssemblyNameFromMetadata(Metadata, compilation.AssemblyName));
-        }
-
-        private Script<object> CreateScript()
-        {
-            string code = GetFunctionSource();
-            return CSharpScript.Create(code, options: _metadataResolver.FunctionScriptOptions, assemblyLoader: AssemblyLoader.Value);
         }
 
         private static object GetTaskResult(Task task)
@@ -515,18 +482,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return level;
-        }
-
-        private string GetFunctionSource()
-        {
-            string code = null;
-
-            if (File.Exists(Metadata.Source))
-            {
-                code = File.ReadAllText(Metadata.Source);
-            }
-
-            return code ?? string.Empty;
         }
     }
 }

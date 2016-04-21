@@ -14,14 +14,22 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal sealed class CSharpFunctionDescriptionProvider : FunctionDescriptorProvider, IDisposable
+    internal sealed class DotNetFunctionDescriptionProvider : FunctionDescriptorProvider, IDisposable
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
+        private readonly ICompilationServiceFactory _compilationServiceFactory;
 
-        public CSharpFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)
+        public DotNetFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)
+           : this(host, config, new DotNetCompilationServiceFactory())
+        {
+        }
+
+        public DotNetFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config, 
+            ICompilationServiceFactory compilationServiceFactory)
             : base(host, config)
         {
             _assemblyLoader = new FunctionAssemblyLoader(config.RootScriptPath);
+            _compilationServiceFactory = compilationServiceFactory;
         }
 
         public void Dispose()
@@ -46,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            if (functionMetadata.ScriptType != ScriptType.CSharp)
+            // We can only handle script types supported by the current compilation service factory
+            if (!_compilationServiceFactory.SupportedScriptTypes.Contains(functionMetadata.ScriptType))
             {
                 return false;
             }
@@ -56,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new CSharpFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings, new FunctionEntryPointResolver(), _assemblyLoader);
+            return new DotNetFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings, new FunctionEntryPointResolver(), _assemblyLoader, _compilationServiceFactory);
         }
 
         protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
@@ -79,17 +88,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("methodAttributes");
             }
 
-            var csharpInvoker = functionInvoker as CSharpFunctionInvoker;
-            if (csharpInvoker == null)
+            var dotNetInvoker = functionInvoker as DotNetFunctionInvoker;
+            if (dotNetInvoker == null)
             {
-                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Expected invoker of type '{0}' but received '{1}'", typeof(CSharpFunctionInvoker).Name, functionInvoker.GetType().Name));
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Expected invoker of type '{0}' but received '{1}'", typeof(DotNetFunctionInvoker).Name, functionInvoker.GetType().Name));
             }
 
             try
             {
                 ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
 
-                MethodInfo functionTarget = csharpInvoker.GetFunctionTargetAsync().Result;
+                MethodInfo functionTarget = dotNetInvoker.GetFunctionTargetAsync().Result;
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);

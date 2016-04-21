@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static ImmutableArray<PackageReference> InitializeAssemblyRegistry(FunctionMetadata metadata)
         {
             var builder = ImmutableArray<PackageReference>.Empty.ToBuilder();
-            string fileName = Path.Combine(Path.GetDirectoryName(metadata.Source), CSharpConstants.ProjectLockFileName);
+            string fileName = Path.Combine(Path.GetDirectoryName(metadata.Source), DotNetConstants.ProjectLockFileName);
 
             if (File.Exists(fileName))
             {

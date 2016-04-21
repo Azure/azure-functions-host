@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public static class CSharpConstants
+    public static class DotNetConstants
     {
         public const string PrivateAssembliesFolderName = "bin";
 

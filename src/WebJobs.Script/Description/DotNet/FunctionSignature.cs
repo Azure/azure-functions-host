@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
@@ -15,20 +16,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// Provides function identity validation and identification.
     /// </summary>
     [CLSCompliant(false)]
-    public sealed class CSharpFunctionSignature : IEquatable<CSharpFunctionSignature>
+    public sealed class FunctionSignature : IEquatable<FunctionSignature>
     {
         private readonly ImmutableArray<IParameterSymbol> _parameters;
+        private readonly bool _hasLocalTypeReference;
+        private readonly string _parentTypeName;
+        private readonly string _methodName;
 
-        private CSharpFunctionSignature(ImmutableArray<IParameterSymbol> parameters)
+        public FunctionSignature(string parentTypeName, string methodName, ImmutableArray<IParameterSymbol> parameters, bool hasLocalTypeReference)
         {
             _parameters = parameters;
+            _hasLocalTypeReference = hasLocalTypeReference;
+            _parentTypeName = parentTypeName;
+            _methodName = methodName;
         }
 
         /// <summary>
         /// Returns true if the function uses locally defined types (i.e. types defined in the function assembly) in its parameters;
         /// otherwise, false.
         /// </summary>
-        public bool HasLocalTypeReference { get; set; }
+        public bool HasLocalTypeReference
+        {
+            get
+            {
+                return _hasLocalTypeReference;
+            }
+        }
 
         public ImmutableArray<IParameterSymbol> Parameters
         {
@@ -38,44 +51,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public static CSharpFunctionSignature FromCompilation(Compilation compilation, IFunctionEntryPointResolver entryPointResolver)
+        public string ParentTypeName
         {
-            if (compilation == null)
+            get
             {
-                throw new ArgumentNullException("compilation");
+                return _parentTypeName;
             }
-            if (entryPointResolver == null)
-            {
-                throw new ArgumentNullException("entryPointResolver");
-            }
-            if (!compilation.SyntaxTrees.Any())
-            {
-                throw new ArgumentException("The provided compilation does not have a syntax tree.", "compilation");
-            }
-
-            var methods = compilation.ScriptClass
-                .GetMembers()
-                .OfType<IMethodSymbol>()
-                .Select(m => new MethodReference<IMethodSymbol>(m.Name, m.DeclaredAccessibility == Accessibility.Public, m));
-
-            IMethodSymbol entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
-
-            var signature = new CSharpFunctionSignature(entryPointReference.Parameters);
-            signature.HasLocalTypeReference = entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
-
-            return signature;
         }
 
-        private static bool IsOrUsesAssemblyType(ITypeSymbol typeSymbol, IAssemblySymbol assemblySymbol)
+        public string MethodName
         {
-            if (typeSymbol.ContainingAssembly == assemblySymbol)
+            get
             {
-                return true;
+                return _methodName;
             }
-
-            INamedTypeSymbol namedTypeSymbol = typeSymbol as INamedTypeSymbol;
-            return namedTypeSymbol != null && namedTypeSymbol.IsGenericType
-                && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
         private static bool AreParametersEquivalent(IParameterSymbol param1, IParameterSymbol param2)
@@ -106,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return string.Format(CultureInfo.InvariantCulture, "{0}.{1}, {2}", type.ContainingNamespace.MetadataName, type.MetadataName, type.ContainingAssembly.ToDisplayString());
         }
 
-        public bool Equals(CSharpFunctionSignature other)
+        public bool Equals(FunctionSignature other)
         {
             if (other == null)
             {
@@ -123,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as CSharpFunctionSignature);
+            return Equals(obj as FunctionSignature);
         }
 
         public override int GetHashCode()

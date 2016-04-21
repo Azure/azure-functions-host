@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
                 new NodeFunctionDescriptorProvider(this, ScriptConfig),
-                new CSharpFunctionDescriptionProvider(this, ScriptConfig)
+                new DotNetFunctionDescriptionProvider(this, ScriptConfig)
             };
 
             // read all script functions and apply to JobHostConfiguration

@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter.Flush();
         }
 
-        protected void InitializeFileWatcherIfEnabled()
+        protected bool InitializeFileWatcherIfEnabled()
         {
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
@@ -71,7 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _fileWatcher.Created += OnScriptFileChanged;
                 _fileWatcher.Deleted += OnScriptFileChanged;
                 _fileWatcher.Renamed += OnScriptFileChanged;
+
+                return true;
             }
+
+            return false;
         }
 
         public abstract Task Invoke(object[] parameters);

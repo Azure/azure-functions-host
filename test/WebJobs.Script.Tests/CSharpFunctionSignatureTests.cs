@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -31,11 +32,14 @@ public static void Run(string id, out string output)
 
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
 
-            var compilation1 = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree1);
-            var compilation2 = CSharpCompilation.Create("test2", references: references).AddSyntaxTrees(tree1);
+            var compilation1 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references)
+                   .AddSyntaxTrees(tree1));
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation1,  new FunctionEntryPointResolver());
-            var signature2 = CSharpFunctionSignature.FromCompilation(compilation2, new FunctionEntryPointResolver());
+            var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
+                .AddSyntaxTrees(tree1));
+
+            var signature1 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            var signature2 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.True(signature1.Equals(signature2));
             Assert.Equal(signature1.GetHashCode(), signature2.GetHashCode());
@@ -64,12 +68,15 @@ out String output )
 
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
 
-            var compilation1 = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree1);
-            var compilation2 = CSharpCompilation.Create("test2", references: references).AddSyntaxTrees(tree1);
+            var compilation1 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references)
+                .AddSyntaxTrees(tree1));
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation1, new FunctionEntryPointResolver());
-            var signature2 = CSharpFunctionSignature.FromCompilation(compilation2, new FunctionEntryPointResolver());
+            var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
+                .AddSyntaxTrees(tree1));
 
+            var signature1 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            var signature2 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            
             Assert.True(signature1.Equals(signature2));
             Assert.Equal(signature1.GetHashCode(), signature2.GetHashCode());
         }
@@ -90,9 +97,9 @@ public class Test
 
             var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
-            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+            var compilation = CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+            var signature1 = new Script.Description.CSharpCompilation(compilation).GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.True(signature1.HasLocalTypeReference);
         }
@@ -114,9 +121,9 @@ public class Test
 
             var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
-            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+            var compilation = CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+            var signature1 = new Script.Description.CSharpCompilation(compilation).GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.True(signature1.HasLocalTypeReference);
         }
@@ -139,9 +146,9 @@ public class Test
 
             var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
-            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+            var compilation = CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+            var signature1 = new Script.Description.CSharpCompilation(compilation).GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.True(signature1.HasLocalTypeReference);
         }
@@ -164,9 +171,9 @@ public class Test
 
             var tree = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
-            var compilation = CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
+            var compilation = CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references).AddSyntaxTrees(tree);
 
-            var signature1 = CSharpFunctionSignature.FromCompilation(compilation, new FunctionEntryPointResolver());
+            var signature1 = new Script.Description.CSharpCompilation(compilation).GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.False(signature1.HasLocalTypeReference);
         }

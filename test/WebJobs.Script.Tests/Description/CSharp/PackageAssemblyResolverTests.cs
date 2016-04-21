@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public PackageAssemblyResolverTests()
         {
             _runPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            _lockFilePath = Path.Combine(_runPath, CSharpConstants.ProjectLockFileName);
+            _lockFilePath = Path.Combine(_runPath, DotNetConstants.ProjectLockFileName);
             _oldHomeEnv = Environment.GetEnvironmentVariable("HOME");
             _targetAssemblyPath = Path.Combine(_runPath, "data\\Functions\\packages\\nuget\\Test.Package\\1.0.0\\lib\\net45");
             _targetAssemblyFilePath = Path.Combine(_targetAssemblyPath, Path.GetFileName(this.GetType().Assembly.Location));
