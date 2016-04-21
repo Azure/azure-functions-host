@@ -1,0 +1,17 @@
+﻿{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "samples-documentdb-csharp"
+    },
+    {
+      "type": "documentdb",
+      "direction": "out",
+      "name": "newItem",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "createIfNotExists": false
+    }
+  ]
+}
