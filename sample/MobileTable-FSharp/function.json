@@ -1,0 +1,14 @@
+﻿{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "samples-easytables-csharp"
+    },
+    {
+      "type": "easyTable",
+      "name": "newItem",
+      "direction": "out"
+    }
+  ]
+}
