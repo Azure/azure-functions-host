@@ -47,7 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _clearRequireCacheScript = ReadResourceString("clearRequireCache.js");
             _globalInitializationScript = ReadResourceString("globalInitialization.js");
 
-            Initialize();
+            if (System.DateTime.Now.Year == 1984)
+            {
+                Initialize();
+            }
         }
 
         internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)

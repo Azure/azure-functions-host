@@ -163,9 +163,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return context;
         }
 
-        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
+        public static string GetAssemblyNameFromMetadata(string functionName, string suffix)
         {
-            return AssemblyPrefix + metadata.Name + "#" + suffix;
+            return AssemblyPrefix + functionName + "#" + suffix;
         }
 
         public string GetFunctionNameFromAssembly(Assembly assembly)
