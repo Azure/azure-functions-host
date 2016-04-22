@@ -186,5 +186,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
         }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("", "", false)]
+        [InlineData("aaa", "aaa", true)]
+        [InlineData("ccc", "aaa", false)]
+        [InlineData("aaa", "aaa,bbb,ccc", true)]
+        [InlineData("bbb", "aaa,bbb,ccc", true)]
+        [InlineData("ccc", "aaa,bbb,ccc", true)]
+        [InlineData("xyz", "aaa,bbb,ccc", false)]
+        public void IsValidKey(string keyToValidate, string functionKey, bool expectedResult)
+        {
+            Assert.Equal(expectedResult, AuthorizationLevelAttribute.IsValidKey(keyToValidate, functionKey));
+        }
     }
 }

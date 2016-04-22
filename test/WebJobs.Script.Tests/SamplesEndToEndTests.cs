@@ -75,6 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Mathew", body);
+
+            // verify that the secondary key also works
+            uri = "api/httptrigger?code=m3vg59azmxzxb8ofwwjeg738f654qjve0bwmyhte&name=Mathew";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -93,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Hello World!", body);
+
+            // verify secondary admin key also works
+            uri = "api/httptrigger-disabled?code=z3dlq50s00cb3q3k11nil7xyt29ebst2n8rtn0t3";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]

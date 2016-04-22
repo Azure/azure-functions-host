@@ -67,21 +67,23 @@ namespace WebJobs.Script.WebHost.Filters
                 queryParameters.TryGetValue("code", out keyValue);
             }
 
+            // if a key has been specified on the request, validate it
             if (!string.IsNullOrEmpty(keyValue))
             {
-                // see if the key specified is the master key
                 HostSecrets hostSecrets = secretManager.GetHostSecrets();
-                if (!string.IsNullOrEmpty(hostSecrets.MasterKey) &&
-                    SecretEqual(keyValue, hostSecrets.MasterKey))
+                if (hostSecrets != null)
                 {
-                    return AuthorizationLevel.Admin;
-                }
+                    // see if the key specified matches a master key
+                    if (IsValidKey(keyValue, hostSecrets.MasterKey))
+                    {
+                        return AuthorizationLevel.Admin;
+                    }
 
-                // see if the key specified matches the host function key
-                if (!string.IsNullOrEmpty(hostSecrets.FunctionKey) &&
-                    SecretEqual(keyValue, hostSecrets.FunctionKey))
-                {
-                    return AuthorizationLevel.Function;
+                    // see if the key specified matches a host function key
+                    if (IsValidKey(keyValue, hostSecrets.FunctionKey))
+                    {
+                        return AuthorizationLevel.Function;
+                    }
                 }
 
                 // if there is a function specific key specified try to match against that
@@ -89,8 +91,7 @@ namespace WebJobs.Script.WebHost.Filters
                 {
                     FunctionSecrets functionSecrets = secretManager.GetFunctionSecrets(functionName);
                     if (functionSecrets != null &&
-                        !string.IsNullOrEmpty(functionSecrets.Key) &&
-                        SecretEqual(keyValue, functionSecrets.Key))
+                        IsValidKey(keyValue, functionSecrets.Key))
                     {
                         return AuthorizationLevel.Function;
                     }
@@ -98,6 +99,18 @@ namespace WebJobs.Script.WebHost.Filters
             }
 
             return AuthorizationLevel.Anonymous;
+        }
+
+        internal static bool IsValidKey(string keyToValidate, string functionKey)
+        {
+            if (string.IsNullOrEmpty(functionKey) ||
+                string.IsNullOrEmpty(keyToValidate))
+            {
+                return false;
+            }
+
+            string[] keys = functionKey.SplitAndTrim(',');
+            return keys.Any(p => SecretEqual(keyToValidate, p));
         }
 
         /// <summary>
@@ -116,7 +129,8 @@ namespace WebJobs.Script.WebHost.Filters
                 return true;
             }
 
-            if (inputA == null || inputB == null || inputA.Length != inputB.Length)
+            if (string.IsNullOrEmpty(inputA) || string.IsNullOrEmpty(inputB) || 
+                inputA.Length != inputB.Length)
             {
                 return false;
             }
