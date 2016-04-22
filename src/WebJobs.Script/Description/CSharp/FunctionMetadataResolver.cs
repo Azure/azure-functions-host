@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
                 new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.Table.ITableEntity).Assembly), /* Microsoft.WindowsAzure.Storage */
+                new DirectSharedAssemblyProvider(typeof(Microsoft.ServiceBus.Messaging.BrokeredMessage).Assembly), /* Microsoft.ServiceBus */
                 new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
             };
 
