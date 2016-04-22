@@ -380,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(CSharpFunctionSignature functionSignature,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {
-            var resultBuilder = builder ?? ImmutableArray<Diagnostic>.Empty.ToBuilder();
+            var resultBuilder = builder ?? ImmutableArray.CreateBuilder<Diagnostic>();
 
             if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
             {
