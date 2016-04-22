@@ -380,9 +380,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerParameterType = typeof(string);
             }
 
-            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(int) });
+            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(ApiHub.FileWatcherType), typeof(int) });
 
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path, trigger.PollIntervalInSeconds });
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path, trigger.FileWatcherType, trigger.PollIntervalInSeconds });
 
             string parameterName = trigger.Name;
             var attributes = new Collection<CustomAttributeBuilder>
