@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
-            string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";
+            string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&id=a&name=Mathew";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
@@ -75,6 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Mathew", body);
+
+            // verify that the secondary key also works
+            uri = "api/httptrigger?code=m3vg59azmxzxb8ofwwjeg738f654qjve0bwmyhte&id=b&name=Mathew";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -114,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task AzureWebHook_CSharp_Post_Succeeds()
         {
-            string uri = "api/webhook-azure-csharp?code=yKjiimZjC1FQoGlaIj8TUfGltnPE/f2LhgZNq6Fw9/XfAOGHmSgUlQ==";
+            string uri = "api/webhook-azure-csharp?code=lr5jlquf0ynr3p7jsu012kif4auv21qfivjftg8e";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent(Resources.AzureWebHookEventRequest);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -146,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GenericWebHook_Post_Succeeds()
         {
-            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5";
+            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&id=a";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent("{ 'value': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");

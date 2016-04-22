@@ -89,6 +89,7 @@ namespace WebJobs.Script.WebHost
                 else
                 {
                     // initialize with new secrets and save it
+                    // TODO: generate in the new file format?
                     secrets = new FunctionSecrets
                     {
                         Key = GenerateSecretString()
