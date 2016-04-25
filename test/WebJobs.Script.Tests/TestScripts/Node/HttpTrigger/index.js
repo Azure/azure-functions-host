@@ -6,6 +6,8 @@
         body: {
             reqBodyType: typeof req.body,
             reqBody: req.body,
+            reqRawBodyType: typeof req.rawBody,
+            reqRawBody: req.rawBody,
             reqHeaders: req.headers,
             bindingData: context.bindingData
         },
