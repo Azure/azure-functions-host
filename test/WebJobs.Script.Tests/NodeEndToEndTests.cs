@@ -161,8 +161,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["reqBodyType"], "undefined");
+            Assert.Equal("undefined", (string)resultObject["reqBodyType"]);
             Assert.Null((string)resultObject["reqBody"]);
+            Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
+            Assert.Null((string)resultObject["reqRawBody"]);
 
             // validate input headers
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
@@ -191,8 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["reqBodyType"], "string");
-            Assert.Equal((string)resultObject["reqBody"], testData);
+            Assert.Equal("string", (string)resultObject["reqBodyType"]);
+            Assert.Equal(testData, (string)resultObject["reqBody"]);
+            Assert.Equal(testData, (string)resultObject["reqRawBody"]);
         }
 
         [Fact]
@@ -203,11 +206,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "testData", testData }
             };
+            string rawBody = testObject.ToString();
             HttpRequestMessage request = new HttpRequestMessage
             {
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
                 Method = HttpMethod.Post,
-                Content = new StringContent(testObject.ToString())
+                Content = new StringContent(rawBody)
             };
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
@@ -222,9 +226,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
-            Assert.Equal((string)resultObject["reqBodyType"], "object");
-            Assert.Equal((string)resultObject["reqBody"]["testData"], testData);
-            Assert.Equal((string)resultObject["bindingData"]["testData"], testData);
+            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
+            Assert.Equal("object", (string)resultObject["reqBodyType"]);
+            Assert.Equal(testData, (string)resultObject["reqBody"]["testData"]);
+            Assert.Equal(testData, (string)resultObject["bindingData"]["testData"]);
         }
 
         [Fact]
