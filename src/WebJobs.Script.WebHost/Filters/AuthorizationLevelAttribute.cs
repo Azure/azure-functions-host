@@ -57,40 +57,45 @@ namespace WebJobs.Script.WebHost.Filters
             // first see if a key value is specified via headers or query string (header takes precidence)
             IEnumerable<string> values;
             string keyValue = null;
+            string keyId = null;
             if (request.Headers.TryGetValues(FunctionsKeyHeaderName, out values))
             {
+                // TODO: also allow keyId to be specified via header
+
                 keyValue = values.FirstOrDefault();
             }
             else
             {
                 var queryParameters = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
                 queryParameters.TryGetValue("code", out keyValue);
+                queryParameters.TryGetValue("id", out keyId);
             }
 
+            // if a key has been specified on the request, validate it
             if (!string.IsNullOrEmpty(keyValue))
             {
-                // see if the key specified is the master key
                 HostSecrets hostSecrets = secretManager.GetHostSecrets();
-                if (!string.IsNullOrEmpty(hostSecrets.MasterKey) &&
-                    SecretEqual(keyValue, hostSecrets.MasterKey))
+                if (hostSecrets != null)
                 {
-                    return AuthorizationLevel.Admin;
+                    // see if the key specified matches the master key
+                    if (SecretEqual(keyValue, hostSecrets.MasterKey))
+                    {
+                        return AuthorizationLevel.Admin;
+                    }
+
+                    // see if the key specified matches the host function key
+                    if (SecretEqual(keyValue, hostSecrets.FunctionKey))
+                    {
+                        return AuthorizationLevel.Function;
+                    }
                 }
 
-                // see if the key specified matches the host function key
-                if (!string.IsNullOrEmpty(hostSecrets.FunctionKey) &&
-                    SecretEqual(keyValue, hostSecrets.FunctionKey))
-                {
-                    return AuthorizationLevel.Function;
-                }
-
-                // if there is a function specific key specified try to match against that
+                // see if the specified key matches the function specific key
                 if (functionName != null)
                 {
                     FunctionSecrets functionSecrets = secretManager.GetFunctionSecrets(functionName);
                     if (functionSecrets != null &&
-                        !string.IsNullOrEmpty(functionSecrets.Key) &&
-                        SecretEqual(keyValue, functionSecrets.Key))
+                        SecretEqual(keyValue, functionSecrets.GetKeyValue(keyId)))
                     {
                         return AuthorizationLevel.Function;
                     }
@@ -116,7 +121,8 @@ namespace WebJobs.Script.WebHost.Filters
                 return true;
             }
 
-            if (inputA == null || inputB == null || inputA.Length != inputB.Length)
+            if (string.IsNullOrEmpty(inputA) || string.IsNullOrEmpty(inputB) || 
+                inputA.Length != inputB.Length)
             {
                 return false;
             }

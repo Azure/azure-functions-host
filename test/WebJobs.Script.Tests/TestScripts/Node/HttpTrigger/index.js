@@ -4,8 +4,10 @@
     context.res = {
         status: 200,
         body: {
-            reqBodyType: typeof req.body,
             reqBody: req.body,
+            reqBodyType: typeof req.body,
+            reqRawBody: req.rawBody,
+            reqRawBodyType: typeof req.rawBody,
             reqHeaders: req.headers,
             bindingData: context.bindingData
         },

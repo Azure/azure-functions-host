@@ -17,13 +17,23 @@ namespace WebJobs.Script.WebHost.WebHooks
 
         public Task<string> GetReceiverConfigAsync(string name, string id)
         {
+            string functionName = id;
+            string keyId = null;
+            int idx = id.IndexOf(':');
+            if (idx > 0)
+            {
+                functionName = id.Substring(0, idx);
+                keyId = id.Substring(idx + 1);
+            }
+
             // "id" will be the function name
             // we ignore the "name" parameter since we only allow a function
             // to be mapped to a single receiver
-            FunctionSecrets secrets = _secretManager.GetFunctionSecrets(id);
+            FunctionSecrets secrets = _secretManager.GetFunctionSecrets(functionName);
             if (secrets != null)
             {
-                return Task.FromResult(secrets.Key);
+                string key = secrets.GetKeyValue(keyId);
+                return Task.FromResult(key);
             }
 
             return null;

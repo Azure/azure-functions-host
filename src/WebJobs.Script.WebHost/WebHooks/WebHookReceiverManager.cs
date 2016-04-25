@@ -79,6 +79,14 @@ namespace WebJobs.Script.WebHost.WebHooks
             await request.Content.LoadIntoBufferAsync();
 
             string receiverId = function.Name.ToLowerInvariant();
+
+            Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+            string keyId = null;
+            if (queryParams.TryGetValue("id", out keyId))
+            {
+                receiverId += ":" + keyId;
+            }
+
             return await receiver.ReceiveAsync(receiverId, context, request);
         }
 

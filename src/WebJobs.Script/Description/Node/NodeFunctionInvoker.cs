@@ -308,8 +308,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 HttpRequestMessage request = (HttpRequestMessage)input;
                 string rawBody = null;
                 var requestObject = CreateRequestObject(request, out rawBody);
+                requestObject["rawBody"] = rawBody;
                 input = requestObject;
-
+                
                 if (rawBody != null)
                 {
                     bindDataInput = rawBody;
