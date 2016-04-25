@@ -312,6 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (rawBody != null)
                 {
+                    requestObject["rawBody"] = rawBody;
                     bindDataInput = rawBody;
                 }
 
