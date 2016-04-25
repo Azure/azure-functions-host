@@ -75,6 +75,9 @@
       <Word>Debounce</Word>
       <Word>ScriptHost</Word>
       <Word>EventHub</Word>
+      <Word>DropBox</Word>
+      <Word>ApiHub</Word>
+      <Word>Api</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>

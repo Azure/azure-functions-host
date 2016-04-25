@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
@@ -32,6 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            // clean up entities that might be left from previous run
+            // this is before starting the host so any trigger that starts with the host 
+            // is not running yet
+            CleanupEntities().Wait();
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
@@ -72,6 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             queue.CreateIfNotExists();
             queue.Clear();
             return queue;
+        }
+
+        protected async Task CleanupEntities()
+        {
+            // cleanup 
+            string apiHubConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsDropBox");
+            await CleanupApiHubTest(apiHubConnectionString, throwOnMissingConnectionString: false);
         }
 
         private void CreateTestStorageEntities()
@@ -122,6 +135,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     batch.Delete(entity);
                 }
                 TestTable.ExecuteBatch(batch);
+            }
+        }
+
+        /// <summary>
+        /// Clean up files 
+        /// </summary>
+        /// <param name="connectionString">connection string pointing to SAAS connection
+        /// <remarks> Connection for DropBox is enabled if the <code>AzureWebJobsDropBox</code> environment variable is set.   
+        /// The format should be: <code>Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}</code>
+        /// or to use the local file system the format should be: <code>UseLocalFileSystem=true;Path={path}</code>
+        /// </remarks>
+        /// </param>
+        /// <param name="throwOnMissingConnectionString">throw error if connection string is empty.</param>
+        public async Task CleanupApiHubTest(string connectionString, bool throwOnMissingConnectionString = true)
+        {
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                if (throwOnMissingConnectionString)
+                {
+                    throw new ApplicationException("Missing AzureWebJobsDropBox environment variable.");
+                }
+
+                return;
+            }
+
+            string testBlob = "teste2e";
+            string apiHubFile = "teste2e/test.txt";
+            var resultBlob = this.TestContainer.GetBlockBlobReference(testBlob);
+            resultBlob.DeleteIfExists();
+
+            var root = ItemFactory.Parse(connectionString);
+            if (root.FileExists(apiHubFile))
+            {
+                var file = await root.GetFileReferenceAsync(apiHubFile);
+                await file.DeleteAsync();
             }
         }
 

@@ -233,22 +233,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
             string apiHubConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsDropBox");
 
-            if (string.IsNullOrEmpty(apiHubConnectionString))
-            {
-                throw new ApplicationException("Missing AzureWebJobsDropBox environment variable.");
-            }
+            await Fixture.CleanupApiHubTest(apiHubConnectionString);
 
             string testBlob = "teste2e";
-            string apiHubFile = "teste2e/test.txt";
             var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testBlob);
-            resultBlob.DeleteIfExists();
-
-            var root = ItemFactory.Parse(apiHubConnectionString);
-            if (root.FileExists(apiHubFile))
-            {
-                var file = await root.GetFileReferenceAsync(apiHubFile);
-                await file.DeleteAsync();
-            }
 
             // Test both writing and reading from ApiHubFile.
             // First, manually invoke a function that has an output binding to write to Dropbox.
@@ -263,11 +251,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Second, there's an ApiHubFile trigger which will write a blob. 
             // Once the blob is written, we know both sender & listener are working.
             // TODO: removing the BOM character from result.
-            string result = (await TestHelpers.WaitForBlobAsync(resultBlob)).Remove(0, 1);
+            string result = (await TestHelpers.WaitForBlobAsync(resultBlob, timeout: 120 * 1000)).Remove(0, 1);
+
+            await Fixture.CleanupApiHubTest(apiHubConnectionString);
 
             Assert.Equal(testData, result);
         }
-
+         
         protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
         {
             // Get the URI by creating a config.
