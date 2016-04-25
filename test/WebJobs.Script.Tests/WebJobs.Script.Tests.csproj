@@ -256,6 +256,7 @@
     <Compile Include="FunctionBindingTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolverTests.cs" />
+    <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
