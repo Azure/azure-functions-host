@@ -23,7 +23,7 @@ namespace Dashboard.Data
         // Underlying reader. 
         private readonly ILogReader _reader;
 
-        private DateTime _version = DateTime.MinValue ;
+        private DateTime _version = DateTime.MinValue;
 
         private FunctionSnapshot[] _snapshots = null; // Cache of function definitions 
 
@@ -146,7 +146,7 @@ namespace Dashboard.Data
             var snapshots = await GetSnapshotsAsync();
             var results = Array.ConvertAll(snapshots, x =>
                   FunctionIndexEntry.Create(
-                        FunctionIndexEntry.CreateOtherMetadata(x), x.HostVersion ));
+                        FunctionIndexEntry.CreateOtherMetadata(x), x.HostVersion));
 
             return new ResultSegment<FunctionIndexEntry>(results, null);
         }

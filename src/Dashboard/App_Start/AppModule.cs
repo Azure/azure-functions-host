@@ -24,6 +24,13 @@ namespace Dashboard
 {
     public class AppModule : NinjectModule
     {
+        // Optional Appsetting to explicitly set the table name to use with fast logging. 
+        private const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
+
+        // Optional Appsetting to control site extension versioning. We can infer log mode from this. 
+        private const string FunctionExtensionVersionAppSettingName = "FUNCTIONS_EXTENSION_VERSION";
+        private const string FunctionExtensionVersionDisabled = "disabled";
+
         public override void Load()
         {
             DashboardAccountContext context = TryCreateAccount();
@@ -37,7 +44,7 @@ namespace Dashboard
                 return;
             }
 
-            CloudTableClient tableClient = account.CreateCloudTableClient();            
+            CloudTableClient tableClient = account.CreateCloudTableClient();
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
             Bind<CloudStorageAccount>().ToConstant(account);
             Bind<CloudBlobClient>().ToConstant(blobClient);
@@ -122,13 +129,6 @@ namespace Dashboard
                 Bind<IIndexerLogReader>().To<IndexerBlobLogReader>();
             }
         }
-
-        // Optional Appsetting to explicitly set the table name to use with fast logging. 
-        const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
-
-        // Optional Appsetting to control site extension versioning. We can infer log mode from this. 
-        const string FunctionExtensionVersionAppSettingName = "FUNCTIONS_EXTENSION_VERSION";
-        const string FunctionExtensionVersionDisabled = "disabled";
 
         // Get a fast log table name 
         // OR return null to use traditional logging. 
