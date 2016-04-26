@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
         }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             return null;
         }

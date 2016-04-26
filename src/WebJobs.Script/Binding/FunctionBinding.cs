@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Task BindAsync(BindingContext context);
 
-        public abstract Collection<CustomAttributeBuilder> GetCustomAttributes();
+        public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
         internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
         {

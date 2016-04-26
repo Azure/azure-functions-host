@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string QueueOrTopicName { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             var constructorTypes = new Type[] { typeof(string) };
             var constructorArguments = new object[] { QueueOrTopicName };

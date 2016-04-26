@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string HubName { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Type attributeType = typeof(NotificationHubAttribute);
             PropertyInfo[] props = new[]

@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         var binding = bindings.FirstOrDefault(b => string.Compare(b.Metadata.Name, parameter.Name, StringComparison.Ordinal) == 0);
                         if (binding != null)
                         {
-                            Collection<CustomAttributeBuilder> customAttributes = binding.GetCustomAttributes();
+                            Collection<CustomAttributeBuilder> customAttributes = binding.GetCustomAttributes(parameter.ParameterType);
                             if (customAttributes != null)
                             {
                                 foreach (var customAttribute in customAttributes)

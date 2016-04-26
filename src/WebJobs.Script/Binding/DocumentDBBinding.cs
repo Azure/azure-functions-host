@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public int CollectionThroughput { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Type attributeType = typeof(DocumentDBAttribute);
 

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -53,12 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             await BindStreamAsync(context.Value, Access, context.Binder, runtimeContext);
         }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 
+            FileAccess access = GetAttributeAccess(parameterType);
+
             var constructorTypes = new Type[] { typeof(string), typeof(FileAccess) };
-            var constructorArguments = new object[] { Path, Access };
+            var constructorArguments = new object[] { Path, access };
             var attribute = new CustomAttributeBuilder(typeof(BlobAttribute).GetConstructor(constructorTypes), constructorArguments);
 
             attributes.Add(attribute);
@@ -69,6 +72,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return attributes;
+        }
+
+        private FileAccess GetAttributeAccess(Type parameterType)
+        {
+            // The types bellow only support Read/Write access.
+            // When using them we ignore the acces and always assume ReadWrite
+            if (parameterType == typeof(ICloudBlob) || parameterType == typeof(CloudBlockBlob) ||
+               parameterType == typeof(CloudPageBlob) || parameterType == typeof(CloudBlobDirectory))
+            {
+                return FileAccess.ReadWrite;
+            }
+
+            return Access;
         }
     }
 }

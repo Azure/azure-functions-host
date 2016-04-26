@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string EventHubName { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             var constructorTypes = new Type[] { typeof(string) };
             var constructorArguments = new object[] { EventHubName };

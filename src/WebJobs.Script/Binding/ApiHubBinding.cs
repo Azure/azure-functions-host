@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string Path { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 

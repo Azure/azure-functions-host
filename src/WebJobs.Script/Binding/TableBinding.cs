@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public int Take { get; private set; }
         public string Filter { get; private set; }
 
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes()
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 
