@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -23,11 +22,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         IFunctionOutputLogger
     {
         private IHostInstanceLogger _hostInstanceLogger;
-        private IFunctionInstanceLogger _nullInstanceLogger = new NullInstanceLogger();
+        private IFunctionInstanceLogger _traceWriterFunctionLogger;
 
-        public FastTableLoggerProvider()
+        public FastTableLoggerProvider(TraceWriter trace)
         {
             _hostInstanceLogger = new NullHostInstanceLogger();
+            _traceWriterFunctionLogger = new TraceWriterFunctionInstanceLogger(trace);
         }
 
         Task<IFunctionOutputLogger> IFunctionOutputLoggerProvider.GetAsync(CancellationToken cancellationToken)
@@ -43,32 +43,13 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         Task<IFunctionInstanceLogger> IFunctionInstanceLoggerProvider.GetAsync(CancellationToken cancellationToken)
         {
-            // No instance loggin
-            return Task.FromResult<IFunctionInstanceLogger>(_nullInstanceLogger);
+            return Task.FromResult<IFunctionInstanceLogger>(_traceWriterFunctionLogger);
         }
 
         Task<IFunctionOutputDefinition> IFunctionOutputLogger.CreateAsync(IFunctionInstance instance, CancellationToken cancellationToken)
         {
             IFunctionOutputDefinition x = new PerFunc();
             return Task.FromResult(x);
-        }
-        
-        private class NullInstanceLogger : IFunctionInstanceLogger
-        {
-            public Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(0);
-            }
-
-            public Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(0);
-            }
-
-            public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(string.Empty);
-            }
         }
 
         private class PerFunc : IFunctionOutputDefinition, IFunctionOutput

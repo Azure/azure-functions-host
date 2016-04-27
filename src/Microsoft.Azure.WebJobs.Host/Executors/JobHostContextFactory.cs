@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             FunctionExecutor functionExecutor = null,
             IFunctionIndexProvider functionIndexProvider = null,
             IBindingProvider bindingProvider = null,
-            IHostInstanceLoggerProvider hostInstanceLogerProvider = null,
+            IHostInstanceLoggerProvider hostInstanceLoggerProvider = null,
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = null,
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null,
@@ -119,15 +119,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             bool noDashboardStorage = config.DashboardConnectionString == null;
             if (hasFastTableHook && noDashboardStorage)
             {
-                var loggerProvider = new FastTableLoggerProvider();
-                hostInstanceLogerProvider = loggerProvider;
+                var loggerProvider = new FastTableLoggerProvider(trace);
+                hostInstanceLoggerProvider = loggerProvider;
                 functionInstanceLoggerProvider = loggerProvider;
                 functionOutputLoggerProvider = loggerProvider;
             }
             else
             {
                 var loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
-                hostInstanceLogerProvider = loggerProvider;
+                hostInstanceLoggerProvider = loggerProvider;
                 functionInstanceLoggerProvider = loggerProvider;
                 functionOutputLoggerProvider = loggerProvider;
             }
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(combinedCancellationToken);
 
-                IHostInstanceLogger hostInstanceLogger = await hostInstanceLogerProvider.GetAsync(combinedCancellationToken);                
+                IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
                 IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
                 IFunctionOutputLogger functionOutputLogger = await functionOutputLoggerProvider.GetAsync(combinedCancellationToken);
                 
