@@ -8,7 +8,7 @@ public static void Run(WorkItem input, out string output, TraceWriter log)
 {
     string json = string.Format("{{ \"id\": \"{0}\" }}", input.Id);
 
-    log.Verbose($"C# script processed queue message. Item={json}");
+    log.Info($"C# script processed queue message. Item={json}");
 
     output = json;
 }

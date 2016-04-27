@@ -8,5 +8,5 @@ public static void Run(string input, JObject item, TraceWriter log)
 {
     item["Text"] = "This was updated!";
 
-    log.Verbose($"Updating item {item["Id"]}");
+    log.Info($"Updating item {item["Id"]}");
 }

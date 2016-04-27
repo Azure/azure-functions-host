@@ -115,10 +115,25 @@ namespace Microsoft.Azure.WebJobs.Script
                 .Subscribe(HandleHostError);
             ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
 
+            TraceWriter = ScriptConfig.TraceWriter;
             if (ScriptConfig.FileLoggingEnabled)
             {
+                TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
                 string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-                TraceWriter = new FileTraceWriter(hostLogFilePath, TraceLevel.Verbose);
+                TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel);
+                if (TraceWriter != null)
+                {
+                    // create a composite writer so our host logs are written to both
+                    TraceWriter = new CompositeTraceWriter(new[] { TraceWriter, fileTraceWriter });
+                }
+                else
+                {
+                    TraceWriter = fileTraceWriter;
+                }
+            }
+
+            if (TraceWriter != null)
+            {
                 ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
             }
             else
@@ -126,16 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter = NullTraceWriter.Instance;
             }
 
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
-
-            if (ScriptConfig.TraceWriter != null)
-            {
-                ScriptConfig.HostConfig.Tracing.Tracers.Add(ScriptConfig.TraceWriter);
-            }
-            else
-            {
-                ScriptConfig.TraceWriter = NullTraceWriter.Instance;
-            }
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
 
             if (ScriptConfig.FileWatchingEnabled)
             {
@@ -157,8 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // restart after ALL the operations are complete and there is a quiet period.
             _restart = (e) =>
             {
-                TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
-                TraceWriter.Verbose("Host configuration has changed. Signaling restart.");
+                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
+                TraceWriter.Info("Host configuration has changed. Signaling restart.");
 
                 // signal host restart
                 _restartEvent.Set();
@@ -207,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
             string defaultNamespace = "Host";
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
             Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
             List<Type> types = new List<Type>();
             types.Add(type);

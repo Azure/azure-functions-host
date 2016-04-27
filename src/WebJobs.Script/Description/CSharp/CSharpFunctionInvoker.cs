@@ -110,9 +110,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Reset cached function
             ResetFunctionValue();
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
 
-            TraceWriter.Verbose("Compiling function script.");
+            TraceWriter.Info("Compiling function script.");
 
             Script<object> script = CreateScript();
             Compilation compilation = GetScriptCompilation(script, _compileWithDebugOptmization);
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-            TraceWriter.Verbose(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.",
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.",
                 compilationSucceeded ? "succeeded" : "failed"));
 
             // If the compilation succeeded, AND:
@@ -160,19 +160,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private void RestorePackages()
         {
-            TraceWriter.Verbose("Restoring packages.");
+            TraceWriter.Info("Restoring packages.");
 
             _metadataResolver.RestorePackagesAsync()
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                     {
-                        TraceWriter.Verbose("Package restore failed:");
-                        TraceWriter.Verbose(t.Exception.ToString());
+                        TraceWriter.Info("Package restore failed:");
+                        TraceWriter.Info(t.Exception.ToString());
                         return;
                     }
 
-                    TraceWriter.Verbose("Packages restored.");
+                    TraceWriter.Info("Packages restored.");
                     _reloadScript();
                 });
         }
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
                 _metrics.BeginEvent(startedEvent);
 
-                TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
+                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
                 parameters = ProcessInputParameters(parameters);
 
@@ -220,18 +220,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     _resultProcessor(function, parameters, systemParameters, functionResult);
                 }
 
-                TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
+                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
             }
             catch
             {
                 if (startedEvent != null)
                 {
                     startedEvent.Success = false;
-                    TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
+                    TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
                 }
                 else
                 {
-                    TraceWriter.Verbose("Function completed (Failure)");
+                    TraceWriter.Error("Function completed (Failure)");
                 }
                 throw;
             }

@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
             TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id));
-            Assert.Equal(TraceLevel.Verbose, traceEvent.Level);
+            Assert.Equal(TraceLevel.Info, traceEvent.Level);
 
             string trace = traceEvent.Message;
             Assert.True(trace.Contains("script processed queue message"));

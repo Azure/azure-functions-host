@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     process.Close();
                 };
 
-                _traceWriter.Verbose("Starting NuGet restore");
+                _traceWriter.Info("Starting NuGet restore");
 
                 process.Start();
                 
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private void ProcessDataReceived(object sender, DataReceivedEventArgs e)
         {
-            _traceWriter.Verbose(e.Data ?? string.Empty);
+            _traceWriter.Info(e.Data ?? string.Empty);
         }
     }
 }

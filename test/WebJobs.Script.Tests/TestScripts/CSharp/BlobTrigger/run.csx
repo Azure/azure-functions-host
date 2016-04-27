@@ -6,5 +6,5 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(Stream input, TraceWriter log)
 {
-    log.Verbose($"CSharp Blob trigger function processed a work item. Item={input}");
+    log.Info($"CSharp Blob trigger function processed a work item. Item={input}");
 }

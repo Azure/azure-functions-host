@@ -3,7 +3,7 @@
 using System.Net;
 using System.Diagnostics;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+public static Task<HttpResponseMessage> Run(HttpRequestMessage req)
 {
     string response = new Test().Response;
     req.Properties["LoadedScriptResponse"] = response;

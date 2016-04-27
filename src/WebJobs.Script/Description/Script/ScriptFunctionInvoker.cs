@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
             }
 
-            TraceWriter.Verbose(string.Format("Function started (Id={0})", invocationId));
+            TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
             string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
@@ -132,19 +132,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 startedEvent.Success = false;
 
-                TraceWriter.Verbose(string.Format("Function completed (Failure, Id={0})", invocationId));
+                TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
 
                 string error = process.StandardError.ReadToEnd();
                 throw new ApplicationException(error);
             }
 
             string output = process.StandardOutput.ReadToEnd();
-            TraceWriter.Verbose(output);
-            traceWriter.Verbose(output);
+            TraceWriter.Info(output);
+            traceWriter.Info(output);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
-            TraceWriter.Verbose(string.Format("Function completed (Success, Id={0})", invocationId));
+            TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
         }
 
         private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext context)

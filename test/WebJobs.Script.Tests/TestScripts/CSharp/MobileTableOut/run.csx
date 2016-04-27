@@ -9,7 +9,7 @@ public static void Run(string input, out Item item, TraceWriter log)
         Text = "Hello from C#!"
     };
 
-    log.Verbose($"Inserting item {item.Id}");
+    log.Info($"Inserting item {item.Id}");
 }
 
 public class Item

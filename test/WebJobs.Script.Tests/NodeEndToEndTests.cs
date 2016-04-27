@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify use of context.log to log complex objects
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
-            Assert.Equal(TraceLevel.Verbose, scriptTrace.Level);
+            Assert.Equal(TraceLevel.Info, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.Message);
             Assert.Equal("Node.js manually triggered function called!", logEntry["message"]);
             Assert.Equal(testData, logEntry["input"]);

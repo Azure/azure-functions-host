@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(string input, out string output, TraceWriter log)
 {
-    log.Verbose($"C# ApiHub trigger function processed a file...");
+    log.Info($"C# ApiHub trigger function processed a file...");
 
     output = input;
 }

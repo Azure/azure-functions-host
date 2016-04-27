@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(string blob, out string output, TraceWriter log)
 {
-    log.Verbose($"C# Blob trigger function processed a blob. Blob={blob}");
+    log.Info($"C# Blob trigger function processed a blob. Blob={blob}");
 
     output = blob;
 }

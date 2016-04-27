@@ -35,8 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (scriptConfig.FileLoggingEnabled)
             {
+                TraceLevel functionTraceLevel = scriptConfig.HostConfig.Tracing.ConsoleLevel;
                 string logFilePath = Path.Combine(scriptConfig.RootLogPath, "Function", functionName);
-                return new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+                return new FileTraceWriter(logFilePath, functionTraceLevel);
             }
 
             return NullTraceWriter.Instance;
