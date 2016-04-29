@@ -18,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class MetricsEventManagerTests
     {
-        private Random randomNumberGenerator = new Random();
-        private const int MinimumLongRunningDurationInMs = 5000;
+        private Random _randomNumberGenerator = new Random();
+        private const int MinimumLongRunningDurationInMs = 2000;
         private const int MinimumRandomValueForLongRunningDurationInMs = MinimumLongRunningDurationInMs + 200;
 
         [Fact]
@@ -28,11 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var argsList = new List<FunctionExecutionEventArguments>();
             var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
-            taskList.Add(ShortDummyFunction(metricsLogger));
-            taskList.Add(LongDummyFunction(metricsLogger));
+            taskList.Add(ShortTestFunction(metricsLogger));
+            taskList.Add(LongTestFunction(metricsLogger));
 
             await AwaitFunctionTasks(taskList);
-            ValidateFunctionExecutionEventArgumentsList(argsList, 2);            
+            ValidateFunctionExecutionEventArgumentsList(argsList, 2);
         }
 
         [Fact]
@@ -41,13 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var argsList = new List<FunctionExecutionEventArguments>();
             var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
-            var concurrency = randomNumberGenerator.Next(5, 100);
+            var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                taskList.Add(ShortDummyFunction(metricsLogger));
+                taskList.Add(ShortTestFunction(metricsLogger));
             }
             
-            await AwaitFunctionTasks(taskList);            
+            await AwaitFunctionTasks(taskList);
             Assert.Equal(concurrency, argsList.Count);
         }
 
@@ -57,10 +57,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var argsList = new List<FunctionExecutionEventArguments>();
             var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
-            var concurrency = randomNumberGenerator.Next(5, 100);
+            var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                taskList.Add(LongDummyFunction(metricsLogger));
+                taskList.Add(LongTestFunction(metricsLogger));
             }
 
             await AwaitFunctionTasks(taskList);
@@ -72,6 +72,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string.Format("There are events with different execution id. List:{0} Invalid entries:{1}",
                     SerializeFunctionExecutionEventArguments(argsList),
                     SerializeFunctionExecutionEventArguments(invalidArgsList)));
+
+            Assert.True(argsList.Count >= concurrency * 2,
+                string.Format("Each function invocation should emit atleast two etw events. List:{0}", SerializeFunctionExecutionEventArguments(argsList)));
+
+            var uniqueInvocationIds = argsList.Select(i => i.InvocationId).Distinct().ToList();
+            // Each invocation should have atleast one 'InProgress' event
+            var invalidInvocationIds = uniqueInvocationIds.Where(
+                i => !argsList.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.Finished.ToString())
+                        || !argsList.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.InProgress.ToString())).ToList();
+
+            Assert.True(invalidInvocationIds.Count == 0,
+                string.Format("Each invocation should have atleast one 'InProgress' event. Invalid invocation ids:{0} List:{1}",
+                    string.Join(",", invalidInvocationIds),
+                    SerializeFunctionExecutionEventArguments(argsList)));
         }
 
         [Fact]
@@ -80,16 +94,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var argsList = new List<FunctionExecutionEventArguments>();
             var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
-            var concurrency = randomNumberGenerator.Next(5, 100);
+            var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                if (randomNumberGenerator.Next(100) < 50 ? true : false)
+                if (_randomNumberGenerator.Next(100) < 50 ? true : false)
                 {
-                    taskList.Add(ShortDummyFunction(metricsLogger));
+                    taskList.Add(ShortTestFunction(metricsLogger));
                 }
                 else
                 {
-                    taskList.Add(LongDummyFunction(metricsLogger));
+                    taskList.Add(LongTestFunction(metricsLogger));
                 }
             }
 
@@ -102,11 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var argsList = new List<FunctionExecutionEventArguments>();
             var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
-            await ShortDummyFunction(metricsLogger);
+            await ShortTestFunction(metricsLogger);
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
-            await ShortDummyFunction(metricsLogger);
+            await ShortTestFunction(metricsLogger);
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
@@ -141,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 functionValidationTrackerList.Add(new FunctionEventValidationTracker<FunctionExecutionEventArguments>(list[currentIndex]));
             }
 
-            var hashes = new HashSet<string>();            
+            var hashes = new HashSet<string>();
             for (int currentIndex = 0; currentIndex < functionValidationTrackerList.Count; currentIndex++)
             {
                 // The element has not already been processed
@@ -173,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                                 {
                                     break;
                                 }
-                            }                            
+                            }
                         }
 
                         if (relatedEventIds.Count < 2)
@@ -258,27 +272,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     functionExecutionEventArgumentsList.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
                 });
 
-            return new WebHostMetricsLogger(metricsEventGenerator.Object);
+            return new WebHostMetricsLogger(metricsEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
         }
 
-        private async Task LongDummyFunction(WebHostMetricsLogger metricsLogger)
+        private async Task LongTestFunction(WebHostMetricsLogger metricsLogger)
         {
-            var randomMilliSeconds = randomNumberGenerator.Next(MinimumRandomValueForLongRunningDurationInMs, MinimumRandomValueForLongRunningDurationInMs * 5);
-            await DummyFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, TimeSpan.FromMilliseconds(randomMilliSeconds));
+            var randomMilliSeconds = _randomNumberGenerator.Next(MinimumRandomValueForLongRunningDurationInMs, MinimumRandomValueForLongRunningDurationInMs * 4);
+            await TestFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, TimeSpan.FromMilliseconds(randomMilliSeconds));
         }
 
-        private async Task ShortDummyFunction(WebHostMetricsLogger metricsLogger)
+        private async Task ShortTestFunction(WebHostMetricsLogger metricsLogger)
         {
-            var randomMilliSeconds = randomNumberGenerator.Next(0, 1000);
-            await DummyFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, TimeSpan.FromMilliseconds(randomMilliSeconds));
+            var randomMilliSeconds = _randomNumberGenerator.Next(0, 10);
+            await TestFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, TimeSpan.FromMilliseconds(randomMilliSeconds));
         }
 
-        private async Task DummyFunction(WebHostMetricsLogger metricsLogger, TimeSpan waitTimeSpan)
+        private async Task TestFunction(WebHostMetricsLogger metricsLogger, TimeSpan waitTimeSpan)
         {
-            await DummyFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, waitTimeSpan);
+            await TestFunction(Guid.NewGuid().ToString(), Guid.NewGuid(), metricsLogger, waitTimeSpan);
         }
 
-        private async Task DummyFunction(string name, Guid invocationId, WebHostMetricsLogger metricsLogger, TimeSpan waitTimeSpan)
+        private async Task TestFunction(string name, Guid invocationId, WebHostMetricsLogger metricsLogger, TimeSpan waitTimeSpan)
         {
             var functionMetadata = new FunctionMetadata
             {

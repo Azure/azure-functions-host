@@ -8,16 +8,16 @@ namespace WebJobs.Script.WebHost.Diagnostics
 {
     public class WebHostMetricsLogger : IMetricsLogger
     {
-        private MetricsEventManager metricsEventManager;
+        private MetricsEventManager _metricsEventManager;
 
         public WebHostMetricsLogger()
-            : this(new MetricsEventGenerator())
+            : this(new MetricsEventGenerator(), 5)
         {
         }
 
-        public WebHostMetricsLogger(IMetricsEventGenerator metricsEventGenerator)
+        public WebHostMetricsLogger(IMetricsEventGenerator metricsEventGenerator, int metricEventIntervalInSeconds)
         {
-            metricsEventManager = new MetricsEventManager(metricsEventGenerator);
+            _metricsEventManager = new MetricsEventManager(metricsEventGenerator, metricEventIntervalInSeconds);
         }
 
         public void BeginEvent(MetricEvent metricEvent)
@@ -26,7 +26,7 @@ namespace WebJobs.Script.WebHost.Diagnostics
             if (startedEvent != null)
             {
                 startedEvent.StartTime = DateTime.Now;
-                metricsEventManager.FunctionStarted(startedEvent);
+                _metricsEventManager.FunctionStarted(startedEvent);
             }
         }
 
@@ -36,7 +36,7 @@ namespace WebJobs.Script.WebHost.Diagnostics
             if (completedEvent != null)
             {
                 completedEvent.EndTime = DateTime.Now;
-                metricsEventManager.FunctionCompleted(completedEvent);
+                _metricsEventManager.FunctionCompleted(completedEvent);
             }
         }
 
@@ -45,7 +45,7 @@ namespace WebJobs.Script.WebHost.Diagnostics
             HostStarted hostStartedEvent = metricEvent as HostStarted;
             if (hostStartedEvent != null)
             {
-                metricsEventManager.HostStarted(hostStartedEvent.Host);
+                _metricsEventManager.HostStarted(hostStartedEvent.Host);
             }
         }
     }
