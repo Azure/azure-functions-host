@@ -4,14 +4,13 @@
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     /// <summary>
-    /// Enumerates list of possible errors detected by the <see cref="StorageAccountParser"/> while trying to 
+    /// Enumerates list of possible errors detected by the <see cref="StorageAccountParser"/> while trying to
     /// parse Microsoft Azure Cloud Storage account.
     /// </summary>
     internal enum StorageAccountParseResult
     {
         Success,
         MissingOrEmptyConnectionStringError,
-        MalformedConnectionStringError,
-        EmulatorIsNotSupportedError
+        MalformedConnectionStringError
     }
 }

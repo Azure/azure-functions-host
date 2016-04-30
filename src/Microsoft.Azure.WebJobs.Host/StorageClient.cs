@@ -40,18 +40,9 @@ namespace Microsoft.Azure.WebJobs.Host
             return credentials.AccountName;
         }
 
-        public static bool IsDevelopmentStorageAccount(CloudStorageAccount account)
-        {
-            // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx 
-            return String.Equals(
-                account.BlobEndpoint.PathAndQuery.TrimStart('/'),
-                account.Credentials.AccountName,
-                StringComparison.OrdinalIgnoreCase);
-        }
-
         public static bool IsDevelopmentStorageAccount(IStorageAccount account)
         {
-            // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx 
+            // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx
             return String.Equals(
                 account.BlobEndpoint.PathAndQuery.TrimStart('/'),
                 account.Credentials.AccountName,

@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.Storage;
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     /// <summary>
-    /// Utility class designed to parse given connection string and create instance of the 
+    /// Utility class designed to parse given connection string and create instance of the
     /// <see cref="CloudStorageAccount"/>.
     /// </summary>
     internal sealed class StorageAccountParser : IStorageAccountParser
@@ -58,12 +58,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 return StorageAccountParseResult.MalformedConnectionStringError;
             }
 
-            if (StorageClient.IsDevelopmentStorageAccount(possibleAccount))
-            {
-                account = null;
-                return StorageAccountParseResult.EmulatorIsNotSupportedError;
-            }
-
             account = possibleAccount;
             return StorageAccountParseResult.Success;
         }
@@ -95,13 +89,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         "The Microsoft Azure Storage account connection string is not formatted " +
                         "correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for " +
                         "details about configuring Microsoft Azure Storage connection strings.",
-                        connectionStringName);
-
-                case StorageAccountParseResult.EmulatorIsNotSupportedError:
-                    return String.Format(CultureInfo.CurrentCulture,
-                        "Failed to validate Microsoft Azure WebJobs SDK {0} account. " + 
-                        "The Microsoft Azure Storage Emulator is not supported, please use a " +
-                        "Microsoft Azure Storage account hosted in Microsoft Azure.",
                         connectionStringName);
             }
 

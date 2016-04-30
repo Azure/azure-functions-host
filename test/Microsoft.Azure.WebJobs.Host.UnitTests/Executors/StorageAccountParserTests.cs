@@ -10,28 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
     public class StorageAccountParserTests
     {
         [Fact]
-        public void TryParseAccount_WithEmulator_Fails()
-        {
-            string connectionString = "UseDevelopmentStorage=true";
-            CloudStorageAccount ignore;
-            
-            StorageAccountParseResult result = StorageAccountParser.TryParseAccount(connectionString, out ignore);
-
-            Assert.Equal(StorageAccountParseResult.EmulatorIsNotSupportedError, result);
-        }
-
-        [Fact]
-        public void TryParseAccount_WithProxiedEmulator_Fails()
-        {
-            string connectionString = "UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://myProxyUri";
-            CloudStorageAccount ignore;
-
-            StorageAccountParseResult result = StorageAccountParser.TryParseAccount(connectionString, out ignore);
-
-            Assert.Equal(StorageAccountParseResult.EmulatorIsNotSupportedError, result);
-        }
-
-        [Fact]
         public void TryParseAccount_WithEmpty_Fails()
         {
             string connectionString = string.Empty;
