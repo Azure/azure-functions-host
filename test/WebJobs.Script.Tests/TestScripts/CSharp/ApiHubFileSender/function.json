@@ -7,7 +7,7 @@
     {
       "type": "apiHubFile",
       "name" : "item",
-      "connection": "AzureWebJobsDropBox",
+      "connection": "AzureWebJobsBox",
       "direction": "out",
       "path": "teste2e/test.txt"
     }

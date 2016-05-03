@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 if ((DateTime.Now - start).TotalMilliseconds > timeout)
                 {
-                    throw new ApplicationException("Condition not reached within timeout.");
+                    throw new ApplicationException(string.Format("Condition not reached within timeout:{0}.", timeout));
                 }
             }
         }
@@ -30,12 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
         }
 
-        public static async Task<string> WaitForBlobAsync(CloudBlockBlob blob)
+        public static async Task<string> WaitForBlobAsync(CloudBlockBlob blob, int timeout = 60 * 1000)
         {
             await TestHelpers.Await(() =>
             {
                 return blob.Exists();
-            });
+            }, timeout);
 
             string result = await blob.DownloadTextAsync(Encoding.UTF8,
                 null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
