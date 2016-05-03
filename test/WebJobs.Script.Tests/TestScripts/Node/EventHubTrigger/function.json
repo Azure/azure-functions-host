@@ -1,16 +1,16 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "eventHubTrigger",
-      "direction": "in",
-      "connection": "AzureWebJobsEventHubReceiver",
-      "path": "%AzureWebJobsEventHubPath%"
-    },
-    {
-      "type": "blob",
-      "name": "output",
-      "direction": "out",
-      "path": "test-output/{id}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "eventHubTrigger",
+            "direction": "in",
+            "connection": "AzureWebJobsEventHubReceiver",
+            "path": "%AzureWebJobsEventHubPath%"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "test-output/{id}"
+        }
+    ]
 }

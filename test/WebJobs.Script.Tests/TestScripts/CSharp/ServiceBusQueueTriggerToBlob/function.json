@@ -1,21 +1,21 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "serviceBusTrigger",
-      "direction": "in",
-      "queueName": "test-input"
-    },
-    {
-      "type": "serviceBus",
-      "name": "message",
-      "direction": "out",
-      "queueName": "test-input"
-    },
-    {
-      "type": "blob",
-      "name": "completed",
-      "direction": "out",
-      "path": "test-output/completed"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "serviceBusTrigger",
+            "direction": "in",
+            "queueName": "test-input"
+        },
+        {
+            "type": "serviceBus",
+            "name": "message",
+            "direction": "out",
+            "queueName": "test-input"
+        },
+        {
+            "type": "blob",
+            "name": "completed",
+            "direction": "out",
+            "path": "test-output/completed"
+        }
+    ]
 }

@@ -1,14 +1,14 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-notificationHub-csharp"
-    },
-    {
-      "type": "notificationHub",
-      "direction": "out",
-      "name": "messageProperties"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-notificationHub-csharp"
+        },
+        {
+            "type": "notificationHub",
+            "direction": "out",
+            "name": "messageProperties"
+        }
+    ]
 }

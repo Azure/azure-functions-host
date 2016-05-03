@@ -1,15 +1,15 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "timerTrigger",
-      "direction": "in",
-      "schedule": "* * * * * *"
-    },
-    {
-      "type": "blob",
-      "name": "output",
-      "direction": "out",
-      "path": "test-output/testblob"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "timerTrigger",
+            "direction": "in",
+            "schedule": "* * * * * *"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "test-output/testblob"
+        }
+    ]
 }

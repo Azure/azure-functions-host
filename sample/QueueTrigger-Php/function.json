@@ -1,9 +1,9 @@
 {
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-php"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-php"
+        }
+    ]
 }

@@ -1,15 +1,15 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-batch"
-    },
-    {
-      "type": "blob",
-      "name": "output",
-      "direction": "out",
-      "path": "samples-output/{id}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-batch"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "samples-output/{id}"
+        }
+    ]
 }

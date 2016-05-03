@@ -1,14 +1,14 @@
 {
-  "bindings": [
-    {
-      "type": "httpTrigger",
-      "direction": "in",
-      "webHookType": "genericJson",
-      "name": "payload"
-    },
-    {
-      "type": "http",
-      "direction": "out"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "direction": "in",
+            "webHookType": "genericJson",
+            "name": "payload"
+        },
+        {
+            "type": "http",
+            "direction": "out"
+        }
+    ]
 }

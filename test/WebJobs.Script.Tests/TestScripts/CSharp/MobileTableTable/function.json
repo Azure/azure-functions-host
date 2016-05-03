@@ -1,13 +1,13 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "manualTrigger",
-      "direction": "in"
-    },
-    {
-      "type": "mobileTable",
-      "name": "table",
-      "direction": "in"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "direction": "in"
+        },
+        {
+            "type": "mobileTable",
+            "name": "table",
+            "direction": "in"
+        }
+    ]
 }

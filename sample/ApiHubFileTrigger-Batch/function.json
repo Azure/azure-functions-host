@@ -1,17 +1,17 @@
 {
-  "bindings": [
-    {
-      "type": "apiHubFileTrigger",
-      "connection": "AzureWebJobsDropBox",
-      "direction": "in",
-      "path": "testin/{name}"
-    },
-    {
-      "type": "apiHubFile",
-      "name": "output",
-      "connection": "AzureWebJobsDropBox",
-      "direction": "out",
-      "path": "testOutBatch/{name}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "apiHubFileTrigger",
+            "connection": "AzureWebJobsDropBox",
+            "direction": "in",
+            "path": "testin/{name}"
+        },
+        {
+            "type": "apiHubFile",
+            "name": "output",
+            "connection": "AzureWebJobsDropBox",
+            "direction": "out",
+            "path": "testOutBatch/{name}"
+        }
+    ]
 }

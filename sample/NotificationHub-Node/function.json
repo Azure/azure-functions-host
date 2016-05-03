@@ -1,14 +1,14 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-notificationHub-node"
-    },
-    {
-      "type": "notificationHub",
-      "direction": "out",
-      "name": "notification"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-notificationHub-node"
+        },
+        {
+            "type": "notificationHub",
+            "direction": "out",
+            "name": "notification"
+        }
+    ]
 }

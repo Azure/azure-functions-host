@@ -1,8 +1,8 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "manualTrigger",
-      "direction": "in"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "direction": "in"
+        }
+    ]
 }

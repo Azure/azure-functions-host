@@ -1,9 +1,9 @@
 {
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-fsharp"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-fsharp"
+        }
+    ]
 }

@@ -1,9 +1,9 @@
 ﻿{
-  "frameworks": {
-    ".NETFramework,Version=v4.6": {
-      "dependencies": {
-        "Microsoft.Azure.NotificationHubs": "1.0.3"
-      }
+    "frameworks": {
+        ".NETFramework,Version=v4.6": {
+            "dependencies": {
+                "Microsoft.Azure.NotificationHubs": "1.0.3"
+            }
+        }
     }
-  }
 }

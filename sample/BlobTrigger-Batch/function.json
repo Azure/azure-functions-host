@@ -1,15 +1,15 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "blobTrigger",
-      "direction": "in",
-      "path": "samples-batch/{name}"
-    },
-    {
-      "type": "blob",
-      "name": "output",
-      "direction": "out",
-      "path": "samples-output/{name}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "direction": "in",
+            "path": "samples-batch/{name}"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "samples-output/{name}"
+        }
+    ]
 }

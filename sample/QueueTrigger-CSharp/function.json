@@ -1,16 +1,16 @@
 ﻿{
-  "bindings": [
-    {
-      "name": "message",
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-csharp"
-    },
-    {
-      "type": "blob",
-      "name": "result",
-      "direction": "out",
-      "path": "samples-output-csharp/{Id}"
-    }
-  ]
+    "bindings": [
+        {
+            "name": "message",
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-csharp"
+        },
+        {
+            "type": "blob",
+            "name": "result",
+            "direction": "out",
+            "path": "samples-output-csharp/{Id}"
+        }
+    ]
 }

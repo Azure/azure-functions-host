@@ -1,14 +1,14 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "manualTrigger",
-      "direction": "in"
-    },
-    {
-      "type": "mobileTable",
-      "direction": "out",
-      "name": "item",
-      "tableName": "Item"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "direction": "in"
+        },
+        {
+            "type": "mobileTable",
+            "direction": "out",
+            "name": "item",
+            "tableName": "Item"
+        }
+    ]
 }

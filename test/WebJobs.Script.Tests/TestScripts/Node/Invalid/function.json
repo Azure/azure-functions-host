@@ -1,13 +1,13 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "httpTrigger",
-      "direction": "invalid",
-      "methods": [ "get", "post" ]
-    },
-    {
-      "type": "http",
-      "direction": "out"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "direction": "invalid",
+            "methods": [ "get", "post" ]
+        },
+        {
+            "type": "http",
+            "direction": "out"
+        }
+    ]
 }

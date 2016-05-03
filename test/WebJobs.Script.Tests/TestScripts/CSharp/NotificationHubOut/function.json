@@ -1,13 +1,13 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "manualTrigger",
-      "direction": "in"
-    },
-    {
-      "type": "notificationHub",
-      "name": "messageProperties",
-      "direction": "out"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "direction": "in"
+        },
+        {
+            "type": "notificationHub",
+            "name": "messageProperties",
+            "direction": "out"
+        }
+    ]
 }

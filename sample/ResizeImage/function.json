@@ -1,16 +1,16 @@
 {
-  "bindings": [
-    {
-      "type": "blobTrigger",
-      "name": "original",
-      "direction": "in",
-      "path": "images-original/{name}"
-    },
-    {
-      "type": "blob",
-      "name": "resized",
-      "direction": "out",
-      "path": "images-resized/{name}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "name": "original",
+            "direction": "in",
+            "path": "images-original/{name}"
+        },
+        {
+            "type": "blob",
+            "name": "resized",
+            "direction": "out",
+            "path": "images-resized/{name}"
+        }
+    ]
 }

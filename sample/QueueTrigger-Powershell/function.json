@@ -1,17 +1,17 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-powershell"
-    },
-    {
-      "type": "table",
-      "name": "output",
-      "direction": "out",
-      "tableName": "samples",
-      "partitionKey": "samples",
-      "rowKey": "%rand-guid%"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-powershell",
+        },
+        {
+            "type": "table",
+            "name": "output",
+            "direction": "out",
+            "tableName": "samples",
+            "partitionKey": "samples",
+            "rowKey": "%rand-guid%"
+        }
+    ]
 }

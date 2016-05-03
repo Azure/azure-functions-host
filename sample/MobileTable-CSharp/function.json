@@ -1,14 +1,14 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "direction": "in",
-      "queueName": "samples-mobiletables-csharp"
-    },
-    {
-      "type": "mobileTable",
-      "name": "newItem",
-      "direction": "out"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "samples-mobiletables-csharp"
+        },
+        {
+            "type": "mobileTable",
+            "name": "newItem",
+            "direction": "out"
+        }
+    ]
 }
