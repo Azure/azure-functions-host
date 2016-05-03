@@ -14,15 +14,15 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs Script Node.js</tags>
     <dependencies>
-      <dependency id="Microsoft.Azure.WebJobs" version="1.2.0-alpha-10305" />
-      <dependency id="Microsoft.Azure.WebJobs.ServiceBus" version="1.2.0-alpha-10305" />
-      <dependency id="Microsoft.Azure.WebJobs.Logging" version="1.2.0-alpha-10305" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions" version="1.1.0-alpha-10279" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="1.1.0-alpha-10279" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-alpha-10279" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.0.0-alpha-10279" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.0.0-alpha-10279" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.0.0-alpha-10279" />
+      <dependency id="Microsoft.Azure.WebJobs" version="1.2.0-alpha-10306" />
+      <dependency id="Microsoft.Azure.WebJobs.ServiceBus" version="1.2.0-alpha-10306" />
+      <dependency id="Microsoft.Azure.WebJobs.Logging" version="1.2.0-alpha-10306" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions" version="1.1.0-alpha-10287" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="1.1.0-alpha-10287" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-alpha-10287" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.0.0-alpha-10287" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.0.0-alpha-10287" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.0.0-alpha-10287" />
       <dependency id="Edge.js" version="5.9.1" />
     </dependencies>
   </metadata>
