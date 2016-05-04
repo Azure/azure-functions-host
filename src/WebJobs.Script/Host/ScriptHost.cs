@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -173,16 +172,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // take a snapshot so we can detect function additions/removals
             _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
-
-            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
-
-            var config = ScriptConfig.HostConfig;
-            if (dashboardString != null)
-            {
-                var fastLogger = new FastLogger(dashboardString);
-                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
-            }
-            config.DashboardConnectionString = null; // disable slow logging 
 
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             if (metricsLogger == null)

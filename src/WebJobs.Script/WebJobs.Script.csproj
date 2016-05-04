@@ -90,10 +90,6 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.1.2.0-alpha-10306\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Logging, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.1.2.0-alpha-10306\lib\net45\Microsoft.Azure.WebJobs.Logging.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.1.2.0-alpha-10306\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
       <Private>True</Private>
@@ -286,7 +282,6 @@
     <Compile Include="Description\Binding\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\Binding\TableBindingMetadata.cs" />
     <Compile Include="Description\Binding\TimerBindingMetadata.cs" />
-    <Compile Include="Diagnostics\FastLogger.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />
