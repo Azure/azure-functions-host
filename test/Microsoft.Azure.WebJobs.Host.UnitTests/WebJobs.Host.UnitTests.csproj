@@ -205,9 +205,6 @@
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamTests.cs" />
-    <Compile Include="Queues\BindableQueuePathTests.cs" />
-    <Compile Include="Queues\BoundQueuePathTests.cs" />
-    <Compile Include="Queues\ParameterizedQueuePathTests.cs" />
     <Compile Include="Queues\QueueTriggerBindingIntegrationTests.cs" />
     <Compile Include="PropertyAccessorFactoryTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />

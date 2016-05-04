@@ -376,6 +376,7 @@
     <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\IBinderEx.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingContext.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
@@ -522,7 +523,6 @@
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IConsoleProvider.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLogger.cs" />
-    <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\IQueueProcessorFactory.cs" />
     <Compile Include="Singleton\SingletonListener.cs" />
     <Compile Include="Queues\QueueProcessor.cs" />
@@ -632,36 +632,13 @@
     <Compile Include="Loggers\IFunctionOutputDefinition.cs" />
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
-    <Compile Include="Queues\BindableQueuePath.cs" />
-    <Compile Include="Queues\Bindings\ByteArrayToStorageQueueMessageConverter.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueMessageToStorageQueueMessageConverter.cs" />
-    <Compile Include="Queues\Bindings\CollectorArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\MessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\ConverterValueBinder.cs" />
-    <Compile Include="Queues\Bindings\QueueAsyncCollector.cs" />
-    <Compile Include="Queues\Bindings\QueueCollector.cs" />
-    <Compile Include="Queues\Bindings\AsyncCollectorArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\ByteArrayMessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueMessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueToStorageQueueConverter.cs" />
-    <Compile Include="Queues\Bindings\UserTypeMessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\StringMessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\IMessageConverterFactory.cs" />
-    <Compile Include="Queues\Bindings\CollectorValueProvider.cs" />
-    <Compile Include="Queues\Bindings\NonNullConverterValueBinder.cs" />
-    <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\StringToStorageQueueMessageConverter.cs" />
-    <Compile Include="Queues\Bindings\UserTypeToStorageQueueMessageConverter.cs" />
-    <Compile Include="Queues\BoundQueuePath.cs" />
     <Compile Include="Queues\StorageQueueExtensions.cs" />
-    <Compile Include="Queues\IBindableQueuePath.cs" />
     <Compile Include="Queues\IQueueConfiguration.cs" />
     <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
     <Compile Include="Queues\Listeners\INotificationCommand.cs" />
     <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
-    <Compile Include="Queues\ParameterizedQueuePath.cs" />
     <Compile Include="Queues\StorageQueueMessageExtensions.cs" />
     <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
@@ -848,17 +825,6 @@
     <Compile Include="ObjectDictionaryConverter.cs" />
     <Compile Include="PropertyHelper.cs" />
     <Compile Include="HostQueueNames.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\UserTypeArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\StringArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\QueueValueProvider.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\CompositeArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\IQueueArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\OutputConverter.cs" />
-    <Compile Include="Queues\Bindings\QueueAttributeBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\QueueBinding.cs" />
-    <Compile Include="Queues\Bindings\StringToStorageQueueConverter.cs" />
     <Compile Include="Queues\Triggers\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="Queues\Triggers\CompositeArgumentBindingProvider.cs" />
     <Compile Include="Queues\Triggers\ConverterArgumentBindingProvider.cs" />
@@ -977,7 +943,9 @@
       <SubType>Designer</SubType>
     </CodeAnalysisDictionary>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Queues\Bindings\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
