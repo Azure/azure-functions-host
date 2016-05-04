@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string FsiPathEnvironmentKey = "AzureWebJobs_FsiPath";
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
-        private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash, ScriptType.FSharp };
+        private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash };
         private readonly string _scriptFilePath;
         private readonly IMetricsLogger _metrics;
 
