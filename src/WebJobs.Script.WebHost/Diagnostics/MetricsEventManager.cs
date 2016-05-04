@@ -126,7 +126,7 @@ namespace WebJobs.Script.WebHost.Diagnostics
                     {
                         try
                         {
-                            int currentSecond = 0;
+                            int currentSecond = _metricEventIntervalInSeconds;
                             while (!_etwTaskCancellationSource.Token.IsCancellationRequested)
                             {
                                 RaiseMetricsPerFunctionEvent();

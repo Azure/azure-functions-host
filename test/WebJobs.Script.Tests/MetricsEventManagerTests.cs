@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private Random _randomNumberGenerator = new Random();
         private const int MinimumLongRunningDurationInMs = 2000;
-        private const int MinimumRandomValueForLongRunningDurationInMs = MinimumLongRunningDurationInMs + 200;
+        private const int MinimumRandomValueForLongRunningDurationInMs = MinimumLongRunningDurationInMs + MinimumLongRunningDurationInMs;
 
         [Fact]
         public async Task MetricsEventManager_BasicTest()
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             
             await AwaitFunctionTasks(taskList);
-            Assert.Equal(concurrency, argsList.Count);
+            ValidateFunctionExecutionEventArgumentsList(argsList, concurrency);
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
-            Assert.True(argsList[0].ExecutionId != argsList[1].ExecutionId, "Execution ids are same");
+            Assert.True(argsList[0].ExecutionId != argsList[argsList.Count - 1].ExecutionId, "Execution ids are same");
         }
 
         private static async Task AwaitFunctionTasks(List<Task> taskList)
@@ -209,8 +209,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             hashes.Add(lastEvent.InvocationId);
                         }
 
-                        var minEventsExpected = Math.Floor((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) - 1;
-                        var maxEventsExpected = Math.Ceiling((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) + 1;
+                        var minEventsExpected = Math.Floor((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) - 2;
+                        var maxEventsExpected = Math.Ceiling((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) + 2;
                         // We should see atleast one InProgress event if it takes more than 5 seconds
                         if (lastEvent.ExecutionTimeSpan >= MinimumLongRunningDurationInMs
                             && (relatedEventIds.Count < minEventsExpected
