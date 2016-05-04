@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        protected async Task MobileTablesTest(bool isCSharp = false)
+        protected async Task MobileTablesTest(bool isDotNet = false)
         {
             // MobileApps needs the following environment vars:
             // "AzureWebJobsMobileAppUri" - the URI to the mobile app
@@ -246,11 +246,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // And wait for the text to be updated
 
-            // Only CSharp fully supports updating from input bindings. Others will
+            // Only .NET fully supports updating from input bindings. Others will
             // create a new item with -success appended to the id.
             // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
-            var idToCheck = id + (isCSharp ? string.Empty : "-success");
-            var textToCheck = isCSharp ? "This was updated!" : null;
+            var idToCheck = id + (isDotNet ? string.Empty : "-success");
+            var textToCheck = isDotNet ? "This was updated!" : null;
             await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         }
 

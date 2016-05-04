@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task MobileTables()
         {
-            await MobileTablesTest(isCSharp: true);
+            await MobileTablesTest(isDotNet: true);
         }
 
         [Fact]
