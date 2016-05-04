@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 
-namespace WebJobs.Script.WebHost.Handlers
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
     public class EnsureHostRunningHandler : DelegatingHandler
     {

@@ -7,12 +7,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
-namespace WebJobs.Script.WebHost.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class MetricsEventManager
     {        

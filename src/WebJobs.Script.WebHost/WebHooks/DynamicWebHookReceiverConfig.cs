@@ -4,7 +4,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNet.WebHooks;
 
-namespace WebJobs.Script.WebHost.WebHooks
+namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
 {
     public class DynamicWebHookReceiverConfig : IWebHookReceiverConfig
     {

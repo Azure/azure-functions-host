@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
-namespace WebJobs.Script.WebHost.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class WebHostMetricsLogger : IMetricsLogger
     {

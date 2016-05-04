@@ -11,7 +11,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
-namespace WebJobs.Script.WebHost.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     // Adapter for capturing SDK events and logging them to tables.
     internal class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>

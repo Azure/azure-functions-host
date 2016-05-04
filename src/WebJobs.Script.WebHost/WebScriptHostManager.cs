@@ -10,15 +10,13 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.WebHooks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {

@@ -14,10 +14,9 @@ using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 
-namespace WebJobs.Script.WebHost.WebHooks
+namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
 {
     /// <summary>
     /// Class managing routing of requests to registered WebHook Receivers. It initializes an

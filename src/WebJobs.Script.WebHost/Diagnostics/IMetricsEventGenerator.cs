@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WebJobs.Script.WebHost.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public interface IMetricsEventGenerator
     {

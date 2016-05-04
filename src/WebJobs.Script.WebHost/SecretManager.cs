@@ -8,7 +8,7 @@ using System.IO;
 using System.Security.Cryptography;
 using Newtonsoft.Json;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class SecretManager
     {

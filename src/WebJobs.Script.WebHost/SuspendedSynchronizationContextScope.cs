@@ -4,7 +4,7 @@
 using System;
 using System.Threading;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class SuspendedSynchronizationContextScope : IDisposable
     {

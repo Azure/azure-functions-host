@@ -6,12 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
-using WebJobs.Script.WebHost.Diagnostics;
-using WebJobs.Script.WebHost.Models;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

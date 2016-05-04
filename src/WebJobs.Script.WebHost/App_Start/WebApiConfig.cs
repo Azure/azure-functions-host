@@ -5,15 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Web;
-using System.Web.Hosting;
 using System.Web.Http;
 using Autofac;
 using Autofac.Integration.WebApi;
-using WebJobs.Script.WebHost.App_Start;
-using WebJobs.Script.WebHost.Controllers;
-using WebJobs.Script.WebHost.Handlers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebApiConfig
     {

@@ -8,12 +8,11 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using WebJobs.Script.WebHost.Filters;
-using WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
-namespace WebJobs.Script.WebHost.Controllers
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for handling all administrative requests, for

@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using WebJobs.Script.WebHost;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

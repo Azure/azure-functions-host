@@ -9,9 +9,8 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
-using Microsoft.Azure.WebJobs.Script;
 
-namespace WebJobs.Script.WebHost.Filters
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
     public sealed class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {

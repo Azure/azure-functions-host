@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 
-namespace WebJobs.Script.WebHost.Controllers
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     public class HomeController : ApiController
     {

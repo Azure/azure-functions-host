@@ -4,7 +4,7 @@
 using System;
 using System.Web.Http;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebApiApplication : System.Web.HttpApplication
     {

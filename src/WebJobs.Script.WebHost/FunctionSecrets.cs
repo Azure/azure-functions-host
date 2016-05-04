@@ -3,7 +3,7 @@
 
 using Newtonsoft.Json;
 
-namespace WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class FunctionSecrets
     {

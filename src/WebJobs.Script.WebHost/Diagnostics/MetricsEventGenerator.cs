@@ -3,7 +3,7 @@
 
 using Microsoft.Diagnostics.Tracing;
 
-namespace WebJobs.Script.WebHost.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class MetricsEventGenerator : IMetricsEventGenerator
     {

@@ -7,10 +7,9 @@ using System.Net.Http;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
-using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Moq;
-using WebJobs.Script.WebHost;
-using WebJobs.Script.WebHost.Filters;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

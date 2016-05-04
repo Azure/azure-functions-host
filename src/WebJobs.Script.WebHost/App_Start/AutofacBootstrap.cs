@@ -2,15 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Configuration;
 using System.Threading.Tasks;
-using System.Web.Configuration;
 using System.Web.Hosting;
 using Autofac;
-using Microsoft.Azure.WebJobs.Script;
-using WebJobs.Script.WebHost.WebHooks;
+using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
-namespace WebJobs.Script.WebHost.App_Start
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class AutofacBootstrap
     {

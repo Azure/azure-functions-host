@@ -4,7 +4,7 @@
 using System.Collections.ObjectModel;
 using Newtonsoft.Json;
 
-namespace WebJobs.Script.WebHost.Models
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class FunctionStatus
     {
