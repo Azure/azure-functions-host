@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
         [InlineData(typeof(CloudBlobDirectory), FileAccess.Write, FileAccess.ReadWrite)]
         [InlineData(typeof(Stream), FileAccess.Write, FileAccess.Write)]
         [InlineData(typeof(Stream), FileAccess.Read, FileAccess.Read)]
-        [InlineData(typeof(Stream), FileAccess.Write, FileAccess.Write)]
         [InlineData(typeof(TextReader), FileAccess.Read, FileAccess.Read)]
         [InlineData(typeof(TextWriter), FileAccess.Write, FileAccess.Write)]
         [InlineData(typeof(string), FileAccess.Read, FileAccess.Read)]
