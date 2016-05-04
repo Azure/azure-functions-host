@@ -1,11 +1,13 @@
 open System
+open System.Linq
+open System.Threading.Tasks
 open System.IO
+open Microsoft.Azure.WebJobs.Host
 
-let inputPath = Environment.GetEnvironmentVariable("input")
-let input = File.ReadAllText(inputPath)
+type WorkItem() =
+    member val Id = "" with get, set
 
-let message = sprintf "F# script processed queue message '%s'" input
-Console.Out.WriteLine(message)
-
-let output = Environment.GetEnvironmentVariable("output");
-File.WriteAllText(output, input)
+let Run(input: WorkItem, output: byref<string>, log: TraceWriter) = 
+    let json = String.Format("{{ \"id\": \"{0}\" }}", input.Id)
+    let message = sprintf "F# script processed queue message '%s'" json
+    output <- json
