@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -137,6 +139,14 @@ namespace WebJobs.Script.WebHost
             
             // Add our WebHost specific services
             config.AddService<IMetricsLogger>(_metricsLogger);
+
+            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
+            if (dashboardString != null)
+            {
+                var fastLogger = new FastLogger(dashboardString);
+                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+            }
+            config.DashboardConnectionString = null; // disable slow logging 
         }
 
         protected override void OnHostStarted()
