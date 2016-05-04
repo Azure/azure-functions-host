@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     internal class MemoryBlobStore
     {
         private readonly ConcurrentDictionary<string, Container> _items = new ConcurrentDictionary<string, Container>();
-        private ServiceProperties _properties = new ServiceProperties();
+        private ServiceProperties _properties = new ServiceProperties(new LoggingProperties(), new MetricsProperties(), new MetricsProperties(), new CorsProperties());
 
         public string AcquireLease(string containerName, string blobName, TimeSpan? leaseTime)
         {
@@ -192,9 +192,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 DefaultServiceVersion = properties.DefaultServiceVersion,
                 HourMetrics = Clone(properties.HourMetrics),
                 Logging = Clone(properties.Logging),
-#pragma warning disable 0618
-                Metrics = Clone(properties.Metrics),
-#pragma warning restore 0618
                 MinuteMetrics = Clone(properties.MinuteMetrics)
             };
         }
