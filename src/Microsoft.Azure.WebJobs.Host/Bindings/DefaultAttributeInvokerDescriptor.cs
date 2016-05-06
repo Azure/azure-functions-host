@@ -9,26 +9,19 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    // Default implementation of IAttributeInvokeDescriptor which can be operate on any attribute and 
-    // follows basic conventions with a [ResolveProperty]. 
-    // Assume any property without a [ResolveProperty] attribute is read-only. 
-    internal class DefaultAttributeInvokerDescriptor<TAttribute> : IAttributeInvokeDescriptor<TAttribute>
+    // Helpers for providing default behavior for an IAttributeInvokeDescriptor that 
+    // convert between a TAttribute and a string representation (invoke string). 
+    // Properties with [AutoResolve] are the interesting ones to serialize and deserialize. 
+    // Assume any property without a [AutoResolve] attribute is read-only and so doesn't need to be included in the invoke string. 
+    internal static class DefaultAttributeInvokerDescriptor<TAttribute>
         where TAttribute : Attribute
     {
-        private readonly TAttribute _source;
-
-        public DefaultAttributeInvokerDescriptor(TAttribute source)
-        {
-            _source = source;
-        }
-
-        public TAttribute FromInvokeString(string invokeString)
+        public static TAttribute FromInvokeString(AttributeCloner<TAttribute> cloner, string invokeString)
         {
             if (invokeString == null)
             {
                 throw new ArgumentNullException("invokeString");
             }
-            AttributeCloner<TAttribute> cloner = new AttributeCloner<TAttribute>(_source);
 
             // Instantiating new attributes can be tricky since sometimes the arg is to the ctor and sometimes
             // its a property setter. AttributeCloner already solves this, so use it here to do the actual attribute instantiation. 
@@ -47,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
-        public string ToInvokeString()
+        public static string ToInvokeString(TAttribute source)
         {
             Dictionary<string, string> vals = new Dictionary<string, string>();
             foreach (var prop in typeof(TAttribute).GetProperties(BindingFlags.Instance | BindingFlags.Public))
@@ -55,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 bool resolve = prop.GetCustomAttribute<AutoResolveAttribute>() != null;
                 if (resolve)
                 {
-                    var str = (string)prop.GetValue(_source);
+                    var str = (string)prop.GetValue(source);
                     if (!string.IsNullOrWhiteSpace(str))
                     {
                         vals[prop.Name] = str;

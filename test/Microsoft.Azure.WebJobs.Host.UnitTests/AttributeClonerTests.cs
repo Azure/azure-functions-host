@@ -48,7 +48,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             Assert.Null(a1 as IAttributeInvokeDescriptor<Attr1>); // Does not implement the interface
 
-            var cloner = new AttributeCloner<Attr1>(a1);
+            var nameResolver = new FakeNameResolver();
+            nameResolver._dict["test"] = "ABC";
+
+            var cloner = new AttributeCloner<Attr1>(a1, nameResolver);
             Attr1 attr2 = await cloner.ResolveFromInvokeString("xy");
 
             Assert.Equal("xy", attr2.Path);
@@ -169,6 +172,38 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             Assert.Equal("container/green.txt", attr2.BlobPath);
             Assert.Equal(a1.Access, attr2.Access);
+        }
+
+
+        // Malformed %% fail in ctor.  
+        // It's important that the failure comes from the attr cloner ctor because that means it       
+        // will occur during indexing time (ie, sooner than runtime). 
+        [Fact]
+        public void Fail_MalformedPath_MutableProperty()
+        {
+            Attr1 attr = new Attr1 { Path = "%bad" };
+
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr));            
+        }
+
+        [Fact]
+        public void Fail_MalformedPath_CtorArg()
+        {
+            var attr = new Attr2("%bad", "constant");
+
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr));
+        }
+
+        // Malformed %% fail in ctor.  
+        // It's important that the failure comes from the attr cloner ctor because that means it       
+        // will occur during indexing time (ie, sooner than runtime). 
+        [Fact]
+        public void Fail_MissingPath()
+        {
+            Attr1 attr = new Attr1 { Path = "%missing%" };
+
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr));
+
         }
 
         static BindingContext GetCtx(IReadOnlyDictionary<string,object> values)

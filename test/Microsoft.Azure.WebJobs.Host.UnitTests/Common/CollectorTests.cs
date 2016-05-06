@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Newtonsoft.Json;
 using System;
@@ -27,6 +28,49 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             [JsonIgnore]
             public string Bonus { get; set; }
+        }
+
+
+        public class ErrorProgram
+        {
+            // Malformed 
+            // Expect the 
+            public static void Func([FakeQueue(Prefix ="Error-{name%")] out string x)
+            {
+                x = "x";
+            }
+
+            [NoAutomaticTrigger]
+            public static void ValidMethod()
+            {
+            }
+        }
+
+        [Fact]
+        public void TestError()
+        {
+            JobHostConfiguration config = new JobHostConfiguration()
+            {
+                TypeLocator = new FakeTypeLocator(typeof(ErrorProgram))
+            };
+
+            FakeQueueClient client = new FakeQueueClient();
+            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
+            extensions.RegisterExtension<IExtensionConfigProvider>(client);
+
+            // Call 'ok' method which has no errors. Should still get the indexing errors from the other method. 
+            JobHost host = new JobHost(config);
+            var m = typeof(ErrorProgram).GetMethod("ValidMethod");
+
+            try
+            {
+                host.Call(m); // Will force indexing. 
+            }
+            catch (FunctionIndexingException e)
+            {
+                Assert.Equal("ErrorProgram.Func", e.MethodName);
+            }
+
         }
 
         // Various flavors that all bind down to an IAsyncCollector 
