@@ -61,8 +61,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             Debug.Assert(taskType.IsGenericType);
             Debug.Assert(!taskType.IsGenericTypeDefinition);
+
+            // verify that the generic type is a Task
             Type genericTypeDefinition = taskType.GetGenericTypeDefinition();
-            Debug.Assert(genericTypeDefinition == typeof(Task<>));
+            Debug.Assert(typeof(Task).IsAssignableFrom(genericTypeDefinition));
+
             return taskType.GetGenericArguments()[0];
         }
     }
