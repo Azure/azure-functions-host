@@ -400,6 +400,9 @@
     <None Include="TestScripts\FunctionGeneration\HttpTrigger-CSharp\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Invalid\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\DocumentDBIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -117,7 +117,7 @@ namespace WebJobs.Script.WebHost
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
-                settings.ScriptPath = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
+                settings.ScriptPath = "D:\\dev\\DevNights";
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
             }
