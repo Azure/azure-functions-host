@@ -21,11 +21,41 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _singletonManager = singletonManager;
         }
 
+        // Create a bindingContext. 
+        // parameters takes precedence over existingBindingData.
+        internal static BindingContext NewBindingContext(
+            ValueBindingContext context, 
+            IReadOnlyDictionary<string, object> existingBindingData,  
+            IDictionary<string, object> parameters)
+        {
+            // if bindingData was a mutable dictionary, we could just add it. 
+            // But since it's read-only, must create a new one. 
+            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            if (existingBindingData != null)
+            {
+                foreach (var kv in existingBindingData)
+                {
+                    bindingData[kv.Key] = kv.Value;
+                }
+            }
+            if (parameters != null)
+            {
+                foreach (var kv in parameters)
+                {
+                    bindingData[kv.Key] = kv.Value;
+                }
+            }
+
+            BindingContext bindingContext = new BindingContext(context, bindingData);
+            return bindingContext;
+        }
+
         public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context, IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
 
-            BindingContext bindingContext = new BindingContext(context, null);
+            // Supplied bindings can be direct parameters or route parameters. 
+            BindingContext bindingContext = NewBindingContext(context, null, parameters);
 
             // bind Singleton if specified
             SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: false);

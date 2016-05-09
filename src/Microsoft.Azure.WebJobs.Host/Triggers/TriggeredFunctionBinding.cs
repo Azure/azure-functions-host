@@ -66,8 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
                 bindingData = null;
             }
             valueProviders.Add(_triggerParameterName, triggerProvider);
-
-            BindingContext bindingContext = new BindingContext(context, bindingData);
+            BindingContext bindingContext = FunctionBinding.NewBindingContext(context, bindingData, parameters);
 
             // Bind Singleton if specified
             SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: true);
@@ -108,6 +107,6 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             }
 
             return valueProviders;
-        }
+        }      
     }
 }
