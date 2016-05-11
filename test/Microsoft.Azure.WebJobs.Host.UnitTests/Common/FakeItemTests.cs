@@ -31,9 +31,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         public class Functions
         {
-            public void F1([FakeItem(Index = "abc")] Item x)
+            public void ModifyInPlace([FakeItem(Index = "ModifyInPlace")] Item x)
             {
                 x.value++;
+            }
+
+            public void SetToNull([FakeItem(Index = "SetToNull")] out Item x)
+            {
+                x = null;
             }
         }
 
@@ -49,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
 
             var client = new FakeItemClient();
-            client._dict["abc"] = new Item
+            client._dict["ModifyInPlace"] = new Item
             {
                 value = 123
             };
@@ -58,13 +63,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             JobHost host = new JobHost(config);
 
-            var method = typeof(Functions).GetMethod("F1");
-            host.Call(method);
+            // With out parameter 
+            {
+                client._dict["SetToNull"] = new Item(); // should get ovewritten with null
 
-            var item = (Item)client._dict["abc"];
-            Assert.Equal(124, item.value);
+                var method = typeof(Functions).GetMethod("SetToNull");
+                host.Call(method);
+
+                var item = (Item)client._dict["SetToNull"];
+                Assert.Equal(null, item);
+            }
+
+            // Modifying in-place
+            {
+                var method = typeof(Functions).GetMethod("ModifyInPlace");
+                host.Call(method);
+
+                var item = (Item)client._dict["ModifyInPlace"];
+                Assert.Equal(124, item.value);
+            }         
         }
-
     }
 
     public class FakeItemClient : IExtensionConfigProvider
@@ -83,6 +101,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private Task<IValueBinder> BuildFromAttribute(FakeItemAttribute attr, Type parameterType)
         {
+            if (parameterType.IsByRef)
+            {
+                parameterType = parameterType.GetElementType();
+            }
+
             var type = typeof(MySpecialValueBinder<>).MakeGenericType(parameterType);
             var result = (IValueBinder) Activator.CreateInstance(type, this, attr.Index);
             return Task.FromResult<IValueBinder>(result);
