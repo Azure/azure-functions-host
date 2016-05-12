@@ -193,6 +193,10 @@
       <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.0.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0\System.Management.Automation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Net.Http.2.2.29\lib\net45\System.Net.Http.Extensions.dll</HintPath>
       <Private>True</Private>
@@ -261,7 +265,11 @@
     <Compile Include="Description\DotNet\ISharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\LocalSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\DirectSharedAssemblyProvider.cs" />
+    <Compile Include="Description\PowerShell\PowerShellConstants.cs" />
+    <Compile Include="Description\PowerShell\PowerShellFunctionDescriptorProvider.cs" />
+    <Compile Include="Description\PowerShell\PowerShellFunctionInvoker.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
+    <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\NameResolver.cs" />

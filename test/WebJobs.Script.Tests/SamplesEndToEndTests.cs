@@ -99,6 +99,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTriggerPowershell_Get_Succeeds()
+        {
+            string uri = "api/httptrigger-powershell?code=N5rUeecvsqN1Q1lDciR7P8kn3KkQtnNJVlK7H5bev0jO7r5DbAZgvA==&name=testuser";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello testuser", body.Trim());
+        }
+
+        [Fact]
+        public async Task HttpTriggerPowershellModules_Get_Succeeds()
+        {
+            string uri = "api/httptrigger-powershell-modules?code=8CTs65hqBcX3DVddZOGkPoksSaIDRck9byv1ATWbqJuOb9h8MrVZzA==&name=testuser";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.True(body.StartsWith("Hello testuser"));
+            Assert.True(body.Contains("March 2016"));
+        }
+
+        [Fact]
         public async Task GenericWebHook_CSharp_Post_Succeeds()
         {
             string uri = "api/webhook-generic-csharp?code=827bdzxhqy3xc62cxa2hmfsh6gxzhg30s5pi64tu";

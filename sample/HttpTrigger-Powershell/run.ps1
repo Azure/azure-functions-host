@@ -1,10 +1,10 @@
-if ($Env:req_query_name) 
+if ($req_query_name) 
 {
-	$res = "Hello $Env:req_query_name"
+	$message = "Hello $req_query_name"
 }
 else
 {
-	$res = "Please pass a name on the query string"
+	$message = "Please pass a name on the query string"
 }
 
-Out-File -NoNewline $Env:res -InputObject $res
+Out-File -Encoding Ascii $res -inputObject $message;
