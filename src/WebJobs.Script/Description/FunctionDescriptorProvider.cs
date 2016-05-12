@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public abstract class FunctionDescriptorProvider
     {
         internal const string DefaultInputParameterName = "input";
+        internal const string DefaultPowershellInputParameterName = "inputData";
         internal const string DefaultHttpInputParameterName = "req";
 
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
@@ -53,8 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                     else
                     {
-                        binding.Name = DefaultInputParameterName;
+                        ScriptType scriptType = functionMetadata.ScriptType;
+                        binding.Name = scriptType == ScriptType.Powershell ? DefaultPowershellInputParameterName : DefaultInputParameterName;
                     }
+                }
+                else if (functionMetadata.ScriptType == ScriptType.Powershell &&
+                         string.Equals(binding.Name, "input", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException("Input binding name 'input' is not allowed.  Consider renaming.");
                 }
             }
 
