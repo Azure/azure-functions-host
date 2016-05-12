@@ -250,6 +250,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell", "H
 		sample\HttpTrigger-Powershell\run.ps1 = sample\HttpTrigger-Powershell\run.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell-Modules", "HttpTrigger-Powershell-Modules", "{CDF316B9-AB36-42CB-859B-FCDB56E083B0}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Powershell-Modules\function.json = sample\HttpTrigger-Powershell-Modules\function.json
+		sample\HttpTrigger-Powershell-Modules\run.ps1 = sample\HttpTrigger-Powershell-Modules\run.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{A751A732-ACCE-4B1F-8244-8DD161619483}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1
+		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1
+		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -318,10 +331,12 @@ Global
 		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {7091449A-ADE8-47FE-985C-E9FADCCC49C4}
 		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C963B824-334A-4905-9AC7-2F373E5BC9CA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{A751A732-ACCE-4B1F-8244-8DD161619483} = {CDF316B9-AB36-42CB-859B-FCDB56E083B0}
 	EndGlobalSection
 EndGlobal

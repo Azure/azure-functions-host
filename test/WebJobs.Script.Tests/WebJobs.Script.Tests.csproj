@@ -202,6 +202,10 @@
       <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.0.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0\System.Management.Automation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Net.Http.2.2.29\lib\net45\System.Net.Http.Extensions.dll</HintPath>
@@ -272,6 +276,7 @@
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolverTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
+    <Compile Include="PowerShellInvokerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -279,7 +284,7 @@
     </Compile>
     <Compile Include="SamplesEndToEndTests.cs" />
     <Compile Include="PhpEndToEndTests.cs" />
-    <Compile Include="PowershellEndToEndTests.cs" />
+    <Compile Include="PowerShellEndToEndTests.cs" />
     <Compile Include="PythonEndToEndTests.cs" />
     <Compile Include="ScriptHostManagerTests.cs" />
     <Compile Include="ScriptHostTests.cs" />
@@ -288,6 +293,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestHelpers.cs" />
     <Compile Include="TestInvoker.cs" />
+    <Compile Include="TestScripts\PowerShellFunctionGenerationTests.cs" />
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebScriptHostManagerTests.cs" />
@@ -529,6 +535,30 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Php\QueueTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\Common\test.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\modules\Get-DateToday.psm1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\HttpTrigger-PowerShell\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\HttpTrigger-PowerShell\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\BlobTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Powershell\BlobTriggerToBlob\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Powershell\host.json">

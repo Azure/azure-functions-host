@@ -16,11 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class DocumentDBBinding : FunctionBinding
     {
-        private BindingDirection _bindingDirection;
         private readonly BindingTemplate _databaseNameBindingTemplate;
         private readonly BindingTemplate _collectionNameBindingTemplate;
         private readonly BindingTemplate _partitionKeyBindingTemplate;
         private readonly BindingTemplate _idBindingTemplate;
+        private BindingDirection _bindingDirection;
 
         public DocumentDBBinding(ScriptHostConfiguration config, DocumentDBBindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
