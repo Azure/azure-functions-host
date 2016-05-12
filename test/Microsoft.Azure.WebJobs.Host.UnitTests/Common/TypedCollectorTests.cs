@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             public static void T1(
                 [FakeQueue] IAsyncCollector<SpecialData> qAsync,
-                [FakeQueue(Prefix ="%appsetting1%")] ICollector<SpecialData> qSync,
+                [FakeQueue(Prefix = "%appsetting1%")] ICollector<SpecialData> qSync,
                 [FakeQueue] out SpecialData q2, // other bindings
                 [FakeQueue] out SpecialData[] q3, // other bindings
                 [FakeQueue] IAsyncCollector<DateTime> qStruct)
@@ -47,30 +47,44 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 q3 = new SpecialData[] {
                      new SpecialData { Message = "q3a" },
                      new SpecialData { Message = "q3b" }
-                };            
+                };    
+            }
+
+            public static void ObjectArray(
+              [FakeQueue] out object[] qobjc)
+            {
+                qobjc = new SpecialData[] {
+                      new SpecialData { Message = "1" },
+                      new SpecialData { Message = "2" },
+                };
             }
         }
 
         [Fact]
-        public void Test()
+        public void TestObjectArray()
         {
+            var client = new FakeQueueTypedClient();
             var nr = new DictNameResolver();
             nr.Add("appsetting1", "val1");
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(Functions)),
-                NameResolver = nr
-                
-            };
+            var host = TestHelpers.NewJobHost<Functions>(client, nr);
 
+            host.Call("ObjectArray");
+
+            Assert.Equal(2, client._items.Count);
+            Assert_IsSpecialData("1", client._items[0]);
+            Assert_IsSpecialData("2", client._items[1]);
+            client._items.Clear();
+        }            
+        
+        [Fact]
+        public void Test()
+        {
             var client = new FakeQueueTypedClient();
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
+            var nr = new DictNameResolver();
+            nr.Add("appsetting1", "val1");
+            var host = TestHelpers.NewJobHost<Functions>(client, nr);
 
-            JobHost host = new JobHost(config);
-
-            var method = typeof(Functions).GetMethod("T1");
-            host.Call(method);
+            host.Call("T1");
 
             Assert.Equal(6, client._items.Count);
 

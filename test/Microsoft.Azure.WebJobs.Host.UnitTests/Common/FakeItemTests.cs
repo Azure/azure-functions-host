@@ -47,28 +47,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             var nr = new DictNameResolver();
             nr.Add("appsetting1", "val1");
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(Functions)),
-                NameResolver = nr
-            };
 
             var client = new FakeItemClient();
             client._dict["ModifyInPlace"] = new Item
             {
                 value = 123
             };
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
-
-            JobHost host = new JobHost(config);
+            
+            var host = TestHelpers.NewJobHost<Functions>(nr, client);
 
             // With out parameter 
             {
                 client._dict["SetToNull"] = new Item(); // should get ovewritten with null
 
-                var method = typeof(Functions).GetMethod("SetToNull");
-                host.Call(method);
+                host.Call("SetToNull");
 
                 var item = (Item)client._dict["SetToNull"];
                 Assert.Equal(null, item);
@@ -76,8 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             // Modifying in-place
             {
-                var method = typeof(Functions).GetMethod("ModifyInPlace");
-                host.Call(method);
+                host.Call("ModifyInPlace");
 
                 var item = (Item)client._dict["ModifyInPlace"];
                 Assert.Equal(124, item.value);

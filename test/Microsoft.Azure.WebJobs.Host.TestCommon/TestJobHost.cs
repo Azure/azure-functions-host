@@ -35,5 +35,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         {
             return base.CallAsync(typeof(TProgram).GetMethod(methodName), arguments, cancellationToken);
         }
+
+        public Task CallAsync(string methodName, object arguments)
+        {
+            return base.CallAsync(typeof(TProgram).GetMethod(methodName), arguments);
+        }
     }
 }

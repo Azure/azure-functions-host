@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return new GenericAsyncCollectorBindingProvider<TAttribute, TConstructorArgument>(
-                _nameResolver, _converterManager, asyncCollectorType, constructorParameterBuilder);
+                _nameResolver,  asyncCollectorType, constructorParameterBuilder);
         }
 
         /// <summary>

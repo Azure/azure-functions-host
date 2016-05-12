@@ -221,17 +221,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             var func1 = new TFunction();
             activator.Add(func1);
 
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(TFunction)),
-                JobActivator = activator
-            };
-
             FakeQueueClient client = new FakeQueueClient();
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
 
-            JobHost host = new JobHost(config);
+            var host = TestHelpers.NewJobHost<TFunction>(client, activator);
 
             foreach (var item in items)
             {

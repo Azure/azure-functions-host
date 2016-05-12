@@ -49,22 +49,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public void TestError()
         {
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(ErrorProgram))
-            };
-
             FakeQueueClient client = new FakeQueueClient();
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
 
             // Call 'ok' method which has no errors. Should still get the indexing errors from the other method. 
-            JobHost host = new JobHost(config);
+            var host = TestHelpers.NewJobHost<ErrorProgram>(client);
             var m = typeof(ErrorProgram).GetMethod("ValidMethod");
 
             try
             {
-                host.Call(m); // Will force indexing. 
+                host.Call("ValidMethod"); // Will force indexing. 
             }
             catch (FunctionIndexingException e)
             {
@@ -187,16 +180,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public void Test()
         {
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(Functions))
-            };
-
             FakeQueueClient client = new FakeQueueClient();
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
-
-            JobHost host = new JobHost(config);            
+            var host = TestHelpers.NewJobHost<Functions>(client);
             
             var p7 = Invoke(host, client, "SendDirectClient");
             Assert.Equal(1, p7.Length);

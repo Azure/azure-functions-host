@@ -148,27 +148,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         private async Task<string> Invoke<TFunction>(object arguments) where TFunction : FunctionBase, new()
         {
             var activator = new FakeActivator();
-            JobHostConfiguration config = new JobHostConfiguration()
-            {
-                TypeLocator = new FakeTypeLocator(typeof(TFunction)),
-                JobActivator = activator,
-
-                // Pure in-memory, no storage. 
-                HostId = Guid.NewGuid().ToString("n"),
-                DashboardConnectionString = null,
-                StorageConnectionString = null
-            };
             TFunction testInstance = new TFunction();
             activator.Add(testInstance);
 
-            IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
             FakeExtClient client = new FakeExtClient();
-            extensions.RegisterExtension<IExtensionConfigProvider>(client);
 
-            JobHost host = new JobHost(config);
+            var host = TestHelpers.NewJobHost<TFunction>(activator, client); 
 
-            var method = typeof(TFunction).GetMethod("Func");
-            await host.CallAsync(method, arguments);
+            await host.CallAsync("Func", arguments);
 
             var x = testInstance._sb.ToString();
 

@@ -15,18 +15,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
-        private readonly IConverterManager _converterManager;
         private readonly Type _asyncCollectorType;
         private readonly Func<TAttribute, TConstructorArg> _constructorParameterBuilder;
 
         public GenericAsyncCollectorBindingProvider(
             INameResolver nameResolver,
-            IConverterManager converterManager,
             Type asyncCollectorType,
             Func<TAttribute, TConstructorArg> constructorParameterBuilder)
         {
             this._nameResolver = nameResolver;
-            this._converterManager = converterManager;
             this._asyncCollectorType = asyncCollectorType;
             this._constructorParameterBuilder = constructorParameterBuilder;
         }
@@ -52,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             Type typeMessage = TypeUtility.GetMessageTypeFromAsyncCollector(parameter.ParameterType);
 
             var wrapper = WrapperBase.New(
-                typeMessage, _asyncCollectorType, _constructorParameterBuilder, _nameResolver, _converterManager, parameter);
+                typeMessage, _asyncCollectorType, _constructorParameterBuilder, _nameResolver, parameter);
 
             IBinding binding = wrapper.CreateBinding();
             return Task.FromResult(binding);
@@ -65,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             protected Func<TAttribute, TConstructorArg> ConstructorParameterBuilder { get; private set; }
             protected INameResolver NameResolver { get; private set; }
-            protected IConverterManager ConverterManager { get; private set; }
             protected ParameterInfo Parameter { get; private set; }
             protected Type AsyncCollectorType { get; private set; }
 
@@ -76,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 Type asyncCollectorType,
                 Func<TAttribute, TConstructorArg> constructorParameterBuilder,
                 INameResolver nameResolver,
-                IConverterManager converterManager,
                 ParameterInfo parameter)
             {
                 // These inherit the generic args of the outer class. 
@@ -86,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
                 obj2.ConstructorParameterBuilder = constructorParameterBuilder;
                 obj2.NameResolver = nameResolver;
-                obj2.ConverterManager = converterManager;
                 obj2.Parameter = parameter;
                 obj2.AsyncCollectorType = asyncCollectorType;
 
@@ -116,11 +110,39 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 IBinding binding = BindingFactoryHelpers.BindCollector<TAttribute, TMessage>(
                 Parameter,
                 NameResolver,
-                ConverterManager,
+                new IdentityConverterManager(),
                 this.BuildFromAttribute, 
                 null);
 
                 return binding;
+            }
+        }
+
+        // "Empty" converter manager that only allows identity conversions. 
+        // The GenericAsyncCollector is already instantiated against the user type, so no conversions should be needed. 
+        private class IdentityConverterManager : IConverterManager
+        {
+            public void AddConverter<TSource, TDestination>(Func<TSource, TDestination> converter)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void AddConverter<TSource, TDestination, TAttribute1>(Func<TSource, TAttribute1, TDestination> converter) where TAttribute1 : Attribute
+            {
+                throw new NotImplementedException();
+            }
+
+            public Func<TSource, TAttribute1, TDestination> GetConverter<TSource, TDestination, TAttribute1>() where TAttribute1 : Attribute
+            {
+                if (typeof(TSource) != typeof(TDestination))
+                {
+                    return null;
+                }
+                return (src, attr) =>
+                {
+                    object obj = (object)src;
+                    return (TDestination)obj;
+                };
             }
         }
     } // end class 
