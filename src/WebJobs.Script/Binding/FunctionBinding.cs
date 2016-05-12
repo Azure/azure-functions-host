@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
@@ -11,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -141,48 +144,53 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             attributes.Add(attribute);
         }
 
-        internal static ICollection<JToken> ReadAsCollection(Stream valueStream)
+        internal static ICollection ReadAsCollection(object value)
         {
-            // first deserialize the byte stream as a string
-            byte[] bytes;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                valueStream.CopyTo(ms);
-                bytes = ms.ToArray();
-            }
-            string stringValue = Encoding.UTF8.GetString(bytes);
+            ICollection values = null;
 
-            JArray values = null;
+            if (value is Stream)
+            {
+                // first deserialize the stream as a string
+                byte[] bytes;
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    ((Stream)value).CopyTo(ms);
+                    bytes = ms.ToArray();
+                }
+                value = Encoding.UTF8.GetString(bytes);
+            }
+
+            string stringValue = value as string;
             if (Utility.IsJson(stringValue))
             {
                 // json values can either be singleton objects,
                 // or arrays of objects/values
                 JToken token = JToken.Parse(stringValue);
-                values = token as JArray;
                 if (token.Type != JTokenType.Array)
                 {
                     // not an array so create a new array and add
                     // the singleton
-                    values = new JArray();
-                    values.Add(token);
+                    values = new JArray() { token };
+                }
+                else
+                {
+                    values = (JArray)token;
                 }
             }
             else
             {
-                // not json, so add the singleton value to the array
-                values = new JArray();
-                values.Add(stringValue);
+                // not json, so add the singleton value
+                values = new Collection<object>() { value };
             }
 
             return values;
         }
 
-        internal static async Task BindAsyncCollectorAsync<T>(Stream stream, IBinderEx binder, RuntimeBindingContext runtimeContext)
+        internal static async Task BindAsyncCollectorAsync<T>(BindingContext context, RuntimeBindingContext runtimeContext)
         {
-            IAsyncCollector<T> collector = await binder.BindAsync<IAsyncCollector<T>>(runtimeContext);
+            IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(runtimeContext);
 
-            // first read the input stream as a collection
-            ICollection<JToken> values = ReadAsCollection(stream);
+            IEnumerable values = ReadAsCollection(context.Value);
 
             // convert values as necessary and add to the collector
             foreach (var value in values)
@@ -196,6 +204,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     converted = (JObject)value;
                 }
+                else if (typeof(T) == typeof(byte[]))
+                {
+                    byte[] bytes = value as byte[];
+                    if (bytes == null)
+                    {
+                        string stringValue = value.ToString();
+                        bytes = Encoding.UTF8.GetBytes(stringValue);
+                    }
+                    converted = bytes;
+                }
                 else
                 {
                     throw new ArgumentException("Unsupported collection type.");
@@ -205,16 +223,76 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        internal static async Task BindStreamAsync(Stream stream, FileAccess access, IBinderEx binder, RuntimeBindingContext runtimeContext)
+        internal static async Task BindStreamAsync(BindingContext context, FileAccess access, RuntimeBindingContext runtimeContext)
         {
-            Stream boundStream = await binder.BindAsync<Stream>(runtimeContext);
+            Stream stream = await context.Binder.BindAsync<Stream>(runtimeContext);
+
             if (access == FileAccess.Write)
             {
-                await stream.CopyToAsync(boundStream);
+                ConvertValueToStream(context.Value, stream);
             }
             else
             {
-                await boundStream.CopyToAsync(stream);
+                // Read the value into the context Value converting based on data type
+                object converted = null;
+                ConvertStreamToValue(stream, context.DataType, ref converted);
+                context.Value = converted;
+            }
+        }
+
+        public static void ConvertValueToStream(object value, Stream stream)
+        {
+            Stream valueStream = value as Stream;
+            if (valueStream == null)
+            {
+                // Convert the value to bytes and write it
+                // to the stream
+                byte[] bytes = null;
+                Type type = value.GetType();
+                if (type == typeof(byte[]))
+                {
+                    bytes = (byte[])value;
+                }
+                else if (type == typeof(string))
+                {
+                    bytes = Encoding.UTF8.GetBytes((string)value);
+                }
+
+                using (valueStream = new MemoryStream(bytes))
+                {
+                    valueStream.CopyTo(stream);
+                }
+            }
+            else
+            {
+                // value is already a stream, so copy it directly
+                valueStream.CopyTo(stream);
+            } 
+        }
+
+        public static void ConvertStreamToValue(Stream stream, DataType dataType, ref object converted)
+        {
+            switch (dataType)
+            {
+                case DataType.String:
+                    using (StreamReader sr = new StreamReader(stream))
+                    {
+                        converted = sr.ReadToEnd();
+                    }
+                    break;
+                case DataType.Binary:
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        stream.CopyTo(ms);
+                        converted = ms.ToArray();
+                    }
+                    break;
+                case DataType.Stream:
+                    // when the target value is a Stream, we copy the value
+                    // into the Stream passed in
+                    Stream targetStream = converted as Stream;
+                    stream.CopyTo(targetStream);
+                    break;
             }
         }
     }

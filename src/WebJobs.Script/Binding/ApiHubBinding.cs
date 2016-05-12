@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var attribute = new ApiHubFileAttribute(Key, boundBlobPath, Access);
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
-            await BindStreamAsync(context.Value, Access, context.Binder, runtimeContext);
+            await BindStreamAsync(context, Access, runtimeContext);
         }
     }
 }

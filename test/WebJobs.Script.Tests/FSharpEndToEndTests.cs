@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\FSharp")
+            public TestFixture() : base(@"TestScripts\FSharp", "fsharp")
             {
             }
         }

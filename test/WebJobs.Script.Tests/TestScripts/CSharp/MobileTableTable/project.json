@@ -1,9 +1,0 @@
-﻿{
-    "frameworks": {
-        ".NETFramework,Version=v4.6": {
-            "dependencies": {
-                "Microsoft.Azure.Mobile.Client": "2.0.1"
-            }
-        }
-    }
-}

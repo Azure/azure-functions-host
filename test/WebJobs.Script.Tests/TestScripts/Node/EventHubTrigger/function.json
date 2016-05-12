@@ -10,7 +10,7 @@
             "type": "blob",
             "name": "output",
             "direction": "out",
-            "path": "test-output/{id}"
+            "path": "test-output-node/{id}"
         }
     ]
 }

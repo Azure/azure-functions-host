@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public BindingDirection Direction { get; set; }
 
+        public DataType? DataType { get; set; }
+
         /// <summary>
         /// Gets a value indicating whether this binding is a trigger binding.
         /// </summary>

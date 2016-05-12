@@ -32,14 +32,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            HttpRequestMessage request = (HttpRequestMessage)context.Input;
+            HttpRequestMessage request = (HttpRequestMessage)context.TriggerValue;
 
-            string content;
-            using (StreamReader streamReader = new StreamReader(context.Value))
+            // TODO: Find a better place for this code
+            string content = string.Empty;
+            if (context.Value is Stream)
             {
-                content = await streamReader.ReadToEndAsync();
+                using (StreamReader streamReader = new StreamReader((Stream)context.Value))
+                {
+                    content = await streamReader.ReadToEndAsync();
+                }
             }
-
+            else if (context.Value is string)
+            {
+                content = (string)context.Value;
+            }
+            
             HttpResponseMessage response = null;
             try
             {

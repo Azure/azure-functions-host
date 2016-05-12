@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
 
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
-                await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
+                await BindAsyncCollectorAsync<string>(context, runtimeContext);
             }
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName), additionalAttributes);
                 IAsyncCollector<DynamicTableEntity> collector = await context.Binder.BindAsync<IAsyncCollector<DynamicTableEntity>>(runtimeContext);
-                ICollection<JToken> entities = ReadAsCollection(context.Value);
+                ICollection entities = ReadAsCollection(context.Value);
 
                 foreach (JObject entity in entities)
                 {
@@ -228,11 +229,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 if (json != null)
                 {
-                    // We're explicitly NOT disposing the StreamWriter because
-                    // we don't want to close the underlying Stream
-                    StreamWriter sw = new StreamWriter(context.Value);
-                    await sw.WriteAsync(json);
-                    sw.Flush();
+                    if (context.DataType == DataType.Stream)
+                    {
+                        // We're explicitly NOT disposing the StreamWriter because
+                        // we don't want to close the underlying Stream
+                        StreamWriter sw = new StreamWriter((Stream)context.Value);
+                        await sw.WriteAsync(json);
+                        sw.Flush();
+                    }
+                    else
+                    {
+                        context.Value = json;
+                    }
                 }
             }
         }

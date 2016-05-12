@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
-            await BindStreamAsync(context.Value, Access, context.Binder, runtimeContext);
+            await BindStreamAsync(context, Access, runtimeContext);
         }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)

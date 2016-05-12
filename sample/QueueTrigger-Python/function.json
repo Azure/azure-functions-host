@@ -10,9 +10,9 @@
             "name": "tableInput",
             "direction": "in",
             "tableName": "samples",
-            "partitionKey": "samples",
+            "partitionKey": "samples-python",
             "take": 5,
-            "filter": "status eq '0'"
+            "filter": "Status eq 0"
         },
         {
             "type": "blob",

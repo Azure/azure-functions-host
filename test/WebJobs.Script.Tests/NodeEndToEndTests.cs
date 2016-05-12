@@ -11,6 +11,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -29,6 +31,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task ServiceBusQueueTriggerToBlobTest()
         {
             await ServiceBusQueueTriggerToBlobTestImpl();
+        }
+
+        [Fact]
+        public async Task BlobTriggerToBlobTest()
+        {
+            TestHelpers.ClearFunctionLogs("BlobTriggerToBlob");
+
+            // write a binary blob
+            string name = Guid.NewGuid().ToString();
+            CloudBlockBlob inputBlob = Fixture.TestInputContainer.GetBlockBlobReference(name);
+            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
+            using (var stream = inputBlob.OpenWrite())
+            {
+                stream.Write(inputBytes, 0, inputBytes.Length);
+            }
+
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(name);
+            await TestHelpers.WaitForBlobAsync(resultBlob);
+
+            byte[] resultBytes;
+            using (var resultStream = resultBlob.OpenRead())
+            using (var ms = new MemoryStream())
+            {
+                resultStream.CopyTo(ms);
+                resultBytes = ms.ToArray();
+            }
+
+            JObject testResult = await GetFunctionTestResult("BlobTriggerToBlob");
+            Assert.Equal(inputBytes, resultBytes);
+            Assert.True((bool)testResult["isBuffer"]);
+            Assert.Equal(5, (int)testResult["length"]);
+        }
+
+        [Fact]
+        public async Task QueueTriggerByteArray()
+        {
+            TestHelpers.ClearFunctionLogs("QueueTriggerByteArray");
+
+            // write a binary queue message
+            byte[] inputBytes = new byte[] { 1, 2, 3 };
+            CloudQueueMessage message = new CloudQueueMessage(inputBytes);
+            var queue = Fixture.QueueClient.GetQueueReference("test-input-byte");
+            queue.CreateIfNotExists();
+            queue.Clear();
+            queue.AddMessage(message);
+
+            JObject testResult = await GetFunctionTestResult("QueueTriggerByteArray");
+            Assert.True((bool)testResult["isBuffer"]);
+            Assert.Equal(5, (int)testResult["length"]);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Post_ByteArray()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTriggerByteArray");
+
+            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptriggerbytearray")),
+                Method = HttpMethod.Post,
+                Content = new ByteArrayContent(inputBytes)
+            };
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerByteArray", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            JObject testResult = await GetFunctionTestResult("HttpTriggerByteArray");
+            Assert.True((bool)testResult["isBuffer"]);
+            Assert.Equal(5, (int)testResult["length"]);
         }
 
         /// <summary>
@@ -89,8 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Second, there's an EventHub trigger listener on the events which will write a blob. 
             // Once the blob is written, we know both sender & listener are working.
-            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testData);
-            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testData);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
 
             var payload = JsonConvert.DeserializeObject<Payload>(result);
             Assert.Equal(testData, payload.Id);
@@ -117,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Scenario_DoneCalledMultipleTimes_ErrorIsLogged()
         {
-            ClearFunctionLogs("Scenarios");
+            TestHelpers.ClearFunctionLogs("Scenarios");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -125,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("Scenarios", arguments);
 
-            var logs = await GetFunctionLogsAsync("Scenarios");
+            var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
 
             Assert.Equal(4, logs.Count);
             Assert.True(logs.Any(p => p.Contains("Function started")));
@@ -284,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node")
+            public TestFixture() : base(@"TestScripts\Node", "node")
             {
                 File.Delete(JobLogTestFileName);
             }

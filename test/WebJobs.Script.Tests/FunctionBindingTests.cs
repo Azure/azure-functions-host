@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Moq;
@@ -33,9 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string json = values.ToString();
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            MemoryStream ms = new MemoryStream(bytes);
-
             var results = new JArray();
             var collectorMock = new Mock<IAsyncCollector<JObject>>(MockBehavior.Strict);
             collectorMock.Setup(p => p.AddAsync(It.IsAny<JObject>(), CancellationToken.None))
@@ -46,10 +42,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var binderMock = new Mock<IBinderEx>(MockBehavior.Strict);
             QueueAttribute attribute = new QueueAttribute("test");
-            RuntimeBindingContext context = new RuntimeBindingContext(attribute);
-            binderMock.Setup(p => p.BindAsync<IAsyncCollector<JObject>>(context, CancellationToken.None)).ReturnsAsync(collectorMock.Object);
+            RuntimeBindingContext runtimeBindingContext = new RuntimeBindingContext(attribute);
+            binderMock.Setup(p => p.BindAsync<IAsyncCollector<JObject>>(runtimeBindingContext, CancellationToken.None)).ReturnsAsync(collectorMock.Object);
 
-            await FunctionBinding.BindAsyncCollectorAsync<JObject>(ms, binderMock.Object, context);
+            BindingContext bindingContext = new BindingContext
+            {
+                Binder = binderMock.Object,
+                Value = json
+            };
+
+            await FunctionBinding.BindAsyncCollectorAsync<JObject>(bindingContext, runtimeBindingContext);
 
             Assert.Equal(3, results.Count);
             for (int i = 0; i < 3; i++)
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var result = FunctionBinding.ReadAsCollection(ms).ToArray();
+            var result = FunctionBinding.ReadAsCollection(ms).Cast<JObject>().ToArray();
 
             Assert.Equal(3, result.Length);
             for (int i = 0; i < 3; i++)
@@ -106,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var result = FunctionBinding.ReadAsCollection(ms).ToArray();
+            var result = FunctionBinding.ReadAsCollection(ms).Cast<JObject>().ToArray();
 
             Assert.Equal(1, result.Length);
             jsonObject = (JObject)result[0];
@@ -127,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var collection = FunctionBinding.ReadAsCollection(ms).ToArray();
+            var collection = FunctionBinding.ReadAsCollection(ms).Cast<JValue>().ToArray();
 
             Assert.Equal(3, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);
@@ -141,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes("Value1");
             MemoryStream ms = new MemoryStream(bytes);
 
-            var collection = FunctionBinding.ReadAsCollection(ms).ToArray();
+            var collection = FunctionBinding.ReadAsCollection(ms).Cast<string>().ToArray();
 
             Assert.Equal(1, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);

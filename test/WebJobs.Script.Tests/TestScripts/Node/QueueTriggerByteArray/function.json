@@ -1,0 +1,16 @@
+﻿{
+  "bindings": [
+    {
+        "type": "queueTrigger",
+        "direction": "in",
+        "dataType": "binary",
+        "queueName": "test-input-byte"
+    },
+    {
+        "type": "queue",
+        "name": "output",
+        "direction": "out",
+        "queueName": "test-input-byte"
+    }
+  ]
+}

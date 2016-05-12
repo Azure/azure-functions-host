@@ -4,11 +4,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
+using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -21,12 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private CloudQueueClient _queueClient;
         private CloudBlobClient _blobClient;
         private CloudTableClient _tableClient;
+        private string _testId;
 
-        protected EndToEndTestFixture(string rootPath)
+        protected EndToEndTestFixture(string rootPath, string testId)
         {
+            _testId = testId;
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            _queueClient = storageAccount.CreateCloudQueueClient();
+            QueueClient = _queueClient = storageAccount.CreateCloudQueueClient();
             _blobClient = storageAccount.CreateCloudBlobClient();
             _tableClient = storageAccount.CreateCloudTableClient();
 
@@ -40,31 +39,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileLoggingEnabled = true
             };
 
-            HostManager = new ScriptHostManager(config);
-
-            Thread t = new Thread(_ =>
-            {
-                HostManager.RunAndBlock();
-            });
-            t.Start();
-
-            TestHelpers.Await(() => HostManager.IsRunning).Wait();
+            Host = ScriptHost.Create(config);
+            Host.Start();
         }
 
         public TestTraceWriter TraceWriter { get; private set; }
 
-        public CloudBlobContainer TestContainer { get; private set; }
+        public CloudBlobContainer TestInputContainer { get; private set; }
+
+        public CloudBlobContainer TestOutputContainer { get; private set; }
+
+        public CloudQueueClient QueueClient { get; private set; }
+
+        public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
         public CloudQueue TestQueue { get; private set; }
 
         public CloudTable TestTable { get; private set; }
 
-        public ScriptHost Host
-        {
-            get { return HostManager.Instance; }
-        }
-
-        public ScriptHostManager HostManager { get; private set; }
+        public ScriptHost Host { get; private set; }
 
         public CloudQueue GetNewQueue(string queueName)
         {
@@ -76,12 +69,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private void CreateTestStorageEntities()
         {
-            TestQueue = _queueClient.GetQueueReference("test-input");
+            TestQueue = _queueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
             TestQueue.CreateIfNotExists();
             TestQueue.Clear();
 
-            TestContainer = _blobClient.GetContainerReference("test-output");
-            TestContainer.CreateIfNotExists();
+            TestInputContainer = _blobClient.GetContainerReference(string.Format("test-input-{0}", _testId));
+            TestInputContainer.CreateIfNotExists();
+
+            TestOutputContainer = _blobClient.GetContainerReference(string.Format("test-output-{0}", _testId));
+            TestOutputContainer.CreateIfNotExists();
 
             TestTable = _tableClient.GetTableReference("test");
             TestTable.CreateIfNotExists();
@@ -102,12 +98,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 });
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
             TestTable.ExecuteBatch(batch);
+
+            string serviceBusQueueName = string.Format("test-input-{0}", _testId);
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+
+            namespaceManager.DeleteQueue(serviceBusQueueName);
+            namespaceManager.CreateQueue(serviceBusQueueName);
+
+            ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
 
         public void Dispose()
         {
-            HostManager.Stop();
-            HostManager.Dispose();
+            Host.Stop();
+            Host.Dispose();
+            ServiceBusQueueClient.Close();
         }
 
         private void DeleteEntities(string partition)

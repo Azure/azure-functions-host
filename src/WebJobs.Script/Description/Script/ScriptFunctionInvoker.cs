@@ -160,6 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (triggerParameterType == typeof(HttpRequestMessage))
             {
                 HttpRequestMessage request = (HttpRequestMessage)input;
+                environmentVariables["REQ_METHOD"] = request.Method.ToString();
+
                 Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
                 foreach (var queryParam in queryParams)
                 {
@@ -221,6 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             Binder = binder,
                             BindingData = bindingData,
+                            DataType = DataType.Stream,
                             Value = stream
                         };
                         await inputBinding.BindAsync(bindingContext);
@@ -250,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             BindingContext bindingContext = new BindingContext
                             {
-                                Input = input,
+                                TriggerValue = input,
                                 Binder = binder,
                                 BindingData = bindingData,
                                 Value = stream

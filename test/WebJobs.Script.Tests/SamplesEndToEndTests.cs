@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
             // wait for completion
-            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
             Assert.Equal("All systems are normal :)", result);
         }
 
@@ -192,10 +193,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // wait for function to execute and produce its result blob
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
             jsonObject = JObject.Parse(result);
             Assert.Equal(id, (string)jsonObject["id"]);
+        }
+
+        [Fact]
+        public async Task QueueTriggerPowershell_Succeeds()
+        {
+            // write the input message
+            CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-powershell");
+            string id = Guid.NewGuid().ToString();
+            JObject jsonObject = new JObject
+            {
+                { "id", id }
+            };
+            var message = new CloudQueueMessage(jsonObject.ToString(Formatting.None));
+            await inputQueue.AddMessageAsync(message);
+
+            // wait for function to execute and produce its result entity
+            CloudTable table = _fixture.TableClient.GetTableReference("samples");
+            TableOperation operation = TableOperation.Retrieve("samples-powershell", id);
+            TableResult result = null;
+            await TestHelpers.Await(() =>
+            {
+                result = table.Execute(operation);
+                return result != null && result.HttpStatusCode == 200;
+            });
+
+            DynamicTableEntity entity = (DynamicTableEntity)result.Result;
+            Assert.Equal(2, entity.Properties.Count);
+            string title = entity.Properties["Title"].StringValue;
+            Assert.Equal(string.Format("Powershell Table Entity for message {0}", id), title);
+        }
+
+        [Fact]
+        public async Task QueueTriggerPython_Succeeds()
+        {
+            TestHelpers.ClearFunctionLogs("QueueTrigger-Python");
+
+            // write the input message
+            CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-python");
+            string id = Guid.NewGuid().ToString();
+            JObject jsonObject = new JObject
+            {
+                { "id", id }
+            };
+            var message = new CloudQueueMessage(jsonObject.ToString(Formatting.None));
+            await inputQueue.AddMessageAsync(message);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            jsonObject = JObject.Parse(result);
+            Assert.Equal(id, (string)jsonObject["id"]);
+
+            // verify the function output
+            var logs = await TestHelpers.GetFunctionLogsAsync("QueueTrigger-Python");
+            int idx = logs.IndexOf("Read 5 Table entities");
+            for (int i = idx + 1; i < 5; i++)
+            {
+                string json = logs[i];
+                JObject entity = JObject.Parse(json);
+                Assert.Equal("samples-python", entity["PartitionKey"]);
+                Assert.Equal(0, (int)entity["Status"]);
+            }
         }
 
         [Fact]
@@ -211,13 +276,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // wait for function to execute and produce its result blob
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(blobName);
-            string result = await TestHelpers.WaitForBlobAsync(outputBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
             // verify results
             Assert.Equal(testData, result.Trim());
         }
 
-        public class TestFixture
+        public class TestFixture : IDisposable
         {
             public TestFixture()
             {
@@ -232,23 +297,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
                 WebApiConfig.Register(config, settings);
 
-                HttpServer server = new HttpServer(config);
-                this.HttpClient = new HttpClient(server);
+                HttpServer = new HttpServer(config);
+                this.HttpClient = new HttpClient(HttpServer);
                 this.HttpClient.BaseAddress = new Uri("https://localhost/");
 
                 string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("Storage");
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                 BlobClient = storageAccount.CreateCloudBlobClient();
                 QueueClient = storageAccount.CreateCloudQueueClient();
+                TableClient = storageAccount.CreateCloudTableClient();
+
+                var table = TableClient.GetTableReference("samples");
+                table.CreateIfNotExists();
+
+                var batch = new TableBatchOperation();
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "1", Title = "Test Entity 1", Status = 0 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "2", Title = "Test Entity 2", Status = 0 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "3", Title = "Test Entity 3", Status = 1 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "4", Title = "Test Entity 4", Status = 0 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "5", Title = "Test Entity 5", Status = 0 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "6", Title = "Test Entity 6", Status = 0 });
+                batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "7", Title = "Test Entity 7", Status = 0 });
+                table.ExecuteBatch(batch);
 
                 WaitForHost();
             }
+
+            public CloudTableClient TableClient { get; set; }
 
             public CloudBlobClient BlobClient { get; set; }
 
             public CloudQueueClient QueueClient { get; set; }
 
             public HttpClient HttpClient { get; set; }
+
+            public HttpServer HttpServer { get; set; }
 
             private void WaitForHost()
             {
@@ -264,6 +347,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 HttpResponseMessage response = this.HttpClient.SendAsync(request).Result;
                 return response.StatusCode == HttpStatusCode.NoContent;
+            }
+
+            public void Dispose()
+            {
+                if (HttpServer != null)
+                {
+                    HttpServer.Dispose();
+                }
+            }
+
+            private class TestEntity : TableEntity
+            {
+                public string Title { get; set; }
+                public int Status { get; set; }
             }
         }
     }

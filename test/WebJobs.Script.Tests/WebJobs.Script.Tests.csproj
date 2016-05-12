@@ -334,9 +334,6 @@
     <None Include="TestScripts\CSharp\NotificationHubOutNotification\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\CSharp\NotificationHubOutNotification\project.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="TestScripts\CSharp\NotificationHubOutNotification\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -357,9 +354,6 @@
     </None>
     <None Include="TestScripts\CSharp\MobileTableTable\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="TestScripts\CSharp\MobileTableTable\project.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\CSharp\MobileTableTable\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -400,7 +394,13 @@
     <None Include="TestScripts\FunctionGeneration\HttpTrigger-CSharp\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\BlobTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\DocumentDBIn\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Node\HttpTriggerByteArray\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Node\MobileTableIn\function.json">
@@ -430,9 +430,21 @@
     <None Include="TestScripts\Node\ManualTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\QueueTriggerByteArray\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="TestScripts\Node\BlobTriggerToBlob\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\Node\HttpTriggerByteArray\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\Node\QueueTriggerByteArray\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="TestScripts\Node\Scenarios\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

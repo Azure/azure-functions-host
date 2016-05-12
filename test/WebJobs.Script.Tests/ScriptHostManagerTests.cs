@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             content = content.Replace(prev, name);
             File.WriteAllText(manifestPath, content);
 
-            var blob = fixture.TestContainer.GetBlockBlobReference(name);
+            var blob = fixture.TestOutputContainer.GetBlockBlobReference(name);
             blob.DeleteIfExists();
             return blob;
         }

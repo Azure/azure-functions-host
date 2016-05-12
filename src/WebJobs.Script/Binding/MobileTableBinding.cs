@@ -77,19 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             if (Access == FileAccess.Read && _bindingDirection == BindingDirection.In)
             {
-                JObject input = await context.Binder.BindAsync<JObject>(runtimeContext);
-                if (input != null)
-                {
-                    byte[] byteArray = Encoding.UTF8.GetBytes(input.ToString());
-                    using (MemoryStream stream = new MemoryStream(byteArray))
-                    {
-                        stream.CopyTo(context.Value);
-                    }
-                }
+                context.Value = await context.Binder.BindAsync<JObject>(runtimeContext);
             }
             else if (Access == FileAccess.Write && _bindingDirection == BindingDirection.Out)
             {
-                await BindAsyncCollectorAsync<JObject>(context.Value, context.Binder, runtimeContext);
+                await BindAsyncCollectorAsync<JObject>(context, runtimeContext);
             }
         }
     }

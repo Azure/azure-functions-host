@@ -10,7 +10,7 @@
             "type": "blob",
             "name": "output",
             "direction": "out",
-            "path": "test-output/teste2e"
+            "path": "test-output-csharp/teste2e"
         }
     ]
 }

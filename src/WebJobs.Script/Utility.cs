@@ -86,6 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsJson(string input)
         {
+            if (string.IsNullOrEmpty(input))
+            {
+                return false;
+            }
+
             input = input.Trim();
             return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
                 || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));

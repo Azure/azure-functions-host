@@ -2,13 +2,13 @@
     "bindings": [
         {
             "type": "queueTrigger",
-            "queueName": "test-input",
+            "queueName": "test-input-csharp",
             "direction": "in"
         },
         {
             "type": "blob",
             "name": "output",
-            "path": "test-output/{id}",
+            "path": "test-output-csharp/{id}",
             "direction": "out"
         }
     ]

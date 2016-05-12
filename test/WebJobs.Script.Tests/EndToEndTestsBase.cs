@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
@@ -14,12 +13,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Extensions.MobileApps;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
-using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -41,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task TableInputTest()
         {
-            ClearFunctionLogs("TableIn");
+            TestHelpers.ClearFunctionLogs("TableIn");
 
             var args = new Dictionary<string, object>()
             {
@@ -49,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("TableIn", args);
 
-            var logs = await GetFunctionLogsAsync("TableIn");
+            var logs = await TestHelpers.GetFunctionLogsAsync("TableIn");
             string result = logs.Where(p => p.Contains("Result:")).Single();
             result = result.Substring(result.IndexOf('{'));
 
@@ -77,14 +73,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task QueueTriggerToBlobTest()
         {
+            TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");
+
             string id = Guid.NewGuid().ToString();
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
 
             await Fixture.TestQueue.AddMessageAsync(message);
 
-            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
             TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id));
@@ -123,18 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task ServiceBusQueueTriggerToBlobTestImpl()
         {
-            // ServiceBus tests need the following environment var:
-            // "AzureWebJobsServiceBus" -- the connection string for the ServiceBus account
-            string testQueueName = "test-input";
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
-
-            await namespaceManager.DeleteQueueAsync(testQueueName);
-            await namespaceManager.CreateQueueAsync(testQueueName);
-
-            QueueClient queueClient = QueueClient.CreateFromConnectionString(connectionString, testQueueName);
-
-            var resultBlob = Fixture.TestContainer.GetBlockBlobReference("completed");
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
@@ -151,13 +138,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 writer.Flush();
                 stream.Position = 0;
 
-                await queueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
+                await Fixture.ServiceBusQueueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
             }
 
-            queueClient.Close();
-
             // now wait for function to be invoked
-            string result = await TestHelpers.WaitForBlobAsync(resultBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
 
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
@@ -240,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string testBlob = "teste2e";
             string apiHubFile = "teste2e/test.txt";
-            var resultBlob = Fixture.TestContainer.GetBlockBlobReference(testBlob);
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testBlob);
             resultBlob.DeleteIfExists();
 
             var root = ItemFactory.Parse(apiHubConnectionString);
@@ -263,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Second, there's an ApiHubFile trigger which will write a blob. 
             // Once the blob is written, we know both sender & listener are working.
             // TODO: removing the BOM character from result.
-            string result = (await TestHelpers.WaitForBlobAsync(resultBlob)).Remove(0, 1);
+            string result = (await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob)).Remove(0, 1);
 
             Assert.Equal(testData, result);
         }
@@ -374,37 +359,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return traceEvent;
         }
 
-        protected void ClearFunctionLogs(string functionName)
+        protected async Task<JObject> GetFunctionTestResult(string functionName)
         {
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
-            foreach (var file in directory.GetFiles())
+            string logEntry = null;
+
+            await TestHelpers.Await(() =>
             {
-                file.Delete();
-            }
-        }
+                // search the logs for token "TestResult:" and parse the following JSON
+                var logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
+                if (logs != null)
+                {
+                    logEntry = logs.SingleOrDefault(p => p.Contains("TestResult:"));
+                }
+                return logEntry != null;
+            });
 
-        protected async Task<Collection<string>> GetFunctionLogsAsync(string functionName)
-        {
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            int idx = logEntry.IndexOf("{");
+            logEntry = logEntry.Substring(idx);
 
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
-            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
-
-            if (lastLogFile != null)
-            {
-                string[] logs = File.ReadAllLines(lastLogFile.FullName);
-                return new Collection<string>(logs.ToList());
-            }
-            else
-            {
-                throw new InvalidOperationException("No logs written!");
-            }
-        }
-
-        private DirectoryInfo GetFunctionLogFileDirectory(string functionName)
-        {
-            string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
-            return new DirectoryInfo(functionLogsPath);
+            return JObject.Parse(logEntry);
         }
     }
 }

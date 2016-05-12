@@ -1,0 +1,13 @@
+﻿{
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "direction": "in",
+      "dataType": "binary"
+    },
+    {
+        "type": "http",
+        "direction": "out"
+    }
+  ]
+}

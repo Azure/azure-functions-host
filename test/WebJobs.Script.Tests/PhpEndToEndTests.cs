@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Php")
+            public TestFixture() : base(@"TestScripts\Php", "php")
             {
             }
         }

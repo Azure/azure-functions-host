@@ -1,4 +1,6 @@
-﻿using System;
+﻿#r "..\..\..\..\Microsoft.Azure.NotificationHubs.dll"
+
+using System;
 using System.Collections.Generic;
 using Microsoft.Azure.NotificationHubs;
 

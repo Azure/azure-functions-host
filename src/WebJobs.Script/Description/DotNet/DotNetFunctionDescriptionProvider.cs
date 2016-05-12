@@ -174,6 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // We were unable to compile the function to get its signature,
             // setup the descriptor with the default parameters
+            methodAttributes.Clear();
             return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
         }
     }

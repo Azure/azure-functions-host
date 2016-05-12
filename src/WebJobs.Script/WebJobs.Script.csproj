@@ -253,6 +253,7 @@
     <Compile Include="Description\DotNet\ISharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\LocalSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\DirectSharedAssemblyProvider.cs" />
+    <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\AllowNameResolutionAttribute.cs" />

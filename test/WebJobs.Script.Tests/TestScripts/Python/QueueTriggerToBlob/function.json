@@ -3,13 +3,13 @@
         {
             "type": "queueTrigger",
             "direction": "in",
-            "queueName": "test-input"
+            "queueName": "test-input-python"
         },
         {
             "type": "blob",
             "name": "output",
             "direction": "out",
-            "path": "test-output/{id}"
+            "path": "test-output-python/{id}"
         }
     ]
 }

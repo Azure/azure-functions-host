@@ -3,15 +3,15 @@
         {
             "type": "queueTrigger",
             "direction": "in",
-            "queueName": "samples-powershell",
+            "queueName": "samples-powershell"
         },
         {
             "type": "table",
             "name": "output",
             "direction": "out",
             "tableName": "samples",
-            "partitionKey": "samples",
-            "rowKey": "%rand-guid%"
+            "partitionKey": "samples-powershell",
+            "rowKey": "{id}"
         }
     ]
 }

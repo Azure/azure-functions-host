@@ -84,9 +84,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Please pass a value on the query string", body.Trim());
         }
 
+        [Fact]
+        public async Task HttpTrigger_Post_String()
+        {
+            string testData = Guid.NewGuid().ToString();
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri("http://localhost/api/httptrigger"),
+                Method = HttpMethod.Post,
+                Content = new StringContent(testData)
+            };
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            string[] lines = body.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(string.Format("Body = {0}", testData), lines[0].Trim());
+            Assert.Equal("Please pass a value on the query string", lines[1].Trim());
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\WindowsBatch")
+            public TestFixture() : base(@"TestScripts\WindowsBatch", "batch")
             {
             }
         }

@@ -9,7 +9,7 @@
             "type": "blob",
             "name": "output",
             "direction": "out",
-            "path": "test-output/testblob"
+            "path": "test-output-node/testblob"
         }
     ]
 }

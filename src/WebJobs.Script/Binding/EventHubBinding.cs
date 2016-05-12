@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             var attribute = new ServiceBus.EventHubAttribute(eventHubName);
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
 
-            await BindAsyncCollectorAsync<string>(context.Value, context.Binder, runtimeContext);
+            await BindAsyncCollectorAsync<byte[]>(context, runtimeContext);
         }
     }
 }

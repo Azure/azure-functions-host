@@ -134,16 +134,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             switch (triggerMetadata.Type)
             {
                 case BindingType.QueueTrigger:
-                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata, parameterType ?? typeof(string));
+                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
+                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata, parameterType);
                     break;
                 case BindingType.EventHubTrigger:
-                    triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata, parameterType ?? typeof(string));
+                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
+                    triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata, parameterType);
                     break;
                 case BindingType.BlobTrigger:
                     triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata, parameterType ?? typeof(Stream));
                     break;
                 case BindingType.ServiceBusTrigger:
-                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata, parameterType ?? typeof(string));
+                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
+                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata, parameterType);
                     break;
                 case BindingType.TimerTrigger:
                     triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, parameterType ?? typeof(TimerInfo));
@@ -164,6 +167,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return triggerParameter;
         }
 
+        /// <summary>
+        /// If the specified parameter Type is null, attempt to default it based on
+        /// the DataType value specified.
+        /// </summary>
+        private static Type DefaultParameterType(Type parameterType, DataType? dataType)
+        {
+            if (parameterType == null)
+            {
+                parameterType = dataType == DataType.Binary ? typeof(byte[]) : typeof(string);
+            }
+
+            return parameterType;
+        }
+
         protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
         {
             if (functionMetadata.IsDisabled ||
@@ -179,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
 
-        protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType)
         {
             if (trigger == null)
             {
@@ -187,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             if (triggerParameterType == null)
             {
-                triggerParameterType = typeof(string);
+                throw new ArgumentNullException("triggerParameterType");
             }
 
             ConstructorInfo ctorInfo = typeof(ServiceBus.EventHubTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
@@ -202,16 +219,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType)
         {
             if (trigger == null)
             {
                 throw new ArgumentNullException("trigger");
             }
-
             if (triggerParameterType == null)
             {
-                triggerParameterType = typeof(string);
+                throw new ArgumentNullException("triggerParameterType");
             }
 
             ConstructorInfo ctorInfo = typeof(QueueTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
@@ -232,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseBlobTrigger(BlobBindingMetadata trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseBlobTrigger(BlobBindingMetadata trigger, Type triggerParameterType)
         {
             if (trigger == null)
             {
@@ -241,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (triggerParameterType == null)
             {
-                triggerParameterType = typeof(string);
+                throw new ArgumentNullException("triggerParameterType");
             }
 
             ConstructorInfo ctorInfo = typeof(BlobTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
@@ -262,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
 
-        protected ParameterDescriptor ParseServiceBusTrigger(ServiceBusBindingMetadata trigger, Type triggerParameterType = null)
+        protected ParameterDescriptor ParseServiceBusTrigger(ServiceBusBindingMetadata trigger, Type triggerParameterType)
         {
             if (trigger == null)
             {
@@ -271,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (triggerParameterType == null)
             {
-                triggerParameterType = typeof(string);
+                throw new ArgumentNullException("triggerParameterType");
             }
 
             string queueName = trigger.QueueName;
