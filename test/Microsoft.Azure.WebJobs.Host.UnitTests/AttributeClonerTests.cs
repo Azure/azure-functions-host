@@ -104,18 +104,23 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public async Task NameResolver()
         {
-            Attr1 a1 = new Attr1 { Path = "x%appsetting%y" };
+            Attr1 a1 = new Attr1 { Path = "x%appsetting%y-{k}" };
 
-            var nameResolver = new FakeNameResolver();
-            nameResolver._dict["appsetting"] = "ABC";
-
-            Dictionary<string, object> values = new Dictionary<string, object>();
-            var ctx = GetCtx(values);
-
+            var nameResolver = new FakeNameResolver().Add("appsetting", "ABC");
             var cloner = new AttributeCloner<Attr1>(a1, nameResolver);
+
+            // Get the attribute with %% resolved (happens at indexing time), but not {} (not resolved until runtime) 
+            var attrPre = cloner.GetNameResolvedAttribute();
+            Assert.Equal("xABCy-{k}", attrPre.Path);
+
+            Dictionary<string, object> values = new Dictionary<string, object>()
+            {
+                { "k", "v" }
+            };
+            var ctx = GetCtx(values);
             var attr2 = await cloner.ResolveFromBindingData(ctx);
 
-            Assert.Equal("xABCy", attr2.Path);
+            Assert.Equal("xABCy-v", attr2.Path);
         }
 
         // Easy case - default ctor and all settable properties. 

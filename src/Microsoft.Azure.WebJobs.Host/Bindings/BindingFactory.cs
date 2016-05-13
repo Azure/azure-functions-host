@@ -57,7 +57,21 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             return new FilteringBindingProvider(predicate, innerRule);
         }
-        
+
+        /// <summary>
+        /// Creating a validation predicate around another rule. 
+        /// The predicate is only run if the inner rule is applied. 
+        /// </summary>
+        /// <param name="validator">a validator function to invoke on the attribute before runtime. </param>
+        /// <param name="innerRule">Inner rule. </param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
+        public IBindingProvider AddValidator<TAttribute>(Action<TAttribute, Type> validator, IBindingProvider innerRule)
+            where TAttribute : Attribute
+        {
+            return new ValidatingWrapperBindingProvider<TAttribute>(validator, this._nameResolver, innerRule);
+        }
+
         /// <summary>
         /// Create a rule that returns an IValueBinder from a resolved attribute. IValueBinder will let you have an OnCompleted hook that 
         /// is invoked after the user function completes. 

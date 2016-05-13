@@ -141,7 +141,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
                 var msg2 = "No value for named parameter 'k2'.";
                 Assert.Equal(msg2, e.InnerException.InnerException.Message);
-            }            
+                return;
+            }
+            Assert.True(false, "Invoker should have failed");
         }
 
         // Helper to invoke the method with the given parameters

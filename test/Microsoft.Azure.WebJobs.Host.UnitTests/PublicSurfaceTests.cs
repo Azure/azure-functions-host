@@ -124,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingTemplateSource",
                 "TriggeredFunctionData",
                 "ExtensionConfigContext",
+                "ExtensionConfigContextExtensions",
                 "IQueueProcessorFactory",
                 "QueueProcessorFactoryContext",
                 "QueueProcessor",

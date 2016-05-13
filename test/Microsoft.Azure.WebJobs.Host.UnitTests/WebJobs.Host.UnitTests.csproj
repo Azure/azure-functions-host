@@ -148,6 +148,7 @@
     <Compile Include="Common\FakeItemTests.cs" />
     <Compile Include="Common\CollectorTests.cs" />
     <Compile Include="Common\TriggerTests.cs" />
+    <Compile Include="Common\ValidationTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="ConfigurationUtilityTests.cs" />
     <Compile Include="ConsoleTraceWriterTests.cs" />

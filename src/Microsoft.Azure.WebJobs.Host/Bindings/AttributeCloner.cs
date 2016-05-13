@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                             // Resolve %% once upfront. This ensures errors will occur during indexing time. 
                             str = nameResolver.ResolveWholeString(str);
                             BindingTemplate template = BindingTemplate.FromString(str);
-                            getArgFuncs[i] = (bindingData) => template.Bind(bindingData);
+                            getArgFuncs[i] = (bindingData) => TemplateBind(template, bindingData);
                         }
                     }
                 }
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                                     str = nameResolver.ResolveWholeString(str);
                                     BindingTemplate template = BindingTemplate.FromString(str);
 
-                                    setFunc = (newAttr, bindingData) => prop.SetValue(newAttr, template.Bind(bindingData));
+                                    setFunc = (newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(template, bindingData));
                                 }
                             }
 
@@ -137,6 +137,22 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 // error!!!
                 throw new InvalidOperationException("Can't figure out which ctor to call.");
             }
+        }
+
+        private static string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+        {
+            if (bindingData == null)
+            {
+                return template.Pattern;
+            }
+            return template.Bind(bindingData);
+        }
+
+        // Get a attribute with %% resolved, but not runtime {} resolved. 
+        public TAttribute GetNameResolvedAttribute()
+        {
+            TAttribute attr = ResolveFromBindings(null);
+            return attr;
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]

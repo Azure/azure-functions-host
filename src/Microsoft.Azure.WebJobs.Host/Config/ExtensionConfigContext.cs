@@ -23,5 +23,5 @@ namespace Microsoft.Azure.WebJobs.Host.Config
         /// The <see cref="JobHost"/> being configured.
         /// </summary>
         public JobHost Host { get; set; }
-    }
+    }    
 }

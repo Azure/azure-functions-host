@@ -16,12 +16,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     {
         private readonly IEnumerable<IBindingProvider> _providers;
 
-        private readonly Action<TAttribute> _validator;
+        private readonly Action<TAttribute, Type> _validator;
+        private readonly INameResolver _nameResolver;
 
-        public GenericCompositeBindingProvider(Action<TAttribute> validator, params IBindingProvider[] providers)
+        public GenericCompositeBindingProvider(Action<TAttribute, Type> validator, INameResolver nameResolver, params IBindingProvider[] providers)
         {
             _providers = providers;
             _validator = validator;
+            _nameResolver = nameResolver;
         }
 
         public GenericCompositeBindingProvider(IEnumerable<IBindingProvider> providers)
@@ -40,7 +42,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             if (_validator != null)
             {
-                _validator(attr);
+                // Expected this will throw on errors. 
+                Type parameterType = context.Parameter.ParameterType;
+                var cloner = new AttributeCloner<TAttribute>(attr, _nameResolver);
+                var attrNameResolved = cloner.GetNameResolvedAttribute();
+                _validator(attrNameResolved, parameterType);
             }
 
             foreach (IBindingProvider provider in _providers)

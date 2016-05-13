@@ -13,6 +13,13 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         {
             return _dict[name];
         }
+
+        // Fluid method for adding entries. 
+        public FakeNameResolver Add(string key, string value)
+        {
+            _dict[key] = value;
+            return this;
+        }
     }
 
 }
