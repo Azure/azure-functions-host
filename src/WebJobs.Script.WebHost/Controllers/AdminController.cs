@@ -19,7 +19,7 @@ namespace WebJobs.Script.WebHost.Controllers
     /// Controller responsible for handling all administrative requests, for
     /// example enqueueing function invocations, etc.
     /// </summary>
-    //[AuthorizationLevel(AuthorizationLevel.Admin)]
+    [AuthorizationLevel(AuthorizationLevel.Admin)]
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;

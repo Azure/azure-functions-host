@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("host.json is invalid and could not be parsed.", ex);
+                throw new JsonReaderException("host.json is invalid and could not be parsed.", ex);
             }
 
             ApplyConfiguration(hostConfig, ScriptConfig);
