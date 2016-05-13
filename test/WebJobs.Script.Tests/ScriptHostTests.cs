@@ -4,6 +4,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
@@ -14,6 +15,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class ScriptHostTests
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
+
+        [Fact]
+        public void Create_InvalidHostJson_ThrowsInformativeException()
+        {
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Invalid");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath
+            };
+
+            try
+            {
+                ScriptHost.Create(scriptConfig);
+            }
+            catch (Exception ex)
+            {
+                Assert.Contains("host.json is invalid", ex.Message.ToLower());
+            }
+        }
 
         [Fact]
         public void ApplyConfiguration_TopLevel()

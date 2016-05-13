@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.ServiceBus;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -104,7 +105,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string json = File.ReadAllText(hostConfigFilePath);
-            JObject hostConfig = JObject.Parse(json);
+
+            JObject hostConfig;
+            try
+            {
+                hostConfig = JObject.Parse(json);
+            }
+            catch (Exception ex)
+            {
+                throw new JsonReaderException("host.json is invalid and could not be parsed.", ex);
+            }
+
             ApplyConfiguration(hostConfig, ScriptConfig);
 
             // Set up a host level TraceMonitor that will receive notificaition
@@ -394,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // TODO: we need to define a json schema document and do
-                    // schema validation
+                    // schema validation and give more informative responses 
                     string json = File.ReadAllText(functionConfigPath);
                     JObject configMetadata = JObject.Parse(json);
                     FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
