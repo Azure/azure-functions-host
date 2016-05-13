@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {
             string code = GetFunctionSource(functionMetadata);
-            Script<object> script = CSharpScript.Create(code, options: _metadataResolver.FunctionScriptOptions, assemblyLoader: AssemblyLoader.Value);
+            Script<object> script = CSharpScript.Create(code, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
 
             Compilation compilation = GetScriptCompilation(script, true, functionMetadata);
 

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _id = Guid.NewGuid().ToString();
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
+        private readonly ConcurrentDictionary<string, string> _externalReferences = new ConcurrentDictionary<string, string>();
 
         private PackageAssemblyResolver _packageAssemblyResolver;
         private ScriptMetadataResolver _scriptResolver;
@@ -74,16 +76,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
         }
 
-        public ScriptOptions FunctionScriptOptions
+        public ScriptOptions CreateScriptOptions()
         {
-            get
-            {
-                return ScriptOptions.Default
-                        .WithMetadataResolver(this)
-                        .WithReferences(GetCompilationReferences())
-                        .WithImports(DefaultNamespaceImports)
-                        .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.ScriptFile)));
-            }
+            _externalReferences.Clear();
+
+            return ScriptOptions.Default
+                    .WithMetadataResolver(this)
+                    .WithReferences(GetCompilationReferences())
+                    .WithImports(DefaultNamespaceImports)
+                    .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.ScriptFile)));
         }
 
         /// <summary>
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>True if a match is found; otherwise, null.</returns>
         public bool TryGetPackageReference(string referenceName, out PackageReference package)
         {
-            if (_assemblyExtensions.Contains(Path.GetExtension(referenceName)))
+            if (HasValidAssemblyFileExtension(referenceName))
             {
                 referenceName = Path.GetFileNameWithoutExtension(referenceName);
             }
@@ -179,10 +180,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else
             {
-                // Treat the reference as a private assembly reference
-                string filePath = Path.Combine(_privateAssembliesPath, reference);
-                if (File.Exists(Path.Combine(filePath)))
+                bool externalReference = false;
+                string basePath = _privateAssembliesPath;
+                
+                // If this is a relative assembly reference, use the function directory as the base probing path
+                if (reference.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) > -1)
                 {
+                    basePath = Path.GetDirectoryName(_functionMetadata.ScriptFile);
+                    externalReference = true;
+                }
+
+                string filePath = Path.GetFullPath(Path.Combine(basePath, reference));
+                if (File.Exists(filePath))
+                {
+                    if (externalReference)
+                    {
+                        var assemblyName = AssemblyName.GetAssemblyName(filePath);
+                        _externalReferences.TryAdd(assemblyName.FullName, filePath);
+                    }
+
                     return ImmutableArray.Create(MetadataReference.CreateFromFile(filePath));
                 }
             }
@@ -194,7 +210,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Assembly assembly = null;
             string assemblyPath = null;
-            if (TryResolvePrivateAssembly(assemblyName, out assemblyPath) ||
+
+            if (_externalReferences.TryGetValue(assemblyName, out assemblyPath))
+            {
+                // When loading shared assemblies, load into the load-from context and load assembly dependencies
+                assembly = Assembly.LoadFrom(assemblyPath);
+            }
+            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath) ||
                 _packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
             {
                 // Use LoadFile here to load into the correct context

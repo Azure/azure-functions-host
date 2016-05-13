@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public interface IFunctionMetadataResolver
     {
-        ScriptOptions FunctionScriptOptions { get; }
+        ScriptOptions CreateScriptOptions();
 
         IReadOnlyCollection<string> GetCompilationReferences();
 

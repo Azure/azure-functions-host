@@ -1,5 +1,5 @@
 ﻿#r "System.Threading.Tasks"
-#r "..\..\..\..\Microsoft.WindowsAzure.Mobile.dll"
+#r "..\..\..\Microsoft.WindowsAzure.Mobile.dll"
 
 using System;
 using System.Threading.Tasks;
