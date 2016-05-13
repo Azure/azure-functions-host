@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTrigger_Post_Json()
+        public async Task HttpTrigger_Post_JsonObject()
         {
             string testData = Guid.NewGuid().ToString();
             JObject testObject = new JObject
@@ -307,8 +307,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
             Assert.Equal("object", (string)resultObject["reqBodyType"]);
+            Assert.False((bool)resultObject["reqBodyIsArray"]);
             Assert.Equal(testData, (string)resultObject["reqBody"]["testData"]);
             Assert.Equal(testData, (string)resultObject["bindingData"]["testData"]);
+            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Post_JsonArray()
+        {
+            string testData = Guid.NewGuid().ToString();
+            JArray subArray = new JArray()
+            {
+                new JObject()
+                {
+                    { "type", "Dog" },
+                    { "name", "Ruby" }
+                },
+                new JObject()
+                {
+                    { "type", "Cat" },
+                    { "name", "Roscoe" }
+                }
+            };
+            JArray testArray = new JArray()
+            {
+                new JObject()
+                {
+                    { "id", 1 },
+                    { "name", "Larry" }
+                },
+                new JObject()
+                {
+                    { "id", 2 },
+                    { "name", "Moe" }
+                },
+                new JObject()
+                {
+                    { "id", 3 },
+                    { "name", "Curly" },
+                    { "pets", subArray }
+                }
+            };
+
+            string rawBody = testArray.ToString();
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(rawBody)
+            };
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal("object", (string)resultObject["reqBodyType"]);
+            Assert.True((bool)resultObject["reqBodyIsArray"]);
+            JArray resultArray = (JArray)resultObject["reqBody"];
+            Assert.Equal(3, resultArray.Count);
+
+            JObject item = (JObject)resultArray[2];
+            Assert.Equal("Curly", (string)item["name"]);
+            resultArray = (JArray)item["pets"];
+            Assert.Equal(2, resultArray.Count);
+
             Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
             Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
