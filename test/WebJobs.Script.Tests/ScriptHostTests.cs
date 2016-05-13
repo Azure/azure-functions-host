@@ -5,7 +5,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -26,14 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            try
+            var ex = Assert.Throws<FormatException>(() =>
             {
                 ScriptHost.Create(scriptConfig);
-            }
-            catch (Exception ex)
-            {
-                Assert.Contains("host.json is invalid", ex.Message.ToLower());
-            }
+            });
+
+            Assert.Equal("Unable to parse host.json file.", ex.Message);
+            Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 5.", ex.InnerException.Message);
         }
 
         [Fact]

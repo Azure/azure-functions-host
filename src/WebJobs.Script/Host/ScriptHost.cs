@@ -111,9 +111,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 hostConfig = JObject.Parse(json);
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                throw new JsonReaderException("host.json is invalid and could not be parsed.", ex);
+                throw new FormatException("Unable to parse host.json file.", ex);
             }
 
             ApplyConfiguration(hostConfig, ScriptConfig);
