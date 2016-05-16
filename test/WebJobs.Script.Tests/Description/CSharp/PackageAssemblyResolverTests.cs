@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
-                Source = _lockFilePath, /*We just need the path from this*/
+                ScriptFile = _lockFilePath, /*We just need the path from this*/
                 ScriptType = ScriptType.CSharp
             };
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
-                Source = _lockFilePath, /*We just need the path from this*/
+                ScriptFile = _lockFilePath, /*We just need the path from this*/
                 ScriptType = ScriptType.CSharp
             };
 
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
-                Source = _lockFilePath, /*We just need the path from this*/
+                ScriptFile = _lockFilePath, /*We just need the path from this*/
                 ScriptType = ScriptType.CSharp
             };
 
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
-                Source = _lockFilePath, /*We just need the path from this*/
+                ScriptFile = _lockFilePath, /*We just need the path from this*/
                 ScriptType = ScriptType.CSharp
             };
 
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
-                Source = _lockFilePath, /*We just need the path from this*/
+                ScriptFile = _lockFilePath, /*We just need the path from this*/
                 ScriptType = ScriptType.CSharp
             };
 

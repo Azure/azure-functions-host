@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         .WithMetadataResolver(this)
                         .WithReferences(GetCompilationReferences())
                         .WithImports(DefaultNamespaceImports)
-                        .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.Source)));
+                        .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.ScriptFile)));
             }
         }
 
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The path to the function's private assembly folder</returns>
         private static string GetBinDirectory(FunctionMetadata metadata)
         {
-            string functionDirectory = Path.GetDirectoryName(metadata.Source);
+            string functionDirectory = Path.GetDirectoryName(metadata.ScriptFile);
             return Path.Combine(Path.GetFullPath(functionDirectory), DotNetConstants.PrivateAssembliesFolderName);
         }
 

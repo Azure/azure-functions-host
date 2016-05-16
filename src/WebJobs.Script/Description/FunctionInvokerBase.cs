@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
-                string functionDirectory = Path.GetDirectoryName(Metadata.Source);
+                string functionDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
                 _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
                 {
                     IncludeSubdirectories = true,

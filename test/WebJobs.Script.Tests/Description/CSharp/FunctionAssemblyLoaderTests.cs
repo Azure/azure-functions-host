@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
         {
             var resolver = new FunctionAssemblyLoader("c:\\");
 
-            var metadata1 = new FunctionMetadata { Name = "Test1", Source = @"c:\testroot\test1\test.tst" };
-            var metadata2 = new FunctionMetadata { Name = "Test2", Source = @"c:\testroot\test2\test.tst" };
+            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = @"c:\testroot\test1\test.tst" };
+            var metadata2 = new FunctionMetadata { Name = "Test2", ScriptFile = @"c:\testroot\test2\test.tst" };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             var mockResolver = new Mock<IFunctionMetadataResolver>();
@@ -43,8 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
         {
             var resolver = new FunctionAssemblyLoader("c:\\");
 
-            var metadata1 = new FunctionMetadata { Name = "Test1", Source = @"c:\testroot\test1\test.tst" };
-            var metadata2 = new FunctionMetadata { Name = "Test2", Source = @"c:\testroot\test2\test.tst" };
+            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = @"c:\testroot\test1\test.tst" };
+            var metadata2 = new FunctionMetadata { Name = "Test2", ScriptFile = @"c:\testroot\test2\test.tst" };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             var mockResolver = new Mock<IFunctionMetadataResolver>();

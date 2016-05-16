@@ -407,8 +407,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     // TODO: we need to define a json schema document and do
                     // schema validation and give more informative responses 
                     string json = File.ReadAllText(functionConfigPath);
-                    JObject configMetadata = JObject.Parse(json);
-                    FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, configMetadata);
+                    JObject functionConfig = JObject.Parse(json);
+                    FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, functionConfig);
 
                     // determine the primary script
                     string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionConfigFileName).ToArray();
@@ -417,42 +417,18 @@ namespace Microsoft.Azure.WebJobs.Script
                         AddFunctionError(functionName, "No function script files present.");
                         continue;
                     }
-                    else if (functionFiles.Length == 1)
+                    string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
+                    if (string.IsNullOrEmpty(scriptFile))
                     {
-                        // if there is only a single file, that file is primary
-                        metadata.Source = functionFiles[0];
+                        AddFunctionError(functionName, 
+                            "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                            "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
+                        continue;
                     }
-                    else
-                    {
-                        // if there is a "run" file, that file is primary
-                        string functionPrimary = null;
-                        functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run");
-                        if (string.IsNullOrEmpty(functionPrimary))
-                        {
-                            // for Node, any index.js file is primary
-                            functionPrimary = functionFiles.FirstOrDefault(p => Path.GetFileName(p).ToLowerInvariant() == "index.js");
-                            if (string.IsNullOrEmpty(functionPrimary))
-                            {
-                                // finally, if there is an explicit primary file indicated
-                                // in config, use it
-                                JToken token = configMetadata["source"];
-                                if (token != null)
-                                {
-                                    string sourceFileName = (string)token;
-                                    functionPrimary = Path.Combine(scriptDir, sourceFileName);
-                                }
-                            }
-                        }
+                    metadata.ScriptFile = scriptFile;
 
-                        if (string.IsNullOrEmpty(functionPrimary))
-                        {
-                            AddFunctionError(functionName, "Unable to determine primary function script.");
-                            continue;
-                        }
-                        metadata.Source = functionPrimary;
-                    }
-
-                    metadata.ScriptType = ParseScriptType(metadata.Source);
+                    // determine the script type based on the primary script file extension
+                    metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
 
                     metadatas.Add(metadata);
                 }
@@ -464,6 +440,40 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return ReadFunctions(metadatas, descriptorProviders);
+        }
+
+        /// <summary>
+        /// Determines which script should be considered the "primary" entry point script.
+        /// </summary>
+        internal static string DeterminePrimaryScriptFile(JObject functionConfig, string[] functionFiles)
+        {
+            if (functionFiles.Length == 1)
+            {
+                // if there is only a single file, that file is primary
+                return functionFiles[0];
+            }
+            else
+            {
+                // First see if there is an explicit primary file indicated
+                // in config. If so use that.
+                string functionPrimary = null;
+                string scriptFileName = (string)functionConfig["scriptFile"];
+                if (!string.IsNullOrEmpty(scriptFileName))
+                {
+                    functionPrimary = functionFiles.FirstOrDefault(p =>
+                        string.Compare(Path.GetFileName(p), scriptFileName, StringComparison.OrdinalIgnoreCase) == 0);
+                }
+                else
+                {
+                    // if there is a "run" file, that file is primary,
+                    // for Node, any index.js file is primary
+                    functionPrimary = functionFiles.FirstOrDefault(p => 
+                        Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
+                        Path.GetFileName(p).ToLowerInvariant() == "index.js");
+                }
+
+                return functionPrimary;
+            }
         }
 
         private static ScriptType ParseScriptType(string scriptFilePath)
@@ -729,7 +739,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // We use the directory name for the script rather than the full script path itself to ensure
                 // that we handle cases where the error might be coming from some other script (e.g. an NPM
                 // module) that is part of the function.
-                string absoluteScriptPath = Path.GetFullPath(currFunction.Metadata.Source).ToLowerInvariant();
+                string absoluteScriptPath = Path.GetFullPath(currFunction.Metadata.ScriptFile).ToLowerInvariant();
                 string functionDirectory = Path.GetDirectoryName(absoluteScriptPath);
                 if (errorStack.Contains(functionDirectory))
                 {

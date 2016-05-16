@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
             FunctionMetadata metadata = new FunctionMetadata();
             metadata.Name = "Test";
-            metadata.Source = Path.Combine(rootPath, @"Common\test.js");
+            metadata.ScriptFile = Path.Combine(rootPath, @"Common\test.js");
             metadata.Bindings.Add(trigger);
 
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();

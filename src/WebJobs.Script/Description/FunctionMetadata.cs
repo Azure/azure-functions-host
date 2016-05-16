@@ -16,7 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public string Name { get; set; }
 
-        public string Source { get; set; }
+        /// <summary>
+        /// The primary entry point for the function (to disambiguate if there are multiple
+        /// scripts in the function directory).
+        /// </summary>
+        public string ScriptFile { get; set; }
 
         public ScriptType ScriptType { get; set; }
 

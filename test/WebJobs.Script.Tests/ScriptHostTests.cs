@@ -15,6 +15,118 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
 
+        [Theory]
+        [InlineData("QUEUETriggER.py")]
+        [InlineData("queueTrigger.py")]
+        public void DeterminePrimaryScriptFile_MultipleFiles_SourceFileSpecified(string scriptFileName)
+        {
+            JObject functionConfig = new JObject()
+            {
+                { "scriptFile", scriptFileName }
+            };
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\queueTrigger.py",
+                @"c:\functions\helper.py",
+                @"c:\functions\test.txt"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention()
+        {
+            JObject functionConfig = new JObject()
+            {
+                { "scriptFile", "queueTrigger.py" }
+            };
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\run.py",
+                @"c:\functions\queueTrigger.py",
+                @"c:\functions\helper.py",
+                @"c:\functions\test.txt"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_NoClearPrimary_ReturnsNull()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\foo.py",
+                @"c:\functions\queueTrigger.py",
+                @"c:\functions\helper.py",
+                @"c:\functions\test.txt"
+            };
+            Assert.Null(ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles));
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_NoFiles_ReturnsNull()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[0];
+            Assert.Null(ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles));
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_RunFilePresent()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\Run.csx",
+                @"c:\functions\Helper.csx",
+                @"c:\functions\test.txt"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\Run.csx", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_SingleFile()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\Run.csx"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\Run.csx", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_RunTrumpsIndex()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\run.js",
+                @"c:\functions\index.js",
+                @"c:\functions\test.txt"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\run.js", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_IndexFilePresent()
+        {
+            JObject functionConfig = new JObject();
+            string[] functionFiles = new string[]
+            {
+                @"c:\functions\index.js",
+                @"c:\functions\test.txt"
+            };
+            string scriptFile = ScriptHost.DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            Assert.Equal(@"c:\functions\index.js", scriptFile);
+        }
+
         [Fact]
         public void Create_InvalidHostJson_ThrowsInformativeException()
         {
@@ -166,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata metadata = new FunctionMetadata
             {
                 Name = "SomeFunction",
-                Source = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
+                ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
             };
             FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
             functions.Add(function);
@@ -178,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata = new FunctionMetadata
             {
                 Name = "HttpTriggerNode",
-                Source = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
+                ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
             };
             function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
             functions.Add(function);

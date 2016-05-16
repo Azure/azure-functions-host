@@ -51,9 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             string code = null;
 
-            if (File.Exists(functionMetadata.Source))
+            if (File.Exists(functionMetadata.ScriptFile))
             {
-                code = File.ReadAllText(functionMetadata.Source);
+                code = File.ReadAllText(functionMetadata.ScriptFile);
             }
 
             return code ?? string.Empty;
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
                 var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
                   encoding: Encoding.UTF8,
-                  path: Path.GetFileName(functionMetadata.Source),
+                  path: Path.GetFileName(functionMetadata.ScriptFile),
                   options: new CSharpParseOptions(kind: SourceCodeKind.Script));
 
                 compilationOptimizationLevel = OptimizationLevel.Debug;

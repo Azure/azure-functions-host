@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             : base(host, functionMetadata)
         {
             _trigger = trigger;
-            string scriptFilePath = functionMetadata.Source.Replace('\\', '/');
+            string scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
