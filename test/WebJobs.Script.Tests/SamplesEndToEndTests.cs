@@ -182,6 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // write the input message
             CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-batch");
+            inputQueue.CreateIfNotExists();
+
             string id = Guid.NewGuid().ToString();
             JObject jsonObject = new JObject
             {
@@ -204,6 +206,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // write the input message
             CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-powershell");
+            inputQueue.CreateIfNotExists();
+
             string id = Guid.NewGuid().ToString();
             JObject jsonObject = new JObject
             {
@@ -235,6 +239,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // write the input message
             CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-python");
+            inputQueue.CreateIfNotExists();
+
             string id = Guid.NewGuid().ToString();
             JObject jsonObject = new JObject
             {
