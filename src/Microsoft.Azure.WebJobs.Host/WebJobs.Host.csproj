@@ -367,12 +367,13 @@
     <Compile Include="Bindings\BindingBase.cs" />
     <Compile Include="Bindings\BindingFactory.cs" />
     <Compile Include="Bindings\BindingProviders\AsyncCollectorWithConverterManagerBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\FilteringBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\GenericCompositeBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\GenericAsyncCollectorBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\ExactTypeBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\GenericItemBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\ItemBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\IBinderEx.cs" />

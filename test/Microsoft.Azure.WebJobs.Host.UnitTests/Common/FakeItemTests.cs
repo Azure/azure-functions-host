@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
             var bf = context.Config.BindingFactory;
 
-            var rule = bf.BindToGenericItem<FakeItemAttribute>(BuildFromAttribute);
+            var rule = bf.BindToGenericValueProvider<FakeItemAttribute>(BuildFromAttribute);
 
             extensions.RegisterBindingRules<FakeItemAttribute>(rule);
         }

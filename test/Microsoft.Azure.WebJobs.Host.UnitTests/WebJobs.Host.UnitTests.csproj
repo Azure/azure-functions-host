@@ -144,6 +144,8 @@
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
     <Compile Include="AttributeClonerTests.cs" />
+    <Compile Include="Common\BindingProviderFilterTests.cs" />
+    <Compile Include="Common\BindToGenericItemTests.cs" />
     <Compile Include="Common\HostCallTestsWithBindingData.cs" />
     <Compile Include="Common\FakeItemTests.cs" />
     <Compile Include="Common\CollectorTests.cs" />
