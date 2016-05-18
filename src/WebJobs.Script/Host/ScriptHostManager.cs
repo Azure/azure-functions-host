@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // then restart the host
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Error("A ScriptHost error occurred", ex);
+                        _traceWriter.Error("A ScriptHost error has occurred", ex);
                     }
 
                     // If a ScriptHost instance was created before the exception was thrown

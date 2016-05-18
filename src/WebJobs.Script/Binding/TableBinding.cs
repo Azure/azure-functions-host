@@ -229,17 +229,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             // any key values specified on the entity override any values
             // specified in the binding
-            string keyValue = (string)entity["partitionKey"];
-            if (!string.IsNullOrEmpty(keyValue))
+            JToken keyValue = null;
+            if (entity.TryGetValue("partitionKey", StringComparison.OrdinalIgnoreCase, out keyValue))
             {
-                partitionKey = Resolve(keyValue);
+                partitionKey = Resolve((string)keyValue);
                 entity.Remove("partitionKey");
             }
 
-            keyValue = (string)entity["rowKey"];
-            if (!string.IsNullOrEmpty(keyValue))
+            if (entity.TryGetValue("rowKey", StringComparison.OrdinalIgnoreCase, out keyValue))
             {
-                rowKey = Resolve(keyValue);
+                rowKey = Resolve((string)keyValue);
                 entity.Remove("rowKey");
             }
 

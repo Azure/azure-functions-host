@@ -689,7 +689,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // First, ensure that we've logged to the host log
             // Also ensure we flush immediately to ensure any buffered logs
             // are written
-            TraceWriter.Error("An ScriptHost error has occurred", exception);
+            TraceWriter.Error("A ScriptHost error has occurred", exception);
             TraceWriter.Flush();
 
             if (exception is FunctionInvocationException)
