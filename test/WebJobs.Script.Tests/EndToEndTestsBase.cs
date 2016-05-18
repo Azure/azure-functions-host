@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -68,6 +69,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, query.Count);
             Assert.Equal("003", (string)query[0]["RowKey"]);
             Assert.Equal("004", (string)query[1]["RowKey"]);
+        }
+
+        protected async Task TableOutputTest()
+        {
+            CloudTable table = Fixture.TableClient.GetTableReference("testoutput");
+            Fixture.DeleteEntities(table);
+
+            JObject item = new JObject()
+            {
+                { "partitionKey", "TestOutput" },
+                { "rowKey", 1 },
+                { "stringProp", "Mathew" },
+                { "intProp", 123 },
+                { "boolProp", true },
+                { "guidProp", Guid.NewGuid() },
+                { "floatProp", 68756.898 }
+            };
+
+            var args = new Dictionary<string, object>()
+            {
+                { "input", item.ToString() }
+            };
+            await Fixture.Host.CallAsync("TableOut", args);
+
+            // read the entities and verify schema
+            TableQuery tableQuery = new TableQuery();
+            var entities = table.ExecuteQuery(tableQuery).ToArray();
+            Assert.Equal(2, entities.Length);
+
+            foreach (var entity in entities)
+            {
+                Assert.Equal(EdmType.String, entity.Properties["stringProp"].PropertyType);
+                Assert.Equal(EdmType.Int32, entity.Properties["intProp"].PropertyType);
+                Assert.Equal(EdmType.Boolean, entity.Properties["boolProp"].PropertyType);
+
+                // Guids end up roundtripping as strings
+                Assert.Equal(EdmType.String, entity.Properties["guidProp"].PropertyType);
+
+                Assert.Equal(EdmType.Double, entity.Properties["floatProp"].PropertyType);
+            }
         }
 
         [Fact]

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection.Emit;
@@ -151,29 +150,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 foreach (JObject entity in entities)
                 {
-                    // any key values specified on the entity override any values
-                    // specified in the binding
-                    string keyValue = (string)entity["partitionKey"];
-                    if (!string.IsNullOrEmpty(keyValue))
-                    {
-                        boundPartitionKey = Resolve(keyValue);
-                        entity.Remove("partitionKey");
-                    }
-
-                    keyValue = (string)entity["rowKey"];
-                    if (!string.IsNullOrEmpty(keyValue))
-                    {
-                        boundRowKey = Resolve(keyValue);
-                        entity.Remove("rowKey");
-                    }
-
-                    DynamicTableEntity tableEntity = new DynamicTableEntity(boundPartitionKey, boundRowKey);
-                    foreach (JProperty property in entity.Properties())
-                    {
-                        EntityProperty entityProperty = EntityProperty.CreateEntityPropertyFromObject((object)property.Value);
-                        tableEntity.Properties.Add(property.Name, entityProperty);
-                    }
-
+                    // Here we're mapping from JObject to DynamicTableEntity because the Table binding doesn't support
+                    // a JObject binding. We enable that for the core Table binding in the future, which would allow
+                    // this code to go away.
+                    DynamicTableEntity tableEntity = CreateTableEntityFromJObject(boundPartitionKey, boundRowKey, entity);
                     await collector.AddAsync(tableEntity);
                 }
             }
@@ -242,6 +222,53 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         context.Value = json;
                     }
                 }
+            }
+        }
+
+        private DynamicTableEntity CreateTableEntityFromJObject(string partitionKey, string rowKey, JObject entity)
+        {
+            // any key values specified on the entity override any values
+            // specified in the binding
+            string keyValue = (string)entity["partitionKey"];
+            if (!string.IsNullOrEmpty(keyValue))
+            {
+                partitionKey = Resolve(keyValue);
+                entity.Remove("partitionKey");
+            }
+
+            keyValue = (string)entity["rowKey"];
+            if (!string.IsNullOrEmpty(keyValue))
+            {
+                rowKey = Resolve(keyValue);
+                entity.Remove("rowKey");
+            }
+
+            DynamicTableEntity tableEntity = new DynamicTableEntity(partitionKey, rowKey);
+            foreach (JProperty property in entity.Properties())
+            {
+                EntityProperty entityProperty = CreateEntityPropertyFromJProperty(property);
+                tableEntity.Properties.Add(property.Name, entityProperty);
+            }
+
+            return tableEntity;
+        }
+
+        private static EntityProperty CreateEntityPropertyFromJProperty(JProperty property)
+        {
+            switch (property.Value.Type)
+            {
+                case JTokenType.String:
+                    return EntityProperty.GeneratePropertyForString((string)property.Value);
+                case JTokenType.Integer:
+                    return EntityProperty.GeneratePropertyForInt((int)property.Value);
+                case JTokenType.Boolean:
+                    return EntityProperty.GeneratePropertyForBool((bool)property.Value);
+                case JTokenType.Guid:
+                    return EntityProperty.GeneratePropertyForGuid((Guid)property.Value);
+                case JTokenType.Float:
+                    return EntityProperty.GeneratePropertyForDouble((double)property.Value);
+                default:
+                    return EntityProperty.CreateEntityPropertyFromObject((object)property.Value);
             }
         }
 

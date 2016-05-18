@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private CloudQueueClient _queueClient;
         private CloudBlobClient _blobClient;
-        private CloudTableClient _tableClient;
         private string _testId;
 
         protected EndToEndTestFixture(string rootPath, string testId)
@@ -27,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = _queueClient = storageAccount.CreateCloudQueueClient();
             _blobClient = storageAccount.CreateCloudBlobClient();
-            _tableClient = storageAccount.CreateCloudTableClient();
+            TableClient = storageAccount.CreateCloudTableClient();
 
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
@@ -50,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public CloudBlobContainer TestOutputContainer { get; private set; }
 
         public CloudQueueClient QueueClient { get; private set; }
+
+        public CloudTableClient TableClient { get; private set; }
 
         public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
@@ -79,11 +80,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestOutputContainer = _blobClient.GetContainerReference(string.Format("test-output-{0}", _testId));
             TestOutputContainer.CreateIfNotExists();
 
-            TestTable = _tableClient.GetTableReference("test");
+            TestTable = TableClient.GetTableReference("test");
             TestTable.CreateIfNotExists();
 
-            DeleteEntities("AAA");
-            DeleteEntities("BBB");
+            DeleteEntities(TestTable, "AAA");
+            DeleteEntities(TestTable, "BBB");
 
             var batch = new TableBatchOperation();
             batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 });
@@ -116,18 +117,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ServiceBusQueueClient.Close();
         }
 
-        private void DeleteEntities(string partition)
+        public void DeleteEntities(CloudTable table, string partition = null)
         {
-            var batch = new TableBatchOperation();
-            var query = TestTable.CreateQuery<TestEntity>();
-            var entities = query.Execute().Where(p => p.PartitionKey == partition);
+            if (!table.Exists())
+            {
+                return;
+            }
+
+            TableQuery query = new TableQuery();
+            if (partition != null)
+            {
+                query.FilterString = string.Format("PartitionKey eq '{0}'", partition);
+            }
+
+            var entities = table.ExecuteQuery(query);
+
             if (entities.Any())
             {
+                var batch = new TableBatchOperation();
                 foreach (var entity in entities)
                 {
                     batch.Delete(entity);
                 }
-                TestTable.ExecuteBatch(batch);
+                table.ExecuteBatch(batch);
             }
         }
 
