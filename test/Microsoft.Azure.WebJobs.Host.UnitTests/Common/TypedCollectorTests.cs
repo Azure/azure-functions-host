@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
+
         [Fact]
         public void TestObjectArray()
         {
@@ -115,6 +116,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public List<object> _items;
         public string _prefix; // from attribute, to test attribute automatic resolution. 
 
+        public Func<FakeQueueAttribute, Type, bool> Filter;
+
         public FakeQueueTypedClient()
         {
             _items = new List<object>();
@@ -127,20 +130,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         void IExtensionConfigProvider.Initialize(ExtensionConfigContext context)
         {
-            INameResolver nameResolver = context.Config.GetService<INameResolver>();
-            IConverterManager cm = context.Config.GetService<IConverterManager>();
             // Don't add any converters. 
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
-
-            var bf = new BindingFactory(nameResolver, cm);
-
-            var ruleOutput = bf.BindToGenericAsyncCollector<FakeQueueAttribute, FakeQueueTypedClient>(
-                typeof(TypedAsyncCollector<>), (attr) => new FakeQueueTypedClient(this, attr.Prefix));
+            var bf = context.Config.BindingFactory;
+            var ruleOutput = bf.BindToGenericAsyncCollector<FakeQueueAttribute>(Builder, this.Filter);
 
             extensions.RegisterBindingRules<FakeQueueAttribute>(ruleOutput);
         }
 
+        private object Builder(FakeQueueAttribute attrResolved, Type typeMessage)
+        {
+            var client = new FakeQueueTypedClient(this, attrResolved.Prefix);
 
+            var t = typeof(TypedAsyncCollector<>).MakeGenericType(typeMessage);
+            var obj = Activator.CreateInstance(t, client);
+            return obj;
+        }
+
+        // Collector gets dynamically instantiated to match the 'core message' type of the user's parameter. 
         public class TypedAsyncCollector<T> : IAsyncCollector<T>
         {
             private readonly FakeQueueTypedClient _client;

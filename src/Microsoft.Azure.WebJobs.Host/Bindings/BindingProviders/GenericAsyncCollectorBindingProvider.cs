@@ -10,22 +10,27 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // Bind Attribute --> IAsyncCollector<TMessage>, where TMessage is determined by the  user parameter type.
     // This skips the converter manager and instead dynamically allocates a generic IAsyncCollector<TMessage>
     // where TMessage matches the user parameter type. 
-    internal class GenericAsyncCollectorBindingProvider<TAttribute, TConstructorArg> :
+    internal class GenericAsyncCollectorBindingProvider<TAttribute> :
         IBindingProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
-        private readonly Type _asyncCollectorType;
-        private readonly Func<TAttribute, TConstructorArg> _constructorParameterBuilder;
+        private readonly Func<TAttribute, Type, object> _builder;
+        private readonly Func<TAttribute, Type, bool> _filter;
 
         public GenericAsyncCollectorBindingProvider(
             INameResolver nameResolver,
-            Type asyncCollectorType,
-            Func<TAttribute, TConstructorArg> constructorParameterBuilder)
+            Func<TAttribute, Type, object> builder,
+            Func<TAttribute, Type, bool> filter)
         {
             this._nameResolver = nameResolver;
-            this._asyncCollectorType = asyncCollectorType;
-            this._constructorParameterBuilder = constructorParameterBuilder;
+            this._builder = builder;
+            this._filter = filter ?? DefaultFilter;          
+        }
+
+        private static bool DefaultFilter(TAttribute attribute, Type messageType)
+        {
+            return true;
         }
 
         // Called once per method definition. Very static. 
@@ -48,8 +53,18 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             // throws if can't infer the type. 
             Type typeMessage = TypeUtility.GetMessageTypeFromAsyncCollector(parameter.ParameterType);
 
+            // Apply filter 
+            var cloner = new AttributeCloner<TAttribute>(attribute, _nameResolver);
+            var attrNameResolved = cloner.GetNameResolvedAttribute();
+            bool canUse = _filter(attrNameResolved, typeMessage);
+
+            if (!canUse)
+            {
+                return Task.FromResult<IBinding>(null);
+            }
+
             var wrapper = WrapperBase.New(
-                typeMessage, _asyncCollectorType, _constructorParameterBuilder, _nameResolver, parameter);
+                typeMessage, _builder, _nameResolver, parameter);
 
             IBinding binding = wrapper.CreateBinding();
             return Task.FromResult(binding);
@@ -60,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // These inherit the generic args of the outer class. 
         private abstract class WrapperBase
         {
-            protected Func<TAttribute, TConstructorArg> ConstructorParameterBuilder { get; private set; }
+            protected Func<TAttribute, Type, object> Builder { get; set; }
             protected INameResolver NameResolver { get; private set; }
             protected ParameterInfo Parameter { get; private set; }
             protected Type AsyncCollectorType { get; private set; }
@@ -69,21 +84,18 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             internal static WrapperBase New(
                 Type typeMessage,
-                Type asyncCollectorType,
-                Func<TAttribute, TConstructorArg> constructorParameterBuilder,
+                Func<TAttribute, Type, object> builder,
                 INameResolver nameResolver,
                 ParameterInfo parameter)
             {
                 // These inherit the generic args of the outer class. 
-                var t = typeof(Wrapper<>).MakeGenericType(typeof(TAttribute), typeof(TConstructorArg), typeMessage);
+                var t = typeof(Wrapper<>).MakeGenericType(typeof(TAttribute), typeMessage);
                 var obj = Activator.CreateInstance(t);
                 var obj2 = (WrapperBase)obj;
 
-                obj2.ConstructorParameterBuilder = constructorParameterBuilder;
+                obj2.Builder = builder;
                 obj2.NameResolver = nameResolver;
                 obj2.Parameter = parameter;
-                obj2.AsyncCollectorType = asyncCollectorType;
-
                 return obj2;
             }
         }
@@ -93,14 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             // This is the builder function that gets passed to the core IAsyncCollector binders. 
             public IAsyncCollector<TMessage> BuildFromAttribute(TAttribute attribute)
             {
-                // Dynmically invoke this:
-                //   TConstructorArg ctorArg = _buildFromAttr(attribute);
-                //   IAsyncCollector<TMessage> collector = new MyCollector<TMessage>(ctorArg);
-
-                var ctorArg = ConstructorParameterBuilder(attribute);
-
-                var t = AsyncCollectorType.MakeGenericType(typeof(TMessage));
-                var obj = Activator.CreateInstance(t, ctorArg);
+                var obj = this.Builder(attribute, typeof(TMessage));                
                 var collector = (IAsyncCollector<TMessage>)obj;
                 return collector;
             }
@@ -108,11 +113,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             public override IBinding CreateBinding()
             {
                 IBinding binding = BindingFactoryHelpers.BindCollector<TAttribute, TMessage>(
-                Parameter,
-                NameResolver,
-                new IdentityConverterManager(),
-                this.BuildFromAttribute, 
-                null);
+                    Parameter,
+                    NameResolver,
+                    new IdentityConverterManager(),
+                    this.BuildFromAttribute, 
+                    null);
 
                 return binding;
             }

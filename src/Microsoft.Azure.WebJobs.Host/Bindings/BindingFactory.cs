@@ -121,54 +121,22 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// Create a binding provider for binding a parameter to an <see cref="IAsyncCollector{T}"/> where T is the user parameter's type. 
         /// </summary>
         /// <typeparam name="TAttribute">type of binding attribute on the user's parameter.</typeparam>
-        /// <typeparam name="TConstructorArgument">The type of the constructor argument.</typeparam>
-        /// <param name="asyncCollectorType">type that implements <see cref="IAsyncCollector{T}"/>. Must have a constructor with exactly 1 parameter of type TConstructorArgument.</param>
-        /// <param name="constructorParameterBuilder">builder function to create an instance of the collector's constructor parameter from a resolved attribute.</param>
+        /// <param name="builder">Function that gets passed (Resolved attribute, 'core' collector type) and instantiates an IAsyncCollector</param>
+        /// <param name="filter">Optional. type filter, called once at index time. If missing, assume True.</param>   
         /// <returns>A binding provider that applies these semantics.</returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter")]
-        public IBindingProvider BindToGenericAsyncCollector<TAttribute, TConstructorArgument>(
-            Type asyncCollectorType, 
-            Func<TAttribute, TConstructorArgument> constructorParameterBuilder)
+        public IBindingProvider BindToGenericAsyncCollector<TAttribute>(
+            Func<TAttribute, Type, object> builder, 
+            Func<TAttribute, Type, bool> filter = null)
             where TAttribute : Attribute
-        {     
-            if (asyncCollectorType == null)
+        {
+            if (builder == null)
             {
-                throw new ArgumentNullException("asyncCollectorType");
-            }
-            if (constructorParameterBuilder == null)
-            {
-                throw new ArgumentNullException("constructorParameterBuilder");
+                throw new ArgumentNullException("builder");
             }
 
-            // Verify collector has appropriate constructor. 
-                if (!asyncCollectorType.IsGenericTypeDefinition)
-            {
-                string msg = string.Format(CultureInfo.InvariantCulture, 
-                    "Collector implementation type {0} should be a generic where the type will be resolved at runtime. " +
-                    "If you know the type at compile time, use a more specific binding provider.",
-                  asyncCollectorType.FullName);
-                throw new InvalidOperationException(msg);
-            }
-            var genArgs = asyncCollectorType.GetGenericArguments();
-            if (genArgs == null || genArgs.Length != 1)
-            {
-                string msg = string.Format(CultureInfo.InvariantCulture, "Collector implementation type {0} must have exactly 1 type argument.",
-                    asyncCollectorType.FullName);
-                throw new InvalidOperationException(msg);
-            }
-            var ctorInfo = asyncCollectorType.GetConstructor(new Type[] { typeof(TConstructorArgument) });
-            if (ctorInfo == null)
-            {
-                string msg = string.Format(CultureInfo.InvariantCulture, "Collector implementation type {0} must have a public constructor with exactly 2 parameters: {1}, {2}",
-                    asyncCollectorType.FullName,
-                    typeof(TAttribute).Name, typeof(TConstructorArgument).Name);
-                throw new InvalidOperationException(msg);
-            }
-
-            return new GenericAsyncCollectorBindingProvider<TAttribute, TConstructorArgument>(
-                _nameResolver,  asyncCollectorType, constructorParameterBuilder);
+            return new GenericAsyncCollectorBindingProvider<TAttribute>(this._nameResolver, builder, filter);
         }
-
+        
         /// <summary>
         /// Create a binding provider that binds to the user parameter type. This skips the converter manager. 
         /// </summary>
