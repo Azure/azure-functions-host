@@ -680,12 +680,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (TraceEvent traceEvent in events)
             {
-                HandleHostError(traceEvent.Exception);
+                var exception = traceEvent.Exception ?? new InvalidOperationException(traceEvent.Message);
+                HandleHostError(exception);
             }
         }
 
         private void HandleHostError(Exception exception)
         {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
             // First, ensure that we've logged to the host log
             // Also ensure we flush immediately to ensure any buffered logs
             // are written

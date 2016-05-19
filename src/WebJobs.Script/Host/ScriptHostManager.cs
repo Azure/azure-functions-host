@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     newInstance = _scriptHostFactory.Create(_config);
                     _traceWriter = newInstance.TraceWriter;
 
-                    newInstance.StartAsync(cancellationToken).Wait();
+                    newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
                     // write any function initialization errors to the log file
                     LogErrors(newInstance);
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Wait for a short period of time before restarting to
                     // avoid cases where a host level config error might cause
                     // a rapid restart cycle
-                    Task.Delay(5000).Wait();
+                    Task.Delay(5000).GetAwaiter().GetResult();
                 }
             }
             while (!_stopped && !cancellationToken.IsCancellationRequested);

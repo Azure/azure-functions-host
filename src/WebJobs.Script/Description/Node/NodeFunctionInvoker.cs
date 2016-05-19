@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _scriptFunc = null;
 
                 // clear the node module cache
-                ClearRequireCacheFunc(null).Wait();
+                ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
                 TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
             }
@@ -482,7 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "handleUncaughtException", handle }
             };
 
-            GlobalInitializationFunc(context).Wait();
+            GlobalInitializationFunc(context).GetAwaiter().GetResult();
         }
 
         private static string ReadResourceString(string fileName)
