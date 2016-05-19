@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public void Dispose()
         {
-            if (_disposed)
+            if (!_disposed)
             {
                 _listener.Dispose();
 

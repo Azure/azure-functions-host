@@ -69,27 +69,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 try
                 {
                     // Arrange
-                    using (JobHost host = new JobHost(serviceProvider))
+                    JobHost host = new JobHost(serviceProvider);
+                    host.Start();
+                    callback.Invoke(host);
+                    startTaskSource.TrySetResult(null);
+
+                    // Act
+                    bool completed = task.WaitUntilCompleted(3 * 1000);
+
+                    // Assert
+                    Assert.True(completed);
+
+                    // Give a nicer test failure message for faulted tasks.
+                    if (task.Status == TaskStatus.Faulted)
                     {
-                        host.Start();
-                        callback.Invoke(host);
-                        startTaskSource.TrySetResult(null);
-
-                        // Act
-                        bool completed = task.WaitUntilCompleted(3 * 1000);
-
-                        // Assert
-                        Assert.True(completed);
-
-                        // Give a nicer test failure message for faulted tasks.
-                        if (task.Status == TaskStatus.Faulted)
-                        {
-                            task.GetAwaiter().GetResult();
-                        }
-
-                        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-                        return task.Result;
+                        task.GetAwaiter().GetResult();
                     }
+
+                    Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+                    return task.Result;
                 }
                 finally
                 {

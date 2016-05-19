@@ -72,10 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 LockTimer.Stop();
             }
 
-            if (_lockHandle != null)
-            {
-                await _singletonManager.ReleaseLockAsync(_lockHandle, cancellationToken);
-            }
+            await ReleaseLockAsync(cancellationToken);
 
             if (_isListening)
             {
@@ -101,6 +98,10 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 LockTimer.Dispose();
             }
 
+            // When we Dispose, it's important that we release the lock if we
+            // have it.
+            ReleaseLockAsync().GetAwaiter().GetResult();
+
             _innerListener.Dispose();
         }
 
@@ -125,6 +126,15 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 await _innerListener.StartAsync(CancellationToken.None);
 
                 _isListening = true;
+            }
+        }
+
+        private async Task ReleaseLockAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (_lockHandle != null)
+            {
+                await _singletonManager.ReleaseLockAsync(_lockHandle, cancellationToken);
+                _lockHandle = null;
             }
         }
     }

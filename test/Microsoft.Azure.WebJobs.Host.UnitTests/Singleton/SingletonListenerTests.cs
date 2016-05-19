@@ -206,6 +206,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
+        public async Task Dispose_WhenLockAcquired_ReleasesLock()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            SingletonManager.SingletonLockHandle lockHandle = new SingletonManager.SingletonLockHandle();
+            _mockSingletonManager.Setup(p => p.TryLockAsync(_lockId, null, _attribute, cancellationToken, false))
+                .ReturnsAsync(lockHandle);
+            _mockInnerListener.Setup(p => p.StartAsync(cancellationToken)).Returns(Task.FromResult(true));
+
+            await _listener.StartAsync(cancellationToken);
+
+            _mockInnerListener.Setup(p => p.Dispose());
+            _mockSingletonManager.Setup(p => p.ReleaseLockAsync(lockHandle, cancellationToken)).Returns(Task.FromResult(true));
+
+            _listener.Dispose();
+
+            _mockSingletonManager.VerifyAll();
+            _mockInnerListener.VerifyAll();
+        }
+
+        [Fact]
         public void Dispose_DisposesLockTimer()
         {
             _listener.LockTimer = new System.Timers.Timer

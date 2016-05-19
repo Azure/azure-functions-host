@@ -176,6 +176,7 @@
     <Compile Include="FakeQueue\FakeQueueTriggerBindingProvider.cs" />
     <Compile Include="FakeQueue\FakeQueueTriggerBindingStrategy.cs" />
     <Compile Include="FunctionIndexerFactory.cs" />
+    <Compile Include="JobHostContextTests.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
     <Compile Include="Listeners\HostListenerFactoryTests.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
