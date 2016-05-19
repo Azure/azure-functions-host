@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
         public void Add(T item)
         {
-            _inner.AddAsync(item).Wait();
+            _inner.AddAsync(item).GetAwaiter().GetResult();
         }
     }
 }

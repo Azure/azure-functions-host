@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         private void OnLockTimer(object sender, ElapsedEventArgs e)
         {
-            TryAcquireLock().Wait();
+            TryAcquireLock().GetAwaiter().GetResult();
         }
 
         internal async Task TryAcquireLock()
