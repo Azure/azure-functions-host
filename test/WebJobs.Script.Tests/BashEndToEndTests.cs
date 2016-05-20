@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string name = Guid.NewGuid().ToString();
             string blobContents = "My Test Blob";
             CloudBlobContainer inputContainer = Fixture.BlobClient.GetContainerReference("test-input-bash");
+            inputContainer.CreateIfNotExists();
             CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(name);
             await inputBlob.UploadTextAsync(blobContents);
 
