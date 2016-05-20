@@ -51,8 +51,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             // Now we can instantiate against the user's type.
             // throws if can't infer the type. 
-            Type typeMessage = TypeUtility.GetMessageTypeFromAsyncCollector(parameter.ParameterType);
+            Type typeMessage = BindingFactoryHelpers.GetAsyncCollectorCoreType(parameter.ParameterType);
 
+            if (typeMessage == null)
+            {
+                // incompatible type. Skip. 
+                return Task.FromResult<IBinding>(null);
+            }
             // Apply filter 
             var cloner = new AttributeCloner<TAttribute>(attribute, _nameResolver);
             var attrNameResolved = cloner.GetNameResolvedAttribute();

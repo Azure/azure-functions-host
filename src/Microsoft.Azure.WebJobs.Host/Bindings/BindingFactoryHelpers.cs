@@ -73,6 +73,45 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
+        // Get the "core" TMEssage type that's consistent with an IAsyncCollector pattern. 
+        // This must be in sync with the rules in BindCollector<>.
+        // Or null if hte parameter type is not consistent with IASyncCollector.
+        public static Type GetAsyncCollectorCoreType(Type parameterType)
+        {
+            // IAsyncCollector<T>
+            if (parameterType.IsGenericType)
+            {
+                var genericType = parameterType.GetGenericTypeDefinition();
+                var elementType = parameterType.GetGenericArguments()[0];
+
+                if (genericType == typeof(IAsyncCollector<>))
+                {
+                    return elementType;
+                }
+                else if (genericType == typeof(ICollector<>))
+                {
+                    return elementType;
+                }
+
+                return null;
+            }
+            else
+            {
+                if (parameterType.IsByRef)
+                {
+                    var inner = parameterType.GetElementType(); // strip off the byref type
+
+                    if (inner.IsArray)
+                    {
+                        var elementType = inner.GetElementType();
+                        return elementType; 
+                    }
+                    return inner;
+                }
+                return null;
+            }
+        }
+
         /// <summary>
         /// Create a binding rule to an IAsyncCollector`T, where the user parameter's type is resolved to a T via the ConverterManager.
         /// </summary>
