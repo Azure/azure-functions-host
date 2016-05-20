@@ -1,0 +1,15 @@
+{
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "direction": "in",
+            "path": "test-input-bash/{name}"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "test-output-bash/{name}"
+        }
+    ]
+}

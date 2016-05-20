@@ -15,8 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class EndToEndTestFixture : IDisposable
     {
-        private CloudQueueClient _queueClient;
-        private CloudBlobClient _blobClient;
         private string _testId;
 
         protected EndToEndTestFixture(string rootPath, string testId)
@@ -24,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testId = testId;
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            QueueClient = _queueClient = storageAccount.CreateCloudQueueClient();
-            _blobClient = storageAccount.CreateCloudBlobClient();
+            QueueClient = storageAccount.CreateCloudQueueClient();
+            BlobClient = storageAccount.CreateCloudBlobClient();
             TableClient = storageAccount.CreateCloudTableClient();
 
             CreateTestStorageEntities();
@@ -52,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudTableClient TableClient { get; private set; }
 
+        public CloudBlobClient BlobClient { get; private set; }
+
         public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
         public CloudQueue TestQueue { get; private set; }
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudQueue GetNewQueue(string queueName)
         {
-            var queue = _queueClient.GetQueueReference(queueName);
+            var queue = QueueClient.GetQueueReference(queueName);
             queue.CreateIfNotExists();
             queue.Clear();
             return queue;
@@ -70,14 +70,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private void CreateTestStorageEntities()
         {
-            TestQueue = _queueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
+            TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
             TestQueue.CreateIfNotExists();
             TestQueue.Clear();
 
-            TestInputContainer = _blobClient.GetContainerReference(string.Format("test-input-{0}", _testId));
+            TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", _testId));
             TestInputContainer.CreateIfNotExists();
 
-            TestOutputContainer = _blobClient.GetContainerReference(string.Format("test-output-{0}", _testId));
+            TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", _testId));
             TestOutputContainer.CreateIfNotExists();
 
             TestTable = TableClient.GetTableReference("test");

@@ -289,6 +289,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <None Include="TestScripts\Bash\BlobTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Bash\BlobTriggerToBlob\run.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Bash\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
