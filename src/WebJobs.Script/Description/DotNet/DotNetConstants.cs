@@ -20,5 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string MissingBindingArgumentCompilationCode = "AF004";
 
         public const string RedundantPackageAssemblyReference = "AF005";
+
+        public const string InvalidFileMetadataReferenceCode = "AF006";
     }
 }

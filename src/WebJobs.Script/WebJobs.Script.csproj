@@ -247,6 +247,8 @@
     <Compile Include="Binding\QueueBinding.cs" />
     <Compile Include="Binding\ServiceBusBinding.cs" />
     <Compile Include="Binding\TableBinding.cs" />
+    <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
+    <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />

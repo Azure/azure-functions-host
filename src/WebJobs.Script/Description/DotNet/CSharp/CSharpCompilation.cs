@@ -7,8 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
@@ -27,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
         {
-            return _compilation.GetDiagnostics();
+            return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
         }
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
@@ -62,12 +64,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public void Emit(Stream assemblyStream, Stream pdbStream, CancellationToken cancellationToken)
         {
-            EmitResult result = _compilation.Emit(assemblyStream, pdbStream, cancellationToken: cancellationToken);
+            var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
+            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+            var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, cancellationToken: cancellationToken);
 
-            if (!result.Success)
+            diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
+
+            if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
             {
-                throw new CompilationErrorException("Script compilation failed.", result.Diagnostics);
-            }
+                throw new CompilationErrorException("Script compilation failed.", diagnostics);
+            }            
+        }
+
+        private static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers()
+        {
+            // Simply getting the built in analyzers for now.
+            // This should eventually be enhanced to dynamically discover/load analyzers.
+            return ImmutableArray.Create<DiagnosticAnalyzer>(new InvalidFileMetadataReferenceAnalyzer());
         }
     }
 }

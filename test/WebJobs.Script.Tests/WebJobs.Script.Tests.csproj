@@ -260,6 +260,7 @@
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
+    <Compile Include="Description\CSharp\CSharpCompilationTests.cs" />
     <Compile Include="Description\CSharp\FunctionAssemblyLoaderTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
