@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal("Unable to parse host.json file.", ex.Message);
-            Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 5.", ex.InnerException.Message);
+            Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 
         [Fact]
