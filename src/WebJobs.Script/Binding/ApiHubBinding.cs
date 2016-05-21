@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 
             var constructorTypes = new Type[] { typeof(string), typeof(string), typeof(FileAccess) };
-            var constructorArguments = new object[] { Key, Path, FileAccess.Read };
+            var constructorArguments = new object[] { Key, Path, Access };
 
             var attribute = new CustomAttributeBuilder(typeof(ApiHubFileAttribute).GetConstructor(constructorTypes), constructorArguments);
 

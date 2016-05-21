@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 connectionString = Utility.GetAppSettingOrEnvironmentValue(Connection);
             }
 
+            if (apiHubConfig.Logger == null)
+            {
+                apiHubConfig.Logger = configBuilder.TraceWriter;
+            }
+
             apiHubConfig.AddKeyPath(this.Key, connectionString);
         }
     }
