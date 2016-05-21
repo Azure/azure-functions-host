@@ -19,6 +19,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "Node-E2E")]
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
         private const string JobLogTestFileName = "joblog.txt";

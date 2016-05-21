@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
+    [Trait("Category", "FunctionGenerator-E2E")]
     public class FunctionGeneratorTests
     {
         [Fact]
