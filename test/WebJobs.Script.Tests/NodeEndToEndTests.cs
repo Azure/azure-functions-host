@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -437,6 +438,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return false;
                 }
             }, timeout: 10 * 1000);
+        }
+
+        [Fact]
+        public async Task ApiHubTableEntityIn()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Delete the test entity if it exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId4, textArgValue);
+
+            // Test table entity out binding.
+            await Fixture.Host.CallAsync("ApiHubTableEntityIn",
+                new Dictionary<string, object>()
+                {
+                    { ApiHubTestHelper.TextArg, textArgValue }
+                });
+        }
+
+        [Fact]
+        public async Task ApiHubTableEntityOut()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.DeleteEntityAsync(ApiHubTestHelper.EntityId5);
+
+            // Test table entity out binding.
+            await Fixture.Host.CallAsync("ApiHubTableEntityOut",
+                new Dictionary<string, object>()
+                {
+                    { ApiHubTestHelper.TextArg, textArgValue }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId5);
         }
 
         public class TestFixture : EndToEndTestFixture

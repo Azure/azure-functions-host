@@ -119,6 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             apiHubBindingMetadata.Key = Guid.NewGuid().ToString();
                             bindings.Add(new ApiHubBinding(config, apiHubBindingMetadata, fileAccess));
                             break;
+                        case BindingType.ApiHubTable:
+                            ApiHubTableBindingMetadata apiHubTableBindingMetadata = (ApiHubTableBindingMetadata)bindingMetadata;
+                            bindings.Add(new ApiHubTableBinding(config, apiHubTableBindingMetadata, fileAccess));
+                            break;
                     }
                 }
             }
