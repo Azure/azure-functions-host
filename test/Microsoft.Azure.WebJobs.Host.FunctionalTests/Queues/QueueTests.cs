@@ -47,7 +47,91 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal("123", msgs[0].AsString);
         }
 
-        public class Program2
+        // Program with a static bad queue name (no { } ). 
+        // Use this to test queue name validation. 
+        public class ProgramWithStaticBadName
+        {
+            public const string BadQueueName = "test*"; // Don't include any { }
+
+            // Queue paths without any { } are eagerly validated at indexing time.
+            public void Func([Queue(BadQueueName)] ICollector<string> q)
+            {
+            }
+        }
+
+        [Fact]
+        public void Catch_Bad_Name_At_IndexTime()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramWithStaticBadName>();
+
+            string errorMessage = GetErrorMessageForBadQueueName(ProgramWithStaticBadName.BadQueueName, "name");
+
+            TestHelpers.AssertIndexingError(() => host.Call("Func"), "ProgramWithStaticBadName.Func", errorMessage);
+        }
+
+        private static string GetErrorMessageForBadQueueName(string value, string parameterName)
+        {
+            return "A queue name can contain only letters, numbers, and and dash(-) characters - \"" + value+ "\"" +
+                "\r\nParameter name: " + parameterName; // from ArgumentException 
+        }
+
+        // Program with variable queue name containing both %% and { }.
+        // Has valid parameter binding.   Use this to test queue name validation at various stages. 
+        public class ProgramWithVariableQueueName
+        {
+            public const string QueueNamePattern = "q%key%-test{x}";
+
+            // Queue paths without any { } are eagerly validated at indexing time.
+            public void Func([Queue(QueueNamePattern)] ICollector<string> q)
+            {
+            }
+        }
+
+        [Fact]
+        public void Catch_Bad_Name_At_Runtime()
+        {
+            var nameResolver = new FakeNameResolver().Add("key", "1");
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramWithVariableQueueName>(account, nameResolver);
+
+            host.Call("Func", new { x = "1" }); // succeeds with valid char
+
+            try
+            {
+                host.Call("Func", new { x = "*" }); // produces an error pattern. 
+            }
+            catch (FunctionInvocationException e)
+            {
+                Assert.Equal("Exception binding parameter 'q'", e.InnerException.Message);
+
+                string errorMessage = GetErrorMessageForBadQueueName("q1-test*", "name");
+                Assert.Equal(errorMessage, e.InnerException.InnerException.Message);
+            }
+        }
+
+        // The presence of { } defers validation until runtime. Even if there are illegal chars known at index time! 
+        [Fact]
+        public void Catch_Bad_Name_At_Runtime_With_Illegal_Static_Chars()
+        {
+            var nameResolver = new FakeNameResolver().Add("key", "$"); // Illegal
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramWithVariableQueueName>(account, nameResolver);
+
+            try
+            {
+                host.Call("Func", new { x = "1" }); // produces an error pattern. 
+            }
+            catch (FunctionInvocationException e) // Not an index exception!
+            {
+                Assert.Equal("Exception binding parameter 'q'", e.InnerException.Message);
+
+                string errorMessage = GetErrorMessageForBadQueueName("q$-test1", "name");
+                Assert.Equal(errorMessage, e.InnerException.InnerException.Message);
+            }
+        }
+
+        public class ProgramWithTriggerAndBindingData
         {
             public class Poco
             {
@@ -67,12 +151,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void InvokeWithBindingData()
         {
             // Verify that queue binding pattern has uppercase letters in it. These get normalized to lowercase.
-            Assert.NotEqual(Program2.QueueOutName, Program2.QueueOutName.ToLower());
+            Assert.NotEqual(ProgramWithTriggerAndBindingData.QueueOutName, ProgramWithTriggerAndBindingData.QueueOutName.ToLower());
 
             IStorageAccount account = CreateFakeStorageAccount();
-            var host = TestHelpers.NewJobHost<Program2>(account);
+            var host = TestHelpers.NewJobHost<ProgramWithTriggerAndBindingData>(account);
 
-            var trigger = new Program2.Poco { xyz = "abc" };
+            var trigger = new ProgramWithTriggerAndBindingData.Poco { xyz = "abc" };
             host.Call("Func", new
             {
                 triggers = new CloudQueueMessage(JsonConvert.SerializeObject(trigger))
@@ -88,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
 
-        public class Program3
+        public class ProgramSimple
         {
             public void Func([Queue(QueueName)] out string x)
             {
@@ -100,12 +184,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [Fact]
         public void Fails_When_No_Storage_is_set()
         {
-            var host = TestHelpers.NewJobHost<Program3>();  // no storage account!
+            var host = TestHelpers.NewJobHost<ProgramSimple>();  // no storage account!
 
             TestHelpers.AssertIndexingError(() => host.Call("Func"),
-                "Program3.Func", "Can't bind Queue since no storage account is set.");
+                "ProgramSimple.Func", "Unable to bind Queue because no storage account has been configured.");
         }
-
 
         public class ProgramBadContract
         {
