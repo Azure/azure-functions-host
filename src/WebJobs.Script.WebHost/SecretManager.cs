@@ -3,9 +3,12 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -44,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (_hostSecrets == null)
             {
-                string secretFilePath = Path.Combine(_secretsPath, "host.json");
+                string secretFilePath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
                 if (File.Exists(secretFilePath))
                 {
                     // load the secrets file
@@ -101,6 +104,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
         }
 
+        /// <summary>
+        /// Iterate through all function secret files and remove any that don't correspond
+        /// to a function.
+        /// </summary>
+        /// <param name="rootScriptPath">The root function directory.</param>
+        public void PurgeOldFiles(string rootScriptPath)
+        {
+            if (!Directory.Exists(rootScriptPath))
+            {
+                return;
+            }
+
+            // Create a lookup of all potential functions (whether they're valid or not)
+            // It is important that we determine functions based on the presence of a folder,
+            // not whether we've identified a valid function from that folder. This ensures
+            // that we don't delete logs/secrets for functions that transition into/out of
+            // invalid unparsable states.
+            var functionLookup = Directory.EnumerateDirectories(rootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+
+            var secretsDirectory = new DirectoryInfo(_secretsPath);
+            foreach (var secretFile in secretsDirectory.GetFiles("*.json"))
+            {
+                if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    // the secrets directory contains the host secrets file in addition
+                    // to function secret files
+                    continue;
+                }
+
+                string fileName = Path.GetFileNameWithoutExtension(secretFile.Name);
+                if (!functionLookup.Contains(fileName))
+                {
+                    try
+                    {
+                        secretFile.Delete();
+                    }
+                    catch
+                    {
+                        // Purge is best effort
+                    }
+                }
+            }
+        }
+
         private static string GenerateSecretString()
         {
             using (var rng = RandomNumberGenerator.Create())
@@ -118,15 +165,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
-            // they are needed
-            string name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
-            if (name == "host")
+            if (string.Compare(Path.GetFileName(e.FullPath), ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
             {
                 _hostSecrets = null;
             }
             else
             {
                 FunctionSecrets secrets;
+                string name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
                 _secretsMap.TryRemove(name, out secrets);
             }
         }

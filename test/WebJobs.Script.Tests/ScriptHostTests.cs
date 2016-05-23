@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptHost.Create(scriptConfig);
             });
 
-            Assert.Equal("Unable to parse host.json file.", ex.Message);
+            Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 
@@ -307,6 +307,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.True(result);
             Assert.Same(function, functionResult);
+        }
+
+        [Theory]
+        [InlineData("host")]
+        [InlineData("Host")]
+        public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunctionName(functionName);
+            });
+
+            Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
         }
     }
 }

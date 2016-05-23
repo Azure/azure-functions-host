@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
-            if (string.Compare(fileName, ScriptConstants.FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) != 0)
+            if (string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
             {
                 // one of the script files for this function changed
                 // force a reload on next execution
