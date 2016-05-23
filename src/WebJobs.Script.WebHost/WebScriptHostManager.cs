@@ -21,11 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class WebScriptHostManager : ScriptHostManager
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
-        private IMetricsLogger _metricsLogger;
+        private readonly IMetricsLogger _metricsLogger;
+        private readonly SecretManager _secretManager;
 
-        public WebScriptHostManager(ScriptHostConfiguration config) : base(config)
+        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager) : base(config)
         {
             _metricsLogger = new WebHostMetricsLogger();
+            _secretManager = secretManager;
         }
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
@@ -170,6 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     HttpFunctions.Add(route.ToLowerInvariant(), function);
                 }
             }
+
+            // Purge any old Function secrets
+            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath);
         }
     }
 }

@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TraceWriter = traceWriter
             };
 
-            using (var manager = new WebScriptHostManager(config))
+            using (var manager = new WebScriptHostManager(config, new SecretManager()))
             {
                 Thread runLoopThread = new Thread(_ =>
                 {

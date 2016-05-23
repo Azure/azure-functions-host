@@ -37,13 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
             }
 
-            WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig);
-            builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
-
             SecretManager secretManager = new SecretManager(settings.SecretsPath);
             // Make sure that host secrets get created on startup if they don't exist
             secretManager.GetHostSecrets();
             builder.RegisterInstance<SecretManager>(secretManager);
+
+            WebScriptHostManager scriptHostManager = new WebScriptHostManager(scriptHostConfig, secretManager);
+            builder.RegisterInstance<WebScriptHostManager>(scriptHostManager);
 
             WebHookReceiverManager webHookReceiverManager = new WebHookReceiverManager(secretManager);
             builder.RegisterInstance<WebHookReceiverManager>(webHookReceiverManager);

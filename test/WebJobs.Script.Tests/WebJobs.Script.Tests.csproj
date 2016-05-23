@@ -287,6 +287,7 @@
     <Compile Include="TestInvoker.cs" />
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="UtilityTests.cs" />
+    <Compile Include="WebScriptHostManagerTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
     <None Include="app.config">
       <SubType>Designer</SubType>
