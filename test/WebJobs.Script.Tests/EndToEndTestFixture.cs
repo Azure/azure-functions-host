@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -35,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TraceWriter = TraceWriter,
                 FileLoggingEnabled = true
             };
+
+            ApiHubTestHelper.SetDefaultConnectionFactory();
 
             Host = ScriptHost.Create(config);
             Host.Start();
