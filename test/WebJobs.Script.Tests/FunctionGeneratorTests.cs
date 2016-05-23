@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -185,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GeneratedMethods_WithOutParams_DoNotCauseDeadlocks()
+        public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks()
         {
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
@@ -195,7 +196,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TraceWriter = traceWriter
             };
 
-            using (var manager = new WebScriptHostManager(config))
+            string secretsPath = Path.Combine(Path.GetTempPath(), @"FunctionTests\Secrets");
+            using (var manager = new WebScriptHostManager(config, new SecretManager(secretsPath)))
             {
                 Thread runLoopThread = new Thread(_ =>
                 {
@@ -203,11 +205,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
                 runLoopThread.IsBackground = true;
                 runLoopThread.Start();
-                
-                while (!manager.IsRunning)
+
+                await TestHelpers.Await(() =>
                 {
-                    Thread.Sleep(100);
-                }
+                    return manager.IsRunning;
+                });
 
                 FunctionDescriptor function = manager.GetHttpFunctionOrNull(new Uri("http://localhost/api/httptrigger-csharp"));
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/httptrigger-csharp");

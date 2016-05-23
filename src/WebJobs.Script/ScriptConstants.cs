@@ -11,6 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DefaultSystemTriggerParameterName = "triggerValue";
 
-        internal const string FunctionConfigFileName = "function.json";
+        public const string HostMetadataFileName = "host.json";
+
+        internal const string FunctionMetadataFileName = "function.json";
     }
 }

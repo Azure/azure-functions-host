@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        private const string HostConfigFileName = "host.json";
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
@@ -84,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
         protected virtual void Initialize()
         {
             // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, HostConfigFileName);
+            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
 
             // If it doesn't exist, create an empty JSON file
             if (!File.Exists(hostConfigFilePath))
@@ -113,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             catch (JsonException ex)
             {
-                throw new FormatException("Unable to parse host.json file.", ex);
+                throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
             }
 
             ApplyConfiguration(hostConfig, ScriptConfig);
@@ -223,6 +222,49 @@ namespace Microsoft.Azure.WebJobs.Script
             ApplyBindingConfiguration(functions, ScriptConfig.HostConfig);
 
             Functions = functions;
+
+            if (ScriptConfig.FileLoggingEnabled)
+            {
+                PurgeOldLogDirectories();
+            }
+        }
+
+        /// <summary>
+        /// Iterate through all function log directories and remove any that don't
+        /// correspond to a function.
+        /// </summary>
+        private void PurgeOldLogDirectories()
+        {
+            if (!Directory.Exists(this.ScriptConfig.RootScriptPath))
+            {
+                return;
+            }
+
+            // Create a lookup of all potential functions (whether they're valid or not)
+            // It is important that we determine functions based on the presence of a folder,
+            // not whether we've identified a valid function from that folder. This ensures
+            // that we don't delete logs/secrets for functions that transition into/out of
+            // invalid unparsable states.
+            var functionLookup = Directory.EnumerateDirectories(this.ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+
+            string rootLogFilePath = Path.Combine(this.ScriptConfig.RootLogPath, "Function");
+            var logFileDirectory = new DirectoryInfo(rootLogFilePath);
+            foreach (var logDir in logFileDirectory.GetDirectories())
+            {
+                if (!functionLookup.Contains(logDir.Name))
+                {
+                    // the directory no longer maps to a running function
+                    // so delete it
+                    try
+                    {
+                        logDir.Delete(recursive: true);
+                    }
+                    catch
+                    {
+                        // Purge is best effort
+                    }
+                }
+            }
         }
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
@@ -387,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 try
                 {
                     // read the function config
-                    string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionConfigFileName);
+                    string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
                     if (!File.Exists(functionConfigPath))
                     {
                         // not a function directory
@@ -404,6 +446,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         continue;
                     }
 
+                    ValidateFunctionName(functionName);
+
                     // TODO: we need to define a json schema document and do
                     // schema validation and give more informative responses 
                     string json = File.ReadAllText(functionConfigPath);
@@ -411,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, functionConfig);
 
                     // determine the primary script
-                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionConfigFileName).ToArray();
+                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
                     if (functionFiles.Length == 0)
                     {
                         AddFunctionError(functionName, "No function script files present.");
@@ -440,6 +484,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return ReadFunctions(metadatas, descriptorProviders);
+        }
+
+        internal static void ValidateFunctionName(string functionName)
+        {
+            if (string.Compare(Path.GetFileNameWithoutExtension(ScriptConstants.HostMetadataFileName), functionName, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid function name.", functionName));
+            }
         }
 
         /// <summary>
@@ -772,8 +824,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string fileName = Path.GetFileName(e.Name);
 
-            if (((string.Compare(fileName, HostConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                string.Compare(fileName, ScriptConstants.FunctionConfigFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+            if (((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 (Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot))
             {
                 // a host level configuration change has been made which requires a
