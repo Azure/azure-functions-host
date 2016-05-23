@@ -50,6 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NotificationHubNative()
+        {
+            await NotificationHubTest("NotificationHubNative");
+        }
+
+        [Fact]
         public async Task MobileTablesTable()
         {
             var id = Guid.NewGuid().ToString();

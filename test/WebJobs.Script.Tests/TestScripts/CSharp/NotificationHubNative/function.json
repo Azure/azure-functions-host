@@ -1,0 +1,14 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "direction": "in"
+        },
+        {
+            "type": "notificationHub",
+            "direction": "out",
+            "name": "wnsToastPayload",
+            "platform": "wns"
+        }
+    ]
+}

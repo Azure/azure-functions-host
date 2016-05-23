@@ -149,6 +149,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NotificationHubNative()
+        {
+            await NotificationHubTest("NotificationHubNative");
+        }
+
+        [Fact]
         public async Task MobileTables()
         {
             await MobileTablesTest();

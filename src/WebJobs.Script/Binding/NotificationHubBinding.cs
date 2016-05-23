@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using Microsoft.Azure.NotificationHubs;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 
@@ -20,13 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             base(config, metadata, access)
         {
             TagExpression = metadata.TagExpression;
+            Platform = metadata.Platform;
             ConnectionString = metadata.Connection;
             HubName = metadata.HubName;
-
             _bindingDirection = metadata.Direction;
         }
 
         public string TagExpression { get; private set; }
+
+        public NotificationPlatform Platform { get; private set; }
 
         public string ConnectionString { get; private set; }
 
@@ -38,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             PropertyInfo[] props = new[]
             {
                 attributeType.GetProperty("TagExpression"),
+                attributeType.GetProperty("Platform"),
                 attributeType.GetProperty("ConnectionString"),
                 attributeType.GetProperty("HubName")
             };
@@ -45,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             object[] propValues = new object[]
             {
                 TagExpression,
+                Platform,
                 ConnectionString,
                 HubName
             };
@@ -64,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 NotificationHubAttribute attribute = new NotificationHubAttribute
                 {
                     TagExpression = TagExpression,
+                    Platform = Platform,
                     ConnectionString = ConnectionString,
                     HubName = HubName
                 };
