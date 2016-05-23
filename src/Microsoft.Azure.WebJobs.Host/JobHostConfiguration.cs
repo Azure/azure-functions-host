@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs
             string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
             IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
-
+   
         /// <summary>
         /// Gets a value indicating whether the <see cref="JobHost"/> is running in a Development environment.
         /// You can use this property in conjunction with <see cref="UseDevelopmentSettings"/> to default
@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        private IJobHostContextFactory ContextFactory
+        internal IJobHostContextFactory ContextFactory
         {
             get
             {
@@ -278,6 +278,11 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 return _contextFactory;
+            }
+            set
+            {
+                // Expose this for unit tests to override. 
+                _contextFactory = value;
             }
         }
 

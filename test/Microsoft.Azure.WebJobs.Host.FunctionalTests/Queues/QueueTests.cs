@@ -10,6 +10,9 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Newtonsoft.Json;
+using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -17,6 +20,158 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
     {
         private const string TriggerQueueName = "input";
         private const string QueueName = "output";
+
+        // Test binding to generics. 
+        public class GenericProgram<T>
+        {
+            public void Func([Queue(QueueName)] T q)
+            {
+                var x = (ICollector<string>) q;
+                x.Add("123");                
+            }
+        }
+
+        [Fact]
+        public void TestGenericSucceeds()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();          
+            var host = TestHelpers.NewJobHost<GenericProgram<ICollector<string>>>(account);
+            
+            host.Call("Func");
+
+            // Now peek at messages. 
+            var queue = account.CreateQueueClient().GetQueueReference(QueueName);
+            var msgs = queue.GetMessages(10).ToArray();
+
+            Assert.Equal(1, msgs.Length);
+            Assert.Equal("123", msgs[0].AsString);
+        }
+
+        public class Program2
+        {
+            public class Poco
+            {
+                public string xyz { get; set; }
+            }
+
+            // BindingData is case insensitive. 
+            // And queue name is normalized to lowercase. 
+            public const string QueueOutName = "qName-{XYZ}";
+            public void Func([QueueTrigger(QueueName)] Poco triggers,  [Queue(QueueOutName)] ICollector<string> q)
+            {
+                q.Add("123");
+            }        
+        }
+
+        [Fact]
+        public void InvokeWithBindingData()
+        {
+            // Verify that queue binding pattern has uppercase letters in it. These get normalized to lowercase.
+            Assert.NotEqual(Program2.QueueOutName, Program2.QueueOutName.ToLower());
+
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<Program2>(account);
+
+            var trigger = new Program2.Poco { xyz = "abc" };
+            host.Call("Func", new
+            {
+                triggers = new CloudQueueMessage(JsonConvert.SerializeObject(trigger))
+            });
+
+            // Now peek at messages. 
+            // queue name is normalized to lowercase. 
+            var queue = account.CreateQueueClient().GetQueueReference("qname-abc");
+            var msgs = queue.GetMessages(10).ToArray();
+
+            Assert.Equal(1, msgs.Length);
+            Assert.Equal("123", msgs[0].AsString);
+        }
+
+
+        public class Program3
+        {
+            public void Func([Queue(QueueName)] out string x)
+            {
+                x = "abc";
+            }
+        }
+
+        // Nice failure when no storage account is set
+        [Fact]
+        public void Fails_When_No_Storage_is_set()
+        {
+            var host = TestHelpers.NewJobHost<Program3>();  // no storage account!
+
+            TestHelpers.AssertIndexingError(() => host.Call("Func"),
+                "Program3.Func", "Can't bind Queue since no storage account is set.");
+        }
+
+
+        public class ProgramBadContract
+        {
+            public void Func([QueueTrigger(QueueName)] string triggers, [Queue("queuName-{xyz}")] ICollector<string> q)
+            {
+            }
+        }
+
+        [Fact]
+        public void Fails_BindingContract_Mismatch()
+        {
+            // Verify that indexing fails if the [Queue] trigger needs binding data that's not present. 
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramBadContract>(account);
+
+            TestHelpers.AssertIndexingError(() => host.Call("Func"),
+                "ProgramBadContract.Func",
+                "No binding parameter exists for 'xyz'.");
+        }
+
+        public class ProgramCantBindToObject
+        {
+            public void Func([Queue(QueueName)] out object o)
+            {
+                o = null;
+            }
+        }
+
+        [Fact]
+        public void Fails_Cant_Bind_To_Object()
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramCantBindToObject>(account);
+
+            TestHelpers.AssertIndexingError(() => host.Call("Func"),
+                "ProgramCantBindToObject.Func",
+                "Object element types are not supported.");
+        }
+        
+        [Theory]
+        [InlineData(typeof(int), "System.Int32")]
+        [InlineData(typeof(DateTime), "System.DateTime")]
+        [InlineData(typeof(IEnumerable<string>), "System.Collections.Generic.IEnumerable`1[System.String]")] // Should use ICollector<string> instead
+        public void Fails_Cant_Bind_To_Types(Type typeParam, string typeName)
+        {
+            var m = this.GetType().GetMethod("Fails_Cant_Bind_To_Types_Worker", BindingFlags.Instance | BindingFlags.NonPublic);
+            var m2 = m.MakeGenericMethod(typeParam);
+            try
+            {
+                m2.Invoke(this, new object[] { typeName });
+            }
+            catch (TargetException e)
+            {
+                throw e.InnerException;
+            }
+        }
+            
+        private void Fails_Cant_Bind_To_Types_Worker<T>(string typeName)
+        {
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<GenericProgram<T>>(account);
+
+            TestHelpers.AssertIndexingError(() => host.Call("Func"),
+                "GenericProgram`1.Func",
+                "Can't bind Queue to type '" + typeName + "'.");
+        }
 
         [Fact]
         public void Queue_IfBoundToCloudQueue_BindsAndCreatesQueue()

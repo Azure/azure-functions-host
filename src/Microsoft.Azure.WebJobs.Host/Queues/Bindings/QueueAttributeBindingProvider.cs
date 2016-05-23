@@ -70,6 +70,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Can't bind Queue since no storage account is set.");
+            }
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = parameter

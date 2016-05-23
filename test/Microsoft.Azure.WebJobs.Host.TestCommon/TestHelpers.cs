@@ -1,5 +1,11 @@
-﻿using Microsoft.Azure.WebJobs.Host.Config;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using System;
 using System.Reflection;
 using System.Threading;
@@ -69,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var host = new TestJobHost<TProgram>(config);
             return host;
         }
-
+                
         // Helper to create a JobHostConfiguraiton from a set of services. 
         // Default config, pure-in-memory
         // Default is pure-in-memory, good for unit testing. 
@@ -92,6 +98,17 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
             foreach (var obj in services)
             {
+                IStorageAccount account = obj as IStorageAccount;
+                if (account != null)
+                {
+                    IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider
+                    {
+                        StorageAccount = account
+                    };
+                    config.ContextFactory = new JobHostContextFactory(storageAccountProvider, new DefaultConsoleProvider(), config);
+                    continue;
+                }
+
                 INameResolver nameResolver = obj as INameResolver;
                 if (nameResolver != null)
                 {
@@ -116,6 +133,33 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             }
             
             return config;
+        }
+
+        private class FakeStorageAccountProvider : IStorageAccountProvider
+        {
+            public IStorageAccount StorageAccount { get; set; }
+
+            public IStorageAccount DashboardAccount { get; set; }
+
+            public Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
+            {
+                IStorageAccount account;
+
+                if (connectionStringName == ConnectionStringNames.Storage)
+                {
+                    account = StorageAccount;
+                }
+                else if (connectionStringName == ConnectionStringNames.Dashboard)
+                {
+                    account = DashboardAccount;
+                }
+                else
+                {
+                    account = null;
+                }
+
+                return Task.FromResult(account);
+            }
         }
     }
 }
