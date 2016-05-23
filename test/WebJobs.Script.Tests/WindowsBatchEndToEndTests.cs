@@ -13,6 +13,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "Batch-E2E")]
     public class WindowsBatchEndToEndTests : EndToEndTestsBase<WindowsBatchEndToEndTests.TestFixture>
     {
         public WindowsBatchEndToEndTests(TestFixture fixture) 

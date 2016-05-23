@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
+    [Trait("Category", "ScriptHostManager-E2E")]
     public class ScriptHostManagerTests 
     {
         // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes. 
