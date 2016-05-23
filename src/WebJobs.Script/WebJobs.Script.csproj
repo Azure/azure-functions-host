@@ -47,7 +47,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.ApiHub.Sdk, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.6.5-alpha\lib\net45\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.6.6-alpha\lib\net45\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.Documents.Client, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -67,27 +67,27 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-alpha-10293\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-alpha-10298\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -234,6 +234,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizationLevel.cs" />
+    <Compile Include="Binding\ApiHubTableBinding.cs" />
     <Compile Include="Binding\ApiHubBinding.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\BlobBinding.cs" />
@@ -249,6 +250,7 @@
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
+    <Compile Include="Description\Binding\ApiHubTableBindingMetadata.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />

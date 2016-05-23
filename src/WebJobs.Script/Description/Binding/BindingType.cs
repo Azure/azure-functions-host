@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         DocumentDB,
         NotificationHub,        
         ApiHubFile,
-        ApiHubFileTrigger
+        ApiHubFileTrigger,
+        ApiHubTable
     }
 }

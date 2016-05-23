@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
@@ -81,6 +82,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task ApiHub()
         {
             await ApiHubTest();
+        }
+
+        [Fact]
+        public async Task ApiHubTableClientBindingTest()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
+
+            // Test table client binding.
+            await Fixture.Host.CallAsync("ApiHubTableClient", 
+                new Dictionary<string, object>()
+                {
+                    { ApiHubTestHelper.TextArg, textArgValue }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId1);
+        }
+
+        [Fact]
+        public async Task ApiHubTableBindingTest()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
+
+            // Test table binding.
+            await Fixture.Host.CallAsync("ApiHubTable",
+                new Dictionary<string, object>()
+                {
+                    { ApiHubTestHelper.TextArg, textArgValue }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId2);
+        }
+
+        [Fact]
+        public async Task ApiHubTableEntityBindingTest()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
+
+            // Test table entity binding.
+            await Fixture.Host.CallAsync("ApiHubTableEntity",
+                new Dictionary<string, object>()
+                {
+                    { ApiHubTestHelper.TextArg, textArgValue }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId3);
         }
 
         [Fact]
