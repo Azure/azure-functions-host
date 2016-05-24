@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "name": "text",
+      "direction": "in"
+    },
+    {
+      "type": "apiHubTable",
+      "name": "client",
+      "direction": "out",
+      "connection": "AzureWebJobsSql"
+    }
+  ]
+}

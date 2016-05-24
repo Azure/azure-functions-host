@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "name": "text",
+      "direction": "in"
+    },
+    {
+      "type": "apiHubTable",
+      "name": "entity",
+      "direction": "in",
+      "connection": "AzureWebJobsSql",
+      "tableName": "SampleTable",
+      "entityId": "4"
+    }
+  ]
+}
