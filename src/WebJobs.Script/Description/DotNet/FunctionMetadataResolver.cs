@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
            {
                 "System",
                 "System.Core",
+                "System.Configuration",
                 "System.Xml",
                 "System.Net.Http",
                 "Microsoft.CSharp",
