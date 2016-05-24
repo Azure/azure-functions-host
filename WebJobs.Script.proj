@@ -143,7 +143,7 @@
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
     </MSBuild>
 
-    <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" Reporter="appveyor"/>
+    <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">
