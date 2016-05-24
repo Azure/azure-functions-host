@@ -147,11 +147,12 @@ namespace Microsoft.Azure.WebJobs
             // General JSON serialization rule. 
 
             if (typeof(TSrc).IsPrimitive ||
-                   typeof(IEnumerable).IsAssignableFrom(typeof(TSrc)))
+               (typeof(TSrc) == typeof(object)) ||
+                typeof(IEnumerable).IsAssignableFrom(typeof(TSrc)))
             {
                 return null;
             }
-
+            
             // TSrc --[Json]--> string --> TDest
             return (src, attr) =>
             {

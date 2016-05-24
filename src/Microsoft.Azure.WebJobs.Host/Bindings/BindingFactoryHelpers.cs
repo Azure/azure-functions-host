@@ -246,7 +246,21 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                             var invokeString = cloner.GetInvokeString(attrResolved);
                             return new OutValueProvider<TMessage>(raw, invokeString);
                         };
-                    }                 
+                    }
+                }
+
+                // For out-param, give some rich errors. 
+                if (argumentBuilder == null)
+                {
+                    if (typeof(IEnumerable).IsAssignableFrom(elementType))
+                    {
+                        throw new InvalidOperationException(
+                            "Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
+                    }
+                    else if (typeof(object) == elementType)
+                    {
+                        throw new InvalidOperationException("Object element types are not supported.");
+                    }
                 }
             }
 
