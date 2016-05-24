@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
                 tableAdapter.AddDataSet(DataSetName);
                 tableAdapter.AddTable(DataSetName, TableName, primaryKey: PrimaryKeyColumn);
                 ConnectionFactory.Default = new FakeConnectionFactory(tableAdapter);
+
+                // The value doesn't really matter here - this is just so we
+                // pass the Connection value validation that ScriptHost performs
+                // on startup
+                Environment.SetEnvironmentVariable(Key, "TestMockSqlConnection");
             }
             else
             {
