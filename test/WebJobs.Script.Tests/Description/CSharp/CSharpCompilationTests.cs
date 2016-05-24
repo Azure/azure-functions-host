@@ -26,7 +26,7 @@ public void Run(){
             var diagnostic = diagnostics.FirstOrDefault(d => string.Compare(d.Id, DotNetConstants.InvalidFileMetadataReferenceCode) == 0);
 
             Assert.NotNull(diagnostic);
-            Assert.Equal("The reference 'System.Runtime.dll' is invalid, if you are attempting to add a framework reference, please remove the '.dll' file extension.", 
+            Assert.Equal("The reference 'System.Runtime.dll' is invalid. If you are attempting to add a framework reference, please remove the '.dll' file extension.", 
                 diagnostic.GetMessage());
         }
     }
