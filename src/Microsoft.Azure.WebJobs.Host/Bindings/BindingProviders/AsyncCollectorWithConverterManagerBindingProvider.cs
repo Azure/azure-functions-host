@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 parameter,
                 _nameResolver,
                 _converterManager,
+                context.BindingDataContract,
                 _buildFromAttribute,
                 _buildParamDescriptor,
                 _postResolveHook);

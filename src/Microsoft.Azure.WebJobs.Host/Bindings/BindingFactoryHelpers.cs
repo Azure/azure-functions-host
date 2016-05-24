@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
@@ -120,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <param name="parameter">the parameter being bound. The parameter should have a custom attribute of TAttribute on it.</param>
         /// <param name="nameResolver">a name resolver object for resolving %% pairs in the attribute</param>
         /// <param name="converterManager">a converter manager for converting types</param>
+        /// <param name="bindingDataContract">binding data contract</param>
         /// <param name="buildFromAttribute">a builder to create the IAsyncCollector`T from a 'resolved' version of the TAttribute on this parameter. </param>
         /// <param name="buildParamDescriptor">an optional function to create a more specific ParameterDescriptor object to display in the dashboard.</param>
         /// <param name="hook">An optional post-resolve hook for advanced scenarios.</param>
@@ -129,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             ParameterInfo parameter,
             INameResolver nameResolver,
             IConverterManager converterManager,
+            IReadOnlyDictionary<string, Type> bindingDataContract,
             Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute,
             Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParamDescriptor = null,
             Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> hook = null)
@@ -144,9 +147,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 hookWrapper = (attr) => hook(attr, parameter, nameResolver);
             }
-            TAttribute attributeSource = parameter.GetCustomAttribute<TAttribute>(inherit: false);
-            var cloner = new AttributeCloner<TAttribute>(attributeSource, nameResolver, hookWrapper);
+            TAttribute attributeSource = parameter.GetCustomAttribute<TAttribute>(inherit: false); 
 
+            // ctor will do validation and throw. 
+            var cloner = new AttributeCloner<TAttribute>(attributeSource, bindingDataContract, nameResolver, hookWrapper);
+            
             Type parameterType = parameter.ParameterType;
 
             Func<TAttribute, IValueProvider> argumentBuilder = null;                                            

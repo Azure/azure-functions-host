@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return Task.FromResult<IBinding>(null);
             }
             // Apply filter 
-            var cloner = new AttributeCloner<TAttribute>(attribute, _nameResolver);
+            var cloner = new AttributeCloner<TAttribute>(attribute, context.BindingDataContract, _nameResolver);
             var attrNameResolved = cloner.GetNameResolvedAttribute();
             bool canUse = _filter(attrNameResolved, typeMessage);
 
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             var wrapper = WrapperBase.New(
-                typeMessage, _builder, _nameResolver, parameter);
+                typeMessage, _builder, _nameResolver, parameter, context);
 
             IBinding binding = wrapper.CreateBinding();
             return Task.FromResult(binding);
@@ -85,13 +85,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             protected ParameterInfo Parameter { get; private set; }
             protected Type AsyncCollectorType { get; private set; }
 
+            protected BindingProviderContext Context { get; private set; }
+
             public abstract IBinding CreateBinding();
 
             internal static WrapperBase New(
                 Type typeMessage,
                 Func<TAttribute, Type, object> builder,
                 INameResolver nameResolver,
-                ParameterInfo parameter)
+                ParameterInfo parameter,
+                BindingProviderContext context)
             {
                 // These inherit the generic args of the outer class. 
                 var t = typeof(Wrapper<>).MakeGenericType(typeof(TAttribute), typeMessage);
@@ -101,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 obj2.Builder = builder;
                 obj2.NameResolver = nameResolver;
                 obj2.Parameter = parameter;
+                obj2.Context = context;
                 return obj2;
             }
         }
@@ -121,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     Parameter,
                     NameResolver,
                     new IdentityConverterManager(),
+                    this.Context.BindingDataContract,
                     this.BuildFromAttribute, 
                     null);
 

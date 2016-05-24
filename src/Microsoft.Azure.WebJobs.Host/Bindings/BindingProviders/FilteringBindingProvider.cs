@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             var attr = context.Parameter.GetCustomAttribute<TAttribute>();
 
-            var cloner = new AttributeCloner<TAttribute>(attr, _nameResolver);
+            var cloner = new AttributeCloner<TAttribute>(attr, context.BindingDataContract, _nameResolver);
             var attrNameResolved = cloner.GetNameResolvedAttribute();
 
             // This may do validation and throw too. 

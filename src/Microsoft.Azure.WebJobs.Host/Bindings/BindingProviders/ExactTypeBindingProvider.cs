@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 hookWrapper = (attrResolved) => _postResolveHook(attrResolved, parameter, _nameResolver);
             }
 
-            var cloner = new AttributeCloner<TAttribute>(attributeSource, _nameResolver, hookWrapper);
+            var cloner = new AttributeCloner<TAttribute>(attributeSource, context.BindingDataContract, _nameResolver, hookWrapper);
             ParameterDescriptor param;
             if (_buildParameterDescriptor != null)
             {

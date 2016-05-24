@@ -31,8 +31,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly Func<TAttribute, Task<TAttribute>> _hook;
                 
         public AttributeCloner(
-            TAttribute source, 
-            INameResolver nameResolver = null,
+            TAttribute source,
+            IReadOnlyDictionary<string, Type> bindingDataContract,
+            INameResolver nameResolver = null,            
             Func<TAttribute, Task<TAttribute>> hook = null)
         {
             _hook = hook;
@@ -84,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                             // Resolve %% once upfront. This ensures errors will occur during indexing time. 
                             str = nameResolver.ResolveWholeString(str);
                             BindingTemplate template = BindingTemplate.FromString(str);
+                            template.ValidateContractCompatibility(bindingDataContract);
                             getArgFuncs[i] = (bindingData) => TemplateBind(template, bindingData);
                         }
                     }
@@ -116,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                                 {
                                     str = nameResolver.ResolveWholeString(str);
                                     BindingTemplate template = BindingTemplate.FromString(str);
-
+                                    template.ValidateContractCompatibility(bindingDataContract);
                                     setFunc = (newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(template, bindingData));
                                 }
                             }

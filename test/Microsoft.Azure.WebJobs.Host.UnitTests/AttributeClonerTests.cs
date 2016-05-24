@@ -38,6 +38,34 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public string ConstantProp { get; private set; }
         }
 
+        // Helper to easily generate a fixed binding contract. 
+        private static IReadOnlyDictionary<string, Type> GetBindingContract(params string[] names)
+        {
+            var d = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in names)
+            {
+                d[name] = typeof(string);
+            }
+            return d;
+        }
+        private static IReadOnlyDictionary<string, Type> EmptyContract = new Dictionary<string, Type>();
+
+        // Enforce binding contracts statically. 
+        [Fact]
+        public void BindingContractMismatch()
+        {
+            Attr1 a1 = new Attr1 { Path = "{name}" };
+
+            try
+            {
+                var cloner = new AttributeCloner<Attr1>(a1, EmptyContract);
+                Assert.True(false, "Should have caught binding contract mismatch");
+            }
+            catch(InvalidOperationException e)
+            {
+                Assert.Equal("No binding parameter exists for 'name'.", e.Message);
+            }
+        }
 
         // Test on an attribute that does NOT implement IAttributeInvokeDescriptor
         // Key parameter is a property (not ctor)
@@ -51,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var nameResolver = new FakeNameResolver();
             nameResolver._dict["test"] = "ABC";
 
-            var cloner = new AttributeCloner<Attr1>(a1, nameResolver);
+            var cloner = new AttributeCloner<Attr1>(a1, EmptyContract, nameResolver);
             Attr1 attr2 = await cloner.ResolveFromInvokeString("xy");
 
             Assert.Equal("xy", attr2.Path);
@@ -68,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 new BlobAttribute("container/{name}", FileAccess.Write)
             })
             {
-                var cloner = new AttributeCloner<BlobAttribute>(attr);
+                var cloner = new AttributeCloner<BlobAttribute>(attr, GetBindingContract("name"));
                 BlobAttribute attr2 = await cloner.ResolveFromInvokeString("c/n");
 
                 Assert.Equal("c/n", attr2.BlobPath);
@@ -83,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr2 attr = new Attr2("{p2}", "constant") { ResolvedProp1 = "{p1}" };
 
-            var cloner = new AttributeCloner<Attr2>(attr);
+            var cloner = new AttributeCloner<Attr2>(attr, GetBindingContract("p1", "p2"));
 
             Attr2 attrResolved = cloner.ResolveFromBindings(new Dictionary<string, object> {
                 { "p1", "v1" }, { "p2", "v2" }});
@@ -107,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Attr1 a1 = new Attr1 { Path = "x%appsetting%y-{k}" };
 
             var nameResolver = new FakeNameResolver().Add("appsetting", "ABC");
-            var cloner = new AttributeCloner<Attr1>(a1, nameResolver);
+            var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("k"), nameResolver);
 
             // Get the attribute with %% resolved (happens at indexing time), but not {} (not resolved until runtime) 
             var attrPre = cloner.GetNameResolvedAttribute();
@@ -136,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
             var ctx = GetCtx(values);
 
-            var cloner = new AttributeCloner<Attr1>(a1);
+            var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("key1", "key2"));
             var attr2 = await cloner.ResolveFromBindingData(ctx);
 
             Assert.Equal("val1-val2", attr2.Path);
@@ -153,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
             var ctx = GetCtx(values);
 
-            var cloner = new AttributeCloner<BlobAttribute>(a1);
+            var cloner = new AttributeCloner<BlobAttribute>(a1, GetBindingContract("name"));
             var attr2 = await cloner.ResolveFromBindingData(ctx);
 
             Assert.Equal("container/green.txt", attr2.BlobPath);
@@ -172,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
             var ctx = GetCtx(values);
 
-            var cloner = new AttributeCloner<BlobAttribute>(a1);
+            var cloner = new AttributeCloner<BlobAttribute>(a1, GetBindingContract("name"));
             var attr2 = await cloner.ResolveFromBindingData(ctx);
 
             Assert.Equal("container/green.txt", attr2.BlobPath);
@@ -188,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr1 attr = new Attr1 { Path = "%bad" };
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr));            
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));            
         }
 
         [Fact]
@@ -196,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             var attr = new Attr2("%bad", "constant");
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr, EmptyContract));
         }
 
         // Malformed %% fail in ctor.  
@@ -207,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr1 attr = new Attr1 { Path = "%missing%" };
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
 
         }
 
