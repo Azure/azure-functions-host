@@ -132,17 +132,20 @@
 
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
 
-  <Target Name="UnitTest" DependsOnTargets="CheckSkipStrongNames;Build">
+  <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
       <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"
+     
              Properties="$(SetConfiguration); $(SetPlatform)"
              BuildInParallel="$(BuildInParallel)">
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
     </MSBuild>
-
+  </Target>
+  
+  <Target Name="UnitTest" DependsOnTargets="TestBuild">
     <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
   </Target>
 
