@@ -212,6 +212,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     instance.Dispose();
                 }
+
+                IsRunning = false;
             }
             catch
             {

@@ -13,6 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static class TestHelpers
     {
+        /// <summary>
+        /// Common root directory that functions tests create temporary directories under.
+        /// This enables us to clean up test files by deleting this single directory.
+        /// </summary>
+        public static string FunctionsTestDirectory
+        {
+            get
+            {
+                return Path.Combine(Path.GetTempPath(), "FunctionsTest");
+            }
+        }
+
         public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
         {
             DateTime start = DateTime.Now;
