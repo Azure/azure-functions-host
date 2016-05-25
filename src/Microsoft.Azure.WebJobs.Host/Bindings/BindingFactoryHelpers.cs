@@ -156,112 +156,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             Func<TAttribute, IValueProvider> argumentBuilder = null;                                            
 
+            // C# reflection trivia: If .IsOut = true, then IsGenericType = false. 
             if (parameterType.IsGenericType)
             {
-                var genericType = parameterType.GetGenericTypeDefinition();
-                var elementType = parameterType.GetGenericArguments()[0];
-
-                if (genericType == typeof(IAsyncCollector<>))
-                {
-                    if (elementType == typeof(TMessage))
-                    {
-                        // Bind to IAsyncCollector<TMessage>. This is the "purest" binding, no adaption needed. 
-                        argumentBuilder = (attrResolved) =>
-                        {
-                            IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
-                            var invokeString = cloner.GetInvokeString(attrResolved); 
-                             
-                            return new AsyncCollectorValueProvider<IAsyncCollector<TMessage>, TMessage>(raw, raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // Bind to IAsyncCollector<T>
-                        // Get a converter from T to TMessage
-                        argumentBuilder = DynamicInvokeBuildIAsyncCollectorArgument(elementType, converterManager, buildFromAttribute, cloner);
-                    }
-                }
-                else if (genericType == typeof(ICollector<>))
-                {
-                    if (elementType == typeof(TMessage))
-                    {
-                        // Bind to ICollector<TMessage> This just needs an Sync/Async wrapper
-                        argumentBuilder = (attrResolved) =>
-                        {
-                            IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
-                            var invokeString = cloner.GetInvokeString(attrResolved);
-                            ICollector<TMessage> obj = new SyncAsyncCollectorAdapter<TMessage>(raw);
-                            return new AsyncCollectorValueProvider<ICollector<TMessage>, TMessage>(obj, raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // Bind to ICollector<T>. 
-                        // This needs both a conversion from T to TMessage and an Sync/Async wrapper
-                        argumentBuilder = DynamicInvokeBuildICollectorArgument(elementType, converterManager, buildFromAttribute, cloner);
-                    }
-                }
+                argumentBuilder = BindAsyncCollectorToInterface(converterManager, buildFromAttribute, cloner, parameterType, argumentBuilder);
             }
 
             if (parameter.IsOut)
             {
-                Type elementType = parameter.ParameterType.GetElementType();
-
-                // How should "out byte[]" bind?
-                // If there's an explicit "byte[] --> TMessage" converter, then that takes precedence.                 
-                // Else, bind over an array of "byte --> TMessage" converters 
-
-                argumentBuilder = DynamicInvokeBuildOutArgument(elementType, converterManager, buildFromAttribute, cloner);
-
-                if (argumentBuilder != null)
-                {
-                }
-                else if (elementType.IsArray)
-                {
-                    if (elementType == typeof(TMessage[]))
-                    {
-                        argumentBuilder = (attrResolved) =>
-                        {
-                            IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
-                            var invokeString = cloner.GetInvokeString(attrResolved);
-                            return new OutArrayValueProvider<TMessage>(raw, invokeString);
-                        };
-                    }
-                    else
-                    {
-                        // out TMessage[]
-                        var e2 = elementType.GetElementType();
-                        argumentBuilder = DynamicBuildOutArrayArgument(e2, converterManager, buildFromAttribute, cloner);
-                    }
-                }
-                else
-                {
-                    // Single enqueue
-                    //    out TMessage
-                    if (elementType == typeof(TMessage))
-                    {
-                        argumentBuilder = (attrResolved) =>
-                        {
-                            IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
-                            var invokeString = cloner.GetInvokeString(attrResolved);
-                            return new OutValueProvider<TMessage>(raw, invokeString);
-                        };
-                    }
-                }
-
-                // For out-param, give some rich errors. 
-                if (argumentBuilder == null)
-                {
-                    if (typeof(IEnumerable).IsAssignableFrom(elementType))
-                    {
-                        throw new InvalidOperationException(
-                            "Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
-                    }
-                    else if (typeof(object) == elementType)
-                    {
-                        throw new InvalidOperationException("Object element types are not supported.");
-                    }
-                }
+                argumentBuilder = BindAsyncCollectorToOut(parameter, converterManager, buildFromAttribute, cloner);
             }
 
             if (argumentBuilder == null)
@@ -289,6 +192,126 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return new AsyncCollectorBinding<TAttribute, TMessage>(param, argumentBuilder, cloner);
+        }
+
+        // Helper to bind an IAsyncCollector<TMessage> raw object to an IAsyncCollector<TUser> or ICollecter<TUser> and invoke converter manager as needed.
+        private static Func<TAttribute, IValueProvider> BindAsyncCollectorToInterface<TAttribute, TMessage>(IConverterManager converterManager, Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute, AttributeCloner<TAttribute> cloner, Type parameterType, Func<TAttribute, IValueProvider> argumentBuilder) where TAttribute : Attribute
+        {
+            var genericType = parameterType.GetGenericTypeDefinition();
+            var elementType = parameterType.GetGenericArguments()[0];
+
+            if (genericType == typeof(IAsyncCollector<>))
+            {
+                if (elementType == typeof(TMessage))
+                {
+                    // Bind to IAsyncCollector<TMessage>. This is the "purest" binding, no adaption needed. 
+                    argumentBuilder = (attrResolved) =>
+                    {
+                        IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
+                        var invokeString = cloner.GetInvokeString(attrResolved);
+
+                        return new AsyncCollectorValueProvider<IAsyncCollector<TMessage>, TMessage>(raw, raw, invokeString);
+                    };
+                }
+                else
+                {
+                    // Bind to IAsyncCollector<T>
+                    // Get a converter from T to TMessage
+                    argumentBuilder = DynamicInvokeBuildIAsyncCollectorArgument(elementType, converterManager, buildFromAttribute, cloner);
+                }
+            }
+            else if (genericType == typeof(ICollector<>))
+            {
+                if (elementType == typeof(TMessage))
+                {
+                    // Bind to ICollector<TMessage> This just needs an Sync/Async wrapper
+                    argumentBuilder = (attrResolved) =>
+                    {
+                        IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
+                        var invokeString = cloner.GetInvokeString(attrResolved);
+                        ICollector<TMessage> obj = new SyncAsyncCollectorAdapter<TMessage>(raw);
+                        return new AsyncCollectorValueProvider<ICollector<TMessage>, TMessage>(obj, raw, invokeString);
+                    };
+                }
+                else
+                {
+                    // Bind to ICollector<T>. 
+                    // This needs both a conversion from T to TMessage and an Sync/Async wrapper
+                    argumentBuilder = DynamicInvokeBuildICollectorArgument(elementType, converterManager, buildFromAttribute, cloner);
+                }
+            }
+
+            return argumentBuilder;
+        }
+
+        // Helper to bind an IAsyncCollector<TMessage> to an 'out TUser' pattern, and invoke converter manager as needed. 
+        private static Func<TAttribute, IValueProvider> BindAsyncCollectorToOut<TAttribute, TMessage>(
+            ParameterInfo parameter, 
+            IConverterManager converterManager, 
+            Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute, 
+            AttributeCloner<TAttribute> cloner) 
+            where TAttribute : Attribute
+        {
+            Func<TAttribute, IValueProvider> argumentBuilder;
+            Type elementType = parameter.ParameterType.GetElementType();
+
+            // How should "out byte[]" bind?
+            // If there's an explicit "byte[] --> TMessage" converter, then that takes precedence.                 
+            // Else, bind over an array of "byte --> TMessage" converters 
+
+            argumentBuilder = DynamicInvokeBuildOutArgument(elementType, converterManager, buildFromAttribute, cloner);
+
+            if (argumentBuilder != null)
+            {
+            }
+            else if (elementType.IsArray)
+            {
+                if (elementType == typeof(TMessage[]))
+                {
+                    argumentBuilder = (attrResolved) =>
+                    {
+                        IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
+                        var invokeString = cloner.GetInvokeString(attrResolved);
+                        return new OutArrayValueProvider<TMessage>(raw, invokeString);
+                    };
+                }
+                else
+                {
+                    // out TMessage[]
+                    var e2 = elementType.GetElementType();
+                    argumentBuilder = DynamicBuildOutArrayArgument(e2, converterManager, buildFromAttribute, cloner);
+                }
+            }
+            else
+            {
+                // Single enqueue
+                //    out TMessage
+                if (elementType == typeof(TMessage))
+                {
+                    argumentBuilder = (attrResolved) =>
+                    {
+                        IAsyncCollector<TMessage> raw = buildFromAttribute(attrResolved);
+                        var invokeString = cloner.GetInvokeString(attrResolved);
+                        return new OutValueProvider<TMessage>(raw, invokeString);
+                    };
+                }
+            }
+
+            // For out-param, give some rich errors. 
+            if (argumentBuilder == null)
+            {
+                if (typeof(IEnumerable).IsAssignableFrom(elementType))
+                {
+                    throw new InvalidOperationException(
+                        "Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
+                }
+                else if (typeof(object) == elementType)
+                {
+                    throw new InvalidOperationException("Object element types are not supported.");
+                }
+            }
+
+            return argumentBuilder;
         }
 
         private static Func<TAttribute, IValueProvider> DynamicBuildOutArrayArgument<TAttribute, TMessage>(
