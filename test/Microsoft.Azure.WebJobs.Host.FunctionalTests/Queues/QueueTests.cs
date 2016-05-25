@@ -100,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             try
             {
                 host.Call("Func", new { x = "*" }); // produces an error pattern. 
+                Assert.False(true, "should have failed");
             }
             catch (FunctionInvocationException e)
             {
@@ -121,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             try
             {
                 host.Call("Func", new { x = "1" }); // produces an error pattern. 
+                Assert.False(true, "should have failed");
             }
             catch (FunctionInvocationException e) // Not an index exception!
             {
