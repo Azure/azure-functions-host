@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
         {
-            return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
+            var diagnostics = _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
+            return diagnostics.AddRange(_compilation.GetDiagnostics());
         }
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
