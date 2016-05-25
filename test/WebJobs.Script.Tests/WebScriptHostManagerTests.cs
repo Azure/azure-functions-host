@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -46,19 +47,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Equal("WebHookTrigger.json", secretFiles[3]);
         }
 
+        [Fact]
+        public async Task EmptyHost_StartsSuccessfully()
+        {
+            string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionTestDir);
+
+            // important for the repro that these directories no not exist
+            string logDir = Path.Combine(_fixture.TestLogsRoot, Guid.NewGuid().ToString());
+            string secretsDir = Path.Combine(_fixture.TestSecretsRoot, Guid.NewGuid().ToString());
+
+            JObject hostConfig = new JObject
+            {
+                { "id", "123456" }
+            };
+            File.WriteAllText(Path.Combine(functionTestDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration
+            {
+                RootScriptPath = functionTestDir,
+                RootLogPath = logDir,
+                FileLoggingEnabled = true
+            };
+            SecretManager secretManager = new SecretManager(secretsDir);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager);
+
+            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
+
+            hostManager.Stop();
+            Assert.False(hostManager.IsRunning);
+
+            string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
+            string hostLogs = File.ReadAllText(hostLogFilePath);
+
+            Assert.True(hostLogs.Contains("Generating 0 job function(s)"));
+            Assert.True(hostLogs.Contains("No job functions found."));
+            Assert.True(hostLogs.Contains("Job host started"));
+            Assert.True(hostLogs.Contains("Job host stopped"));
+        }
+
         public class Fixture : IDisposable
         {
             public Fixture()
             {
-                string testRoot = Path.Combine(Path.GetTempPath(), "FunctionTests");
-                if (Directory.Exists(testRoot))
-                {
-                    Directory.Delete(testRoot, recursive: true);
-                }
+                TestFunctionRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
+                TestLogsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs");
+                TestSecretsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Secrets");
 
-                SecretsPath = Path.Combine(testRoot, "TestSecrets");
+                string testRoot = Path.Combine(TestFunctionRoot, Guid.NewGuid().ToString());
+
+                SecretsPath = Path.Combine(TestSecretsRoot, Guid.NewGuid().ToString());
                 Directory.CreateDirectory(SecretsPath);
-                string logRoot = Path.Combine(testRoot, @"Functions");
+                string logRoot = Path.Combine(TestLogsRoot, Guid.NewGuid().ToString(), @"Functions");
                 Directory.CreateDirectory(logRoot);
                 FunctionsLogDir = Path.Combine(logRoot, @"Function");
                 Directory.CreateDirectory(FunctionsLogDir);
@@ -100,12 +142,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             public string SecretsPath { get; private set; }
 
+            public string TestFunctionRoot { get; private set; }
+
+            public string TestLogsRoot { get; private set; }
+
+            public string TestSecretsRoot { get; private set; }
+
             public void Dispose()
             {
                 if (HostManager != null)
                 {
                     HostManager.Stop();
                     HostManager.Dispose();
+                }
+
+                if (Directory.Exists(TestHelpers.FunctionsTestDirectory))
+                {
+                    Directory.Delete(TestHelpers.FunctionsTestDirectory, recursive: true);
                 }
             }
 
