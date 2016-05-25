@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "Bash-E2E")]
     public class BashEndToEndTests : EndToEndTestsBase<BashEndToEndTests.TestFixture>
     {
         public BashEndToEndTests(TestFixture fixture)
