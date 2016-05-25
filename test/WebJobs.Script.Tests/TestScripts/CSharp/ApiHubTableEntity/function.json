@@ -1,9 +1,10 @@
 {
   "bindings": [
     {
-      "type": "manualTrigger",
-      "name": "text",
-      "direction": "in"
+      "type": "queueTrigger",
+      "name": "input",
+      "direction": "in",
+      "queueName": "apihub-table-test"
     },
     {
       "type": "apiHubTable",
@@ -11,7 +12,7 @@
       "direction": "out",
       "connection": "AzureWebJobsSql",
       "tableName": "SampleTable",
-      "entityId": "3"
+      "entityId": "{Id}"
     }
   ]
 }

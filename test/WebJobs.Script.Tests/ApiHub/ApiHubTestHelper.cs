@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
         public const int EntityId4 = 4;
         public const int EntityId5 = 5;
         public const string TextArg = "text";
-        public const string EntityIdArg = "entityId";
 
         private const string Key = "AzureWebJobsSql";
         private const string DataSetName = "default";

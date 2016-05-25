@@ -1,8 +1,8 @@
-﻿module.exports = function (context, entityId) {
-    if (context.bindings.entity.Id != entityId)
+﻿module.exports = function (context, input) {
+    if (context.bindings.entity.Id != input.id)
     {
-        throw "Failed";
+        throw "Expected Id to be bound.";
     }
-    context.log("ApiHubTableEntityIn:", context.bindings.entity.Id);
+    context.log("TestResult:", context.bindings.entity.Id);
     context.done();
 }
