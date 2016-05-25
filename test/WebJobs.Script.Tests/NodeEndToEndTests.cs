@@ -443,15 +443,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableEntityIn()
         {
+            TestHelpers.ClearFunctionLogs("ApiHubTableEntityIn");
+
             // Ensure the test entity exists.
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId4);
 
             // Test table entity out binding.
+            JObject input = new JObject
+            {
+                { "table", "SampleTable" },
+                { "id", ApiHubTestHelper.EntityId4 }
+            };
             await Fixture.Host.CallAsync("ApiHubTableEntityIn",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.EntityIdArg, ApiHubTestHelper.EntityId4.ToString() }
+                    { "input", input.ToString() }
                 });
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("ApiHubTableEntityIn");
+            string expectedLog = string.Format("TestResult: {0}", ApiHubTestHelper.EntityId4);
+            Assert.True(logs.Any(p => p.Contains(expectedLog)));
         }
 
         [Fact]
@@ -463,10 +474,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTestHelper.DeleteEntityAsync(ApiHubTestHelper.EntityId5);
 
             // Test table entity out binding.
+            JObject input = new JObject
+            {
+                { "table", "SampleTable" },
+                { "value", textArgValue }
+            };
             await Fixture.Host.CallAsync("ApiHubTableEntityOut",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.TextArg, textArgValue }
+                    { "input", input.ToString() }
                 });
 
             await ApiHubTestHelper.AssertTextUpdatedAsync(
