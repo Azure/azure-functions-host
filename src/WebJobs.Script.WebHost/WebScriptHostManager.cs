@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Purge any old Function secrets
-            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath);
+            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
         }
     }
 }
