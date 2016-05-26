@@ -15,28 +15,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact(Skip = "Flaky test. Need to fix")]
+        [Fact]
         public async Task BlobTriggerToBlobTest()
         {
-            string name = Guid.NewGuid().ToString();
-            string blobContents = "My Test Blob";
-            CloudBlobContainer inputContainer = Fixture.BlobClient.GetContainerReference("test-input-bash");
-            inputContainer.CreateIfNotExists();
-            CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(name);
-            await inputBlob.UploadTextAsync(blobContents);
-
+            // the trigger blob was written by the fixture init code
+            // here we just wait for the output blob
             CloudBlobContainer outputContainer = Fixture.BlobClient.GetContainerReference("test-output-bash");
-            var resultBlob = outputContainer.GetBlockBlobReference(name);
+            var resultBlob = outputContainer.GetBlockBlobReference(Fixture.TestBlobName);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
             string resultContents = resultBlob.DownloadText();
-            Assert.Equal(blobContents, resultContents.Trim());
+            Assert.Equal(Fixture.TestBlobContents, resultContents.Trim());
         }
 
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Bash", "bash")
+            { 
+            }
+
+            public string TestBlobContents { get; private set; }
+
+            public string TestBlobName { get; private set; }
+
+            protected override void CreateTestStorageEntities()
             {
+                base.CreateTestStorageEntities();
+
+                TestBlobContents = "My Test Blob";
+                TestBlobName = Guid.NewGuid().ToString();
+
+                // write the test blob before the host starts, so it gets picked
+                // up relatively quickly by the blob trigger test
+                CloudBlobContainer inputContainer = BlobClient.GetContainerReference("test-input-bash");
+                inputContainer.CreateIfNotExists();
+                CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(TestBlobName);
+                inputBlob.UploadText(TestBlobContents);
             }
         }
     }
