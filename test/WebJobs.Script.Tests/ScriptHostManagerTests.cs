@@ -67,8 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = NullTraceWriter.Instance
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var hostMock = new Mock<TestScriptHost>(config);
@@ -93,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = NullTraceWriter.Instance
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var exception = new Exception("Kaboom!");
