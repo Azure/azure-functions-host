@@ -297,6 +297,7 @@
     <Compile Include="Description\Binding\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\Binding\TableBindingMetadata.cs" />
     <Compile Include="Description\Binding\TimerBindingMetadata.cs" />
+    <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />

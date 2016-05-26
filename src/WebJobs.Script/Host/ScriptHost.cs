@@ -125,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
 
             TraceWriter = ScriptConfig.TraceWriter;
+            TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
             if (ScriptConfig.FileLoggingEnabled)
             {
-                TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
                 string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
                 TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel);
                 if (TraceWriter != null)
@@ -147,7 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                TraceWriter = NullTraceWriter.Instance;
+                // if no TraceWriter has been configured, default it to Console
+                TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
             }
 
             TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));

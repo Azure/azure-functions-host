@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.ServiceBus.Messaging;
+using NCrontab;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -336,15 +337,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerParameterType = typeof(string);
             }
 
+            CrontabSchedule.ParseOptions options = new CrontabSchedule.ParseOptions()
+            {
+                IncludingSeconds = true
+            };
+            if (CrontabSchedule.TryParse(trigger.Schedule, options) == null)
+            {
+                throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", trigger.Schedule));
+            }
+
             ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string schedule = trigger.Schedule;
-            bool runOnStartup = trigger.RunOnStartup;
             
             PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
             CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, 
-                new object[] { schedule }, 
+                new object[] { trigger.Schedule }, 
                 new PropertyInfo[] { runOnStartupProperty }, 
-                new object[] { runOnStartup });
+                new object[] { trigger.RunOnStartup });
 
             string parameterName = trigger.Name;
             var attributes = new Collection<CustomAttributeBuilder>

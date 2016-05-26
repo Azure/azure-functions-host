@@ -3,8 +3,7 @@
         {
             "type": "timerTrigger",
             "direction": "in",
-            "schedule": "0 * * * * *",
-            "runOnStartup": true
+            "schedule": "0 * * * * *"
         },
         {
             "type": "queue",

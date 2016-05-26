@@ -3,7 +3,6 @@
         {
             "type": "timerTrigger",
             "schedule": "0 * * * * *",
-            "runOnStartup": true,
             "direction": "in"
         }
     ]
