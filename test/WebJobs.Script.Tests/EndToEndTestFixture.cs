@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return queue;
         }
 
-        private void CreateTestStorageEntities()
+        protected virtual void CreateTestStorageEntities()
         {
             TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
             TestQueue.CreateIfNotExists();
