@@ -10,7 +10,7 @@
             "name": "itemIn",
             "direction": "in",
             "tableName": "Item",
-            "id": "{QueueTrigger}"
+            "id": "{recordId}"
         },
         {
             "type": "mobileTable",

@@ -6,8 +6,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
@@ -17,16 +17,40 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     internal class DocumentDBBinding : FunctionBinding
     {
         private BindingDirection _bindingDirection;
+        private readonly BindingTemplate _databaseNameBindingTemplate;
+        private readonly BindingTemplate _collectionNameBindingTemplate;
+        private readonly BindingTemplate _partitionKeyBindingTemplate;
+        private readonly BindingTemplate _idBindingTemplate;
 
         public DocumentDBBinding(ScriptHostConfiguration config, DocumentDBBindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
             DatabaseName = metadata.DatabaseName;
+            if (!string.IsNullOrEmpty(DatabaseName))
+            {
+                _databaseNameBindingTemplate = BindingTemplate.FromString(DatabaseName);
+            }
+
             CollectionName = metadata.CollectionName;
+            if (!string.IsNullOrEmpty(CollectionName))
+            {
+                _collectionNameBindingTemplate = BindingTemplate.FromString(CollectionName);
+            }
+
+            Id = metadata.Id;
+            if (!string.IsNullOrEmpty(Id))
+            {
+                _idBindingTemplate = BindingTemplate.FromString(Id);
+            }
+
+            PartitionKey = metadata.PartitionKey;
+            if (!string.IsNullOrEmpty(PartitionKey))
+            {
+                _partitionKeyBindingTemplate = BindingTemplate.FromString(PartitionKey);
+            }
+
             CreateIfNotExists = metadata.CreateIfNotExists;
             ConnectionString = metadata.Connection;
-            Id = metadata.Id;
-            PartitionKey = metadata.PartitionKey;
             CollectionThroughput = metadata.CollectionThroughput;
 
             _bindingDirection = metadata.Direction;
@@ -83,12 +107,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            DocumentDBAttribute attribute = new DocumentDBAttribute(DatabaseName, CollectionName)
+            string boundDatabaseName = ResolveBindingTemplate(DatabaseName, _databaseNameBindingTemplate, context.BindingData);
+            string boundCollectionName = ResolveBindingTemplate(CollectionName, _collectionNameBindingTemplate, context.BindingData);
+            string boundId = ResolveBindingTemplate(Id, _idBindingTemplate, context.BindingData);
+            string boundPartitionKey = ResolveBindingTemplate(PartitionKey, _partitionKeyBindingTemplate, context.BindingData);
+
+            DocumentDBAttribute attribute = new DocumentDBAttribute(boundDatabaseName, boundCollectionName)
             {
                 CreateIfNotExists = CreateIfNotExists,
                 ConnectionString = ConnectionString,
-                Id = Id,
-                PartitionKey = PartitionKey,
+                Id = boundId,
+                PartitionKey = boundPartitionKey,
                 CollectionThroughput = CollectionThroughput
             };
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
