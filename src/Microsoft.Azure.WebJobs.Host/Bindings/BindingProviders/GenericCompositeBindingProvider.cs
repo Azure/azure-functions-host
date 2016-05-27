@@ -59,7 +59,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             // Nobody claimed it.                 
-            throw new InvalidOperationException("Can't bind to parameter.");
+            string resourceName = typeof(TAttribute).Name;
+            const string Suffix = "Attribute";
+            if (resourceName.EndsWith(Suffix))
+            {
+                resourceName = resourceName.Substring(0, resourceName.Length - Suffix.Length);
+            }
+            throw new InvalidOperationException("Can't bind " + resourceName + " to type '" + context.Parameter.ParameterType + "'.");
         }
     }
 }
