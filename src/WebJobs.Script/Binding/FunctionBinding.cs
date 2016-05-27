@@ -5,15 +5,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -128,6 +127,26 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return bindings;
+        }
+
+        protected string ResolveBindingTemplate(string value, BindingTemplate bindingTemplate, IReadOnlyDictionary<string, string> bindingData)
+        {
+            string boundValue = value;
+
+            if (bindingData != null)
+            {
+                if (bindingTemplate != null)
+                {
+                    boundValue = bindingTemplate.Bind(bindingData);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(value))
+            {
+                boundValue = Resolve(boundValue);
+            }
+
+            return boundValue;
         }
 
         protected string Resolve(string name)
@@ -271,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // value is already a stream, so copy it directly
                 valueStream.CopyTo(stream);
-            } 
+            }
         }
 
         public static void ConvertStreamToValue(Stream stream, DataType dataType, ref object converted)

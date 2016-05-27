@@ -149,9 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(doc.Id, id);
 
-            // Now add that Id to a Queue
+            // Now add that Id to a Queue, in an object to test binding
             var queue = Fixture.GetNewQueue("documentdb-input");
-            await queue.AddMessageAsync(new CloudQueueMessage(id));
+            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
+            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
             Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
@@ -240,7 +241,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Now add that Id to a Queue
             var queue = Fixture.GetNewQueue("mobiletables-input");
-            await queue.AddMessageAsync(new CloudQueueMessage(id));
+            string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
+            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
 

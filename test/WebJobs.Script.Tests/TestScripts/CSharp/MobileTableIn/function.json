@@ -10,7 +10,7 @@
             "name": "item",
             "direction": "in",
             "tableName": "Item",
-            "id": "{QueueTrigger}"
+            "id": "{recordId}"
         }
     ]
 }

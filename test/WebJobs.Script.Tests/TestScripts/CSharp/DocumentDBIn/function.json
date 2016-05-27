@@ -11,7 +11,7 @@
             "direction": "in",
             "databaseName": "ItemDb",
             "collectionName": "ItemCollection",
-            "id": "{QueueTrigger}"
+            "id": "{documentId}"
         }
     ]
 }
