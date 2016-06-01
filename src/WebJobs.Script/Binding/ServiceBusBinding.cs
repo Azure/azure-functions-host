@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
-            await BindAsyncCollectorAsync<string>(context, runtimeContext);
+            await BindAsyncCollectorAsync<byte[]>(context, runtimeContext);
         }
 
         internal static void AddServiceBusAccountAttribute(Collection<CustomAttributeBuilder> attributes, string connection)

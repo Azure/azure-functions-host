@@ -10,6 +10,12 @@
             "name": "message",
             "direction": "out",
             "queueName": "samples-input"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "samples-output/{id}"
         }
     ]
 }
