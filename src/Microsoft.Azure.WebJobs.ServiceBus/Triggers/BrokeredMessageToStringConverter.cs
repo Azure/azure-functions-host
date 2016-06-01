@@ -19,7 +19,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 throw new ArgumentNullException("input");
             }
 
-            if (input.ContentType == ContentTypes.TextPlain)
+            if (input.ContentType == ContentTypes.TextPlain ||
+                input.ContentType == ContentTypes.ApplicationOctetStream ||
+                input.ContentType == ContentTypes.ApplicationJson)
             {
                 Stream stream = input.GetBody<Stream>();
                 if (stream == null)

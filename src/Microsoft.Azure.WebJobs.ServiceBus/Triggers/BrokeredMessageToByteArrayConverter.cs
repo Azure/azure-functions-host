@@ -13,7 +13,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         public async Task<byte[]> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
-            if (input.ContentType == ContentTypes.ApplicationOctetStream)
+            if (input.ContentType == ContentTypes.ApplicationOctetStream ||
+                input.ContentType == ContentTypes.TextPlain ||
+                input.ContentType == ContentTypes.ApplicationJson)
             {
                 using (MemoryStream outputStream = new MemoryStream())
                 using (Stream inputStream = input.GetBody<Stream>())

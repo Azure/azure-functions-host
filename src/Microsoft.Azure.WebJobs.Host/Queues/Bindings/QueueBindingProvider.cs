@@ -6,14 +6,14 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.WebJobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     // Write up bindinging rules for [Queue] attribute. 
     // This is fundemantentally an IAsyncCollector<IStorageQueueMessage>
