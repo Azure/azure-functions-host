@@ -11,6 +11,8 @@ using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -288,6 +290,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(testData, result.Trim());
         }
 
+        [Fact]
+        public async Task ServiceBusQueueTrigger_Succeeds()
+        {
+            string queueName = "samples-input";
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+            namespaceManager.DeleteQueue(queueName);
+            namespaceManager.CreateQueue(queueName);
+
+            var client = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, queueName);
+
+            // write a start message to the queue to kick off the processing
+            int max = 3;
+            string id = Guid.NewGuid().ToString();
+            JObject message = new JObject
+            {
+                { "count", 1 },
+                { "max", max },
+                { "id", id }
+            };
+            using (Stream stream = new MemoryStream())
+            using (TextWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(message.ToString());
+                writer.Flush();
+                stream.Position = 0;
+
+                client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            }
+
+            client.Close();
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal(string.Format("{0} messages processed", max), result.Trim());
+        }
+
         public class TestFixture : IDisposable
         {
             public TestFixture()
@@ -326,6 +368,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "7", Title = "Test Entity 7", Status = 0 });
                 table.ExecuteBatch(batch);
 
+                connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+                NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+
                 WaitForHost();
             }
 
@@ -334,6 +379,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public CloudBlobClient BlobClient { get; set; }
 
             public CloudQueueClient QueueClient { get; set; }
+
+            public NamespaceManager NamespaceManager { get; set; }
 
             public HttpClient HttpClient { get; set; }
 
