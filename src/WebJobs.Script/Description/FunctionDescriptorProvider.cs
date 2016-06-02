@@ -17,9 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        internal const string DefaultInputParameterName = "input";
-        internal const string DefaultPowershellInputParameterName = "inputData";
-        internal const string DefaultHttpInputParameterName = "req";
+        private const string _defaultInputParameterName = "input";
+        private const string DefaultHttpInputParameterName = "req";
 
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
@@ -38,31 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException("functionMetadata");
             }
 
-            functionDescriptor = null;
-
-            // Default the trigger binding name if a name hasn't
-            // been specified
-            // TODO: Remove this logic and always require it to be explicitly
-            // specified?
             foreach (var binding in functionMetadata.Bindings.Where(p => p.IsTrigger))
             {
-                if (string.IsNullOrEmpty(binding.Name))
-                {
-                    if (binding.Type == BindingType.HttpTrigger)
-                    {
-                        binding.Name = DefaultHttpInputParameterName;
-                    }
-                    else
-                    {
-                        ScriptType scriptType = functionMetadata.ScriptType;
-                        binding.Name = scriptType == ScriptType.Powershell ? DefaultPowershellInputParameterName : DefaultInputParameterName;
-                    }
-                }
-                else if (functionMetadata.ScriptType == ScriptType.Powershell &&
-                         string.Equals(binding.Name, "input", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new ArgumentException("Input binding name 'input' is not allowed.  Consider renaming.");
-                }
+                DefaultTriggerBindingParameterName(binding);
             }
 
             // parse the bindings
@@ -70,9 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
-          
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile);
-
+            functionDescriptor = null;
             IFunctionInvoker invoker = null;
 
             try
@@ -173,6 +149,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             triggerParameter.IsTrigger = true;
 
             return triggerParameter;
+        }
+
+        protected virtual string DefaultInputParameterName
+        {
+            get
+            {
+                return _defaultInputParameterName;
+            }
         }
 
         /// <summary>
@@ -421,6 +405,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 attributeBuilder
             };
             return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
+        }
+
+        private void DefaultTriggerBindingParameterName(BindingMetadata triggerBindingMetadata)
+        {
+            // Default the trigger binding name if a name hasn't
+            // been specified
+            // TODO: Remove this logic and always require it to be explicitly
+            // specified?
+            if (string.IsNullOrEmpty(triggerBindingMetadata.Name))
+            {
+                if (triggerBindingMetadata.Type == BindingType.HttpTrigger)
+                {
+                    triggerBindingMetadata.Name = DefaultHttpInputParameterName;
+                }
+                else
+                {
+                    triggerBindingMetadata.Name = DefaultInputParameterName;
+                }
+            }
         }
     }
 }

@@ -558,7 +558,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "js":
                     return ScriptType.Javascript;
                 case "ps1":
-                    return ScriptType.Powershell;
+                    return ScriptType.PowerShell;
                 case "cmd":
                 case "bat":
                     return ScriptType.WindowsBatch;
