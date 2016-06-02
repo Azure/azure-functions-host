@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "eventHubTrigger",
+            "name": "input",
             "direction": "in",
             "connection": "AzureWebJobsEventHubReceiver",
             "path": "%AzureWebJobsEventHubPath%"

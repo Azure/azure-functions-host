@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TimerBindingMetadata trigger = new TimerBindingMetadata
             {
                 Type = BindingType.TimerTrigger,
+                Name = "timerInfo",
                 Schedule = "* * * * * *",
                 RunOnStartup = true
             };
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify trigger parameter
             ParameterInfo parameter = method.GetParameters()[0];
-            Assert.Equal("input", parameter.Name);
+            Assert.Equal("timerInfo", parameter.Name);
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.Equal("* * * * * *", attribute.ScheduleExpression);
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             QueueBindingMetadata trigger = new QueueBindingMetadata
             {
                 Type = BindingType.QueueTrigger,
+                Name = "input",
                 QueueName = "test"
             };
             MethodInfo method = GenerateMethod(trigger);
@@ -68,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             BlobBindingMetadata trigger = new BlobBindingMetadata
             {
                 Type = BindingType.BlobTrigger,
+                Name = "input",
                 Path = "foo/bar"
             };
             MethodInfo method = GenerateMethod(trigger);
@@ -87,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HttpTriggerBindingMetadata trigger = new HttpTriggerBindingMetadata
             {
-                Type = BindingType.HttpTrigger
+                Type = BindingType.HttpTrigger,
+                Name = "req"
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -106,7 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.ManualTrigger
+                Type = BindingType.ManualTrigger,
+                Name = "input"
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -126,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ServiceBusBindingMetadata trigger = new ServiceBusBindingMetadata
             {
                 Type = BindingType.ServiceBusTrigger,
+                Name = "input",
                 TopicName = "testTopic",
                 SubscriptionName = "testSubscription",
                 AccessRights = AccessRights.Listen

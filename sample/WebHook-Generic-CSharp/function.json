@@ -2,12 +2,13 @@
     "bindings": [
         {
             "type": "httpTrigger",
+            "name": "payload",
             "direction": "in",
-            "webHookType": "genericJson",
-            "name": "payload"
+            "webHookType": "genericJson"
         },
         {
             "type": "http",
+            "name": "res",
             "direction": "out"
         }
     ]

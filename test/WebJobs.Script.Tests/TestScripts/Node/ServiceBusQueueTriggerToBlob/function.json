@@ -2,18 +2,19 @@
     "bindings": [
         {
             "type": "serviceBusTrigger",
+            "name": "inMessage",
             "direction": "in",
             "queueName": "test-input-node"
         },
         {
             "type": "serviceBus",
-            "name": "message",
+            "name": "outMessage",
             "direction": "out",
             "queueName": "test-input-node"
         },
         {
             "type": "blob",
-            "name": "completed",
+            "name": "blob",
             "direction": "out",
             "path": "test-output-node/completed"
         }

@@ -1,7 +1,7 @@
-﻿module.exports = function (context, data) {
-    context.log('GitHub WebHook triggered!', data.comment.body);
+﻿module.exports = function (context, payload) {
+    context.log('GitHub WebHook triggered!', payload.comment.body);
     context.res = {
-        body: 'New GitHub comment: ' + data.comment.body
+        body: 'New GitHub comment: ' + payload.comment.body
     };
     context.done();
 }

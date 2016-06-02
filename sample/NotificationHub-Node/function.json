@@ -2,13 +2,14 @@
     "bindings": [
         {
             "type": "queueTrigger",
+            "name": "input",
             "direction": "in",
             "queueName": "samples-notificationHub-node"
         },
         {
             "type": "notificationHub",
-            "direction": "out",
-            "name": "notification"
+            "name": "notification",
+            "direction": "out"
         }
     ]
 }

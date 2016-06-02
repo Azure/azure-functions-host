@@ -2,13 +2,14 @@
     "bindings": [
         {
             "type": "queueTrigger",
+            "name": "input",
             "direction": "in",
             "queueName": "samples-notificationHub-csharp"
         },
         {
             "type": "notificationHub",
-            "direction": "out",
-            "name": "messageProperties"
+            "name": "messageProperties",
+            "direction": "out"
         }
     ]
 }

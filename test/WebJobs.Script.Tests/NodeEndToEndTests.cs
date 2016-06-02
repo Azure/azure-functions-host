@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "input", "doubleDone" }
+                { "scenario", "doubleDone" }
             };
             await Fixture.Host.CallAsync("Scenarios", arguments);
 
@@ -416,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "payload", request }
             };
             await Fixture.Host.CallAsync("WebHookTrigger", arguments);
 

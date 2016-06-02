@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "queueTrigger",
+            "name": "workItem",
             "direction": "in",
             "queueName": "samples-workitems"
         },

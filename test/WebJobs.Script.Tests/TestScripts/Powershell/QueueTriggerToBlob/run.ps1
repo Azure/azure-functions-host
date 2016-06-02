@@ -1,4 +1,4 @@
-$in = Get-Content $inputData
+$in = Get-Content $triggerInput
 $message = "PowerShell script processed queue message '$in'";
 echo $message;
 $in | Out-File -Encoding Ascii $output

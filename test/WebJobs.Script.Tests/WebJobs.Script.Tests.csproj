@@ -273,6 +273,7 @@
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionBindingTests.cs" />
+    <Compile Include="FunctionDescriptorProviderTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\CSharp\PackageAssemblyResolverTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
