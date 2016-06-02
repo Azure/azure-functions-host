@@ -2,12 +2,13 @@
     "bindings": [
         {
             "type": "manualTrigger",
+            "name": "input",
             "direction": "in"
         },
         {
             "type": "notificationHub",
-            "direction": "out",
             "name": "wnsToastPayload",
+            "direction": "out",
             "platform": "wns"
         }
     ]

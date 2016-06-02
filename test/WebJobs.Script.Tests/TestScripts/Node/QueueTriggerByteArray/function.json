@@ -2,6 +2,7 @@
   "bindings": [
     {
         "type": "queueTrigger",
+        "name": "input",
         "direction": "in",
         "dataType": "binary",
         "queueName": "test-input-byte"

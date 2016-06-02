@@ -45,8 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
-            ICompilationServiceFactory compilationServiceFactory,
-            string defaultInputParameterName)
+            ICompilationServiceFactory compilationServiceFactory)
             : base(host, functionMetadata)
         {
             _functionEntryPointResolver = functionEntryPointResolver;
@@ -55,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _triggerInputName = GetTriggerInputName(functionMetadata, defaultInputParameterName);
+            _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcher();
@@ -69,20 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
-        }
-
-        // TODO: Is this function still needed? Can we factor it away?
-        private static string GetTriggerInputName(FunctionMetadata functionMetadata, string defaultInputParameterName)
-        {
-            BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
-
-            string triggerName = null;
-            if (triggerBinding != null)
-            {
-                triggerName = triggerBinding.Name;
-            }
-
-            return triggerName ?? defaultInputParameterName;
         }
 
         private void InitializeFileWatcher()

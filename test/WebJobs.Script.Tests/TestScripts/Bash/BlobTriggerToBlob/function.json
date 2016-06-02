@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "blobTrigger",
+            "name": "input",
             "direction": "in",
             "path": "test-input-bash/{name}"
         },

@@ -1,8 +1,8 @@
 ﻿{
     "bindings": [
         {
-            "name": "message",
             "type": "queueTrigger",
+            "name": "message",
             "direction": "in",
             "queueName": "samples-csharp"
         },

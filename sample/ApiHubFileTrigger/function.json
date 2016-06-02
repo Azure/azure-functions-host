@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "apiHubFileTrigger",
+            "name": "input",
             "connection": "AzureWebJobsDropBox",
             "direction": "in",
             "path": "testinnode/{name}"

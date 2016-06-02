@@ -90,11 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
-                            if (string.IsNullOrEmpty(bindingMetadata.Name))
-                            {
-                                // TODO: Why is this here?
-                                bindingMetadata.Name = "res";
-                            }
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
                         case BindingType.HttpTrigger:

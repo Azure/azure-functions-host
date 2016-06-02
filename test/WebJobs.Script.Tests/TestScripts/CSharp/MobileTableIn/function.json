@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "queueTrigger",
+            "name": "input",
             "queueName": "mobiletables-input",
             "direction": "in"
         },

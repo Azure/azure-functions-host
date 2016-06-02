@@ -1,12 +1,14 @@
 ﻿{
   "bindings": [
     {
-      "type": "httpTrigger",
-      "direction": "in",
-      "dataType": "binary"
+        "type": "httpTrigger",
+        "name": "req",
+        "direction": "in",
+        "dataType": "binary"
     },
     {
         "type": "http",
+        "name": "res",
         "direction": "out"
     }
   ]
