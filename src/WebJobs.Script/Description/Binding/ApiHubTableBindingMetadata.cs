@@ -5,13 +5,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class ApiHubTableBindingMetadata : BindingMetadata
     {
-        [AllowNameResolution]
+        [AutoResolve]
         public string DataSetName { get; set; }
 
-        [AllowNameResolution]
+        [AutoResolve]
         public string TableName { get; set; }
 
-        [AllowNameResolution]
+        [AutoResolve]
         public string EntityId { get; set; }
     }
 }
