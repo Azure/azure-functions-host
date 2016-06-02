@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
         public void GenerateQueueTriggerFunction_WithInvalidInputName_Fails()
         {
             string inputBindingName = "input";
-            string expectedError = "Input binding name 'input' is not allowed.  Consider renaming.";
+            string expectedError = "Input binding name 'input' is not allowed.";
 
             QueueBindingMetadata trigger = new QueueBindingMetadata
             {
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
             metadata.Name = FunctionName;
             metadata.ScriptFile = Path.Combine(scriptHostInfo.RootPath, @"Common\test.ps1");
             metadata.Bindings.Add(trigger);
-            metadata.ScriptType = ScriptType.Powershell;
+            metadata.ScriptType = ScriptType.PowerShell;
 
             List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
             metadatas.Add(metadata);
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
 
         private static ScriptHostInfo GetScriptHostInfo()
         {
-            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Powershell");
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\PowerShell");
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath

@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Powershell", "powershell")
+            public TestFixture() : base(@"TestScripts\PowerShell", "powershell")
             {
             }
 

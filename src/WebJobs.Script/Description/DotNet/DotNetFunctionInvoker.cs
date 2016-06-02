@@ -45,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
-            ICompilationServiceFactory compilationServiceFactory)
+            ICompilationServiceFactory compilationServiceFactory,
+            string defaultInputParameterName)
             : base(host, functionMetadata)
         {
             _functionEntryPointResolver = functionEntryPointResolver;
@@ -54,9 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _triggerInputName = GetTriggerInputName(functionMetadata);
+            _triggerInputName = GetTriggerInputName(functionMetadata, defaultInputParameterName);
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-                        
+
             InitializeFileWatcher();
 
             _resultProcessor = CreateResultProcessor();
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         // TODO: Is this function still needed? Can we factor it away?
-        private static string GetTriggerInputName(FunctionMetadata functionMetadata)
+        private static string GetTriggerInputName(FunctionMetadata functionMetadata, string defaultInputParameterName)
         {
             BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
 
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 triggerName = triggerBinding.Name;
             }
 
-            return triggerName ?? FunctionDescriptorProvider.DefaultInputParameterName;
+            return triggerName ?? defaultInputParameterName;
         }
 
         private void InitializeFileWatcher()

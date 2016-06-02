@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTriggerPowershell_Get_Succeeds()
+        public async Task HttpTriggerPowerShell_Get_Succeeds()
         {
             string uri = "api/httptrigger-powershell?code=N5rUeecvsqN1Q1lDciR7P8kn3KkQtnNJVlK7H5bev0jO7r5DbAZgvA==&name=testuser";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTriggerPowershellModules_Get_Succeeds()
+        public async Task HttpTriggerPowerShellModules_Get_Succeeds()
         {
             string uri = "api/httptrigger-powershell-modules?code=8CTs65hqBcX3DVddZOGkPoksSaIDRck9byv1ATWbqJuOb9h8MrVZzA==&name=testuser";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task QueueTriggerPowershell_Succeeds()
+        public async Task QueueTriggerPowerShell_Succeeds()
         {
             // write the input message
             CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-powershell");
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DynamicTableEntity entity = (DynamicTableEntity)result.Result;
             Assert.Equal(2, entity.Properties.Count);
             string title = entity.Properties["Title"].StringValue;
-            Assert.Equal(string.Format("Powershell Table Entity for message {0}", id), title);
+            Assert.Equal(string.Format("PowerShell Table Entity for message {0}", id), title);
         }
 
         [Fact]

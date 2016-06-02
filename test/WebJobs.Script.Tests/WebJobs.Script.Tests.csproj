@@ -537,37 +537,37 @@
     <None Include="TestScripts\Php\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\Common\test.ps1">
+    <None Include="TestScripts\PowerShell\Common\test.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\function.json">
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\modules\Get-DateToday.psm1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\modules\Get-DateToday.psm1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\HttpTrigger-PowerShellWithError\run.ps1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\HttpTrigger-PowerShell\function.json">
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\HttpTrigger-PowerShell\run.ps1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\BlobTriggerToBlob\function.json">
+    <None Include="TestScripts\PowerShell\BlobTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\BlobTriggerToBlob\run.ps1">
+    <None Include="TestScripts\PowerShell\BlobTriggerToBlob\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\host.json">
+    <None Include="TestScripts\PowerShell\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\QueueTriggerToBlob\function.json">
+    <None Include="TestScripts\PowerShell\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Powershell\QueueTriggerToBlob\run.ps1">
+    <None Include="TestScripts\PowerShell\QueueTriggerToBlob\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Python\host.json">

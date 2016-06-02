@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -14,6 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
+        protected override string DefaultInputParameterName
+        {
+            get
+            {
+                // since $input is reserved in PowerShell, we have to override
+                // the default
+                return "inputData";
+            }
+        }
+
         public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
         {
             if (functionMetadata == null)
@@ -23,9 +34,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             functionDescriptor = null;
 
-            if (functionMetadata.ScriptType != ScriptType.Powershell)
+            if (functionMetadata.ScriptType != ScriptType.PowerShell)
             {
                 return false;
+            }
+
+            foreach (var binding in functionMetadata.Bindings.Where(p => p.IsTrigger))
+            {
+                if (!string.IsNullOrEmpty(binding.Name) &&
+                    string.Equals(binding.Name, "input", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException("Input binding name 'input' is not allowed.");
+                }
             }
 
             return base.TryCreate(functionMetadata, out functionDescriptor);
