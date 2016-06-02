@@ -5,7 +5,7 @@
             "direction": "in"
         },
         {
-            "type": "documentdb",
+            "type": "documentDB",
             "name": "item",
             "direction": "out",
             "databaseName": "ItemDb",
