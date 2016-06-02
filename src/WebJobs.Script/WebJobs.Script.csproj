@@ -264,7 +264,6 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Config\JobHostConfigurationBuilder.cs" />
-    <Compile Include="Config\AllowNameResolutionAttribute.cs" />
     <Compile Include="Config\NameResolver.cs" />
     <Compile Include="Description\Binding\ApiHubBindingMetadata.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />

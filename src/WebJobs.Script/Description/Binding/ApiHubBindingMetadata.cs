@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class ApiHubBindingMetadata : BindingMetadata
     {
-        [AllowNameResolution]
+        [AutoResolve]
         public string Path { get; set; }
 
         public string Key { get; set; }

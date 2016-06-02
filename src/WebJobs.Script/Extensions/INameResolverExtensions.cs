@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (prop.PropertyType == typeof(string))
                 {
-                    if (prop.GetCustomAttribute<AllowNameResolutionAttribute>() != null)
+                    if (prop.GetCustomAttribute<AutoResolveAttribute>() != null)
                     {
                         string val = (string)prop.GetValue(value);
                         string newVal = resolver.ResolveWholeString(val);

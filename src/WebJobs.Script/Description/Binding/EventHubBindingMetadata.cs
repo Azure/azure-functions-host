@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class EventHubBindingMetadata : BindingMetadata
     {
-        [AllowNameResolution]
+        [AutoResolve]
         public string Path { get; set; }
 
         // Optional Consumer group
