@@ -282,7 +282,7 @@
     <Compile Include="Description\DotNet\FunctionSignature.cs" />
     <Compile Include="Description\DotNet\FunctionAssemblyLoadContext.cs" />
     <Compile Include="Description\DotNet\FunctionAssemblyLoader.cs" />
-    <Compile Include="Description\DotNet\DotNetFunctionDescriptionProvider.cs" />
+    <Compile Include="Description\DotNet\DotNetFunctionDescriptorProvider.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionInvoker.cs" />
     <Compile Include="Description\DotNet\FunctionEntryPointResolver.cs" />
     <Compile Include="Description\DotNet\FunctionMetadataResolver.cs" />

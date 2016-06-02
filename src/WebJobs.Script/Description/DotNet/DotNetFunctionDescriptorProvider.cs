@@ -14,17 +14,17 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal sealed class DotNetFunctionDescriptionProvider : FunctionDescriptorProvider, IDisposable
+    internal sealed class DotNetFunctionDescriptorProvider : FunctionDescriptorProvider, IDisposable
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
         private readonly ICompilationServiceFactory _compilationServiceFactory;
 
-        public DotNetFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config)
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
            : this(host, config, new DotNetCompilationServiceFactory())
         {
         }
 
-        public DotNetFunctionDescriptionProvider(ScriptHost host, ScriptHostConfiguration config, 
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, 
             ICompilationServiceFactory compilationServiceFactory)
             : base(host, config)
         {
