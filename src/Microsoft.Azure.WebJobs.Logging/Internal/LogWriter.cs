@@ -1,15 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging.Internal;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -45,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // Container is common shared across all log writer instances 
         static ContainerActiveLogger _container;
+        CloudTableInstanceCountLogger _instanceLogger;
 
         public LogWriter(string computerContainerName, CloudTable table)
         {
@@ -113,6 +112,18 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
         }
 
+        // Get the "size" of this execution unit.
+        private static int GetContainerSize()
+        {
+            string raw = Environment.GetEnvironmentVariable("WEBSITE_MEMORY_LIMIT_MB");
+            int size;
+            if (int.TryParse(raw, out size))
+            {
+                return size;
+            }
+            return 1;
+        }
+
         public async Task AddAsync(FunctionInstanceLogItem item, CancellationToken cancellationToken = default(CancellationToken))
         {
             item.Validate();
@@ -125,14 +136,21 @@ namespace Microsoft.Azure.WebJobs.Logging
                     {
                         _container = new ContainerActiveLogger(_containerName, _instanceTable);
                     }
+                    if (_instanceLogger == null)
+                    {
+                        int size = GetContainerSize();
+                        _instanceLogger = new CloudTableInstanceCountLogger(_containerName, _instanceTable, size);
+                    }
                 }
                 if (item.IsCompleted())
                 {
                     _container.Decrement(item.FunctionInstanceId);
+                    _instanceLogger.Decrement(item.FunctionInstanceId);
                 }
                 else
                 {
                     _container.Increment(item.FunctionInstanceId);
+                    _instanceLogger.Increment(item.FunctionInstanceId);
                 }
             }
 
@@ -245,6 +263,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             if (_container != null)
             {
+                await _instanceLogger.StopAsync();
                 await _container.StopAsync();
             }
         }

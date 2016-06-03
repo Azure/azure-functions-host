@@ -12,6 +12,17 @@ namespace Microsoft.Azure.WebJobs.Logging
     public interface ILogReader
     {
         /// <summary>
+        /// Get the "# of function instance * size" for a given time window.
+        /// Size is determined by the machine size. 
+        /// </summary>
+        /// <param name="startTime">start of time window</param>
+        /// <param name="endTime">end of time window</param>
+        /// <param name="numberBuckets">Size of the returned array</param>
+        /// <returns>An array of (time, value) where value is the "# of function instance * size". 
+        /// This can be readily graphed. </returns>
+        Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets);
+
+        /// <summary>
         /// A "container" refers to a single VM that's running functions. A container can be identified by the machine name.
         /// Get per-container timeline to tell how many active containers per minute. 
         /// A container is "active" if it is running at least 1 function. 

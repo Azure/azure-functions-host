@@ -202,6 +202,25 @@ namespace Dashboard.ApiControllers
             return Invocations(indexSegment);
         }
 
+        [Route("api/functions/volume")]
+        public async Task<IHttpActionResult> GetVolume(
+            DateTime startTime,
+            DateTime endTime,
+            int numberBuckets)
+        {
+            var data = await _reader.GetVolumeAsync(startTime, endTime, numberBuckets);
+
+            // Return as parallel arrays since that's more efficient than an array of structs.
+            var result = new
+            {
+                Times = Array.ConvertAll(data, x => x.Time),
+                Counts = Array.ConvertAll(data, x => x.Volume),
+                InstanceCounts = Array.ConvertAll(data, x => x.InstanceCounts)
+            };
+
+            return Ok(result);
+        }
+
         // Returns a sparse array of (StartBucket, Start, TotalPass, TotalFail, TotalRun)                
         [Route("api/functions/invocations/{functionId}/timeline")]
         public async Task<IHttpActionResult> GetRecentInvocationsTimeline(

@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal const string RecentFuncIndexPK = "R"; // RecentPerFuncEntity
         internal const string ContainerActivePK = "C"; // ContainerActiveEntity
         internal const string FuncDefIndexPK = "FD"; // FunctionDefinitionEntity
+        internal const string InstanceCountPK = "IA"; // InstanceCountEntity
 
         // Read entire partition
         internal static TableQuery<TElement> GetRowsInPartition<TElement>(string partitionKey)
@@ -52,7 +53,17 @@ namespace Microsoft.Azure.WebJobs.Logging
             TableQuery<TElement> rangeQuery = new TableQuery<TElement>().Where(query);
             return rangeQuery;            
         }
-            
+
+        public static string Get1stTerm(string rowKey)
+        {
+            int i = rowKey.IndexOf('-');
+            if (i >= 0)
+            {
+                return rowKey.Substring(0, i);
+            }
+            throw new InvalidOperationException("Row key is in illegal format: " + rowKey);
+        }
+
         public static string Get2ndTerm(string rowKey)
         {
             int i = rowKey.IndexOf('-');

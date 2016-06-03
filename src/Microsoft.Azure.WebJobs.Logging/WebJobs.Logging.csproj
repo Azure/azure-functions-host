@@ -89,9 +89,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActivationEvent.cs" />
+    <Compile Include="FunctionVolumeTimelineEntry.cs" />
+    <Compile Include="Entities\InstanceCountEntity.cs" />
     <Compile Include="FunctionInstanceStatus.cs" />
     <Compile Include="IFunctionDefinition.cs" />
     <Compile Include="IFunctionInstanceBaseEntry.cs" />
+    <Compile Include="Internal\ProjectionHelper.cs" />
+    <Compile Include="Internal\CloudTableInstanceCountLogger.cs" />
+    <Compile Include="Internal\InstanceCountLoggerBase.cs" />
     <Compile Include="Internal\ContainerActiveLogger.cs" />
     <Compile Include="Entities\ContainerActiveEntity.cs" />
     <Compile Include="Entities\FunctionDefinitionEntity.cs" />

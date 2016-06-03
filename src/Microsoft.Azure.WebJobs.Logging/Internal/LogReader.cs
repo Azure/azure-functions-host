@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Logging.Internal;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -24,6 +25,46 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
             table.CreateIfNotExists();
             this._instanceTable = table;
+        }
+
+        public Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)        
+        {
+            var query = InstanceCountEntity.GetQuery(startTime, endTime);
+
+            IEnumerable<InstanceCountEntity> results = _instanceTable.ExecuteQuery(query);
+            var rows = results.ToArray();
+
+            var startTicks = startTime.Ticks;
+            var endTicks = endTime.Ticks;
+            var data = ProjectionHelper.Work(rows, startTicks, endTicks, numberBuckets);
+
+            int[] totalCounts = new int[numberBuckets];
+            double bucketWidthTicks = ((double)(endTicks - startTicks)) / numberBuckets;
+            foreach (var row in rows)
+            {
+                int idx = (int) ((row.GetTicks() - startTicks) / bucketWidthTicks);
+                if (idx >= 0 && idx < numberBuckets)
+                {
+                    totalCounts[idx] += row.TotalThisPeriod;
+                }
+            }
+
+            // coerce data            
+            var chart = new FunctionVolumeTimelineEntry[numberBuckets];
+            for (int i = 0; i < numberBuckets; i++)
+            {
+                var ticks = data[i].Item1;
+                var time = new DateTime(ticks);
+                double value = data[i].Item2;
+                chart[i] = new FunctionVolumeTimelineEntry
+                {
+                    Time = time,
+                    Volume = value,
+                    InstanceCounts = totalCounts[i]
+                };
+            }
+
+            return Task.FromResult(chart);
         }
 
         public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)

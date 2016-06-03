@@ -1,11 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using System;
-using System.Reflection;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
@@ -14,6 +15,46 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
     public class LoggerTest
     {
         static string CommonFuncName1 = "gamma";
+       
+        // End-2-end test that function instance counter can write to tables 
+        [Fact]
+        public async Task FunctionInstance()
+        {
+            var table = GetNewLoggingTable();
+            try
+            {
+                ILogReader reader = LogFactory.NewReader(table);
+                TimeSpan poll = TimeSpan.FromMilliseconds(50);
+                TimeSpan poll5 = TimeSpan.FromMilliseconds(poll.TotalMilliseconds * 5);
+                
+                var logger1 = new CloudTableInstanceCountLogger("c1", table, 100) { PollingInterval = poll };
+                
+                Guid g1 = Guid.NewGuid();
+                
+                DateTime startTime = DateTime.UtcNow;
+                logger1.Increment(g1);
+                await Task.Delay(poll5); // should get at least 1 poll entry in           
+                logger1.Decrement(g1);
+                await Task.WhenAll(logger1.StopAsync());
+
+                DateTime endTime = DateTime.UtcNow;
+
+                // Now read. 
+                // We may get an arbitrary number of raw poll entries since the
+                // low poll latency combined with network delay can be unpredictable.
+                var values = await reader.GetVolumeAsync(startTime, endTime, 1);
+
+                double totalVolume = (from value in values select value.Volume).Sum();
+                Assert.True(totalVolume > 0);
+
+                double totalInstance = (from value in values select value.InstanceCounts).Sum();
+                Assert.Equal(1, totalInstance);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }        
+}
 
         [Fact]
         public async Task TimeRange()
