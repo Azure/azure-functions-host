@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             CreateIfNotExists = metadata.CreateIfNotExists;
-            ConnectionString = metadata.Connection;
+            ConnectionStringSetting = metadata.Connection;
             CollectionThroughput = metadata.CollectionThroughput;
 
             _bindingDirection = metadata.Direction;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public bool CreateIfNotExists { get; private set; }
 
-        public string ConnectionString { get; private set; }
+        public string ConnectionStringSetting { get; private set; }
 
         public string Id { get; private set; }
 
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             PropertyInfo[] props = new[]
             {
                 attributeType.GetProperty("CreateIfNotExists"),
-                attributeType.GetProperty("ConnectionString"),
+                attributeType.GetProperty("ConnectionStringSetting"),
                 attributeType.GetProperty("Id"),
                 attributeType.GetProperty("PartitionKey"),
                 attributeType.GetProperty("CollectionThroughput")
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             object[] propValues = new object[]
             {
                 CreateIfNotExists,
-                ConnectionString,
+                ConnectionStringSetting,
                 Id,
                 PartitionKey,
                 CollectionThroughput
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             DocumentDBAttribute attribute = new DocumentDBAttribute(boundDatabaseName, boundCollectionName)
             {
                 CreateIfNotExists = CreateIfNotExists,
-                ConnectionString = ConnectionString,
+                ConnectionStringSetting = ConnectionStringSetting,
                 Id = boundId,
                 PartitionKey = boundPartitionKey,
                 CollectionThroughput = CollectionThroughput
