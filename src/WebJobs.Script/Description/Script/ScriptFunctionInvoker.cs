@@ -121,6 +121,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             process.Start();
             process.WaitForExit();
 
+            string output = process.StandardOutput.ReadToEnd();
+            TraceWriter.Info(output);
+            traceWriter.Info(output);
+
             bool failed = process.ExitCode != 0;
             startedEvent.Success = !failed;
             _metrics.EndEvent(startedEvent);
@@ -134,10 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 string error = process.StandardError.ReadToEnd();
                 throw new ApplicationException(error);
             }
-
-            string output = process.StandardOutput.ReadToEnd();
-            TraceWriter.Info(output);
-            traceWriter.Info(output);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
