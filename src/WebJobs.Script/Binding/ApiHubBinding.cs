@@ -28,12 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 throw new ArgumentException("The ApiHubFile path cannot be null or empty.");
             }
 
-            Key = apiHubBindingMetadata.Key;
+            ConnectionStringSetting = apiHubBindingMetadata.Key;
             Path = apiHubBindingMetadata.Path;
             _pathBindingTemplate = BindingTemplate.FromString(Path);
         }
 
-        public string Key { get; private set; }
+        public string ConnectionStringSetting { get; private set; }
 
         public string Path { get; private set; }
 
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             Collection<CustomAttributeBuilder> attributes = new Collection<CustomAttributeBuilder>();
 
             var constructorTypes = new Type[] { typeof(string), typeof(string), typeof(FileAccess) };
-            var constructorArguments = new object[] { Key, Path, Access };
+            var constructorArguments = new object[] { ConnectionStringSetting, Path, Access };
 
             var attribute = new CustomAttributeBuilder(typeof(ApiHubFileAttribute).GetConstructor(constructorTypes), constructorArguments);
 
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             boundBlobPath = Resolve(boundBlobPath);
 
-            var attribute = new ApiHubFileAttribute(Key, boundBlobPath, Access);
+            var attribute = new ApiHubFileAttribute(ConnectionStringSetting, boundBlobPath, Access);
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
             await BindStreamAsync(context, Access, runtimeContext);

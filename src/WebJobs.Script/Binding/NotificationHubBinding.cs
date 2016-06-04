@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             TagExpression = metadata.TagExpression;
             Platform = metadata.Platform;
-            ConnectionString = metadata.Connection;
+            ConnectionStringSetting = metadata.Connection;
             HubName = metadata.HubName;
             _bindingDirection = metadata.Direction;
         }
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public NotificationPlatform Platform { get; private set; }
 
-        public string ConnectionString { get; private set; }
+        public string ConnectionStringSetting { get; private set; }
 
         public string HubName { get; private set; }
 
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 attributeType.GetProperty("TagExpression"),
                 attributeType.GetProperty("Platform"),
-                attributeType.GetProperty("ConnectionString"),
+                attributeType.GetProperty("ConnectionStringSetting"),
                 attributeType.GetProperty("HubName")
             };
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 TagExpression,
                 Platform,
-                ConnectionString,
+                ConnectionStringSetting,
                 HubName
             };
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     TagExpression = TagExpression,
                     Platform = Platform,
-                    ConnectionString = ConnectionString,
+                    ConnectionStringSetting = ConnectionStringSetting,
                     HubName = HubName
                 };
 

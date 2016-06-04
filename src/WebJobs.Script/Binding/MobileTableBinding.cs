@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             TableName = metadata.TableName;
-            MobileAppUri = metadata.Connection;
-            ApiKey = metadata.ApiKey;
+            MobileAppUriSetting = metadata.Connection;
+            ApiKeySetting = metadata.ApiKey;
 
             _bindingDirection = metadata.Direction;
         }
@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public string Id { get; private set; }
 
-        public string MobileAppUri { get; private set; }
+        public string MobileAppUriSetting { get; private set; }
 
-        public string ApiKey { get; private set; }
+        public string ApiKeySetting { get; private set; }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
@@ -49,16 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 typeof(MobileTableAttribute).GetProperty("TableName"),
                 typeof(MobileTableAttribute).GetProperty("Id"),
-                typeof(MobileTableAttribute).GetProperty("MobileAppUri"),
-                typeof(MobileTableAttribute).GetProperty("ApiKey"),
+                typeof(MobileTableAttribute).GetProperty("MobileAppUriSetting"),
+                typeof(MobileTableAttribute).GetProperty("ApiKeySetting"),
             };
 
             object[] propValues = new[]
             {
                 TableName,
                 Id,
-                MobileAppUri,
-                ApiKey
+                MobileAppUriSetting,
+                ApiKeySetting
             };
 
             ConstructorInfo constructor = typeof(MobileTableAttribute).GetConstructor(System.Type.EmptyTypes);
@@ -77,8 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 TableName = TableName,
                 Id = boundId,
-                MobileAppUri = MobileAppUri,
-                ApiKey = ApiKey
+                MobileAppUriSetting = MobileAppUriSetting,
+                ApiKeySetting = ApiKeySetting
             };
 
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute);
