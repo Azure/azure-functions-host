@@ -18,7 +18,7 @@ using Microsoft.FSharp.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class FSharpCompiler : IDotNetCompiler
+    internal class FSharpCompiler : ICompilationService
     {
         private static readonly string[] TheWatchedFileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
 
@@ -38,19 +38,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public ICompilation GetCompilation(string code, ScriptOptions options, InteractiveAssemblyLoader assemblyLoader, string functionName, string filename, bool debug)
+        public IEnumerable<string> SupportedFileTypes
         {
+            get
+            {
+                return TheWatchedFileTypes;
+            }
+        }
+
+        public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
+        {
+            string code = GetFunctionSource(functionMetadata);
+            // TODO: Get debug flag from context. Set to true for now.
+            bool debug = true;
+
             // First use the C# compiler to resolve references, to get consistenct with the C# Azure Functions programming model
             Script<object> script = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: options, assemblyLoader: assemblyLoader);
             Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices();
             var scriptFile = Path.ChangeExtension(Path.GetTempFileName(), "fsx");
-            foreach (var import in options.Imports)
+            foreach (var import in script.Options.Imports)
             {
                 File.AppendAllLines(scriptFile, new string[] { "open " + import });
             }
-            File.AppendAllText(scriptFile, code);
+            File.AppendAllText(scriptFile, functionMetadata.s);
             var otherFlags = new List<string>();
 
             // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
@@ -58,12 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             otherFlags.Add("--noframework");
 
-            foreach (var mdr in compilation.References)   
+            foreach (var mdr in compilation.References)
             {
                 if (!mdr.Display.Contains("Unresolved "))
                 {
                     otherFlags.Add("-r:" + mdr.Display);
-                } 
+                }
             }
 
             otherFlags.Add("--optimize+");
@@ -87,6 +99,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var assemblyOption = result.Item3;
 
             return new FSharpCompilation(errors, assemblyOption);
+        }
+
+        private static string GetFunctionSource(FunctionMetadata functionMetadata)
+        {
+            string code = null;
+
+            if (File.Exists(functionMetadata.ScriptFile))
+            {
+                code = File.ReadAllText(functionMetadata.ScriptFile);
+            }
+
+            return code ?? string.Empty;
         }
     }
 }
