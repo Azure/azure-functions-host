@@ -102,11 +102,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             TraceWriter.Info("Compiling function script.");
 
-            ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-            ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
+            ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
+            FunctionSignature signature = null;
 
-            FunctionSignature signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
-            compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+            try
+            {
+                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                compilationResult = compilation.GetDiagnostics();
+
+                signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+            }
+            catch (CompilationErrorException exc)
+            {
+                compilationResult = compilationResult.AddRange(exc.Diagnostics);
+            }
 
             TraceCompilationDiagnostics(compilationResult);
 
