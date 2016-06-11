@@ -270,8 +270,9 @@
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
-    <Compile Include="Description\CSharp\CSharpCompilationTests.cs" />
-    <Compile Include="Description\CSharp\FunctionAssemblyLoaderTests.cs" />
+    <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
+    <Compile Include="Description\DotNet\CSharp\FunctionAssemblyLoaderTests.cs" />
+    <Compile Include="Description\DotNet\DotNetFunctionInvokerTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
@@ -280,7 +281,7 @@
     <Compile Include="FunctionBindingTests.cs" />
     <Compile Include="FunctionDescriptorProviderTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
-    <Compile Include="Description\CSharp\PackageAssemblyResolverTests.cs" />
+    <Compile Include="Description\DotNet\CSharp\PackageAssemblyResolverTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="PowerShellInvokerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
