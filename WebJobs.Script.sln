@@ -283,6 +283,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "Send
 		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.ConsoleHost", "src\WebJobs.Script.ConsoleHost\WebJobs.Script.ConsoleHost.csproj", "{90F0268C-0C38-4D5E-87BF-0565E87F1248}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -313,6 +315,10 @@ Global
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -366,5 +372,6 @@ Global
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

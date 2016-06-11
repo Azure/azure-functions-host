@@ -6,12 +6,16 @@ using System.Threading.Tasks;
 using System.Web.Hosting;
 using Autofac;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
+using System.Web.Http;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
+using System.Net.Http;
+using Autofac.Integration.WebApi;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class AutofacBootstrap
     {
-        internal static void Initialize(ContainerBuilder builder, WebHostSettings settings)
+        internal static void Initialize(ContainerBuilder builder, WebHostSettings settings, HttpConfiguration config)
         {
             ScriptHostConfiguration scriptHostConfig = new ScriptHostConfiguration()
             {
@@ -56,6 +60,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 Task.Run(() => scriptHostManager.RunAndBlock());
             }
+
+            RegisterTypes(builder, config, settings);
+        }
+
+        private static void RegisterTypes(ContainerBuilder builder, HttpConfiguration config, WebHostSettings settings)
+        {
+            builder.RegisterHttpRequestMessage(config);
+
+            builder.RegisterType<FunctionsManager>()
+               .As<IFunctionsManager>()
+               .InstancePerRequest();
+
+            builder.Register(c => new KuduEnvironment(settings, c.Resolve<HttpRequestMessage>()))
+                .As<IEnvironment>()
+                .InstancePerRequest();
+
+            builder.Register(c => ConsoleTracer.Instance)
+                .As<ITracer>()
+                .SingleInstance();
         }
     }
 }
