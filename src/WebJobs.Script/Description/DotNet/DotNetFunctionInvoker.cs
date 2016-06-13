@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = new FunctionMetadataResolver(functionMetadata, TraceWriter);
+            _metadataResolver = new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -378,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var binding in bindings)
             {
-                if (binding.Metadata.Type == BindingType.Http)
+                if (string.Compare("http", binding.Metadata.Type, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     continue;
                 }

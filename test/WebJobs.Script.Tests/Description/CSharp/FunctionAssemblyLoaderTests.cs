@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Moq;
 using Xunit;
@@ -29,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
             mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
               .Returns(new TestAssembly(new AssemblyName("MyTestAssembly")));
                 
-            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, traceWriter), traceWriter);
+            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter), traceWriter);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter);
 
             Assembly result = resolver.ResolveAssembly(null, new System.ResolveEventArgs("MyTestAssembly.dll",
@@ -51,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
             mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
               .Returns<Assembly>(null);
 
-            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, traceWriter), traceWriter);
+            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter), traceWriter);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter);
 
             Assembly result = resolver.ResolveAssembly(null, new System.ResolveEventArgs("MyTestAssembly.dll",

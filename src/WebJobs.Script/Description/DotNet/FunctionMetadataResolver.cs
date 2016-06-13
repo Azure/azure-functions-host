@@ -5,11 +5,13 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
         private readonly ConcurrentDictionary<string, string> _externalReferences = new ConcurrentDictionary<string, string>();
+        private readonly ExtensionSharedAssemblyProvider _extensionSharedAssemblyProvider;
 
         private PackageAssemblyResolver _packageAssemblyResolver;
         private ScriptMetadataResolver _scriptResolver;
@@ -51,10 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
-                new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.Table.ITableEntity).Assembly), /* Microsoft.WindowsAzure.Storage */
-                new DirectSharedAssemblyProvider(typeof(Microsoft.ServiceBus.Messaging.BrokeredMessage).Assembly), /* Microsoft.ServiceBus */
+                new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
                 new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
-                new LocalSharedAssemblyProvider(@"^Microsoft\.Azure\.ApiHub\.Sdk$") /* Microsoft.Azure.ApiHub.Sdk */
             };
 
         private static readonly string[] DefaultNamespaceImports =
@@ -69,13 +70,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.Azure.WebJobs.Host"
             };
 
-        public FunctionMetadataResolver(FunctionMetadata metadata, TraceWriter traceWriter)
+        public FunctionMetadataResolver(FunctionMetadata metadata, Collection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
         {
             _functionMetadata = metadata;
             _traceWriter = traceWriter;
             _packageAssemblyResolver = new PackageAssemblyResolver(metadata);
             _privateAssembliesPath = GetBinDirectory(metadata);
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
+            _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
         }
 
         public ScriptOptions CreateScriptOptions()
@@ -161,7 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     Assembly assembly = null;
 
-                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, out assembly)))
+                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, out assembly)) ||
+                        _extensionSharedAssemblyProvider.TryResolveAssembly(reference, out assembly))
                     {
                         result = ImmutableArray.Create(MetadataReference.CreateFromFile(assembly.Location));
                     }

@@ -263,6 +263,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{A751
 		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Extensibility", "src\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj", "{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -289,6 +291,10 @@ Global
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -338,5 +344,6 @@ Global
 		{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A751A732-ACCE-4B1F-8244-8DD161619483} = {CDF316B9-AB36-42CB-859B-FCDB56E083B0}
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

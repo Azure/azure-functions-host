@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
             string inputBindingName = "req";
             HttpTriggerBindingMetadata trigger = new HttpTriggerBindingMetadata
             {
-                Type = BindingType.HttpTrigger,
+                Type = "HttpTrigger",
                 Name = inputBindingName
             };
             var scriptHostInfo = GetScriptHostInfo();
@@ -46,11 +47,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
         public void GenerateQueueTriggerFunction()
         {
             string inputBindingName = "inputData";
-            QueueBindingMetadata trigger = new QueueBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.QueueTrigger,
-                QueueName = "test",
+                Type = "QueueTrigger",
                 Name = inputBindingName
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "QueueTrigger" },
+                { "Name", inputBindingName },
+                { "Direction", "in" },
+                { "QueueName", "test" }
             };
             var scriptHostInfo = GetScriptHostInfo();
             MethodInfo method = GenerateMethod(trigger, scriptHostInfo);
@@ -71,11 +78,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
             string inputBindingName = "input";
             string expectedError = "Input binding name 'input' is not allowed.";
 
-            QueueBindingMetadata trigger = new QueueBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.QueueTrigger,
-                QueueName = "test",
+                Type = "QueueTrigger",
                 Name = inputBindingName
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "QueueTrigger" },
+                { "Name", inputBindingName },
+                { "Direction", "in" },
+                { "QueueName", "test" }
             };
 
             var scriptHostInfo = GetScriptHostInfo();

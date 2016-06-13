@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         ParameterDescriptor triggerParameter = CreateTriggerParameter(triggerMetadata, parameter.ParameterType);
                         descriptors.Add(triggerParameter);
 
-                        if (triggerMetadata.Type == BindingType.HttpTrigger && 
+                        if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 && 
                             parameter.ParameterType != typeof(HttpRequestMessage))
                         {
                             addHttpRequestSystemParameter = true;

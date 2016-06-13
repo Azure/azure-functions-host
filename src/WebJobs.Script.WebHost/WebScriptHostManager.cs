@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // so add it to the arguments, as a system argument
                 arguments.Add(ScriptConstants.DefaultSystemTriggerParameterName, request);
 
-                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
                 {
                     WebHookHandlerContext webHookContext;
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
             foreach (var function in Instance.Functions)
             {
-                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
+                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (httpTriggerBinding != null)
                 {
                     string route = httpTriggerBinding.Route;

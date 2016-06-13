@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadata.Bindings.Add(new BindingMetadata
             {
                 Name = "test",
-                Type = BindingType.BlobTrigger
+                Type = "BlobTrigger"
             });
             functionMetadata.Bindings.Add(new BindingMetadata
             {
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadata.Bindings.Add(new BindingMetadata
             {
                 Name = "test",
-                Type = BindingType.Blob
+                Type = "Blob"
             });
             
             var ex = Assert.Throws<InvalidOperationException>(() =>

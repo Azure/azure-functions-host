@@ -23,12 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
-            TimerBindingMetadata trigger = new TimerBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.TimerTrigger,
-                Name = "timerInfo",
-                Schedule = "* * * * * *",
-                RunOnStartup = true
+                Type = "TimerTrigger",
+                Name = "timerInfo"
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "TimerTrigger" },
+                { "Name", "timerInfo" },
+                { "Schedule", "* * * * * *" },
+                { "RunOnStartup", true },
+                { "Direction", "in" }
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -46,11 +52,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
-            QueueBindingMetadata trigger = new QueueBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.QueueTrigger,
-                Name = "input",
-                QueueName = "test"
+                Type = "QueueTrigger",
+                Name = "input"
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "QueueTrigger" },
+                { "Name", "input" },
+                { "Direction", "in" },
+                { "QueueName", "test" }
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -67,11 +79,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
-            BlobBindingMetadata trigger = new BlobBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.BlobTrigger,
-                Name = "input",
-                Path = "foo/bar"
+                Type = "blobTrigger",
+                Name = "input"
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "blobTrigger" },
+                { "Name", "input" },
+                { "Direction", "in" },
+                { "Path", "foo/bar" }
             };
             MethodInfo method = GenerateMethod(trigger);
 
@@ -90,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HttpTriggerBindingMetadata trigger = new HttpTriggerBindingMetadata
             {
-                Type = BindingType.HttpTrigger,
+                Type = "HttpTrigger",
                 Name = "req"
             };
             MethodInfo method = GenerateMethod(trigger);
@@ -110,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.ManualTrigger,
+                Type = "ManualTrigger",
                 Name = "input"
             };
             MethodInfo method = GenerateMethod(trigger);
@@ -128,13 +146,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
-            ServiceBusBindingMetadata trigger = new ServiceBusBindingMetadata
+            BindingMetadata trigger = new BindingMetadata
             {
-                Type = BindingType.ServiceBusTrigger,
-                Name = "input",
-                TopicName = "testTopic",
-                SubscriptionName = "testSubscription",
-                AccessRights = AccessRights.Listen
+                Type = "ServiceBusTrigger",
+                Name = "input"
+            };
+            trigger.Raw = new JObject
+            {
+                { "Type", "ServiceBusTrigger" },
+                { "Name", "input" },
+                { "Direction", "in" },
+                { "TopicName", "testTopic" },
+                { "SubscriptionName", "testSubscription" },
+                { "AccessRights", "Listen" }
             };
             MethodInfo method = GenerateMethod(trigger);
 

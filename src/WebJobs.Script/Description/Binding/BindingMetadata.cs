@@ -1,6 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
@@ -24,13 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Gets or sets the type of the binding.
         /// </summary>
-        public BindingType Type { get; set; }
+        public string Type { get; set; }
 
         /// <summary>
         /// Gets or sets the direction of the binding.
         /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
         public BindingDirection Direction { get; set; }
 
+        [JsonConverter(typeof(StringEnumConverter))]
         public DataType? DataType { get; set; }
 
         /// <summary>
@@ -40,25 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             get
             {
-                return
-                    Type == BindingType.TimerTrigger ||
-                    Type == BindingType.BlobTrigger ||
-                    Type == BindingType.HttpTrigger ||
-                    Type == BindingType.QueueTrigger ||
-                    Type == BindingType.EventHubTrigger ||
-                    Type == BindingType.ServiceBusTrigger ||
-                    Type == BindingType.ManualTrigger ||
-                    Type == BindingType.ApiHubFileTrigger;
+                return Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
             }
         }
 
-        /// <summary>
-        /// Bindings can include information that drives the JobHostConfiguration.
-        /// </summary>
-        /// <param name="configBuilder"></param>
-        public virtual void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
-        {
-            // default is nop
-        }        
+        // TEMP
+        public JObject Raw { get; set; }     
     }
 }
