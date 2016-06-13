@@ -30,14 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
+            ApiHubTestHelper.SetDefaultConnectionFactory();
+
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath,
                 TraceWriter = TraceWriter,
                 FileLoggingEnabled = true
             };
-
-            ApiHubTestHelper.SetDefaultConnectionFactory();
 
             Host = ScriptHost.Create(config);
             Host.Start();

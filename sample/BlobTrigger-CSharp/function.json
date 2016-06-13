@@ -9,7 +9,7 @@
         {
             "type": "blob",
             "name": "output",
-            "direction": "out",
+            "direction": "inout",
             "path": "samples-output-csharp/{name}"
         }
     ]

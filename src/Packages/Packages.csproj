@@ -26,6 +26,16 @@
     </NuGetSpec>
   </ItemGroup>
   <ItemGroup>
+    <NuGetProject Include="..\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuproj">
+      <Link>WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.nuproj</Link>
+    </NuGetProject>
+  </ItemGroup>
+  <ItemGroup>
+    <NuGetSpec Include="..\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuspec">
+      <Link>WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.nuspec</Link>
+    </NuGetSpec>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="..\..\tools\NuGetProj.settings.targets">
       <Link>NuGetProj.settings.targets</Link>
     </None>

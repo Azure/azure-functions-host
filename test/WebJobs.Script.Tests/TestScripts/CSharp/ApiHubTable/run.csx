@@ -1,4 +1,4 @@
-﻿#r "..\..\..\Microsoft.Azure.ApiHub.Sdk.dll"
+﻿#r "Microsoft.Azure.ApiHub.Sdk"
 
 using System;
 using Microsoft.Azure.ApiHub.Sdk.Table;

@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description

@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -158,6 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ID, scriptConfig.HostConfig.HostId);
         }
 
+        // TODO: Move this test into a new WebJobsCoreScriptBindingProvider class since
+        // the functionality moved. Also add tests for the ServiceBus config, etc.
         [Fact]
         public void ApplyConfiguration_Queues()
         {
@@ -165,11 +168,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             JObject queuesConfig = new JObject();
             config["queues"] = queuesConfig;
+
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
 
-            Assert.Equal(ID, scriptConfig.HostConfig.HostId);
             Assert.Equal(60 * 1000, scriptConfig.HostConfig.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(16, scriptConfig.HostConfig.Queues.BatchSize);
             Assert.Equal(5, scriptConfig.HostConfig.Queues.MaxDequeueCount);
@@ -180,7 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             queuesConfig["maxDequeueCount"] = 3;
             queuesConfig["newBatchThreshold"] = 123;
 
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
 
             Assert.Equal(5000, scriptConfig.HostConfig.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(17, scriptConfig.HostConfig.Queues.BatchSize);

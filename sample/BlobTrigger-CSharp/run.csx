@@ -1,11 +1,13 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿#r "Microsoft.WindowsAzure.Storage"
+
+using System;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage.Blob;
 
-public static void Run(string blob, out string output, TraceWriter log)
+public static void Run(CloudBlockBlob blob, CloudBlockBlob output, TraceWriter log)
 {
-    log.Info($"C# Blob trigger function processed a blob. Blob={blob}");
+    string content = blob.DownloadText();
+    log.Info($"C# Blob trigger function processed a blob. Blob={content}");
 
-    output = blob;
+    output.UploadText(content);
 }

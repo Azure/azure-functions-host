@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             // Dispatch the request
-            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
             bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
             HttpResponseMessage response = null;
             if (isWebHook)

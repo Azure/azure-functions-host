@@ -1,14 +1,24 @@
 ﻿#r "Newtonsoft.Json"
+#r "Microsoft.ServiceBus"
 
 using System;
+using System.IO;
 using Newtonsoft.Json;
+using Microsoft.ServiceBus.Messaging;
 
-public static void Run(string input, out string message, out string completed)
+public static void Run(BrokeredMessage input, out string message, out string completed)
 {
     message = null;
     completed = null;
 
-    dynamic inputObject = JsonConvert.DeserializeObject(input);
+    Stream stream = input.GetBody<Stream>();
+    string json = string.Empty;
+    using (StreamReader reader = new StreamReader(stream))
+    {
+        json = reader.ReadToEnd();
+    }
+
+    dynamic inputObject = JsonConvert.DeserializeObject(json);
 
     if (inputObject.count < 2)
     {

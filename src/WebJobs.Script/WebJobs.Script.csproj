@@ -67,31 +67,35 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-alpha-10301\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-alpha-10309\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.0-alpha-10343\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-alpha1-10307\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -238,26 +242,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizationLevel.cs" />
-    <Compile Include="Binding\ApiHubTableBinding.cs" />
-    <Compile Include="Binding\ApiHubBinding.cs" />
     <Compile Include="Binding\BindingContext.cs" />
-    <Compile Include="Binding\BlobBinding.cs" />
-    <Compile Include="Binding\NotificationHubBinding.cs" />
-    <Compile Include="Binding\DocumentDBBinding.cs" />
-    <Compile Include="Binding\MobileTableBinding.cs" />
-    <Compile Include="Binding\EventHubBinding.cs" />
+    <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
-    <Compile Include="Binding\QueueBinding.cs" />
-    <Compile Include="Binding\ServiceBusBinding.cs" />
+    <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TableBinding.cs" />
+    <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
-    <Compile Include="Description\Binding\ApiHubTableBindingMetadata.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />
+    <Compile Include="Description\DotNet\ExtensionSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\ICompilation.cs" />
     <Compile Include="Description\DotNet\ICompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ICompilationService.cs" />
@@ -271,13 +269,9 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
-    <Compile Include="Config\JobHostConfigurationBuilder.cs" />
     <Compile Include="Config\NameResolver.cs" />
-    <Compile Include="Description\Binding\ApiHubBindingMetadata.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
-    <Compile Include="Description\Binding\BindingType.cs" />
-    <Compile Include="Description\Binding\BlobBindingMetadata.cs" />
     <Compile Include="Description\DotNet\DotNetConstants.cs" />
     <Compile Include="Description\DotNet\FunctionSignature.cs" />
     <Compile Include="Description\DotNet\FunctionAssemblyLoadContext.cs" />
@@ -293,17 +287,10 @@
     <Compile Include="Description\DotNet\PackageAssemblyResolver.cs" />
     <Compile Include="Description\DotNet\PackageManager.cs" />
     <Compile Include="Description\DotNet\PackageReference.cs" />
-    <Compile Include="Description\Binding\NotificationHubBindingMetadata.cs" />
-    <Compile Include="Description\Binding\DocumentDBBindingMetadata.cs" />
-    <Compile Include="Description\Binding\MobileTableBindingMetadata.cs" />
-    <Compile Include="Description\Binding\EventHubBindingMetadata.cs" />
     <Compile Include="Description\Binding\HttpBindingMetadata.cs" />
     <Compile Include="Description\Binding\HttpTriggerBindingMetadata.cs" />
-    <Compile Include="Description\Binding\QueueBindingMetadata.cs" />
     <Compile Include="Description\ScriptType.cs" />
-    <Compile Include="Description\Binding\ServiceBusBindingMetadata.cs" />
     <Compile Include="Description\Binding\TableBindingMetadata.cs" />
-    <Compile Include="Description\Binding\TimerBindingMetadata.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
@@ -386,7 +373,6 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

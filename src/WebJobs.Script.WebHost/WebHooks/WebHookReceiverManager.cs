@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
         {
             // First check if there is a registered WebHook Receiver for this request, and if
             // so use it
-            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
             string webHookReceiver = httpFunctionMetadata.WebHookType;
             IWebHookReceiver receiver = null;
             if (string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
