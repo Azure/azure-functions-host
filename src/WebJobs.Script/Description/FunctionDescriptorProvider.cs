@@ -218,7 +218,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
 
-
         protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Type triggerParameterType = null)
         {
             if (trigger == null)
