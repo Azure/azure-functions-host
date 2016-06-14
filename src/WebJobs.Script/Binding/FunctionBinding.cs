@@ -83,9 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private static bool TryParseFunctionBinding(ScriptHostConfiguration config, Newtonsoft.Json.Linq.JObject metadata, out FunctionBinding functionBinding)
         {
-            functionBinding = null;
-
-            
+            functionBinding = null;            
 
             ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
             string type = bindingContext.Type;

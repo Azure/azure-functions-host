@@ -71,6 +71,22 @@ namespace Microsoft.Azure.WebJobs.Script
             {
             }
 
+            public override Type DefaultType
+            {
+                get
+                {
+                    if (Context.Access == FileAccess.Read)
+                    {
+                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
+                            ? typeof(byte[]) : typeof(string);
+                    }
+                    else
+                    {
+                        return typeof(IAsyncCollector<byte[]>);
+                    }
+                }
+            }
+
             public override Collection<Attribute> GetAttributes()
             {
                 Collection<Attribute> attributes = new Collection<Attribute>();
@@ -93,28 +109,20 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 return attributes;
             }
-
-            override public Type DefaultType
-            {
-                get
-                {
-                    if (Context.Access == FileAccess.Read)
-                    {
-                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
-                            ? typeof(byte[]) : typeof(string);
-                    }
-                    else
-                    {
-                        return typeof(IAsyncCollector<byte[]>);
-                    }
-                }
-            }
         }
 
         private class BlobScriptBinding : ScriptBinding
         {
             public BlobScriptBinding(ScriptBindingContext context) : base(context)
             {
+            }
+
+            public override Type DefaultType
+            {
+                get
+                {
+                    return typeof(Stream);
+                }
             }
 
             public override Collection<Attribute> GetAttributes()
@@ -138,14 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 return attributes;
-            }
-
-            override public Type DefaultType
-            {
-                get
-                {
-                    return typeof(Stream);
-                }
             }
         }
     }

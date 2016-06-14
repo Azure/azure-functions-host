@@ -83,6 +83,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 _storageConnectionString = hostConfig.StorageConnectionString;
             }
 
+            public override Type DefaultType
+            {
+                get
+                {
+                    if (Context.Access == FileAccess.Read)
+                    {
+                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
+                            ? typeof(byte[]) : typeof(string);
+                    }
+                    else
+                    {
+                        return typeof(IAsyncCollector<byte[]>);
+                    }
+                }
+            }
+
             public override Collection<Attribute> GetAttributes()
             {
                 Collection<Attribute> attributes = new Collection<Attribute>();
@@ -126,8 +142,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 return attributes;
             }
+        }
 
-            override public Type DefaultType
+        private class ServiceBusScriptBinding : ScriptBinding
+        {
+            public ServiceBusScriptBinding(ScriptBindingContext context) : base(context)
+            {
+            }
+            public override Type DefaultType
             {
                 get
                 {
@@ -141,13 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         return typeof(IAsyncCollector<byte[]>);
                     }
                 }
-            }
-        }
-
-        private class ServiceBusScriptBinding : ScriptBinding
-        {
-            public ServiceBusScriptBinding(ScriptBindingContext context) : base(context)
-            {
             }
 
             public override Collection<Attribute> GetAttributes()
@@ -187,22 +202,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 return attributes;
-            }
-
-            public override Type DefaultType
-            {
-                get
-                {
-                    if (Context.Access == FileAccess.Read)
-                    {
-                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
-                            ? typeof(byte[]) : typeof(string);
-                    }
-                    else
-                    {
-                        return typeof(IAsyncCollector<byte[]>);
-                    }
-                }
             }
         }
     }
