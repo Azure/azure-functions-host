@@ -1,0 +1,16 @@
+﻿{
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "order",
+            "direction": "in",
+            "queueName": "samples-orders-csharp"
+        },
+        {
+            "type": "sendGrid",
+            "name": "message",
+            "direction": "out",
+            "to": "{CustomerEmail}"
+        }
+    ]
+}

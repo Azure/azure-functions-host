@@ -1,3 +1,6 @@
 {
-    "id": "5a709861cab44e68bfed5d2c2fe7fc0c"
+    "id": "5a709861cab44e68bfed5d2c2fe7fc0c",
+    "sendGrid": {
+        "from": "samples@functions.com:AzureFunctions"
+    } 
 }
