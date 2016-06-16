@@ -12,6 +12,11 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
+using Microsoft.Azure.WebJobs.Extensions.ApiHub;
+using Microsoft.Azure.WebJobs.Extensions.Bindings;
+using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
+using Microsoft.Azure.WebJobs.Extensions.MobileApps;
+using Microsoft.Azure.WebJobs.Extensions.NotificationHubs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -151,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
             }
 
-            var bindingProviders = LoadBindingProviders(ScriptConfig.HostConfig, hostConfig, TraceWriter);
+            var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
             ScriptConfig.BindingProviders = bindingProviders;
 
             TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
@@ -327,46 +332,25 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
-        private static Collection<ScriptBindingProvider> LoadBindingProviders(JobHostConfiguration hostConfig, JObject hostMetadata, TraceWriter traceWriter)
+        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
         {
-            // Register our built in extensions (binding providers defined in this assembly)
+            JobHostConfiguration hostConfig = config.HostConfig;
+
+            // Register our built in extensions
             var bindingProviderTypes = new Collection<Type>()
             {
-                typeof(WebJobsCoreScriptBindingProvider), 
-                typeof(ServiceBusScriptBindingProvider)
-            };
+                // binding providers defined in this assembly
+                typeof(WebJobsCoreScriptBindingProvider),
+                typeof(ServiceBusScriptBindingProvider),
 
-            // Dynamically discover any additional binding provider types
-            // TODO: Here is where we'll dynamically discover and load extension
-            // assemblies
-            string[] extensionAssemblies = new string[]
-            {
-                "Microsoft.Azure.WebJobs.Extensions",
-                "Microsoft.Azure.WebJobs.Extensions.ApiHub",
-                "Microsoft.Azure.WebJobs.Extensions.DocumentDB",
-                "Microsoft.Azure.WebJobs.Extensions.MobileApps",
-                "Microsoft.Azure.WebJobs.Extensions.NotificationHubs"
+                // binding providers defined in known extension assemblies
+                typeof(CoreExtensionsScriptBindingProvider),
+                typeof(ApiHubScriptBindingProvider),
+                typeof(DocumentDBScriptBindingProvider),
+                typeof(MobileAppsScriptBindingProvider),
+                typeof(NotificationHubScriptBindingProvider),
+                typeof(SendGridScriptBindingProvider)
             };
-            foreach (var assemblyName in extensionAssemblies)
-            {
-                try
-                {
-                    Assembly assembly = Assembly.Load(assemblyName);
-                    if (assembly != null)
-                    {
-                        foreach (var type in assembly.GetExportedTypes().Where(t => typeof(ScriptBindingProvider).IsAssignableFrom(t)))
-                        {
-                            bindingProviderTypes.Add(type);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // If we're unable to load an extension assembly for any reason, log
-                    // the error and continue
-                    traceWriter.Error(string.Format("Error loading extension assembly '{0}'", assemblyName), ex);
-                }
-            }
 
             // Create the binding providers
             var bindingProviders = new Collection<ScriptBindingProvider>();
