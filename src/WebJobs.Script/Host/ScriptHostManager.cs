@@ -84,6 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     newInstance = _scriptHostFactory.Create(_config);
                     _traceWriter = newInstance.TraceWriter;
 
+                    if (_traceWriter != null)
+                    {
+                        _traceWriter.Info("Starting Host");
+                    }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
                     // log any function initialization errors
@@ -188,6 +192,10 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // this thread now owns the instance
+                if (instance.TraceWriter != null)
+                {
+                    instance.TraceWriter.Info("Stopping Host");
+                }
                 await instance.StopAsync();
             }
             finally

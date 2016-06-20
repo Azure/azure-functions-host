@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
     public class EnsureHostRunningHandler : DelegatingHandler
     {
-        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 10);
+        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 30);
         private readonly int _hostRunningPollIntervalMs = 500;
         private WebScriptHostManager _scriptHostManager;
  
