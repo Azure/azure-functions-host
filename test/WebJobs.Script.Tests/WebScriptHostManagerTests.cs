@@ -103,17 +103,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
             TestInvoker invoker = new TestInvoker();
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
-            FunctionDescriptor function = new FunctionDescriptor("Foo Bar", invoker, metadata, parameters);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>()
             {
-                function
+                new FunctionDescriptor("Foo Bar", invoker, metadata, parameters),
+                new FunctionDescriptor("éà  中國", invoker, metadata, parameters)
             };
             manager.InitializeHttpFunctions(functions);
 
             Uri uri = new Uri("http://local/api/Foo Bar");
             var result = manager.GetHttpFunctionOrNull(uri);
+            Assert.Same(functions[0], result);
 
-            Assert.Same(function, result);
+            uri = new Uri("http://local/api/éà  中國");
+            result = manager.GetHttpFunctionOrNull(uri);
+            Assert.Same(functions[1], result);
         }
 
         public class Fixture : IDisposable
