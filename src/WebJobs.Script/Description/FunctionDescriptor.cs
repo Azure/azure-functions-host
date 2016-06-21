@@ -7,7 +7,7 @@ using System.Reflection.Emit;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [DebuggerDisplay("{Metadata.Name} ({Metadata.ScriptType})")]
+    [DebuggerDisplay("{Name} ({Metadata.ScriptType})")]
     public class FunctionDescriptor
     {
         public FunctionDescriptor(string name, IFunctionInvoker invoker, FunctionMetadata metadata, Collection<ParameterDescriptor> parameters)
