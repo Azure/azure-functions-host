@@ -136,5 +136,54 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
                 () => template.Bind(parameters),
                 "No value for named parameter 'missing'.");
         }
+
+        [Fact]
+        public void FromString_CreatesCaseSensitiveTemplate()
+        {
+            BindingTemplate template = BindingTemplate.FromString(@"A/{B}/{c}");
+
+            var parameters = new Dictionary<string, string>
+            {
+                { "B", "TestB" },
+                { "c", "TestC" }
+            };
+
+            string result = template.Bind(parameters);
+            Assert.Equal("A/TestB/TestC", result);
+
+            parameters = new Dictionary<string, string>
+            {
+                { "b", "TestB" },
+                { "c", "TestC" }
+            };
+
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => template.Bind(parameters),
+                "No value for named parameter 'B'.");
+        }
+
+        [Fact]
+        public void FromString_IgnoreCase_CreatesCaseInsensitiveTemplate()
+        {
+            BindingTemplate template = BindingTemplate.FromString(@"A/{B}/{c}", ignoreCase: true);
+
+            var parameters = new Dictionary<string, string>
+            {
+                { "B", "TestB" },
+                { "c", "TestC" }
+            };
+
+            string result = template.Bind(parameters);
+            Assert.Equal("A/TestB/TestC", result);
+
+            parameters = new Dictionary<string, string>
+            {
+                { "b", "TestB" },
+                { "C", "TestC" }
+            };
+
+            result = template.Bind(parameters);
+            Assert.Equal("A/TestB/TestC", result);
+        }
     }
 }

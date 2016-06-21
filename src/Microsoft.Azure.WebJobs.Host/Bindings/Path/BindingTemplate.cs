@@ -19,8 +19,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
     {
         private readonly string _pattern;
         private readonly IReadOnlyList<BindingTemplateToken> _tokens;
+        private readonly bool _ignoreCase;
 
-        internal BindingTemplate(string pattern, IReadOnlyList<BindingTemplateToken> tokens)
+        internal BindingTemplate(string pattern, IReadOnlyList<BindingTemplateToken> tokens, bool ignoreCase = false)
         {
             if (pattern == null)
             {
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 
             _pattern = pattern;
             _tokens = tokens;
+            _ignoreCase = ignoreCase;
         }
 
         /// <summary>
@@ -66,11 +68,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         /// </summary>
         /// <param name="input">A binding template string in a format supported by <see cref="BindingTemplateParser"/>.
         /// </param>
+        /// <param name="ignoreCase">True if matching should be case insensitive.</param>
         /// <returns>Valid ready-to-use instance of <see cref="BindingTemplate"/>.</returns>
-        public static BindingTemplate FromString(string input)
+        public static BindingTemplate FromString(string input, bool ignoreCase = false)
         {
             IReadOnlyList<BindingTemplateToken> tokens = BindingTemplateParser.ParseTemplate(input);
-            return new BindingTemplate(input, tokens);
+            return new BindingTemplate(input, tokens, ignoreCase);
         }
 
         /// <summary>
@@ -84,6 +87,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         public string Bind(IReadOnlyDictionary<string, string> parameters)
         {
             StringBuilder builder = new StringBuilder();
+
+            if (_ignoreCase && parameters != null)
+            {
+                // convert to a case insensitive dictionary
+                var caseInsensitive = new Dictionary<string, string>(parameters.Count, StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in parameters)
+                {
+                    caseInsensitive.Add(pair.Key, pair.Value);
+                }
+                parameters = caseInsensitive;
+            }
 
             foreach (BindingTemplateToken token in Tokens)
             {

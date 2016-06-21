@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _propertyHelpers = propertyHelpers;
         }
 
-        internal BindingDataProvider(string template)
+        internal BindingDataProvider(string template, bool ignoreCase = false)
         {
-            _bindingTemplateSource = BindingTemplateSource.FromString(template);
+            _bindingTemplateSource = BindingTemplateSource.FromString(template, ignoreCase);
 
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             foreach (string parameterName in _bindingTemplateSource.ParameterNames)
@@ -120,10 +120,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// Create a <see cref="BindingDataProvider"/> instance for the specified binding template.
         /// </summary>
         /// <param name="template">The binding template.</param>
+        /// <param name="ignoreCase">True if matches should be case insensitive.</param>
         /// <returns>A <see cref="BindingDataProvider"/> instance.</returns>
-        public static BindingDataProvider FromTemplate(string template)
+        public static BindingDataProvider FromTemplate(string template, bool ignoreCase = false)
         {
-            return new BindingDataProvider(template);
+            return new BindingDataProvider(template, ignoreCase);
         }
     }
 }

@@ -76,13 +76,20 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         /// </example>
         /// <param name="pattern">A binding template pattern string in a supported format (see remarks).
         /// </param>
+        /// <param name="ignoreCase">True if matches should be case insensitive.</param>
         /// <returns>An instance of <see cref="BindingTemplateSource"/> for the specified template pattern.</returns>
-        public static BindingTemplateSource FromString(string pattern)
+        public static BindingTemplateSource FromString(string pattern, bool ignoreCase = false)
         {
             IEnumerable<BindingTemplateToken> tokens = BindingTemplateParser.GetTokens(pattern);
             string capturePattern = BuildCapturePattern(tokens);
 
-            return new BindingTemplateSource(pattern, new Regex(capturePattern, RegexOptions.Compiled));
+            RegexOptions options = RegexOptions.Compiled;
+            if (ignoreCase)
+            {
+                options |= RegexOptions.IgnoreCase;
+            }
+
+            return new BindingTemplateSource(pattern, new Regex(capturePattern, options));
         }
 
         /// <summary>

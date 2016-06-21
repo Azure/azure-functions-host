@@ -126,6 +126,39 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             Assert.Equal(date, bindingData["date"]);
         }
 
+        [Fact]
+        public void FromTemplate_IgnoreCase_CreatesCaseInsensitiveProvider()
+        {
+            var provider = BindingDataProvider.FromTemplate(@"A/b/{c}", ignoreCase: true);
+
+            var data = provider.GetBindingData("A/b/Test");
+            Assert.Equal(1, data.Count);
+            Assert.Equal("Test", data["c"]);
+
+            data = provider.GetBindingData("a/b/Test");
+            Assert.Equal(1, data.Count);
+            Assert.Equal("Test", data["c"]);
+
+            data = provider.GetBindingData("A/B/Test");
+            Assert.Equal(1, data.Count);
+            Assert.Equal("Test", data["c"]);
+        }
+
+        [Fact]
+        public void FromTemplate_CreatesCaseSensitiveProvider()
+        {
+            var provider = BindingDataProvider.FromTemplate(@"A/b/{c}");
+
+            var data = provider.GetBindingData("A/b/Test");
+            Assert.Equal(1, data.Count);
+            Assert.Equal("Test", data["c"]);
+
+            // Don't expect a match here, since templates are case sensitive
+            // by default
+            data = provider.GetBindingData("a/b/Test");
+            Assert.Null(data);
+        }
+
         private class SimpleDataType
         {
             public int Name { get; set; }
