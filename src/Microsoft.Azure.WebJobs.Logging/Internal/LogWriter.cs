@@ -263,8 +263,12 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             if (_container != null)
             {
-                await _instanceLogger.StopAsync();
                 await _container.StopAsync();
+            }
+
+            if (_instanceLogger != null)
+            {
+                await _instanceLogger.StopAsync();
             }
         }
 
