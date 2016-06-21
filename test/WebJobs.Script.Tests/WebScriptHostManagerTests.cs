@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -86,6 +88,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.True(hostLogs.Contains("No job functions found."));
             Assert.True(hostLogs.Contains("Job host started"));
             Assert.True(hostLogs.Contains("Job host stopped"));
+        }
+
+        [Fact]
+        public void GetHttpFunctionOrNull_DecodesUriProperly()
+        {
+            WebScriptHostManager manager = new WebScriptHostManager(new ScriptHostConfiguration(), new SecretManager());
+
+            // Initialize the 
+            FunctionMetadata metadata = new FunctionMetadata();
+            metadata.Bindings.Add(new HttpTriggerBindingMetadata
+            {
+                Type = "HttpTrigger"
+            });
+            TestInvoker invoker = new TestInvoker();
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+            FunctionDescriptor function = new FunctionDescriptor("Foo Bar", invoker, metadata, parameters);
+            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>()
+            {
+                function
+            };
+            manager.InitializeHttpFunctions(functions);
+
+            Uri uri = new Uri("http://local/api/Foo Bar");
+            var result = manager.GetHttpFunctionOrNull(uri);
+
+            Assert.Same(function, result);
         }
 
         public class Fixture : IDisposable
