@@ -125,6 +125,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        protected static object ConvertInput(object input)
+        {
+            if (input != null)
+            {
+                // perform any required input conversions
+                HttpRequestMessage request = input as HttpRequestMessage;
+                if (request != null)
+                {
+                    // TODO: Handle other content types? (E.g. byte[])
+                    if (request.Content != null && request.Content.Headers.ContentLength > 0)
+                    {
+                        return ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                    }
+                }
+            }
+
+            return input;
+        }
+
         protected void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext executionContext)
         {
             environmentVariables["InvocationId"] = executionContext.InvocationId.ToString();
