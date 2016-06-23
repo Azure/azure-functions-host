@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -59,41 +58,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                object convertedInput = input;
-                if (input != null)
-                {
-                    HttpRequestMessage request = input as HttpRequestMessage;
-                    if (request != null)
-                    {
-                        // TODO: Handle other content types? (E.g. byte[])
-                        if (request.Content != null && request.Content.Headers.ContentLength > 0)
-                        {
-                            convertedInput = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
-                        }
-                    }
-                }
-
                 TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
-                string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding",
-                    invocationId);
-
+                object convertedInput = ConvertInput(input);
                 Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
                 bindingData["InvocationId"] = invocationId;
 
                 Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
 
-                await
-                    ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData,
-                        environmentVariables);
+                string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
+                await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
 
-                InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings,
-                    functionExecutionContext);
+                InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
                 PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, traceWriter);
 
-                await
-                    ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
+                await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
                 if (errors.Any())
                 {
