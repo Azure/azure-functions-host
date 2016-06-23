@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
@@ -86,21 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
-            // perform any required input conversions
-            object convertedInput = input;
-            if (input != null)
-            {
-                HttpRequestMessage request = input as HttpRequestMessage;
-                if (request != null)
-                {
-                    // TODO: Handle other content types? (E.g. byte[])
-                    if (request.Content != null && request.Content.Headers.ContentLength > 0)
-                    {
-                        convertedInput = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
-                    }
-                }
-            }
-
             TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
             string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
@@ -109,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
+            object convertedInput = ConvertInput(input);
             Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
             bindingData["InvocationId"] = invocationId;
 

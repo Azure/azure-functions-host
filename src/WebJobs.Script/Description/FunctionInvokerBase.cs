@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// binding data because all the POCO binders require strong
         /// typing
         /// </summary>
-        protected static Dictionary<string, string> GetBindingData(object value, IBinderEx binder)
+        internal static Dictionary<string, string> GetBindingData(object value, IBinderEx binder)
         {
             // First apply any existing binding data. Any additional binding
             // data coming from the message will take precedence
@@ -108,7 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // only includes top level properties)
                     JObject parsed = JObject.Parse(json);
                     var additionalBindingData = parsed.Children<JProperty>()
-                        .Where(p => p.Value.Type != JTokenType.Object)
+                        .Where(p => p.Value != null && 
+                        (p.Value.Type != JTokenType.Object & p.Value.Type != JTokenType.Array))
                         .ToDictionary(p => p.Name, p => (string)p);
 
                     if (additionalBindingData != null)

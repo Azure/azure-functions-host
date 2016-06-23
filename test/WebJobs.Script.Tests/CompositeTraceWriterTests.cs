@@ -4,7 +4,6 @@
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
