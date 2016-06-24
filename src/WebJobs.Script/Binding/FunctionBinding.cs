@@ -64,11 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             break;
                         default:
                             FunctionBinding binding = null;
-                            if (bindingMetadata.Raw == null)
-                            {
-                                // TEMP: This conversion is only here to keep unit tests passing
-                                bindingMetadata.Raw = JObject.FromObject(bindingMetadata);
-                            }
                             if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
                             {
                                 bindings.Add(binding);
@@ -86,9 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             functionBinding = null;            
 
             ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
-            string type = bindingContext.Type;
-            string name = (string)metadata.GetValue("name", StringComparison.OrdinalIgnoreCase);
-            string direction = (string)metadata.GetValue("direction", StringComparison.OrdinalIgnoreCase);
             ScriptBinding scriptBinding = null;
             foreach (var provider in config.BindingProviders)
             {
@@ -103,29 +95,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return false;
             }
 
-            // TEMP: remove the need for this
-            BindingMetadata bindingMetadata = new BindingMetadata
-            {
-                Name = name,
-                Type = type,
-                Direction = (BindingDirection)Enum.Parse(typeof(BindingDirection), direction, true)
-            };
-
+            BindingMetadata bindingMetadata = BindingMetadata.Create(metadata);
             functionBinding = new ExtensionBinding(config, scriptBinding, bindingMetadata);
 
             return true;
         }
 
-        protected string ResolveBindingTemplate(string value, BindingTemplate bindingTemplate, IReadOnlyDictionary<string, string> bindingData)
+        protected string ResolveAndBind(string value, IReadOnlyDictionary<string, string> bindingData)
         {
-            string boundValue = value;
+            BindingTemplate template = BindingTemplate.FromString(value);
 
-            if (bindingData != null)
+            string boundValue = value;
+            if (bindingData != null && template != null)
             {
-                if (bindingTemplate != null)
-                {
-                    boundValue = bindingTemplate.Bind(bindingData);
-                }
+                boundValue = template.Bind(bindingData);
             }
 
             if (!string.IsNullOrEmpty(value))

@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -54,10 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
 
             // TEMP: We'll be doing away with this IBinder code
-            // So for now we don't support binding parameters for Non C#
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
                 await BindAsyncCollectorAsync<byte[]>(context, runtimeContext);
+            }
+            else if (_binding.DefaultType == typeof(IAsyncCollector<JObject>))
+            {
+                await BindAsyncCollectorAsync<JObject>(context, runtimeContext);
             }
             else if (_binding.DefaultType == typeof(Stream))
             {
@@ -70,10 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     context.Value = result;
                 }
-            }
-            else if (_binding.DefaultType == typeof(IAsyncCollector<JObject>))
-            {
-                await BindAsyncCollectorAsync<JObject>(context, runtimeContext);
             }
         }
 
@@ -126,28 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return resolvedAttributes;
-        }
-
-        // TEMP - This code will go away when the Invoker work is done
-        private string ResolveAndBind(string value, IReadOnlyDictionary<string, string> bindingData)
-        {
-            BindingTemplate template = BindingTemplate.FromString(value);
-
-            string boundValue = value;
-            if (bindingData != null)
-            {
-                if (template != null)
-                {
-                    boundValue = template.Bind(bindingData);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(value))
-            {
-                boundValue = Resolve(boundValue);
-            }
-
-            return boundValue;
         }
 
         internal class AttributeBuilderInfo
