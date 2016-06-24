@@ -2,14 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Hosting;
-using Autofac;
-using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using System.Web.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
-using System.Net.Http;
+using Autofac;
 using Autofac.Integration.WebApi;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
+using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {

@@ -109,24 +109,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions")]
-        public async Task<IEnumerable<FunctionEnvelope>> List()
+        public Task<IEnumerable<FunctionEnvelope>> List()
         {
-            return await _manager.ListFunctionsConfigAsync();
-            //return Request.CreateResponse(HttpStatusCode.OK, functions);
+            return _manager.ListFunctionsConfigAsync();
         }
 
         [HttpGet]
         [Route("api/functions/{name}")]
-        public async Task<HttpResponseMessage> Get(string name)
+        public Task<FunctionEnvelope> Get(string name)
         {
-            return Request.CreateResponse(HttpStatusCode.OK, await _manager.GetFunctionConfigAsync(name));
+            return _manager.GetFunctionConfigAsync(name);
         }
 
         [HttpGet]
         [Route("api/functions/{name}/secrets")]
-        public async Task<HttpResponseMessage> GetSecrets(string name)
+        public Task<Kudu.FunctionSecrets> GetSecrets(string name)
         {
-            return Request.CreateResponse(HttpStatusCode.OK, await _manager.GetFunctionSecretsAsync(name));
+            return _manager.GetFunctionSecretsAsync(name);
         }
 
         [HttpDelete]
@@ -139,9 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions/config")]
-        public async Task<HttpResponseMessage> GetHostSettings()
+        public Task<JObject> GetHostSettings()
         {
-            return Request.CreateResponse(HttpStatusCode.OK, await _manager.GetHostConfigAsync());
+            return _manager.GetHostConfigAsync();
         }
 
         [HttpPut]
