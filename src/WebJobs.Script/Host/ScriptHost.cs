@@ -390,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = ParseBindingMetadata(binding, nameResolver);
+                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding, nameResolver);
                     functionMetadata.Bindings.Add(bindingMetadata);
                     if (bindingMetadata.IsTrigger)
                     {
@@ -407,72 +407,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionMetadata;
-        }
-
-        private static BindingMetadata ParseBindingMetadata(JObject binding, INameResolver nameResolver)
-        {
-            BindingMetadata bindingMetadata = null;
-            string bindingDirectionValue = (string)binding["direction"];
-            string connection = (string)binding["connection"];
-            string bindingType = (string)binding["type"];
-            BindingDirection bindingDirection = default(BindingDirection);
-
-            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
-                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
-            {
-                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
-            }
-
-            // TODO: Validate the binding type somehow?
-
-            if (!string.IsNullOrEmpty(connection) && 
-                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
-            {
-                throw new FormatException("Invalid Connection value specified.");
-            }
-
-            switch (bindingType.ToLowerInvariant())
-            {
-                case "httptrigger":
-                    bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                case "http":
-                    bindingMetadata = binding.ToObject<HttpBindingMetadata>();
-                    break;
-                case "table":
-                    bindingMetadata = binding.ToObject<TableBindingMetadata>();
-                    break;
-                case "manualtrigger":
-                    bindingMetadata = binding.ToObject<BindingMetadata>();
-                    break;
-                default:
-                    // TEMP - Still require a BindingMetadata until refactoring is complete
-                    bindingMetadata = binding.ToObject<BindingMetadata>();
-                    break;
-            }
-
-            bindingMetadata.Type = bindingType;
-            bindingMetadata.Direction = bindingDirection;
-            bindingMetadata.Connection = connection;
-
-            nameResolver.ResolveAllProperties(bindingMetadata);
-
-            // TEMP - We want to pass resolved metadata values into
-            // binding extensions
-            JObject resolved = new JObject(binding);
-            foreach (JProperty property in resolved.Properties().ToArray())
-            {
-                if (property.Value != null &&
-                    property.Value.Type == JTokenType.String)
-                {
-                    string val = (string)property.Value;
-                    string newVal = nameResolver.ResolveWholeString(val);
-                    resolved[property.Name] = newVal;
-                }
-            }
-            bindingMetadata.Raw = resolved;
-
-            return bindingMetadata;
         }
 
         private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)

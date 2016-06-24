@@ -47,18 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
         public void GenerateQueueTriggerFunction()
         {
             string inputBindingName = "inputData";
-            BindingMetadata trigger = new BindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = "QueueTrigger",
-                Name = inputBindingName
-            };
-            trigger.Raw = new JObject
-            {
-                { "Type", "QueueTrigger" },
-                { "Name", inputBindingName },
-                { "Direction", "in" },
-                { "QueueName", "test" }
-            };
+                { "type", "QueueTrigger" },
+                { "name", inputBindingName },
+                { "direction", "in" },
+                { "queueName", "test" }
+            });
             var scriptHostInfo = GetScriptHostInfo();
             MethodInfo method = GenerateMethod(trigger, scriptHostInfo);
 

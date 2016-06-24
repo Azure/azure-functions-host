@@ -120,11 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     triggerParameter = ParseManualTrigger(triggerMetadata, parameterType ?? typeof(string));
                     break;
                 default:
-                    if (triggerMetadata.Raw == null)
-                    {
-                        // TEMP: This conversion is only here to keep unit tests passing
-                        triggerMetadata.Raw = JObject.FromObject(triggerMetadata);
-                    }
                     TryParseTriggerParameter(triggerMetadata.Raw, out triggerParameter, parameterType);
                     break;
             }
