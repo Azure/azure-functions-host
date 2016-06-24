@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/functions/{name}")]
-        public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
+        public async Task<HttpResponseMessage> Invoke(string name, [FromBody] FunctionInvocation invocation, bool block = false)
         {
             if (invocation == null)
             {
@@ -53,7 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
-            Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
+            var runTask = Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
+
+            if (block)
+            {
+                await runTask;
+            }
 
             return new HttpResponseMessage(HttpStatusCode.Accepted);
         }
@@ -109,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions")]
+        [Route("admin/functions")]
         public Task<IEnumerable<FunctionEnvelope>> List()
         {
             return _manager.ListFunctionsConfigAsync();
@@ -116,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions/{name}")]
+        [Route("admin/functions/{name}")]
         public Task<FunctionEnvelope> Get(string name)
         {
             return _manager.GetFunctionConfigAsync(name);
@@ -123,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions/{name}/secrets")]
+        [Route("admin/functions/{name}/secrets")]
         public Task<Kudu.FunctionSecrets> GetSecrets(string name)
         {
             return _manager.GetFunctionSecretsAsync(name);
@@ -130,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpDelete]
         [Route("api/functions/{name}")]
+        [Route("admin/functions/{name}")]
         public HttpResponseMessage Delete(string name)
         {
             _manager.DeleteFunction(name);
@@ -138,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("api/functions/config")]
+        [Route("admin/functions/config")]
         public Task<JObject> GetHostSettings()
         {
             return _manager.GetHostConfigAsync();
@@ -145,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPut]
         [Route("api/functions/config")]
+        [Route("admin/functions/config")]
         public async Task<HttpResponseMessage> PutHostSettings()
         {
             return Request.CreateResponse(HttpStatusCode.Created, await _manager.PutHostConfigAsync(await Request.Content.ReadAsAsync<JObject>()));

@@ -11,6 +11,7 @@ using Ignite.SharpNetSH;
 using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.ConsoleHost.Scenarios
 {
@@ -18,7 +19,7 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
     {
         private readonly CertVerbOptions _options;
 
-        public CertScenario(CertVerbOptions options, ITracer tracer): base(tracer)
+        public CertScenario(CertVerbOptions options, TraceWriter tracer): base(tracer)
         {
             _options = options;
         }
@@ -27,7 +28,7 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
         {
             if (!SecurityHelpers.IsAdministrator())
             {
-                await Tracer.WriteLineAsync("When using the cert command you have to run as admin.");
+                TraceInfo("When using the cert command you have to run as admin.");
                 Environment.Exit(ExitCodes.MustRunAsAdmin);
             }
 
@@ -35,9 +36,9 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
 
             if (!string.IsNullOrEmpty(_options.CertPath))
             {
-                await Tracer.WriteAsync($"Please enter '{Path.GetFileName(_options.CertPath)}' password: ");
+                TraceInfo($"Please enter '{Path.GetFileName(_options.CertPath)}' password: ");
                 var password = SecurityHelpers.ReadPassword();
-                cert = await GetUserSuppliedCert(_options.CertPath, password);
+                cert = GetUserSuppliedCert(_options.CertPath, password);
             }
             else
             {
@@ -72,13 +73,13 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
             }
         }
 
-        private async Task<X509Certificate2> GetUserSuppliedCert(string path, string password)
+        private X509Certificate2 GetUserSuppliedCert(string path, string password)
         {
             Verify.IsPfxCert(path);
             var cert = new X509Certificate2(path, password);
-            await Tracer.WriteLineAsync($"Using user supplied cert {Path.GetFileName(path)}");
-            await Tracer.WriteLineAsync($"Subject: {cert.Subject}");
-            await Tracer.WriteLineAsync($"Thumpprint: {cert.Thumbprint}");
+            TraceInfo($"Using user supplied cert {Path.GetFileName(path)}");
+            TraceInfo($"Subject: {cert.Subject}");
+            TraceInfo($"Thumpprint: {cert.Thumbprint}");
             return cert;
         }
     }

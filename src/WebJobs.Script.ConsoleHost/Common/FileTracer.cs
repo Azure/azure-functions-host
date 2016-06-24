@@ -1,15 +1,20 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Host;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Common
 {
-    public class FileTracer : ITracer
+    public class FileTracer : TraceWriter
     {
+        private Collection<TraceEvent> _traces = new Collection<TraceEvent>();
         private readonly StreamWriter _file;
-        public FileTracer(string filePath)
+
+        public FileTracer(TraceLevel level, string filePath) : base(level)
         {
             _file = new StreamWriter(filePath, append: true)
             {
@@ -17,19 +22,12 @@ namespace WebJobs.Script.ConsoleHost.Common
             };
         }
 
-        public async Task WriteAsync(string value)
+        public override void Trace(TraceEvent traceEvent)
         {
-            await _file.WriteAsync(value);
-        }
-
-        public async Task WriteLineAsync(string value)
-        {
-            await _file.WriteLineAsync(value);
-        }
-
-        public void Dispose()
-        {
-            _file.Dispose();
+            if (traceEvent.Source == Constants.CliTracingSource)
+            {
+                _file.WriteLine(traceEvent.Message);
+            }
         }
     }
 }

@@ -21,8 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
-                FileLoggingEnabled = true
+                FileLoggingEnabled = true,
+                TraceWriter = settings.TraceWriter,
             };
+
+            if (settings.IsSelfHost && settings.TraceWriter != null)
+            {
+                scriptHostConfig.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Off;
+            }
 
             // If running on Azure Web App, derive the host ID from the site name
             string hostId = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");

@@ -9,5 +9,14 @@ namespace WebJobs.Script.ConsoleHost.Cli
     {
         [ValueOption(0)]
         public string FunctionName { get; set; }
+
+        [Option('t', "timeout", DefaultValue = 10, HelpText = "")]
+        public int Timeout { get; set; }
+
+        [Option('c', "content", HelpText = "")]
+        public string Content { get; set; }
+
+        [Option('f', "file", HelpText = "")]
+        public string FileName { get; set; }
     }
 }

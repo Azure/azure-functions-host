@@ -12,5 +12,6 @@ namespace WebJobs.Script.ConsoleHost.Common
     public static class Constants
     {
         public const string WebServerMode = "web";
+        public const string CliTracingSource = "CLI";
     }
 }

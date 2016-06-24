@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.ConsoleHost.Scenarios
 {
@@ -18,14 +19,14 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
     {
         private readonly WebVerbOptions _options;
 
-        public WebScenario(WebVerbOptions options, ITracer tracer) : base (tracer)
+        public WebScenario(WebVerbOptions options, TraceWriter tracer) : base (tracer)
         {
             _options = options;
         }
 
         public override async Task Run()
         {
-            await Setup();
+            Setup();
 
             var baseAddress = $"https://localhost:{_options.Port}";
 
@@ -35,31 +36,25 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
                 TransferMode = TransferMode.Streamed
             };
 
-            WebHostSettings settings = new WebHostSettings
-            {
-                IsSelfHost = true,
-                ScriptPath = Path.Combine(Environment.CurrentDirectory),
-                LogPath = Path.Combine(Path.GetTempPath(), @"LogFiles\Application\Functions"),
-                SecretsPath = Path.Combine(Environment.CurrentDirectory, "data", "functions", "secrets")
-            };
+            WebHostSettings settings = SelfHostWebHostSettingsFactory.Create();
 
             WebApiConfig.Register(config, settings);
 
             using (var httpServer = new HttpSelfHostServer(config))
             {
                 await httpServer.OpenAsync();
-                await Tracer.WriteLineAsync($"Listening on {baseAddress}");
-                await Tracer.WriteLineAsync("Hit CTRL-C to exit...");
+                TraceInfo($"Listening on {baseAddress}");
+                TraceInfo("Hit CTRL-C to exit...");
                 await Task.Delay(-1);
                 await httpServer.CloseAsync();
             }
         }
 
-        private async Task Setup()
+        private void Setup()
         {
             if (_options.SkipCertSetup && !_options.Quiet)
             {
-                await Tracer.WriteLineAsync($"Skipping cert checks. Assuming SSL is setup for https://localhost:{_options.Port}");
+                TraceInfo($"Skipping cert checks. Assuming SSL is setup for https://localhost:{_options.Port}");
             }
             else
             {
@@ -69,7 +64,7 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
                     string errors;
                     if (!SecurityHelpers.TryElevateAndSetupCerts(_options.CertPath, _options.Port, out errors))
                     {
-                        await Tracer.WriteLineAsync("Error: " + errors);
+                        TraceInfo("Error: " + errors);
                         Environment.Exit(ExitCodes.GeneralError);
                     }
                 }

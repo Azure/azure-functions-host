@@ -7,6 +7,8 @@ using CommandLine;
 using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Scenarios;
 using WebJobs.Script.ConsoleHost.Common;
+using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.ConsoleHost
 {
@@ -26,14 +28,14 @@ namespace WebJobs.Script.ConsoleHost
             Action<string, object> setScenario = (v, o) =>
             {
                 var baseOptions = o as BaseOptions;
-                ITracer tracer = null;
+                TraceWriter tracer = null;
                 if (string.IsNullOrEmpty(baseOptions?.LogFile))
                 {
-                    tracer = new ConsoleTracer();
+                    tracer = new ConsoleTracer(TraceLevel.Info);
                 }
                 else
                 {
-                    tracer = new FileTracer(baseOptions.LogFile);
+                    tracer = new FileTracer(TraceLevel.Info, baseOptions.LogFile);
                 }
 
                 if (v == Verbs.Web)
