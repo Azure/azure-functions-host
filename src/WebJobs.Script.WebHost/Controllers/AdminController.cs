@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Newtonsoft.Json.Linq;
-using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// Controller responsible for handling all administrative requests, for
     /// example enqueueing function invocations, etc.
     /// </summary>
-    //[AuthorizationLevel(AuthorizationLevel.Admin)]
+    [AuthorizationLevel(AuthorizationLevel.Admin)]
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;

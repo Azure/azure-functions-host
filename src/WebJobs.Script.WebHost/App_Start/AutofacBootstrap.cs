@@ -41,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
             }
 
+            builder.RegisterInstance<WebHostSettings>(settings);
+
             SecretManager secretManager = new SecretManager(settings.SecretsPath);
             // Make sure that host secrets get created on startup if they don't exist
             secretManager.GetHostSecrets();
