@@ -495,6 +495,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 textArgValue, ApiHubTestHelper.EntityId5);
         }
 
+        [Fact]
+        public void ExcludedFunction_NotAddedToHost()
+        {
+            // Make sure the function was not registered
+            var function = Fixture.Host.Functions.SingleOrDefault(p => string.Compare(p.Name, "Excluded") == 0);
+            Assert.Null(function);
+
+            // Make sure the host log was written
+            var trace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message == "Function 'Excluded' is marked as excluded");
+            Assert.NotNull(trace);
+            Assert.Equal(TraceLevel.Info, trace.Level);
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node", "node")

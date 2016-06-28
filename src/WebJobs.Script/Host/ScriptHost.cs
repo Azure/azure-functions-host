@@ -406,6 +406,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.IsDisabled = true;
             }
 
+            JToken value = null;
+            if (configMetadata.TryGetValue("excluded", StringComparison.OrdinalIgnoreCase, out value) &&
+                value.Type == JTokenType.Boolean)
+            {
+                functionMetadata.IsExcluded = (bool)value;
+            }
+
             return functionMetadata;
         }
 
@@ -445,6 +452,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     string json = File.ReadAllText(functionConfigPath);
                     JObject functionConfig = JObject.Parse(json);
                     FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, functionConfig);
+
+                    if (metadata.IsExcluded)
+                    {
+                        TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                        continue;
+                    }
 
                     // determine the primary script
                     string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
