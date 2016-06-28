@@ -45,10 +45,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
             AuthorizationLevel authorizationLevel = AuthorizationLevelAttribute.GetAuthorizationLevel(request, secretManager, functionName: function.Name);
 
-            if (function.Metadata.IsDisabled && 
-                authorizationLevel != AuthorizationLevel.Admin)
+            if (function.Metadata.IsExcluded ||
+                (function.Metadata.IsDisabled && authorizationLevel != AuthorizationLevel.Admin))
             {
-                // disabled functions are not publically addressable w/o Admin level auth
+                // disabled functions are not publically addressable w/o Admin level auth,
+                // and excluded functions are also ignored here (though the check above will
+                // already exclude them)
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 

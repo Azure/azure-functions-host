@@ -24,7 +24,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ScriptType ScriptType { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the function is disabled.
+        /// <remarks>
+        /// A disabled function is still compiled and loaded into the host, but it will not
+        /// be triggered automatically, and is not publically addressable (except via admin invoke requests).
+        /// </remarks>
+        /// </summary>
         public bool IsDisabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the function is excluded.
+        /// <remarks>
+        /// An excluded function is completely skipped during function loading. It will not be compiled
+        /// and will not be loaded into the host.
+        /// </remarks>
+        /// </summary>
+        public bool IsExcluded { get; set; }
 
         public Collection<BindingMetadata> Bindings { get; private set; }
 
