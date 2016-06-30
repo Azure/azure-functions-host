@@ -1,5 +1,5 @@
 ﻿
-namespace WebJobs.Script.ConsoleHost.Cli.Types
+namespace WebJobs.Script.ConsoleHost.Common
 {
     public enum SourceControl
     {

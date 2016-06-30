@@ -8,21 +8,19 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Ignite.SharpNetSH;
-using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
-using Microsoft.Azure.WebJobs.Host;
+using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Scenarios
 {
     public class CertScenario : Scenario
     {
-        private readonly CertVerbOptions _options;
+        [Option('p', "port", DefaultValue = 6061, HelpText = "Local port to listen on")]
+        public int Port { get; set; }
 
-        public CertScenario(CertVerbOptions options, TraceWriter tracer): base(tracer)
-        {
-            _options = options;
-        }
+        [Option('c', "cert", HelpText = "Path for the cert to use. If not supecified, will auto-generate a cert.")]
+        public string CertPath { get; set; }
 
         public override async Task Run()
         {
@@ -34,11 +32,11 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
 
             X509Certificate2 cert = null;
 
-            if (!string.IsNullOrEmpty(_options.CertPath))
+            if (!string.IsNullOrEmpty(CertPath))
             {
-                TraceInfo($"Please enter '{Path.GetFileName(_options.CertPath)}' password: ");
+                TraceInfo($"Please enter '{Path.GetFileName(CertPath)}' password: ");
                 var password = SecurityHelpers.ReadPassword();
-                cert = GetUserSuppliedCert(_options.CertPath, password);
+                cert = GetUserSuppliedCert(CertPath, password);
             }
             else
             {
@@ -59,15 +57,15 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
                 store.Close();
             });
 
-            if (!(NetSH.CMD.Http.Show.UrlAcl($"https://+:{_options.Port}/")?.ResponseObject?.Count > 0))
+            if (!(NetSH.CMD.Http.Show.UrlAcl($"https://+:{Port}/")?.ResponseObject?.Count > 0))
             {
-                NetSH.CMD.Http.Add.UrlAcl($"https://+:{_options.Port}/", Environment.UserName, null);
+                NetSH.CMD.Http.Add.UrlAcl($"https://+:{Port}/", Environment.UserName, null);
             }
 
-            if (!(NetSH.CMD.Http.Show.SSLCert($"0.0.0.0:{_options.Port}")?.ResponseObject?.Count > 0))
+            if (!(NetSH.CMD.Http.Show.SSLCert($"0.0.0.0:{Port}")?.ResponseObject?.Count > 0))
             {
                 NetSH.CMD.Http.Add.SSLCert(
-                    ipPort: $"0.0.0.0:{_options.Port}",
+                    ipPort: $"0.0.0.0:{Port}",
                     certHash: cert.Thumbprint,
                     appId: Assembly.GetExecutingAssembly().GetType().GUID);
             }

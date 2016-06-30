@@ -46,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
             }
+            else if (settings.IsSelfHost)
+            {
+                // TODO: persist
+                scriptHostConfig.HostConfig.HostId = Guid.NewGuid().ToString().Replace("-", "").ToLowerInvariant();
+            }
 
             builder.RegisterInstance<WebHostSettings>(settings);
 

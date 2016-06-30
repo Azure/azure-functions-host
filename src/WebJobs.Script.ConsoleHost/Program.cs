@@ -4,11 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using CommandLine;
-using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Scenarios;
-using WebJobs.Script.ConsoleHost.Common;
-using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace WebJobs.Script.ConsoleHost
 {
@@ -36,20 +32,7 @@ namespace WebJobs.Script.ConsoleHost
             Scenario _scenario = null;
             var options = CommandLineOptionsBuilder.CreateObject();
 
-            Action<string, object> setScenario = (v, o) =>
-            {
-
-                foreach (var verb in CommandLineOptionsBuilder.Verbs)
-                {
-                    if (v.Equals(verb.Item1, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _scenario = CommandLineOptionsBuilder.BuildScenario(verb.Item2, o);
-                        return;
-                    }
-                }
-            };
-
-            if (!Parser.Default.ParseArguments(args, options, setScenario))
+            if (!Parser.Default.ParseArguments(args, options, (v, o) => _scenario = o as Scenario))
             {
                 scenario = null;
                 return false;

@@ -8,27 +8,28 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.SelfHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using WebJobs.Script.ConsoleHost.Cli;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
-using Microsoft.Azure.WebJobs.Host;
+using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Scenarios
 {
     public class WebScenario : Scenario
     {
-        private readonly WebVerbOptions _options;
+        [Option('p', "port", DefaultValue = 6061, HelpText = "Local port to listen on")]
+        public int Port { get; set; }
 
-        public WebScenario(WebVerbOptions options, TraceWriter tracer) : base (tracer)
-        {
-            _options = options;
-        }
+        [Option('c', "cert", HelpText = "Path for the cert to use. If not supecified, will auto-generate a cert.")]
+        public string CertPath { get; set; }
+
+        [Option('k', "skipCertSetup", DefaultValue = false, HelpText = "Automatically add the cert to the trusted store.")]
+        public bool SkipCertSetup { get; set; }
 
         public override async Task Run()
         {
             Setup();
 
-            var baseAddress = $"https://localhost:{_options.Port}";
+            var baseAddress = $"https://localhost:{Port}";
 
             var config = new HttpSelfHostConfiguration(baseAddress)
             {
@@ -52,17 +53,17 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
 
         private void Setup()
         {
-            if (_options.SkipCertSetup && !_options.Quiet)
+            if (SkipCertSetup)
             {
-                TraceInfo($"Skipping cert checks. Assuming SSL is setup for https://localhost:{_options.Port}");
+                TraceInfo($"Skipping cert checks. Assuming SSL is setup for https://localhost:{Port}");
             }
             else
             {
-                if (!SecurityHelpers.IsUrlAclConfigured(_options.Port) ||
-                    !SecurityHelpers.IsSSLConfigured(_options.Port))
+                if (!SecurityHelpers.IsUrlAclConfigured(Port) ||
+                    !SecurityHelpers.IsSSLConfigured(Port))
                 {
                     string errors;
-                    if (!SecurityHelpers.TryElevateAndSetupCerts(_options.CertPath, _options.Port, out errors))
+                    if (!SecurityHelpers.TryElevateAndSetupCerts(CertPath, Port, out errors))
                     {
                         TraceInfo("Error: " + errors);
                         Environment.Exit(ExitCodes.GeneralError);

@@ -109,18 +109,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Cli\BaseOptions.cs" />
-    <Compile Include="Cli\CertVerbOptions.cs" />
-    <Compile Include="Cli\GitConfigVerbOptions.cs" />
-    <Compile Include="Cli\LoadSettingsVerbOptions.cs" />
-    <Compile Include="Cli\PullVerbOptions.cs" />
-    <Compile Include="Cli\PushVerbOptions.cs" />
     <Compile Include="CommandLineOptionsBuilder.cs" />
-    <Compile Include="Cli\InitVerbOptions.cs" />
-    <Compile Include="Cli\Types\SourceControl.cs" />
-    <Compile Include="Cli\Types\VerbNameAttribute.cs" />
-    <Compile Include="Cli\RunVerbOptions.cs" />
-    <Compile Include="Cli\WebVerbOptions.cs" />
+    <Compile Include="Common\SourceControl.cs" />
+    <Compile Include="Common\VerbNameAttribute.cs" />
     <Compile Include="Common\ConsoleTracer.cs" />
     <Compile Include="Common\Constants.cs" />
     <Compile Include="Common\Executable.cs" />
@@ -136,8 +127,13 @@
     <Compile Include="NativeMethods\ConsoleNativeMethods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Scenarios\BaseArmScenario.cs" />
     <Compile Include="Scenarios\CertScenario.cs" />
+    <Compile Include="Scenarios\GitConfigScenario.cs" />
     <Compile Include="Scenarios\InitScenario.cs" />
+    <Compile Include="Scenarios\LoadSettingsScenario.cs" />
+    <Compile Include="Scenarios\PullScenario.cs" />
+    <Compile Include="Scenarios\PushScenario.cs" />
     <Compile Include="Scenarios\RunScenario.cs" />
     <Compile Include="Scenarios\Scenario.cs" />
     <Compile Include="Scenarios\WebScenario.cs" />

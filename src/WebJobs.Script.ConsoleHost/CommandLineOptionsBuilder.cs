@@ -9,15 +9,12 @@ using WebJobs.Script.ConsoleHost.Extensions;
 using WebJobs.Script.ConsoleHost.Scenarios;
 using WebJobs.Script.ConsoleHost.Common;
 using System.Diagnostics;
-using WebJobs.Script.ConsoleHost.Cli;
-using WebJobs.Script.ConsoleHost.Cli.Types;
 
 namespace WebJobs.Script.ConsoleHost
 {
     public static class CommandLineOptionsBuilder
     {
         public static readonly ConstructorInfo VerbOptionAttributeCtor = typeof(VerbOptionAttribute).GetConstructor(new[] { typeof(string) });
-        public static readonly IEnumerable<Type> BaseOptionsTypes = typeof(BaseAbstractOptions).GetImplementingTypes();
         public static readonly IEnumerable<Type> ScenarioTypes = typeof(Scenario).GetImplementingTypes();
 
         public static object CreateObject()
@@ -32,7 +29,7 @@ namespace WebJobs.Script.ConsoleHost
             ConstructorBuilder constructor = tb.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
 
             // NOTE: assuming your list contains Field objects with fields FieldName(string) and FieldType(Type)
-            foreach (var propertyType in BaseOptionsTypes)
+            foreach (var propertyType in ScenarioTypes)
                 CreateVerbProperty(tb, propertyType.Name, propertyType);
 
             Type objectType = tb.CreateType();
@@ -54,37 +51,6 @@ namespace WebJobs.Script.ConsoleHost
                                 TypeAttributes.AutoLayout
                                 , null);
             return tb;
-        }
-
-        public static Scenario BuildScenario(Type optionsType, object options)
-        {
-            var scenarioType = ScenarioTypes.FirstOrDefault(st => st.Name.StartsWith(GetVerbName(optionsType, skipAttribute: true)));
-            if (scenarioType != null)
-            {
-                var baseOptions = options as BaseAbstractOptions;
-                TraceWriter tracer = null;
-                if (string.IsNullOrEmpty(baseOptions?.LogFile))
-                {
-                    tracer = new ConsoleTracer(TraceLevel.Info);
-                }
-                else
-                {
-                    tracer = new FileTracer(TraceLevel.Info, baseOptions.LogFile);
-                }
-                return Activator.CreateInstance(scenarioType, new[] { options, tracer }) as Scenario;
-            }
-            else
-            {
-                throw new Exception("Error");
-            }
-        }
-
-        public static IEnumerable<Tuple<string, Type>> Verbs
-        {
-            get
-            {
-                return BaseOptionsTypes.Select(t => Tuple.Create(GetVerbName(t), t));
-            }
         }
 
         private static void CreateVerbProperty(TypeBuilder tb, string propertyName, Type propertyType)
@@ -125,17 +91,10 @@ namespace WebJobs.Script.ConsoleHost
             propertyBuilder.SetCustomAttribute(attributeBuilder);
         }
 
-        private static string GetVerbName(Type propertyType, bool skipAttribute = false)
+        private static string GetVerbName(Type propertyType)
         {
-            Func<string> parseName = () => 
-                propertyType.Name.Substring(0, propertyType.Name.LastIndexOf("VerbOptions", StringComparison.OrdinalIgnoreCase));
-
-            if (skipAttribute)
-            {
-                return parseName();
-            }
-            var verbNameAttribute = propertyType.GetCustomAttribute<VerbNameAttribute>();
-            return verbNameAttribute?.Name ?? parseName();
+            return propertyType.GetCustomAttribute<VerbNameAttribute>()?.Name ??
+                propertyType.Name.Substring(0, propertyType.Name.LastIndexOf(nameof(Scenario), StringComparison.OrdinalIgnoreCase)); ;
         }
     }
 }

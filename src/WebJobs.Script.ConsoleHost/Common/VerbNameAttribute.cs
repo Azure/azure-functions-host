@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WebJobs.Script.ConsoleHost.Cli.Types
+namespace WebJobs.Script.ConsoleHost.Common
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class VerbNameAttribute : Attribute
