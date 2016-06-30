@@ -16,54 +16,57 @@ namespace WebJobs.Script.ConsoleHost
     {
         static void Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                args = new[] { "web" };
-            }
-
-            var options = new CommandLineOptions();
-
             Scenario scenario = null;
+            if (!TryGetScenario(args, out scenario))
+            {
+                Console.WriteLine("Error parsing arguments");
+                //Display help
+                Environment.Exit(Parser.DefaultExitCodeFail);
+            }
+            else
+            {
+                Task.Run(scenario.Run).Wait();
+            }
+        }
+
+        private static bool TryGetScenario(string[] args, out Scenario scenario)
+        {
+            SetDefaultArgs(ref args);
+
+            Scenario _scenario = null;
+            var options = CommandLineOptionsBuilder.CreateObject();
 
             Action<string, object> setScenario = (v, o) =>
             {
-                var baseOptions = o as BaseOptions;
-                TraceWriter tracer = null;
-                if (string.IsNullOrEmpty(baseOptions?.LogFile))
-                {
-                    tracer = new ConsoleTracer(TraceLevel.Info);
-                }
-                else
-                {
-                    tracer = new FileTracer(TraceLevel.Info, baseOptions.LogFile);
-                }
 
-                if (v == Verbs.Web)
+                foreach (var verb in CommandLineOptionsBuilder.Verbs)
                 {
-                    scenario = new WebScenario(o as WebVerbOptions, tracer);
-                }
-                else if (v == Verbs.Run)
-                {
-                    scenario = new RunScenario(o as RunVerbOptions, tracer);
-                }
-                else if (v == Verbs.Cert)
-                {
-                    scenario = new CertScenario(o as CertVerbOptions, tracer);
-                }
-                else
-                {
-                    Console.WriteLine($"Unknown command {args[0]}");
-                    Environment.Exit(Parser.DefaultExitCodeFail);
+                    if (v.Equals(verb.Item1, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _scenario = CommandLineOptionsBuilder.BuildScenario(verb.Item2, o);
+                        return;
+                    }
                 }
             };
 
             if (!Parser.Default.ParseArguments(args, options, setScenario))
             {
-                Console.WriteLine("Error parsing arguments");
-                Environment.Exit(Parser.DefaultExitCodeFail);
+                scenario = null;
+                return false;
             }
+            else
+            {
+                scenario = _scenario;
+                return true;
+            }
+        }
 
-            Task.Run(scenario.Run).Wait();
+        private static void SetDefaultArgs(ref string[] args)
+        {
+            if (args.Length == 0)
+            {
+                args = new[] { "web" };
+            }
         }
     }
 }

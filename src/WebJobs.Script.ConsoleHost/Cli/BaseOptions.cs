@@ -5,7 +5,7 @@ using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Cli
 {
-    public class BaseOptions
+    public abstract class BaseAbstractOptions
     {
         [Option("logFile", HelpText = "")]
         public string LogFile { get; set; }

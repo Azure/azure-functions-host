@@ -5,7 +5,7 @@ using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Cli
 {
-    public class WebVerbOptions : BaseOptions
+    public class WebVerbOptions : BaseAbstractOptions
     {
         [Option('p', "port", DefaultValue = 6061, HelpText = "Local port to listen on")]
         public int Port { get; set; }

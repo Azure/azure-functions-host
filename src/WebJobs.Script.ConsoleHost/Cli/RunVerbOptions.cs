@@ -5,7 +5,7 @@ using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Cli
 {
-    public class RunVerbOptions : BaseOptions
+    public class RunVerbOptions : BaseAbstractOptions
     {
         [ValueOption(0)]
         public string FunctionName { get; set; }
