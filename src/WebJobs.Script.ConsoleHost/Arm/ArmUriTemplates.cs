@@ -16,6 +16,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
         public static readonly ArmUriTemplate Subscriptions = new ArmUriTemplate($"{ArmUrl}/subscriptions", armApiVersion);
         public static readonly ArmUriTemplate Subscription = new ArmUriTemplate($"{Subscriptions.TemplateUrl}/{{subscriptionId}}", armApiVersion);
         public static readonly ArmUriTemplate SubscriptionResources = new ArmUriTemplate(Subscription.TemplateUrl + "/resources", armApiVersion);
+        public static readonly ArmUriTemplate SubscriptionWebApps = new ArmUriTemplate(Subscription.TemplateUrl + "/resources?$filter=resourceType eq 'Microsoft.Web/sites'", armApiVersion);
 
         public static readonly ArmUriTemplate ResourceGroups = new ArmUriTemplate($"{Subscription.TemplateUrl}/resourceGroups", armApiVersion);
         public static readonly ArmUriTemplate ResourceGroup = new ArmUriTemplate($"{ResourceGroups.TemplateUrl}/{{resourceGroupName}}", armApiVersion);

@@ -16,7 +16,6 @@ namespace WebJobs.Script.ConsoleHost
             if (!TryGetScenario(args, out scenario))
             {
                 Console.WriteLine("Error parsing arguments");
-                //Display help
                 Environment.Exit(Parser.DefaultExitCodeFail);
             }
             else

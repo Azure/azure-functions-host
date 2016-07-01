@@ -7,6 +7,8 @@ using System.Net.Http;
 using ARMClient.Library;
 using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Arm.Extensions;
+using ARMClient.Authentication.AADAuthentication;
+using ARMClient.Authentication.Contracts;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {
@@ -18,7 +20,11 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
         public ArmManager()
         {
-            _client = new AzureClient(retryCount: 3);
+
+            _client = new AzureClient(retryCount: 3, authHelper: new PersistentAuthHelper
+            {
+                AzureEnvironments = AzureEnvironments.Prod
+            });
         }
 
         public async Task<FunctionsContainer> GetFunctionContainer(string functionContainerId)
@@ -43,15 +49,8 @@ namespace WebJobs.Script.ConsoleHost.Arm
         public async Task<IEnumerable<Site>> GetFunctionContainers()
         {
             var subscriptions = await GetSubscriptions();
-            subscriptions = await subscriptions.Select(Load).IgnoreAndFilterFailures();
-            var resourceGroups = await subscriptions
-                .Select(s => s.ResourceGroups)
-                .SelectMany(i => i)
-                .Select(Load)
-                .WhenAll();
-            return resourceGroups
-                .Select(s => s.FunctionsApps)
-                .SelectMany(i => i);
+            var temp = await subscriptions.Select(GetFunctionApps).IgnoreAndFilterFailures();
+            return temp.SelectMany(i => i);
         }
 
         private async Task<FunctionsContainer> InternalGetFunctionsContainer(string armId)

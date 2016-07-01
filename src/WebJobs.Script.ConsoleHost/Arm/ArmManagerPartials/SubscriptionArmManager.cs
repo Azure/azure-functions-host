@@ -31,5 +31,18 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
                 return subscription;
         }
+
+        public async Task<IEnumerable<Site>> GetFunctionApps(Subscription subscription)
+        {
+            var armSubscriptionWebAppsResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.SubscriptionWebApps.Bind(subscription));
+            await armSubscriptionWebAppsResponse.EnsureSuccessStatusCodeWithFullError();
+
+            var armSubscriptionWebApps = await armSubscriptionWebAppsResponse.Content.ReadAsAsync<ArmArrayWrapper<ArmWebsite>>();
+            Func<string, string> getResourceGroupName = id => id.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[3];
+
+            return armSubscriptionWebApps.value
+                .Where(s => s.kind?.Equals(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) == true)
+                .Select(s => new Site(subscription.SubscriptionId, getResourceGroupName(s.id), s.name));
+        }
     }
 }
