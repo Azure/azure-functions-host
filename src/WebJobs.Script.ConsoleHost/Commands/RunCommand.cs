@@ -45,8 +45,12 @@ namespace WebJobs.Script.ConsoleHost.Commands
                 invocation = invocation ?? string.Empty;
 
                 var response = await _scriptServer.HttpClient.PostAsync($"api/{FunctionName}?block=true", new StringContent(invocation));
-                var content = await response?.Content?.ReadAsStringAsync();
-                TraceInfo(content);
+                TraceInfo($"Response Status Code: {response.StatusCode}");
+                var contentTask = response?.Content?.ReadAsStringAsync();
+                if (contentTask != null)
+                {
+                    TraceInfo(await contentTask);
+                }
             }
             else
             {

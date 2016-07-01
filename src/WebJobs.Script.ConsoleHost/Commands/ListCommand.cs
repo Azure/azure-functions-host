@@ -21,7 +21,7 @@ namespace WebJobs.Script.ConsoleHost.Commands
             if (ListOption == NewOptions.FunctionApp)
             {
                 var armManager = new ArmManager();
-                var functionApps = await armManager.GetFunctionContainers();
+                var functionApps = await armManager.GetFunctionApps();
                 foreach (var app in functionApps)
                 {
                     TraceInfo(app.SiteName);

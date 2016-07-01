@@ -44,5 +44,12 @@ namespace WebJobs.Script.ConsoleHost.Arm
                 .Where(s => s.kind?.Equals(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) == true)
                 .Select(s => new Site(subscription.SubscriptionId, getResourceGroupName(s.id), s.name));
         }
+
+        public async Task<ArmPublishingUser> GetUser()
+        {
+            var response = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.PublishingUsers.Bind(string.Empty));
+            await response.EnsureSuccessStatusCodeWithFullError();
+            return (await response.Content.ReadAsAsync<ArmWrapper<ArmPublishingUser>>()).properties;
+        }
     }
 }

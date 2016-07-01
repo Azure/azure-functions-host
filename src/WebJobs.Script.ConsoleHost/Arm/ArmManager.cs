@@ -9,29 +9,52 @@ using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Arm.Extensions;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
+using ARMClient.Authentication;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {
     public partial class ArmManager
     {
-        private AzureClient _client;
+        private readonly AzureClient _client;
+        private readonly IAuthHelper _authHelper;
 
         private HttpContent NullContent { get { return new StringContent(string.Empty); } }
 
         public ArmManager()
         {
-
-            _client = new AzureClient(retryCount: 3, authHelper: new PersistentAuthHelper
+            _authHelper = new PersistentAuthHelper
             {
                 AzureEnvironments = AzureEnvironments.Prod
-            });
+            };
+            _client = new AzureClient(retryCount: 3, authHelper: _authHelper);
         }
 
-        public async Task<IEnumerable<Site>> GetFunctionContainers()
+        public async Task<IEnumerable<Site>> GetFunctionApps()
         {
             var subscriptions = await GetSubscriptions();
             var temp = await subscriptions.Select(GetFunctionApps).IgnoreAndFilterFailures();
             return temp.SelectMany(i => i);
+        }
+
+        public Task Login()
+        {
+            _authHelper.ClearTokenCache();
+            return _authHelper.AcquireTokens();
+        }
+
+        public IEnumerable<string> DumpTokenCache()
+        {
+            return _authHelper.DumpTokenCache();
+        }
+
+        public Task SelectTenant(string id)
+        {
+            return _authHelper.GetToken(id);
+        }
+
+        public void Logout()
+        {
+            _authHelper.ClearTokenCache();
         }
 
         public async Task<ResourceGroup> GetFunctionsResourceGroup(string subscriptionId = null)

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {
@@ -38,5 +39,6 @@ namespace WebJobs.Script.ConsoleHost.Arm
         public static readonly ArmUriTemplate StorageAccount = new ArmUriTemplate($"{StorageAccounts.TemplateUrl}/{{storageAccountName}}", storageApiVersion);
         public static readonly ArmUriTemplate StorageListKeys = new ArmUriTemplate($"{StorageAccount.TemplateUrl}/listKeys", storageApiVersion);
 
+        public static readonly ArmUriTemplate PublishingUsers = new ArmUriTemplate($"{ArmUrl}/providers/Microsoft.Web/publishingUsers/web", websitesApiVersion);
     }
 }

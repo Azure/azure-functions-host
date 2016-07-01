@@ -1,13 +1,33 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class PullCommand : BaseArmCommand
+    public class PullCommand : FunctionAppBaseCommand
     {
-        public override Task Run()
+        public override async Task Run()
         {
-            throw new NotImplementedException();
+            var user = await _armManager.GetUser();
+            if (user?.publishingUserName == null)
+            {
+                TraceInfo("Set your user");
+            }
+            else
+            {
+                var functionApps = await _armManager.GetFunctionApps();
+                var functionApp = functionApps.FirstOrDefault(s => s.SiteName.Equals(FunctionAppName, StringComparison.OrdinalIgnoreCase));
+                if (functionApp != null)
+                {
+                    functionApp = await _armManager.Load(functionApp);
+                    TraceInfo($"Run: `git clone {functionApp.ScmHostName}/{functionApp.SiteName}.git`");
+                    TraceInfo($"UserName: {user.publishingUserName}");
+                }
+                else
+                {
+                    TraceInfo($"Can't Find Function App Named {FunctionAppName} in tenant");
+                }
+            }
         }
     }
 }

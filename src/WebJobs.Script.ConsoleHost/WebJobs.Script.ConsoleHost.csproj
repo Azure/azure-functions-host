@@ -150,6 +150,7 @@
     <Compile Include="Arm\Extensions\StringExtensions.cs" />
     <Compile Include="Arm\Extensions\TaskExtensions.cs" />
     <Compile Include="Arm\Models\ArmArrayWrapper.cs" />
+    <Compile Include="Arm\Models\ArmPublishingUser.cs" />
     <Compile Include="Arm\Models\ArmResourceGroup.cs" />
     <Compile Include="Arm\Models\ArmServerFarm.cs" />
     <Compile Include="Arm\Models\ArmStorage.cs" />
@@ -169,7 +170,12 @@
     <Compile Include="Arm\Utils.cs" />
     <Compile Include="CommandLineOptionsBuilder.cs" />
     <Compile Include="Commands\CommandLineOptions.cs" />
+    <Compile Include="Commands\FunctionAppBaseCommand.cs" />
     <Compile Include="Commands\HelpCommand.cs" />
+    <Compile Include="Commands\LoginCommand.cs" />
+    <Compile Include="Commands\LogoutCommand.cs" />
+    <Compile Include="Commands\OpenCommand.cs" />
+    <Compile Include="Commands\SwitchTenantsCommand.cs" />
     <Compile Include="Common\IgnoreCommandAttribute.cs" />
     <Compile Include="Common\NewOptions.cs" />
     <Compile Include="Common\SourceControl.cs" />

@@ -1,10 +1,15 @@
 ﻿using CommandLine;
+using WebJobs.Script.ConsoleHost.Arm;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
     public abstract class BaseArmCommand : Command
     {
-        [ValueOption(0)]
-        public string FunctionAppName { get; set; }
+        public ArmManager _armManager { get; private set; }
+
+        public BaseArmCommand()
+        {
+            _armManager = new ArmManager();
+        }
     }
 }
