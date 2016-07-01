@@ -5,7 +5,6 @@ using Microsoft.Azure.WebJobs.Host;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Common
 {

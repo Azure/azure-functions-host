@@ -13,13 +13,15 @@ namespace WebJobs.Script.ConsoleHost.Common
     {
         private string _arguments;
         private string _exeName;
+        private bool _shareConsole;
         private bool _streamOutput;
 
-        public Executable(string exeName, string arguments = null, bool streamOutput = true)
+        public Executable(string exeName, string arguments = null, bool streamOutput = true, bool shareConsole = false)
         {
             _exeName = exeName;
             _arguments = arguments;
             _streamOutput = streamOutput;
+            _shareConsole = shareConsole;
         }
 
         public async Task RunAsync(Action<string> outputCallback = null, Action<string> errorCallback = null)
@@ -29,26 +31,29 @@ namespace WebJobs.Script.ConsoleHost.Common
                 FileName = _exeName,
                 Arguments = _arguments,
                 CreateNoWindow = true,
-                UseShellExecute = false,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true
+                UseShellExecute = _shareConsole,
+                RedirectStandardError = _streamOutput,
+                RedirectStandardInput = _streamOutput,
+                RedirectStandardOutput = _streamOutput
             };
 
             var process = Process.Start(processInfo);
 
-            if (outputCallback != null)
+            if (_streamOutput)
             {
-                process.OutputDataReceived += (s, e) => outputCallback(e.Data);
-                process.BeginOutputReadLine();
-            }
+                if (outputCallback != null)
+                {
+                    process.OutputDataReceived += (s, e) => outputCallback(e.Data);
+                    process.BeginOutputReadLine();
+                }
 
-            if (errorCallback != null)
-            {
-                process.ErrorDataReceived += (s, e) => errorCallback(e.Data);
-                process.BeginErrorReadLine();
+                if (errorCallback != null)
+                {
+                    process.ErrorDataReceived += (s, e) => errorCallback(e.Data);
+                    process.BeginErrorReadLine();
+                }
+                process.EnableRaisingEvents = true;
             }
-            process.EnableRaisingEvents = true;
             await process.WaitForExitAsync();
         }
     }

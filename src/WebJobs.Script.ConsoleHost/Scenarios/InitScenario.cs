@@ -37,7 +37,7 @@ Publish
 /secrets
 /data
 "},
-            { ScriptConstants.HostMetadataFileName, "{}" }
+            { ScriptConstants.HostMetadataFileName, $"{{\"id\":\"{Guid.NewGuid().ToString().Replace("-", "").ToLowerInvariant()}\"}}" }
         };
 
 

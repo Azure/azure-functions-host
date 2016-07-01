@@ -14,7 +14,7 @@ namespace WebJobs.Script.ConsoleHost.Scenarios
     {
         private string _logFile;
 
-        [Option("logFile", HelpText = "")]
+        [Option("logFile", DefaultValue = "", HelpText = "")]
         public string LogFile
         {
             get { return _logFile; }

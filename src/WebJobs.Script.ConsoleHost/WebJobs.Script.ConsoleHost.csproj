@@ -110,6 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandLineOptionsBuilder.cs" />
+    <Compile Include="Common\NewOptions.cs" />
     <Compile Include="Common\SourceControl.cs" />
     <Compile Include="Common\VerbNameAttribute.cs" />
     <Compile Include="Common\ConsoleTracer.cs" />
@@ -132,6 +133,7 @@
     <Compile Include="Scenarios\GitConfigScenario.cs" />
     <Compile Include="Scenarios\InitScenario.cs" />
     <Compile Include="Scenarios\LoadSettingsScenario.cs" />
+    <Compile Include="Scenarios\NewScenario.cs" />
     <Compile Include="Scenarios\PullScenario.cs" />
     <Compile Include="Scenarios\PushScenario.cs" />
     <Compile Include="Scenarios\RunScenario.cs" />
