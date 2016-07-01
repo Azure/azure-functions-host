@@ -11,33 +11,29 @@ namespace WebJobs.Script.ConsoleHost.Arm
     {
         public async Task<ResourceGroup> Load(ResourceGroup resourceGroup)
         {
-                var armResourceGroupResourcesResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.ResourceGroupResources.Bind(resourceGroup));
-                await armResourceGroupResourcesResponse.EnsureSuccessStatusCodeWithFullError();
-                var resources = await armResourceGroupResourcesResponse.Content.ReadAsAsync<ArmArrayWrapper<object>>();
+            var armResourceGroupResourcesResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.ResourceGroupResources.Bind(resourceGroup));
+            await armResourceGroupResourcesResponse.EnsureSuccessStatusCodeWithFullError();
+            var resources = await armResourceGroupResourcesResponse.Content.ReadAsAsync<ArmArrayWrapper<object>>();
 
-                resourceGroup.FunctionsSite = resources.value
-                    .Where(r => r.type.Equals(Constants.WebAppArmType, StringComparison.OrdinalIgnoreCase) &&
-                                r.name.StartsWith(Constants.FunctionsSitePrefix, StringComparison.OrdinalIgnoreCase))
-                    .Select(r => new Site(resourceGroup.SubscriptionId, resourceGroup.ResourceGroupName, r.name))
-                    .FirstOrDefault();
+            resourceGroup.FunctionsApps = resources.value
+                .Where(r => r.type.Equals(Constants.WebAppArmType, StringComparison.OrdinalIgnoreCase) &&
+                            r.kind?.Equals(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) == true)
+                .Select(r => new Site(resourceGroup.SubscriptionId, resourceGroup.ResourceGroupName, r.name));
 
-                resourceGroup.FunctionsStorageAccount = resources.value
-                    .Where(r => r.type.Equals(Constants.StorageAccountArmType, StringComparison.OrdinalIgnoreCase) &&
-                                (r.name.StartsWith(Constants.FunctionsStorageAccountNamePrefix, StringComparison.OrdinalIgnoreCase) ||
-                                r.name.StartsWith("functions", StringComparison.OrdinalIgnoreCase)))
-                    .Select(r => new StorageAccount(resourceGroup.SubscriptionId, resourceGroup.ResourceGroupName, r.name))
-                    .FirstOrDefault();
+            resourceGroup.StorageAccounts = resources.value
+                .Where(r => r.type.Equals(Constants.StorageAccountArmType, StringComparison.OrdinalIgnoreCase))
+                .Select(r => new StorageAccount(resourceGroup.SubscriptionId, resourceGroup.ResourceGroupName, r.name));
 
-                return resourceGroup;
+            return resourceGroup;
         }
 
         public async Task<ResourceGroup> CreateResourceGroup(string subscriptionId, string location)
         {
-                var resourceGroup = new ResourceGroup(subscriptionId, Constants.FunctionsResourceGroupName, location);
-                var resourceGroupResponse = await _client.HttpInvoke(HttpMethod.Put, ArmUriTemplates.ResourceGroup.Bind(resourceGroup), new { properties = new { }, location = location });
-                await resourceGroupResponse.EnsureSuccessStatusCodeWithFullError();
+            var resourceGroup = new ResourceGroup(subscriptionId, Constants.FunctionsResourceGroupName, location);
+            var resourceGroupResponse = await _client.HttpInvoke(HttpMethod.Put, ArmUriTemplates.ResourceGroup.Bind(resourceGroup), new { properties = new { }, location = location });
+            await resourceGroupResponse.EnsureSuccessStatusCodeWithFullError();
 
-                return resourceGroup;
+            return resourceGroup;
         }
     }
 }

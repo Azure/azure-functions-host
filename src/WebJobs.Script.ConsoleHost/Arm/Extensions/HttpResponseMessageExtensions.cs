@@ -1,5 +1,6 @@
 ﻿using System.Net.Http;
 using System.Threading.Tasks;
+using WebJobs.Script.ConsoleHost.Arm.Models;
 
 namespace WebJobs.Script.ConsoleHost.Arm.Extensions
 {

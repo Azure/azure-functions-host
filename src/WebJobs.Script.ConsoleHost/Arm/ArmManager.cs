@@ -40,6 +40,20 @@ namespace WebJobs.Script.ConsoleHost.Arm
                 }
         }
 
+        public async Task<IEnumerable<Site>> GetFunctionContainers()
+        {
+            var subscriptions = await GetSubscriptions();
+            subscriptions = await subscriptions.Select(Load).IgnoreAndFilterFailures();
+            var resourceGroups = await subscriptions
+                .Select(s => s.ResourceGroups)
+                .SelectMany(i => i)
+                .Select(Load)
+                .WhenAll();
+            return resourceGroups
+                .Select(s => s.FunctionsApps)
+                .SelectMany(i => i);
+        }
+
         private async Task<FunctionsContainer> InternalGetFunctionsContainer(string armId)
         {
             if (!string.IsNullOrEmpty(armId))
@@ -72,12 +86,11 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
             subscriptions = await subscriptions.Select(Load).IgnoreAndFilterFailures();
             var resourceGroup = subscriptions
-                .Where(s => s.FunctionsResourceGroup != null)
-                .Select(s => s.FunctionsResourceGroup)
+                .Select(s => s.ResourceGroups)
                 .FirstOrDefault();
             return resourceGroup == null
                 ? null
-                : await Load(resourceGroup);
+                : await Load(resourceGroup.First());
         }
 
         public async Task<FunctionsContainer> CreateFunctionContainer(string subscriptionId, string location, string serverFarmId = null)

@@ -15,11 +15,13 @@ namespace WebJobs.Script.ConsoleHost.Arm.Models
             }
         }
 
-        public Site FunctionsSite { get; set; }
-        public StorageAccount FunctionsStorageAccount { get; set; }
+        public IEnumerable<Site> FunctionsApps { get; set; }
+        public IEnumerable<StorageAccount> StorageAccounts { get; set; }
 
         public Dictionary<string, string> Tags { get; set; }
         public string Location { get; private set; }
+        public StorageAccount FunctionsStorageAccount { get; internal set; }
+        public Site FunctionsSite { get; internal set; }
 
         public ResourceGroup(string subsciptionId, string resourceGroupName, string location)
             : base(subsciptionId, resourceGroupName)
