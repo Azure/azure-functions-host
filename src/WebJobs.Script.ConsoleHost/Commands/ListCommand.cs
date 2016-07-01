@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 using WebJobs.Script.ConsoleHost.Arm;
 using WebJobs.Script.ConsoleHost.Common;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class ListScenario : BaseArmScenario
+    public class ListCommand : BaseArmCommand
     {
         [ValueOption(0)]
         public NewOptions ListOption { get; set; }

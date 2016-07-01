@@ -7,9 +7,9 @@ using System.IO;
 using System.Threading.Tasks;
 using WebJobs.Script.ConsoleHost.Common;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class InitScenario : Scenario
+    public class InitCommand : Command
     {
         [Option("vsc", DefaultValue = SourceControl.Git, HelpText = "")]
         public SourceControl SourceControl { get; set; }

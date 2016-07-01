@@ -168,9 +168,12 @@
     <Compile Include="Arm\Models\Subscription.cs" />
     <Compile Include="Arm\Utils.cs" />
     <Compile Include="CommandLineOptionsBuilder.cs" />
+    <Compile Include="Commands\CommandLineOptions.cs" />
+    <Compile Include="Commands\HelpCommand.cs" />
+    <Compile Include="Common\IgnoreCommandAttribute.cs" />
     <Compile Include="Common\NewOptions.cs" />
     <Compile Include="Common\SourceControl.cs" />
-    <Compile Include="Common\VerbNameAttribute.cs" />
+    <Compile Include="Common\CommandNameAttribute.cs" />
     <Compile Include="Common\ConsoleTracer.cs" />
     <Compile Include="Common\Constants.cs" />
     <Compile Include="Common\Executable.cs" />
@@ -186,18 +189,18 @@
     <Compile Include="NativeMethods\ConsoleNativeMethods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scenarios\BaseArmScenario.cs" />
-    <Compile Include="Scenarios\CertScenario.cs" />
-    <Compile Include="Scenarios\GitConfigScenario.cs" />
-    <Compile Include="Scenarios\InitScenario.cs" />
-    <Compile Include="Scenarios\ListScenario.cs" />
-    <Compile Include="Scenarios\LoadSettingsScenario.cs" />
-    <Compile Include="Scenarios\NewScenario.cs" />
-    <Compile Include="Scenarios\PullScenario.cs" />
-    <Compile Include="Scenarios\PushScenario.cs" />
-    <Compile Include="Scenarios\RunScenario.cs" />
-    <Compile Include="Scenarios\Scenario.cs" />
-    <Compile Include="Scenarios\WebScenario.cs" />
+    <Compile Include="Commands\BaseArmCommand.cs" />
+    <Compile Include="Commands\CertCommand.cs" />
+    <Compile Include="Commands\GitConfigCommand.cs" />
+    <Compile Include="Commands\InitCommand.cs" />
+    <Compile Include="Commands\ListCommand.cs" />
+    <Compile Include="Commands\LoadSettingsCommand.cs" />
+    <Compile Include="Commands\NewCommand.cs" />
+    <Compile Include="Commands\PullCommand.cs" />
+    <Compile Include="Commands\PushCommand.cs" />
+    <Compile Include="Commands\RunCommand.cs" />
+    <Compile Include="Commands\Command.cs" />
+    <Compile Include="Commands\WebCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

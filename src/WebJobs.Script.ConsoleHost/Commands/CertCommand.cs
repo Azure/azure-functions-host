@@ -12,9 +12,9 @@ using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
 using CommandLine;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class CertScenario : Scenario
+    public class CertCommand : Command
     {
         [Option('p', "port", DefaultValue = 6061, HelpText = "Local port to listen on")]
         public int Port { get; set; }

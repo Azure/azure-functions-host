@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class PushScenario : BaseArmScenario
+    public class PullCommand : BaseArmCommand
     {
         public override Task Run()
         {

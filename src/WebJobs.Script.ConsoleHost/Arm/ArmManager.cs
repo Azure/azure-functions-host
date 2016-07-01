@@ -27,52 +27,11 @@ namespace WebJobs.Script.ConsoleHost.Arm
             });
         }
 
-        public async Task<FunctionsContainer> GetFunctionContainer(string functionContainerId)
-        {
-                var functionContainer = await InternalGetFunctionsContainer(functionContainerId);
-                if (functionContainer != null)
-                {
-                    return functionContainer;
-                }
-
-                var resourceGroup = await GetFunctionsResourceGroup();
-                if (resourceGroup != null)
-                {
-                    return await CreateFunctionContainer(resourceGroup);
-                }
-                else
-                {
-                    return null;
-                }
-        }
-
         public async Task<IEnumerable<Site>> GetFunctionContainers()
         {
             var subscriptions = await GetSubscriptions();
             var temp = await subscriptions.Select(GetFunctionApps).IgnoreAndFilterFailures();
             return temp.SelectMany(i => i);
-        }
-
-        private async Task<FunctionsContainer> InternalGetFunctionsContainer(string armId)
-        {
-            if (!string.IsNullOrEmpty(armId))
-            {
-                try
-                {
-                    //  /subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Web/sites/{2}
-                    var parts = armId.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                    var site = await Load(new Site(parts[1], parts[3], parts[7]));
-                    return new FunctionsContainer
-                    {
-                        ScmUrl = site.ScmHostName,
-                        BasicAuth = site.BasicAuth,
-                        ArmId = site.ArmId,
-                        AppSettings = site.AppSettings
-                    };
-                }
-                catch { }
-            }
-            return null;
         }
 
         public async Task<ResourceGroup> GetFunctionsResourceGroup(string subscriptionId = null)

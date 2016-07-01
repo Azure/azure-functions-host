@@ -2,15 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CommandLine;
+using CommandLine.Text;
 using Microsoft.Azure.WebJobs.Host;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using WebJobs.Script.ConsoleHost.Common;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public abstract class Scenario
+    public abstract class Command
     {
         private string _logFile;
 

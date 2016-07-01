@@ -2,10 +2,10 @@
 using System.Threading.Tasks;
 using WebJobs.Script.ConsoleHost.Common;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    [VerbName("git-config")]
-    public class GitConfigScenario : Scenario
+    [CommandName("load-settings")]
+    public class LoadSettingsCommand : BaseArmCommand
     {
         public override Task Run()
         {

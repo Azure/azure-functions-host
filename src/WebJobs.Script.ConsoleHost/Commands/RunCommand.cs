@@ -10,9 +10,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace WebJobs.Script.ConsoleHost.Scenarios
+namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class RunScenario : Scenario
+    public class RunCommand : Command
     {
         [ValueOption(0)]
         public string FunctionName { get; set; }

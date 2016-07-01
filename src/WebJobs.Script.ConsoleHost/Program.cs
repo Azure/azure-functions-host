@@ -4,7 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using CommandLine;
-using WebJobs.Script.ConsoleHost.Scenarios;
+using WebJobs.Script.ConsoleHost.Commands;
 
 namespace WebJobs.Script.ConsoleHost
 {
@@ -12,7 +12,7 @@ namespace WebJobs.Script.ConsoleHost
     {
         static void Main(string[] args)
         {
-            Scenario scenario = null;
+            Command scenario = null;
             if (!TryGetScenario(args, out scenario))
             {
                 Console.WriteLine("Error parsing arguments");
@@ -24,21 +24,22 @@ namespace WebJobs.Script.ConsoleHost
             }
         }
 
-        private static bool TryGetScenario(string[] args, out Scenario scenario)
+        private static bool TryGetScenario(string[] args, out Command command)
         {
             SetDefaultArgs(ref args);
 
-            Scenario _scenario = null;
+            Command _command = null;
             var options = CommandLineOptionsBuilder.CreateObject();
 
-            if (!Parser.Default.ParseArguments(args, options, (v, o) => _scenario = o as Scenario))
+            if (!Parser.Default.ParseArguments(args, options, (v, c) => _command = c as Command) ||
+                args[0].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
-                scenario = null;
-                return false;
+                command = new HelpCommand(options);
+                return true;
             }
             else
             {
-                scenario = _scenario;
+                command = _command;
                 return true;
             }
         }

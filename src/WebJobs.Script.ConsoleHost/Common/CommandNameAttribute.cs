@@ -3,11 +3,11 @@
 namespace WebJobs.Script.ConsoleHost.Common
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public class VerbNameAttribute : Attribute
+    public class CommandNameAttribute : Attribute
     {
         public string Name { get; }
 
-        public VerbNameAttribute(string name)
+        public CommandNameAttribute(string name)
         {
             Name = name;
         }
