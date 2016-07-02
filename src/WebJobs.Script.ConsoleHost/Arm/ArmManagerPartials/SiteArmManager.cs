@@ -40,7 +40,8 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
             var armSite = await siteResponse.Content.ReadAsAsync<ArmWrapper<ArmWebsite>>();
             site.HostName = $"https://{armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) == -1)}";
-            site.HostName = $"https://{armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1)}";
+            site.Location = armSite.location;
+            //site.ScmHostName = $"https://{armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1)}";
             return site;
         }
 

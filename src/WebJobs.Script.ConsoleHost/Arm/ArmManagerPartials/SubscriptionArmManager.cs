@@ -42,7 +42,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
             return armSubscriptionWebApps.value
                 .Where(s => s.kind?.Equals(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) == true)
-                .Select(s => new Site(subscription.SubscriptionId, getResourceGroupName(s.id), s.name));
+                .Select(s => new Site(subscription.SubscriptionId, getResourceGroupName(s.id), s.name) { Location = s.location });
         }
 
         public async Task<ArmPublishingUser> GetUser()

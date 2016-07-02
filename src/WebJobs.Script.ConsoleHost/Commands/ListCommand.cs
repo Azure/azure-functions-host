@@ -13,24 +13,14 @@ namespace WebJobs.Script.ConsoleHost.Commands
 {
     public class ListCommand : BaseArmCommand
     {
-        [ValueOption(0)]
-        public NewOptions ListOption { get; set; }
-
         public override async Task Run()
         {
-            if (ListOption == NewOptions.FunctionApp)
-            {
                 var armManager = new ArmManager();
                 var functionApps = await armManager.GetFunctionApps();
                 foreach (var app in functionApps)
                 {
-                    TraceInfo(app.SiteName);
+                    TraceInfo($"{app.SiteName} ({app.Location})");
                 }
-            }
-            else
-            {
-                TraceInfo("not supported");
-            }
         }
     }
 }
