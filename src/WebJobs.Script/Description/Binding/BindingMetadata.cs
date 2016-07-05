@@ -17,6 +17,50 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class BindingMetadata
     {
         /// <summary>
+        /// Gets or sets the name of the binding.
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets an app setting name for a setting whose value
+        /// contains the connection details that should be used for this binding.
+        /// E.g. for a Queue binding, this might be set to the name of a an app
+        /// setting containing the Azure Storage connection string to use.
+        /// </summary>
+        public string Connection { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of the binding.
+        /// </summary>
+        public string Type { get; set; }
+
+        /// <summary>
+        /// Gets or sets the direction of the binding.
+        /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
+        public BindingDirection Direction { get; set; }
+
+        [JsonConverter(typeof(StringEnumConverter))]
+        public DataType? DataType { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether this binding is a trigger binding.
+        /// </summary>
+        public bool IsTrigger
+        {
+            get
+            {
+                return Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// Gets the raw binding metadata (after name resolution has been applied
+        /// to all values).
+        /// </summary>
+        public JObject Raw { get; set; }
+
+        /// <summary>
         /// Creates an instance from the specified raw metadata.
         /// </summary>
         /// <param name="raw">The raw binding metadata.</param>
@@ -93,49 +137,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return bindingMetadata;
         }
-
-        /// <summary>
-        /// Gets or sets the name of the binding.
-        /// </summary>
-        public string Name { get; set; }
-
-        /// <summary>
-        /// Gets or sets an app setting name for a setting whose value
-        /// contains the connection details that should be used for this binding.
-        /// E.g. for a Queue binding, this might be set to the name of a an app
-        /// setting containing the Azure Storage connection string to use.
-        /// </summary>
-        public string Connection { get; set; }
-
-        /// <summary>
-        /// Gets or sets the type of the binding.
-        /// </summary>
-        public string Type { get; set; }
-
-        /// <summary>
-        /// Gets or sets the direction of the binding.
-        /// </summary>
-        [JsonConverter(typeof(StringEnumConverter))]
-        public BindingDirection Direction { get; set; }
-
-        [JsonConverter(typeof(StringEnumConverter))]
-        public DataType? DataType { get; set; }
-
-        /// <summary>
-        /// Gets a value indicating whether this binding is a trigger binding.
-        /// </summary>
-        public bool IsTrigger
-        {
-            get
-            {
-                return Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>
-        /// Gets the raw binding metadata (after name resolution has been applied
-        /// to all values).
-        /// </summary>
-        public JObject Raw { get; set; }     
     }
 }

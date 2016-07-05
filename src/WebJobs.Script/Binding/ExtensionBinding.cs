@@ -68,13 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        internal class AttributeBuilderInfo
-        {
-            public ConstructorInfo Constructor { get; set; }
-            public object[] ConstructorArgs { get; set; }
-            public IDictionary<PropertyInfo, object> Properties { get; set; }
-        }
-
         internal static CustomAttributeBuilder GetAttributeBuilder(Attribute attribute)
         {
             AttributeBuilderInfo constructionInfo = GetAttributeBuilderInfo(attribute);
@@ -162,7 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return info;
         }
 
-        // TEMP
         internal static IDictionary<string, object> GetAttributeData(Attribute attribute)
         {
             Dictionary<string, object> attributeData = new Dictionary<string, object>();
@@ -177,6 +169,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return attributeData;
+        }
+
+        internal class AttributeBuilderInfo
+        {
+            public ConstructorInfo Constructor { get; set; }
+            public object[] ConstructorArgs { get; set; }
+            public IDictionary<PropertyInfo, object> Properties { get; set; }
         }
     }
 }
