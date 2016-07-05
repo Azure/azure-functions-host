@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -40,18 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     results.Add(mockObject);
                 }).Returns(Task.CompletedTask);
 
-            var binderMock = new Mock<IBinderEx>(MockBehavior.Strict);
-            QueueAttribute attribute = new QueueAttribute("test");
-            RuntimeBindingContext runtimeBindingContext = new RuntimeBindingContext(attribute);
-            binderMock.Setup(p => p.BindAsync<IAsyncCollector<JObject>>(runtimeBindingContext, CancellationToken.None)).ReturnsAsync(collectorMock.Object);
+            var binderMock = new Mock<Binder>(MockBehavior.Strict);
+            var attributes = new Attribute[] { new QueueAttribute("test") };
+            binderMock.Setup(p => p.BindAsync<IAsyncCollector<JObject>>(attributes, CancellationToken.None)).ReturnsAsync(collectorMock.Object);
 
             BindingContext bindingContext = new BindingContext
             {
+                Attributes = attributes,
                 Binder = binderMock.Object,
                 Value = json
             };
 
-            await FunctionBinding.BindAsyncCollectorAsync<JObject>(bindingContext, runtimeBindingContext);
+            await FunctionBinding.BindAsyncCollectorAsync<JObject>(bindingContext);
 
             Assert.Equal(3, results.Count);
             for (int i = 0; i < 3; i++)

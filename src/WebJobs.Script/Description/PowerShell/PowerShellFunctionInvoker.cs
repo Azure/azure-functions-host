@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // TODO: Refactor common code for providers.
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
-            IBinderEx binder = (IBinderEx)parameters[2];
+            Binder binder = (Binder)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
@@ -61,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
                 object convertedInput = ConvertInput(input);
-                Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
+                ApplyBindingData(convertedInput, binder);
+                Dictionary<string, object> bindingData = binder.BindingData;
                 bindingData["InvocationId"] = invocationId;
 
                 Dictionary<string, string> environmentVariables = new Dictionary<string, string>();

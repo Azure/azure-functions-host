@@ -3,12 +3,13 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -100,21 +101,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             string boundPartitionKey = PartitionKey;
             string boundRowKey = RowKey;
             string boundFilter = Filter;
+
+            IReadOnlyDictionary<string, string> bindingData = null;
+            if (context.BindingData != null)
+            {
+                bindingData = context.BindingData.ToStringValues();
+            }
+
             if (context.BindingData != null)
             {
                 if (_partitionKeyBindingTemplate != null)
                 {
-                    boundPartitionKey = _partitionKeyBindingTemplate.Bind(context.BindingData);
+                    boundPartitionKey = _partitionKeyBindingTemplate.Bind(bindingData);
                 }
                 
                 if (_rowKeyBindingTemplate != null)
                 {
-                    boundRowKey = _rowKeyBindingTemplate.Bind(context.BindingData);
+                    boundRowKey = _rowKeyBindingTemplate.Bind(bindingData);
                 }
 
                 if (_filterBindingTemplate != null)
                 {
-                    boundFilter = _filterBindingTemplate.Bind(context.BindingData);
+                    boundFilter = _filterBindingTemplate.Bind(bindingData);
                 }
             }
 
@@ -133,19 +141,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 boundFilter = Resolve(boundFilter);
             }
 
-            Attribute[] additionalAttributes = null;
+            Collection<Attribute> attributes = new Collection<Attribute>();
             if (!string.IsNullOrEmpty(Metadata.Connection))
             {
-                additionalAttributes = new Attribute[]
-                {
-                    new StorageAccountAttribute(Metadata.Connection)
-                };
+                attributes.Add(new StorageAccountAttribute(Metadata.Connection));
             }
 
             if (Access == FileAccess.Write)
             {
-                RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName), additionalAttributes);
-                IAsyncCollector<DynamicTableEntity> collector = await context.Binder.BindAsync<IAsyncCollector<DynamicTableEntity>>(runtimeContext);
+                attributes.Insert(0, new TableAttribute(TableName));
+                IAsyncCollector<DynamicTableEntity> collector = await context.Binder.BindAsync<IAsyncCollector<DynamicTableEntity>>(attributes.ToArray());
                 ICollection entities = ReadAsCollection(context.Value);
 
                 foreach (JObject entity in entities)
@@ -164,8 +169,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     !string.IsNullOrEmpty(boundRowKey))
                 {
                     // singleton
-                    RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName, boundPartitionKey, boundRowKey), additionalAttributes);
-                    DynamicTableEntity tableEntity = await context.Binder.BindAsync<DynamicTableEntity>(runtimeContext);
+                    attributes.Insert(0, new TableAttribute(TableName, boundPartitionKey, boundRowKey));
+                    DynamicTableEntity tableEntity = await context.Binder.BindAsync<DynamicTableEntity>(attributes.ToArray());
                     if (tableEntity != null)
                     {
                         json = ConvertEntityToJObject(tableEntity).ToString();
@@ -174,8 +179,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else
                 {
                     // binding to multiple table entities
-                    RuntimeBindingContext runtimeContext = new RuntimeBindingContext(new TableAttribute(TableName), additionalAttributes);
-                    CloudTable table = await context.Binder.BindAsync<CloudTable>(runtimeContext);
+                    attributes.Insert(0, new TableAttribute(TableName));
+                    CloudTable table = await context.Binder.BindAsync<CloudTable>(attributes.ToArray());
 
                     string finalQuery = boundFilter;
                     if (!string.IsNullOrEmpty(boundPartitionKey))

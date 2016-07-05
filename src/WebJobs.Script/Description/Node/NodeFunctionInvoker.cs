@@ -14,11 +14,12 @@ using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+using Binder = Microsoft.Azure.WebJobs.Host.Bindings.Runtime.Binder;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -110,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = parameters[0];
             TraceWriter traceWriter = (TraceWriter)parameters[1];
-            IBinderEx binder = (IBinderEx)parameters[2];
+            Binder binder = (Binder)parameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 DataType dataType = _trigger.DataType ?? DataType.String;
                 var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, binder, traceWriter, TraceWriter, functionExecutionContext);
-                var bindingData = (Dictionary<string, string>)scriptExecutionContext["bindingData"];
+                var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
                 bindingData["InvocationId"] = invocationId;
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task ProcessInputBindingsAsync(IBinderEx binder, Dictionary<string, object> executionContext, Dictionary<string, string> bindingData)
+        private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)
         {
             var bindings = (Dictionary<string, object>)executionContext["bindings"];
 
@@ -183,8 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             executionContext["inputs"] = inputs;
         }
 
-        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, IBinderEx binder, 
-            Dictionary<string, string> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
+        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder, 
+            Dictionary<string, object> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
         {
             if (outputBindings == null)
             {
@@ -250,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, IBinderEx binder, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, Binder binder, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -336,7 +337,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 FunctionBinding.ConvertStreamToValue((Stream)input, dataType, ref input);
             }
 
-            context["bindingData"] = GetBindingData(bindDataInput, binder);
+            ApplyBindingData(bindDataInput, binder);
+
+            // normalize the bindingData object passed into Node
+            // we must convert values to types supported by Edge
+            // marshalling as needed
+            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
+            foreach (var pair in binder.BindingData)
+            {
+                var value = pair.Value;
+                if (value != null && !IsEdgeSupportedType(value.GetType()))
+                {
+                    value = value.ToString();
+                }
+                normalizedBindingData[pair.Key] = value;
+            }
+            context["bindingData"] = normalizedBindingData;
 
             // if the input is json, try converting to an object or array
             object converted;
@@ -348,6 +364,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindings.Add(_trigger.Name, input);
 
             return context;
+        }
+
+        private static bool IsEdgeSupportedType(Type type)
+        {
+            if (type == typeof(int) || 
+                type == typeof(double) || 
+                type == typeof(string) || 
+                type == typeof(bool) || 
+                type == typeof(byte[]) ||
+                type == typeof(object[]))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)

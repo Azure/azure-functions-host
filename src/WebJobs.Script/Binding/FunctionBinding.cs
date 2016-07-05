@@ -179,9 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return values;
         }
 
-        internal static async Task BindAsyncCollectorAsync<T>(BindingContext context, RuntimeBindingContext runtimeContext)
+        internal static async Task BindAsyncCollectorAsync<T>(BindingContext context)
         {
-            IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(runtimeContext);
+            IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(context.Attributes);
 
             IEnumerable values = ReadAsCollection(context.Value);
 
@@ -216,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        internal static async Task BindStreamAsync(BindingContext context, FileAccess access, RuntimeBindingContext runtimeContext)
+        internal static async Task BindStreamAsync(BindingContext context, FileAccess access)
         {
-            Stream stream = await context.Binder.BindAsync<Stream>(runtimeContext);
+            Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
 
             if (access == FileAccess.Write)
             {

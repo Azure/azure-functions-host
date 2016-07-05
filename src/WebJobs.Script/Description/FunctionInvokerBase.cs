@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -85,18 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// Get the binding data. In dynamic script cases we need
-        /// to parse this POCO data ourselves - it won't be in the existing
-        /// binding data because all the POCO binders require strong
-        /// typing
+        /// Applies any additional binding data from the input value to the
+        /// ambient binding context.
         /// </summary>
-        internal static Dictionary<string, string> GetBindingData(object value, IBinderEx binder)
+        internal static void ApplyBindingData(object value, Binder binder)
         {
-            // First apply any existing binding data. Any additional binding
-            // data coming from the message will take precedence
-            Dictionary<string, string> bindingData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ApplyAmbientBindingData(binder, bindingData);
-
             try
             {
                 // if the input value is a JSON string, extract additional
@@ -118,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             if (item.Value != null)
                             {
-                                bindingData[item.Key] = item.Value.ToString();
+                                binder.BindingData[item.Key] = item.Value;
                             }
                         }
                     }
@@ -129,32 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // it's not an error if the incoming message isn't JSON
                 // there are cases where there will be output binding parameters
                 // that don't bind to JSON properties
-            }
-
-            return bindingData;
-        }
-
-        /// <summary>
-        /// We need to merge the ambient binding data that already exists in the IBinder
-        /// with our binding data. We have to do this rather than relying solely on
-        /// IBinder.BindAsync because we need to include any POCO values we get from parsing
-        /// JSON bodies, etc.
-        /// TEMP: We might find a better way to do this in the future, perhaps via core
-        /// SDK changes.
-        /// </summary>
-        protected static void ApplyAmbientBindingData(IBinderEx binder, IDictionary<string, string> bindingData)
-        {
-            var ambientBindingData = binder.BindingContext.BindingData;
-            if (ambientBindingData != null)
-            {
-                // apply the binding data to ours
-                foreach (var item in ambientBindingData)
-                {
-                    if (item.Value != null)
-                    {
-                        bindingData[item.Key] = item.Value.ToString();
-                    }
-                }
             }
         }
 

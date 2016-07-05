@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -45,85 +44,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            // All the below BindAsync logic is temporary IBinder support
-            // Once the Invoker work is done, we'll be binding directly
-            Collection<Attribute> resolvedAttributes = ResolveAttributes(_attributes, context.BindingData);
-            var attribute = resolvedAttributes.First();
-            var additionalAttributes = resolvedAttributes.Skip(1).ToArray();
-            RuntimeBindingContext runtimeContext = new RuntimeBindingContext(attribute, additionalAttributes);
+            context.Attributes = _attributes.ToArray();
 
-            // TEMP: We'll be doing away with this IBinder code
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
-                await BindAsyncCollectorAsync<byte[]>(context, runtimeContext);
+                await BindAsyncCollectorAsync<byte[]>(context);
             }
             else if (_binding.DefaultType == typeof(IAsyncCollector<JObject>))
             {
-                await BindAsyncCollectorAsync<JObject>(context, runtimeContext);
+                await BindAsyncCollectorAsync<JObject>(context);
             }
             else if (_binding.DefaultType == typeof(Stream))
             {
-                await BindStreamAsync(context, Access, runtimeContext);
+                await BindStreamAsync(context, Access);
             }
             else if (_binding.DefaultType == typeof(JObject))
             {
-                var result = await context.Binder.BindAsync<JObject>(runtimeContext);
+                var result = await context.Binder.BindAsync<JObject>(_attributes.ToArray());
                 if (Access == FileAccess.Read)
                 {
                     context.Value = result;
                 }
             }
-        }
-
-        // TEMP - Since we're still using IBinder for non C#, we have to construct the Attributes
-        // This code will go away soon
-        private Collection<Attribute> ResolveAttributes(Collection<Attribute> attributes, IReadOnlyDictionary<string, string> bindingData)
-        {
-            Collection<Attribute> resolvedAttributes = new Collection<Attribute>();
-
-            foreach (var attribute in attributes)
-            {
-                // Get the attribute construction info
-                var attributeConstructionInfo = GetAttributeBuilderInfo(attribute);
-
-                // resolve all attribute data
-                if (bindingData != null)
-                {
-                    if (attributeConstructionInfo.ConstructorArgs != null)
-                    {
-                        for (int i = 0; i < attributeConstructionInfo.ConstructorArgs.Length; i++)
-                        {
-                            string value = attributeConstructionInfo.ConstructorArgs[i] as string;
-                            if (value != null)
-                            {
-                                attributeConstructionInfo.ConstructorArgs[i] = ResolveAndBind(value, bindingData);
-                            }
-                        }
-                    }
-
-                    if (attributeConstructionInfo.Properties != null)
-                    {
-                        foreach (var namedProperty in attributeConstructionInfo.Properties.Where(p => p.Value is string).ToArray())
-                        {
-                            string value = (string)namedProperty.Value;
-                            attributeConstructionInfo.Properties[namedProperty.Key] = ResolveAndBind(value, bindingData);
-                        }
-                    }
-                }
-
-                // construct the attribute
-                Attribute resolvedAttribute = (Attribute)attributeConstructionInfo.Constructor.Invoke(attributeConstructionInfo.ConstructorArgs);
-
-                // apply any named property values
-                foreach (var namedProperty in attributeConstructionInfo.Properties)
-                {
-                    namedProperty.Key.SetValue(resolvedAttribute, namedProperty.Value);
-                }
-
-                resolvedAttributes.Add(resolvedAttribute);
-            }
-
-            return resolvedAttributes;
         }
 
         internal class AttributeBuilderInfo

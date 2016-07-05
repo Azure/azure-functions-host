@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             throw new System.NotImplementedException();
         }
 
-        protected async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, IBinderEx binder,
+        protected async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, Binder binder,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
+            Dictionary<string, object> bindingData, Dictionary<string, string> environmentVariables)
         {
             // if there are any input or output bindings declared, set up the temporary
             // output directory
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         protected static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
-            object input, IBinderEx binder, Dictionary<string, string> bindingData)
+            object input, Binder binder, Dictionary<string, object> bindingData)
         {
             if (outputBindings == null)
             {

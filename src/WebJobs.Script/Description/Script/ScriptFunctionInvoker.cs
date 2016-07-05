@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = invocationParameters[0];
             TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
-            IBinderEx binder = (IBinderEx)invocationParameters[2];
+            Binder binder = (Binder)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
@@ -94,7 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
             object convertedInput = ConvertInput(input);
-            Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
+            ApplyBindingData(convertedInput, binder);
+            Dictionary<string, object> bindingData = binder.BindingData;
             bindingData["InvocationId"] = invocationId;
 
             await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
