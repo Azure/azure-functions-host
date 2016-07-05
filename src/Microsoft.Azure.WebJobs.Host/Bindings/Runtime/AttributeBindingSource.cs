@@ -43,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return _context; }
         }
 
-        public Task<IBinding> BindAsync<TValue>(RuntimeBindingContext context, CancellationToken cancellationToken)
+        public Task<IBinding> BindAsync<TValue>(Attribute attribute, Attribute[] additionalAttributes = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            ParameterInfo parameterInfo = new FakeParameterInfo(typeof(TValue), _memberInfo, context.Attribute, context.AdditionalAttributes.ToArray());
+            ParameterInfo parameterInfo = new FakeParameterInfo(typeof(TValue), _memberInfo, attribute, additionalAttributes);
             BindingProviderContext bindingProviderContext =
                 new BindingProviderContext(parameterInfo, bindingDataContract: null, cancellationToken: cancellationToken);
 

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Context for runtime bindings performed via <see cref="IBinder"/>.
     /// </summary>
-    public class AmbientBindingContext
+    internal class AmbientBindingContext
     {
         private readonly FunctionBindingContext _functionContext;
         private readonly IReadOnlyDictionary<string, object> _bindingData;

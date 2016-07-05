@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             }
 
             ParameterInfo parameter = context.Parameter;
-            if (parameter.ParameterType != typeof(IBinder))
+            if (parameter.ParameterType != typeof(IBinder) &&
+                parameter.ParameterType != typeof(Binder))
             {
                 return Task.FromResult<IBinding>(null);
             }

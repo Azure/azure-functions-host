@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
 
         // 1 long instance,  across multiple polls;. 
         [Fact]
-        public async Task LongInstance()
+        public void LongInstance()
         {
             TestLogger l = new TestLogger();
             Guid g1 = Guid.NewGuid();

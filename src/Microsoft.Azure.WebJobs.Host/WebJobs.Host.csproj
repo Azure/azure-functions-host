@@ -376,9 +376,8 @@
     <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
-    <Compile Include="Bindings\Runtime\IBinderEx.cs" />
-    <Compile Include="Bindings\Runtime\RuntimeBindingContext.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBindingProvider.cs" />

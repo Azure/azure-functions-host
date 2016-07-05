@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
     internal class RuntimeBinding : IBinding
     {
         private readonly MemberInfo _memberInfo;
-        private readonly string _parameterName;
+        private readonly ParameterInfo _parameter;
         private readonly IContextGetter<IBindingProvider> _bindingProviderGetter;
 
         public RuntimeBinding(ParameterInfo parameter, IContextGetter<IBindingProvider> bindingProviderGetter)
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             }
 
             _memberInfo = parameter.Member;
-            _parameterName = parameter.Name;
+            _parameter = parameter;
             _bindingProviderGetter = bindingProviderGetter;
         }
 
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(IAttributeBindingSource binding, ValueBindingContext context)
         {
-            IValueProvider provider = new RuntimeValueProvider(binding);
+            IValueProvider provider = new RuntimeValueProvider(binding, _parameter.ParameterType);
             return Task.FromResult(provider);
         }
 
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
         {
             return new BinderParameterDescriptor
             {
-                Name = _parameterName
+                Name = _parameter.Name
             };
         }
     }

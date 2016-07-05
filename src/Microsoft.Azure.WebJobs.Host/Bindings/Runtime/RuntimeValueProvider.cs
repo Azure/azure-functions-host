@@ -2,58 +2,36 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
-    internal sealed class RuntimeValueProvider : IValueBinder, IWatchable, IDisposable, IBinder, IBinderEx
+    internal sealed class RuntimeValueProvider : IValueBinder, IDisposable
     {
-        private readonly IAttributeBindingSource _bindingSource;
-        private readonly IList<IValueBinder> _binders = new List<IValueBinder>();
-        private readonly RuntimeBindingWatcher _watcher = new RuntimeBindingWatcher();
-        private readonly CollectingDisposable _disposable = new CollectingDisposable();
-
+        private readonly Binder _binder;
+        private readonly Type _parameterType;
         private bool _disposed;
 
-        public RuntimeValueProvider(IAttributeBindingSource bindingSource)
+        public RuntimeValueProvider(IAttributeBindingSource bindingSource, Type parameterType)
         {
-            _bindingSource = bindingSource;
+            _binder = new Binder(bindingSource);
+            _parameterType = parameterType;
         }
 
         public Type Type
         {
-            get { return typeof(IBinder); }
-        }
-
-        public IWatcher Watcher
-        {
-            get { return _watcher; }
-        }
-
-        public AmbientBindingContext BindingContext
-        {
-            get
-            {
-                return _bindingSource.AmbientBindingContext;
-            }
+            get { return _parameterType; }
         }
 
         public object GetValue()
         {
-            return this;
+            return _binder;
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
-            foreach (IValueBinder binder in _binders)
-            {
-                // RuntimeBinding can only be uses for non-Out parameters, and their binders ignore this argument.
-                await binder.SetValueAsync(value: null, cancellationToken: cancellationToken);
-            }
+            await _binder.Complete(cancellationToken);
         }
 
         public string ToInvokeString()
@@ -61,64 +39,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             return null;
         }
 
-        public async Task<TValue> BindAsync<TValue>(RuntimeBindingContext context, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            IBinding binding = await _bindingSource.BindAsync<TValue>(context, cancellationToken);
-
-            if (binding == null)
-            {
-                throw new InvalidOperationException("No binding found for attribute '" + context.Attribute.GetType() + "'.");
-            }
-
-            IValueProvider provider = await binding.BindAsync(new BindingContext(
-                _bindingSource.AmbientBindingContext, cancellationToken));
-
-            if (provider == null)
-            {
-                return default(TValue);
-            }
-
-            Debug.Assert(provider.Type == typeof(TValue));
-
-            ParameterDescriptor parameterDesciptor = binding.ToParameterDescriptor();
-            parameterDesciptor.Name = null; // Remove the dummy name "?" used for runtime binding.
-
-            string value = provider.ToInvokeString();
-
-            IWatchable watchable = provider as IWatchable;
-
-            // Add even if watchable is null to show parameter descriptor in status.
-            _watcher.Add(parameterDesciptor, value, watchable);
-
-            IValueBinder binder = provider as IValueBinder;
-
-            if (binder != null)
-            {
-                _binders.Add(binder);
-            }
-
-            IDisposable disposableProvider = provider as IDisposable;
-
-            if (disposableProvider != null)
-            {
-                _disposable.Add(disposableProvider);
-            }
-
-            return (TValue)provider.GetValue();
-        }
-
-        public async Task<TValue> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
-        {
-            RuntimeBindingContext context = new RuntimeBindingContext(attribute);
-
-            return await BindAsync<TValue>(context, cancellationToken);
-        }
-
         public void Dispose()
         {
             if (!_disposed)
             {
-                _disposable.Dispose();
+                if (_binder != null)
+                {
+                    _binder.Dispose();
+                }
                 _disposed = true;
             }
         }

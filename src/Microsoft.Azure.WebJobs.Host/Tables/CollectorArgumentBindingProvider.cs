@@ -69,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 TableEntityWriter<TElement> tableWriter = new TableEntityWriter<TElement>(value);
-                IValueProvider provider = new TableEntityCollectorBinder<TElement>(value, tableWriter,
-                    typeof(ICollector<TElement>));
+                IValueProvider provider = new TableEntityCollectorBinder<TElement>(value, tableWriter, typeof(ICollector<TElement>));
                 return Task.FromResult(provider);
             }
         }
@@ -90,8 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 PocoEntityWriter<TElement> collector = new PocoEntityWriter<TElement>(value);
-                IValueProvider provider = new PocoEntityCollectorBinder<TElement>(value, collector,
-                    typeof(ICollector<TElement>));
+                IValueProvider provider = new PocoEntityCollectorBinder<TElement>(value, collector, typeof(ICollector<TElement>));
                 return Task.FromResult(provider);
             }
         }
