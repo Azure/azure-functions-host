@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             throw new System.NotImplementedException();
         }
 
-        protected async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, Binder binder,
+        protected virtual async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, Binder binder,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             Dictionary<string, object> bindingData, Dictionary<string, string> environmentVariables)
         {
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
+        protected virtual async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
             object input, Binder binder, Dictionary<string, object> bindingData)
         {
             if (outputBindings == null)
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return input;
         }
 
-        protected void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext executionContext)
+        protected virtual void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext executionContext)
         {
             environmentVariables["InvocationId"] = executionContext.InvocationId.ToString();
 
