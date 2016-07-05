@@ -27,10 +27,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
         public void UseServiceBus_NoServiceBusConfiguration_PerformsExpectedRegistration()
         {
             JobHostConfiguration config = new JobHostConfiguration();
-            string serviceBusConnection = "test service bus connection";
-#pragma warning disable 0618
-            config.ServiceBusConnectionString = serviceBusConnection;
-#pragma warning restore 0618
 
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
             IExtensionConfigProvider[] configProviders = extensions.GetExtensions<IExtensionConfigProvider>().ToArray();
@@ -46,9 +42,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
 
             // verify that a default ServiceBusConfiguration was created, with the host (obsolete)
             // service bus connection string propagated
-#pragma warning disable 0618
+            string serviceBusConnection = Environment.GetEnvironmentVariable("AzureWebJobsServiceBus");
             Assert.Equal(serviceBusConnection, serviceBusExtensionConfig.Config.ConnectionString);
-#pragma warning restore 0618
         }
 
         [Fact]

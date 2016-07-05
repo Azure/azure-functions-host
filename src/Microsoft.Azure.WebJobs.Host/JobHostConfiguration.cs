@@ -24,11 +24,6 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
         private IJobHostContextFactory _contextFactory;
-
-        // TEMP: This will go away in a future release (once ServiceBusConnectionString is removed from this class)
-        private bool _serviceBusConnectionStringSet;
-        private string _serviceBusConnectionString;
-
         private string _hostId;
 
         /// <summary>
@@ -159,29 +154,6 @@ namespace Microsoft.Azure.WebJobs
         {
             get { return _storageAccountProvider.StorageConnectionString; }
             set { _storageAccountProvider.StorageConnectionString = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the Azure ServiceBus connection string.
-        /// </summary>
-        [Obsolete("Use ServiceBusConfiguration, and pass in via JobHostConfiguration.UseServiceBus.")]
-        public string ServiceBusConnectionString
-        {
-            get
-            {
-                if (!_serviceBusConnectionStringSet)
-                {
-                    _serviceBusConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-                    _serviceBusConnectionStringSet = true;
-                }
-
-                return _serviceBusConnectionString;
-            }
-            set
-            {
-                _serviceBusConnectionString = value;
-                _serviceBusConnectionStringSet = true;
-            }
         }
 
         /// <summary>

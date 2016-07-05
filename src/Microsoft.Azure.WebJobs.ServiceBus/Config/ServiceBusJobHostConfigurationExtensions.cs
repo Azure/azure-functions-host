@@ -25,14 +25,7 @@ namespace Microsoft.Azure.WebJobs
                 throw new ArgumentNullException("config");
             }
 
-            ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration
-            {
-                // Can remove this pragma in a future release after
-                // JobHostConfiguration.ServiceBusConnectionString is removed
-                #pragma warning disable 0618
-                ConnectionString = config.ServiceBusConnectionString
-                #pragma warning restore 0618
-            };
+            ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration();
 
             config.UseServiceBus(serviceBusConfig);
         }
