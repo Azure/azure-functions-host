@@ -15,44 +15,57 @@ namespace WebJobs.Script.ConsoleHost.Arm
             await new[]
             {
                 LoadAppSettings(site),
-                LoadSiteConfig(site),
-                LoadSitePublishingCredentials(site)
+                LoadSiteObject(site),
+                LoadSitePublishingCredentials(site),
+                LoadSiteConfig(site)
             }
             //.IgnoreFailures()
             .WhenAll();
+            site.IsLoaded = true;
             return site;
         }
 
         public async Task<Site> LoadAppSettings(Site site)
         {
-            var siteResponse = await _client.HttpInvoke(HttpMethod.Post, ArmUriTemplates.ListSiteAppSettings.Bind(site), NullContent);
-            await siteResponse.EnsureSuccessStatusCodeWithFullError();
+            var armAppSettings = await ArmHttp<ArmWrapper<Dictionary<string, string>>>(HttpMethod.Post, ArmUriTemplates.ListSiteAppSettings.Bind(site), NullContent);
 
-            var armAppSettings = await siteResponse.Content.ReadAsAsync<ArmWrapper<Dictionary<string, string>>>();
             site.AppSettings = armAppSettings.properties;
             return site;
         }
 
-        public async Task<Site> LoadSiteConfig(Site site)
+        public async Task<Site> LoadSiteObject(Site site)
         {
-            var siteResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.Site.Bind(site));
-            await siteResponse.EnsureSuccessStatusCodeWithFullError();
+            var armSite = await ArmHttp<ArmWrapper<ArmWebsite>>(HttpMethod.Get, ArmUriTemplates.Site.Bind(site));
 
-            var armSite = await siteResponse.Content.ReadAsAsync<ArmWrapper<ArmWebsite>>();
-            site.HostName = $"https://{armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) == -1)}";
+            site.HostName = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) == -1);
+            site.ScmUri = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1);
             site.Location = armSite.location;
-            //site.ScmHostName = $"https://{armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1)}";
             return site;
         }
 
         public async Task<Site> LoadSitePublishingCredentials(Site site)
         {
-            var siteResponse = await _client.HttpInvoke(HttpMethod.Post, ArmUriTemplates.SitePublishingCredentials.Bind(site), NullContent);
-            await siteResponse.EnsureSuccessStatusCodeWithFullError();
+            return site
+                .MergeWith(
+                    await ArmHttp<ArmWrapper<object>>(HttpMethod.Post, ArmUriTemplates.SitePublishingCredentials.Bind(site), NullContent),
+                    t => t.properties
+                );
+        }
 
-            var creds = await siteResponse.Content.ReadAsAsync<ArmWrapper<ArmWebsitePublishingCredentials>>();
-            site.BasicAuth = $"{creds.properties.publishingUserName}:{creds.properties.publishingPassword}".ToBase64();
-            return site;
+        public async Task<Site> LoadSiteConfig(Site site)
+        {
+            return site.MergeWith(
+                    await ArmHttp<ArmWrapper<ArmWebsiteConfig>>(HttpMethod.Post, ArmUriTemplates.SiteConfig.Bind(site)),
+                    t => t.properties
+                );
+        }
+
+        public async Task<Site> UpdateSiteConfig(Site site, object config)
+        {
+            return site.MergeWith(
+                    await ArmHttp<ArmWrapper<object>>(HttpMethod.Put, ArmUriTemplates.SiteConfig.Bind(site), config),
+                    t => t.properties
+                );
         }
 
         public async Task<Site> CreateFunctionsSite(ResourceGroup resourceGroup, string serverFarmId)
@@ -95,15 +108,13 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
         public async Task<Site> UpdateSiteAppSettings(Site site)
         {
-            var armResponse = await _client.HttpInvoke(HttpMethod.Put, ArmUriTemplates.PutSiteAppSettings.Bind(site), new { properties = site.AppSettings });
-            await armResponse.EnsureSuccessStatusCodeWithFullError();
+            await ArmHttp(HttpMethod.Put, ArmUriTemplates.PutSiteAppSettings.Bind(site), new { properties = site.AppSettings });
             return site;
         }
 
         public async Task<Site> UpdateConfig(Site site, object config)
         {
-            var response = await _client.HttpInvoke(HttpMethod.Put, ArmUriTemplates.SiteConfig.Bind(site), config);
-            await response.EnsureSuccessStatusCodeWithFullError();
+            await ArmHttp(HttpMethod.Put, ArmUriTemplates.SiteConfig.Bind(site), config);
             return site;
         }
     }

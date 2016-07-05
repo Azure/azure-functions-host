@@ -4,12 +4,12 @@ using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
-    [CommandName("load-settings")]
-    public class LoadSettingsCommand : BaseArmCommand
+    [CommandNames("gs", "get-settings")]
+    public class GetSettingsCommand : FunctionAppBaseCommand
     {
         public override Task Run()
         {
-            throw new NotImplementedException();
+            throw new Exception();
         }
     }
 }

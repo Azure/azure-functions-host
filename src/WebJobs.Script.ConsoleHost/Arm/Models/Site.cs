@@ -23,9 +23,13 @@ namespace WebJobs.Script.ConsoleHost.Arm.Models
 
         public string Location { get; set; }
 
-        public string ScmHostName { get { return $"https://{SiteName}.scm.azurewebsites.net"; } }
+        public string ScmUri { get; set; }
 
-        public string BasicAuth { get; set; }
+        public string PublishingUserName { get; set; }
+
+        public string PublishingPassword { get; set; }
+
+        public string ScmType { get; set; }
 
         public Site(string subscriptionId, string resourceGroupName, string name)
             : base(subscriptionId, resourceGroupName)

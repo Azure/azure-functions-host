@@ -12,6 +12,8 @@ namespace WebJobs.Script.ConsoleHost.Arm.Models
 
         public abstract string ArmId { get; }
 
+        public bool IsLoaded { get; set; }
+
         public BaseResource(string subscriptionId, string resourceGroupName)
         {
             this.SubscriptionId = subscriptionId;

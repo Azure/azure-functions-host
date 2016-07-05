@@ -8,7 +8,7 @@ using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
-    [CommandName("switch-tenants")]
+    [CommandNames("st", "switch-tenants")]
     public class SwitchTenantsCommand : BaseArmCommand
     {
         [ValueOption(0)]

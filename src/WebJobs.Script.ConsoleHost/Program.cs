@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using CommandLine;
 using WebJobs.Script.ConsoleHost.Commands;
+using System.Linq;
 
 namespace WebJobs.Script.ConsoleHost
 {
@@ -40,6 +41,7 @@ namespace WebJobs.Script.ConsoleHost
             else
             {
                 command = _command;
+                command.OriginalCommand = args[0];
                 return true;
             }
         }

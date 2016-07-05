@@ -36,6 +36,12 @@ namespace WebJobs.Script.ConsoleHost.Arm
             return temp.SelectMany(i => i);
         }
 
+        public async Task<Site> GetFunctionApp(string name)
+        {
+            var functionApps = await GetFunctionApps();
+            return await Load(functionApps.FirstOrDefault(s => s.SiteName.Equals(name, StringComparison.OrdinalIgnoreCase)));
+        }
+
         public Task Login()
         {
             _authHelper.ClearTokenCache();
@@ -57,21 +63,34 @@ namespace WebJobs.Script.ConsoleHost.Arm
             _authHelper.ClearTokenCache();
         }
 
-        public async Task<ResourceGroup> GetFunctionsResourceGroup(string subscriptionId = null)
+        public async Task<Site> EnsureScmType(Site functionApp)
         {
-            var subscriptions = await GetSubscriptions();
-            if (!string.IsNullOrEmpty(subscriptionId))
+            if (!functionApp.IsLoaded)
             {
-                subscriptions = subscriptions.Where(s => s.SubscriptionId.Equals(subscriptionId, StringComparison.OrdinalIgnoreCase));
+                functionApp = await LoadSiteConfig(functionApp);
             }
 
-            subscriptions = await subscriptions.Select(Load).IgnoreAndFilterFailures();
-            var resourceGroup = subscriptions
-                .Select(s => s.ResourceGroups)
-                .FirstOrDefault();
-            return resourceGroup == null
-                ? null
-                : await Load(resourceGroup.First());
+            if (string.IsNullOrEmpty(functionApp.ScmType) ||
+                functionApp.ScmType.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                await UpdateSiteConfig(functionApp, new { scmType = "LocalGit" });
+            }
+
+            return functionApp;
+        }
+
+        private async Task<T> ArmHttp<T>(HttpMethod method, Uri uri, object payload = null)
+        {
+            var response = await _client.HttpInvoke(method, uri, payload);
+            await response.EnsureSuccessStatusCodeWithFullError();
+
+            return await response.Content.ReadAsAsync<T>();
+        }
+
+        private async Task ArmHttp(HttpMethod method, Uri uri, object payload = null)
+        {
+            var response = await _client.HttpInvoke(method, uri, payload);
+            await response.EnsureSuccessStatusCodeWithFullError();
         }
 
         public async Task<FunctionsContainer> CreateFunctionContainer(string subscriptionId, string location, string serverFarmId = null)
@@ -104,8 +123,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
             return new FunctionsContainer
             {
-                ScmUrl = resourceGroup.FunctionsSite.ScmHostName,
-                BasicAuth = resourceGroup.FunctionsSite.BasicAuth,
+                ScmUrl = resourceGroup.FunctionsSite.ScmUri,
                 ArmId = resourceGroup.FunctionsSite.ArmId
             };
         }

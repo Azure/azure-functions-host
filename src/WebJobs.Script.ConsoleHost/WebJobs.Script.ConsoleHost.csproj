@@ -157,6 +157,7 @@
     <Compile Include="Arm\Models\ArmSubscription.cs" />
     <Compile Include="Arm\Models\ArmSubscriptionsArray.cs" />
     <Compile Include="Arm\Models\ArmWebsite.cs" />
+    <Compile Include="Arm\Models\ArmWebsiteConfig.cs" />
     <Compile Include="Arm\Models\ArmWebsitePublishingCredentials.cs" />
     <Compile Include="Arm\Models\ArmWrapper.cs" />
     <Compile Include="Arm\Models\BaseResource.cs" />
@@ -171,6 +172,7 @@
     <Compile Include="CommandLineOptionsBuilder.cs" />
     <Compile Include="Commands\CommandLineOptions.cs" />
     <Compile Include="Commands\FunctionAppBaseCommand.cs" />
+    <Compile Include="Commands\GitCommand.cs" />
     <Compile Include="Commands\HelpCommand.cs" />
     <Compile Include="Commands\LoginCommand.cs" />
     <Compile Include="Commands\LogoutCommand.cs" />
@@ -202,8 +204,6 @@
     <Compile Include="Commands\ListCommand.cs" />
     <Compile Include="Commands\LoadSettingsCommand.cs" />
     <Compile Include="Commands\NewCommand.cs" />
-    <Compile Include="Commands\PullCommand.cs" />
-    <Compile Include="Commands\PushCommand.cs" />
     <Compile Include="Commands\RunCommand.cs" />
     <Compile Include="Commands\Command.cs" />
     <Compile Include="Commands\WebCommand.cs" />

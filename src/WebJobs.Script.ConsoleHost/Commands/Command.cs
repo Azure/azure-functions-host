@@ -29,6 +29,8 @@ namespace WebJobs.Script.ConsoleHost.Commands
         [Option('q', "quiet", DefaultValue = false, HelpText = "")]
         public bool Quiet { get; set; }
 
+        public string OriginalCommand { get; set; }
+
         private void EnsureTracer()
         {
             if (Tracer == null)

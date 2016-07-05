@@ -12,10 +12,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
     {
         public async Task<StorageAccount> Load(StorageAccount storageAccount)
         {
-            var storageResponse = await _client.HttpInvoke(HttpMethod.Post, ArmUriTemplates.StorageListKeys.Bind(storageAccount), NullContent);
-            await storageResponse.EnsureSuccessStatusCodeWithFullError();
-
-            var keys = await storageResponse.Content.ReadAsAsync<Dictionary<string, string>>();
+            var keys = await ArmHttp<Dictionary<string, string>>(HttpMethod.Post, ArmUriTemplates.StorageListKeys.Bind(storageAccount), NullContent);
             storageAccount.StorageAccountKey = keys.Select(s => s.Value).FirstOrDefault();
             return storageAccount;
         }

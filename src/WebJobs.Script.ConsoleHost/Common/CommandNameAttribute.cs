@@ -3,13 +3,13 @@
 namespace WebJobs.Script.ConsoleHost.Common
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public class CommandNameAttribute : Attribute
+    public class CommandNamesAttribute : Attribute
     {
-        public string Name { get; }
+        public string[] Names { get; }
 
-        public CommandNameAttribute(string name)
+        public CommandNamesAttribute(params string[] names)
         {
-            Name = name;
+            Names = names;
         }
     }
 }

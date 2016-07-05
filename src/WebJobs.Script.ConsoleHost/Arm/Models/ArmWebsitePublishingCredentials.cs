@@ -4,5 +4,6 @@
     {
         public string publishingUserName { get; set; }
         public string publishingPassword { get; set; }
+        public string scmUri { get; set; }
     }
 }
