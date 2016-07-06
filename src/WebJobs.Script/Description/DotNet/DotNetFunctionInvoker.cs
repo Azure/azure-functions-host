@@ -295,7 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
                 FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+                TraceCompilationDiagnostics(bindingDiagnostics);
 
                 using (assemblyStream = new MemoryStream())
                 {

@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
@@ -63,6 +63,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 if (logs != null)
                 {
                     return logs.Any(s => s.Contains("Compilation failed.")) && logs.Any(s => s.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+                }
+
+                return false;
+            }, 10 * 1000);
+        }
+
+        [Fact]
+        public async Task Compilation_WithMissingBindingArguments_LogsAF004Warning()
+        {
+            // Create the compilation exception we expect to throw during the reload           
+            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(rootFunctionsFolder);
+            
+            // Create the invoker dependencies and setup the appropriate method to throw the exception
+            RunDependencies dependencies = CreateDependencies();
+                
+            // Create a dummy file to represent our function
+            string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
+            File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
+
+            var metadata = new FunctionMetadata
+            {
+                ScriptFile = filePath,
+                Name = Guid.NewGuid().ToString(),
+                ScriptType = ScriptType.CSharp
+            };
+
+            metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+
+            var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+            
+            var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                new DotNetCompilationServiceFactory());
+
+            await invoker.GetFunctionTargetAsync();
+
+            // Verify that our expected messages were logged, including the compilation result
+            await TestHelpers.Await(() =>
+            {
+                Collection<string> logs = TestHelpers.GetFunctionLogsAsync(metadata.Name, false).Result;
+                if (logs != null)
+                {
+                    //Check that our warning diagnostic was logged (e.g. "warning AF004: Missing binding argument named 'TestBinding'.");
+                    return logs.Any(s => s.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && s.Contains("'TestBinding'"));
                 }
 
                 return false;

@@ -256,6 +256,7 @@
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ExtensionSharedAssemblyProvider.cs" />
+    <Compile Include="Description\DotNet\FunctionParameter.cs" />
     <Compile Include="Description\DotNet\ICompilation.cs" />
     <Compile Include="Description\DotNet\ICompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ICompilationService.cs" />
