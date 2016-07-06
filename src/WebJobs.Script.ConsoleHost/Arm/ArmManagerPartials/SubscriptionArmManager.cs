@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Arm.Extensions;
+using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {

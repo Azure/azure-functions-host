@@ -10,6 +10,7 @@ using WebJobs.Script.ConsoleHost.Arm.Extensions;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
 using ARMClient.Authentication;
+using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {
@@ -42,6 +43,44 @@ namespace WebJobs.Script.ConsoleHost.Arm
             return await Load(functionApps.FirstOrDefault(s => s.SiteName.Equals(name, StringComparison.OrdinalIgnoreCase)));
         }
 
+        public async Task CreateFunctionApp(Subscription subscription, string functionAppName, GeoLocation geoLocation)
+        {
+            var resourceGroup = await EnsureResourceGroup(
+                new ResourceGroup(
+                    subscription.SubscriptionId,
+                    $"AzureFunctions-{geoLocation.ToString()}",
+                    geoLocation.ToString())
+                );
+
+            var storageAccount = await EnsureAStorageAccount(resourceGroup);
+            var functionApp = new Site(subscription.SubscriptionId, resourceGroup.ResourceGroupName, functionAppName);
+            var keys = await GetStorageAccountKeys(storageAccount);
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccount.StorageAccountName};AccountKey={keys.First().Value}";
+            var armFunctionApp = await ArmHttp<ArmWrapper<object>>(HttpMethod.Put, ArmUriTemplates.Site.Bind(functionApp),
+                    new
+                    {
+                        properties = new
+                        {
+                            siteConfig = new
+                            {
+                                appSettings = new Dictionary<string, string> {
+                                    { "AzureWebJobsStorage", connectionString },
+                                    { "AzureWebJobsDashboard", connectionString },
+                                    { "FUNCTIONS_EXTENSION_VERSION", "latest" },
+                                    { "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING", connectionString },
+                                    { "WEBSITE_CONTENTSHARE", storageAccount.StorageAccountName.ToLowerInvariant() },
+                                    { $"{storageAccount.StorageAccountName}_STORAGE", connectionString },
+                                    { "AZUREJOBS_EXTENSION_VERSION", "beta" },
+                                    { "WEBSITE_NODE_DEFAULT_VERSION", "4.1.2" }
+                                }
+                            },
+                            sku = "Dynamic"
+                        },
+                        location = "",
+                        kind = "functionapp"
+                    });
+        }
+
         public Task Login()
         {
             _authHelper.ClearTokenCache();
@@ -65,10 +104,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
 
         public async Task<Site> EnsureScmType(Site functionApp)
         {
-            if (!functionApp.IsLoaded)
-            {
-                functionApp = await LoadSiteConfig(functionApp);
-            }
+            functionApp = await LoadSiteConfig(functionApp);
 
             if (string.IsNullOrEmpty(functionApp.ScmType) ||
                 functionApp.ScmType.Equals("None", StringComparison.OrdinalIgnoreCase))
@@ -91,41 +127,6 @@ namespace WebJobs.Script.ConsoleHost.Arm
         {
             var response = await _client.HttpInvoke(method, uri, payload);
             await response.EnsureSuccessStatusCodeWithFullError();
-        }
-
-        public async Task<FunctionsContainer> CreateFunctionContainer(string subscriptionId, string location, string serverFarmId = null)
-        {
-            var resourceGroup = await GetFunctionsResourceGroup(subscriptionId) ?? await CreateResourceGroup(subscriptionId, location);
-            return await CreateFunctionContainer(resourceGroup, serverFarmId);
-        }
-
-        public async Task<FunctionsContainer> CreateFunctionContainer(ResourceGroup resourceGroup, string serverFarmId = null)
-        {
-            if (resourceGroup.FunctionsStorageAccount == null)
-            {
-                resourceGroup.FunctionsStorageAccount = await CreateFunctionsStorageAccount(resourceGroup);
-            }
-            else
-            {
-                await Load(resourceGroup.FunctionsStorageAccount);
-            }
-
-            if (resourceGroup.FunctionsSite == null)
-            {
-                resourceGroup.FunctionsSite = await CreateFunctionsSite(resourceGroup, serverFarmId);
-            }
-            else
-            {
-                await Load(resourceGroup.FunctionsSite);
-            }
-
-            await UpdateSiteAppSettings(resourceGroup.FunctionsSite, resourceGroup.FunctionsStorageAccount);
-
-            return new FunctionsContainer
-            {
-                ScmUrl = resourceGroup.FunctionsSite.ScmUri,
-                ArmId = resourceGroup.FunctionsSite.ArmId
-            };
         }
 
         public async Task UpdateSiteAppSettings(Site site, StorageAccount storageAccount)

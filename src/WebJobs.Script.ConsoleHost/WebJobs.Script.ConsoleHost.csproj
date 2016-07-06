@@ -178,8 +178,9 @@
     <Compile Include="Commands\LogoutCommand.cs" />
     <Compile Include="Commands\OpenCommand.cs" />
     <Compile Include="Commands\SwitchTenantsCommand.cs" />
+    <Compile Include="Common\GeoLocation.cs" />
     <Compile Include="Common\IgnoreCommandAttribute.cs" />
-    <Compile Include="Common\NewOptions.cs" />
+    <Compile Include="Common\Functish.cs" />
     <Compile Include="Common\SourceControl.cs" />
     <Compile Include="Common\CommandNameAttribute.cs" />
     <Compile Include="Common\ConsoleTracer.cs" />

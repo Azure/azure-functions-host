@@ -11,26 +11,36 @@ using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class NewCommand : Command
+    public class NewCommand : BaseArmCommand
     {
         [ValueOption(0)]
-        public NewOptions NewOption { get; set; }
+        public Functish NewOption { get; set; }
 
-        [Option('n', "name", HelpText = "")]
+        [ValueOption(1)]
         public string FunctionAppName { get; set; }
+
+        [Option('s', "subscription", HelpText = "")]
+        public string Subscription { get; set; }
 
         public override async Task Run()
         {
-            if (NewOption == NewOptions.Function)
+            if (NewOption == Functish.Function)
             {
                 var exe = new Executable("yo", "azurefunctions", streamOutput: false, shareConsole: true);
                 await exe.RunAsync();
             }
-            else if (NewOption == NewOptions.FunctionApp)
+            else if (NewOption == Functish.FunctionApp)
             {
                 FunctionAppName = FunctionAppName ?? $"functions{Path.GetRandomFileName().Replace(".", "")}";
-                var client = new AzureClient(retryCount: 3);
-                await client.HttpInvoke(HttpMethod.Get, new Uri("https://management.azure.com/subscriptions/2d41f884-3a5d-4b75-809c-7495edb04a0f/resourceGroups/testSiteResourceGroup/providers/Microsoft.Web/sites/asjkdajuioshdasd/config/web?api-version=2015-08-01"));
+                var subscriptions = await _armManager.GetSubscriptions();
+                if (subscriptions.Count() != 1)
+                {
+                    TraceInfo("Can't determin subscription Id, please add -s/--subscription <SubId>");
+                }
+                else
+                {
+                    await _armManager.CreateFunctionApp(subscriptions.First(), FunctionAppName, GeoLocation.WestUS);
+                }
             }
         }
     }
