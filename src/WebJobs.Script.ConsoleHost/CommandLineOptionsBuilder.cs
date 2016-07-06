@@ -1,12 +1,15 @@
-﻿using CommandLine;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using WebJobs.Script.ConsoleHost.Extensions;
-using WebJobs.Script.ConsoleHost.Common;
+using CommandLine;
 using WebJobs.Script.ConsoleHost.Commands;
+using WebJobs.Script.ConsoleHost.Common;
+using WebJobs.Script.ConsoleHost.Extensions;
 
 namespace WebJobs.Script.ConsoleHost
 {

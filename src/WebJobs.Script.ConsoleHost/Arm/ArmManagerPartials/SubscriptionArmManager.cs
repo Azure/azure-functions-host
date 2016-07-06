@@ -1,11 +1,13 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Net.Http;
-using WebJobs.Script.ConsoleHost.Arm.Models;
+using System.Threading.Tasks;
 using WebJobs.Script.ConsoleHost.Arm.Extensions;
-using WebJobs.Script.ConsoleHost.Common;
+using WebJobs.Script.ConsoleHost.Arm.Models;
 
 namespace WebJobs.Script.ConsoleHost.Arm
 {

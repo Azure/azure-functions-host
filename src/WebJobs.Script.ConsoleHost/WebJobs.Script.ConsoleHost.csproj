@@ -146,11 +146,9 @@
     <Compile Include="Arm\Extensions\Extensions.cs" />
     <Compile Include="Arm\Extensions\HttpResponseMessageExtensions.cs" />
     <Compile Include="Arm\Extensions\IEnumerableExtensions.cs" />
-    <Compile Include="Arm\Extensions\StringExtensions.cs" />
     <Compile Include="Arm\Extensions\TaskExtensions.cs" />
     <Compile Include="Arm\Models\ArmArrayWrapper.cs" />
     <Compile Include="Arm\Models\ArmPublishingUser.cs" />
-    <Compile Include="Arm\Models\ArmResourceGroup.cs" />
     <Compile Include="Arm\Models\ArmServerFarm.cs" />
     <Compile Include="Arm\Models\ArmStorage.cs" />
     <Compile Include="Arm\Models\ArmSubscription.cs" />
@@ -161,9 +159,7 @@
     <Compile Include="Arm\Models\ArmWrapper.cs" />
     <Compile Include="Arm\Models\BaseResource.cs" />
     <Compile Include="Arm\Models\FailedRequestException.cs" />
-    <Compile Include="Arm\Models\FunctionsContainer.cs" />
     <Compile Include="Arm\Models\ResourceGroup.cs" />
-    <Compile Include="Arm\Models\ServerFarm.cs" />
     <Compile Include="Arm\Models\Site.cs" />
     <Compile Include="Arm\Models\StorageAccount.cs" />
     <Compile Include="Arm\Models\Subscription.cs" />

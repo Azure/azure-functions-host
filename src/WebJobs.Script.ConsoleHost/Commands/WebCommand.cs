@@ -2,15 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.ServiceModel;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.SelfHost;
+using CommandLine;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
-using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {

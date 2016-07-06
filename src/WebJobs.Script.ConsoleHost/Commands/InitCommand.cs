@@ -1,10 +1,12 @@
-﻿using CommandLine;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using CommandLine;
+using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Commands

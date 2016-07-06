@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -7,11 +10,6 @@ namespace WebJobs.Script.ConsoleHost.Arm.Extensions
 {
     public static class Extensions
     {
-        public static string NullStatus(this object o)
-        {
-            return o == null ? "Null" : "NotNull";
-        }
-
         public static T MergeWith<T, U, M>(this T target, U source, Func<U, M> selector = null)
             where T : class
             where U : class

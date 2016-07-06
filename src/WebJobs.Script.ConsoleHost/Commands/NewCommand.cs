@@ -1,12 +1,10 @@
-﻿using ARMClient.Library;
-using CommandLine;
-using System;
-using System.Collections.Generic;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
+using CommandLine;
 using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Common;
 

@@ -1,15 +1,17 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
-using System.Threading.Tasks;
 using System.Net.Http;
-using ARMClient.Library;
-using WebJobs.Script.ConsoleHost.Arm.Models;
-using WebJobs.Script.ConsoleHost.Arm.Extensions;
+using System.Threading.Tasks;
+using ARMClient.Authentication;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
-using ARMClient.Authentication;
+using ARMClient.Library;
+using WebJobs.Script.ConsoleHost.Arm.Extensions;
+using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Arm

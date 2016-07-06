@@ -5,7 +5,6 @@ using System;
 using System.Threading.Tasks;
 using CommandLine;
 using WebJobs.Script.ConsoleHost.Commands;
-using System.Linq;
 
 namespace WebJobs.Script.ConsoleHost
 {

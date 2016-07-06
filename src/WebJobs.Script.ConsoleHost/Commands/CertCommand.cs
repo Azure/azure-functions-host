@@ -7,10 +7,10 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using CommandLine;
 using Ignite.SharpNetSH;
 using WebJobs.Script.ConsoleHost.Common;
 using WebJobs.Script.ConsoleHost.Helpers;
-using CommandLine;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
