@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [Fact]
         public void BlobTriggerSingletonListener_LockIsHeld()
         {
-            _fixture.VerifyLockState("BlobTrigger.Listener", LeaseState.Leased, LeaseStatus.Locked);
+            _fixture.VerifyLockState("WebJobs.Internal.Blobs.Listener", LeaseState.Leased, LeaseStatus.Locked);
         }
 
         // This function just exists to force initialization of the
@@ -502,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 Host.Stop();
 
-                VerifyLockState("BlobTrigger.Listener", LeaseState.Available, LeaseStatus.Unlocked);
+                VerifyLockState("WebJobs.Internal.Blobs.Listener", LeaseState.Available, LeaseStatus.Unlocked);
 
                 CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
                 foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))

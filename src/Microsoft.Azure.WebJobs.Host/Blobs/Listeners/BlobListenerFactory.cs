@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // we only want the blob discovery/scan listener to be running on a single instance,
             // so we make it a singleton
             var blobListener = new BlobListener(sharedBlobListener);
-            return singletonManager.CreateHostSingletonListener(blobListener, "BlobTrigger");
+            return singletonManager.CreateHostSingletonListener(blobListener, "WebJobs.Internal.Blobs");
         }
 
         private IListener CreateQueueMessageToTriggerExecutionListener(
