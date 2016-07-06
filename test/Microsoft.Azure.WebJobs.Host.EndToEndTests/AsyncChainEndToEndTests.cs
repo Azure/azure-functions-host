@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
-                Assert.Equal(13, storageClientFactory.TotalBlobClientCount);
+                Assert.Equal(15, storageClientFactory.TotalBlobClientCount);
                 Assert.Equal(8, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Message.Contains("Error"))).Any();
                 if (!hasError)
                 {
-                    Assert.Equal(15, trace.Traces.Count);
+                    Assert.Equal(18, trace.Traces.Count);
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect no function output
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(3, traces.Length);
+                    Assert.Equal(5, traces.Length);
                     Assert.False(traces.Any(p => p.Message.Contains("test message")));
                 }
             }
@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect normal logs to be written (TraceLevel override is ignored)
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(8, traces.Length);
+                    Assert.Equal(10, traces.Length);
 
                     string output = string.Join("\r\n", traces.Select(p => p.Message));
                     Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride'"));

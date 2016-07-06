@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             IExtensionRegistry extensions,
+            SingletonManager singletonManager,
             TraceWriter trace)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 sharedContextProvider, trace));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
-                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, trace));
+                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, singletonManager, trace));
 
             // add any registered extension binding providers
             foreach (ITriggerBindingProvider provider in extensions.GetExtensions(typeof(ITriggerBindingProvider)))

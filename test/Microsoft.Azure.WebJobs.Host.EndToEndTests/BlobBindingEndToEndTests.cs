@@ -190,6 +190,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.Equal(1, NumBlobsRead);
         }
 
+        [Fact]
+        public void BlobTriggerSingletonListener_LockIsHeld()
+        {
+            _fixture.VerifyLockState("BlobTrigger.Listener", LeaseState.Leased, LeaseStatus.Locked);
+        }
+
+        // This function just exists to force initialization of the
+        // blob listener pipeline
+        public static void TestBlobTrigger([BlobTrigger("test/test")] string blob)
+        {
+        }
+
         [NoAutomaticTrigger]
         public static void CloudBlobContainerBinding(
             [Blob(ContainerName)] CloudBlobContainer container)
@@ -490,11 +502,27 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 Host.Stop();
 
+                VerifyLockState("BlobTrigger.Listener", LeaseState.Available, LeaseStatus.Unlocked);
+
                 CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
                 foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))
                 {
                     testContainer.Delete();
                 }
+            }
+
+            public void VerifyLockState(string lockId, LeaseState state, LeaseStatus status)
+            {
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
+                var container = blobClient.GetContainerReference("azure-webjobs-hosts");
+                string blobName = string.Format("locks/{0}/{1}", Config.HostId, lockId);
+                var lockBlob = container.GetBlockBlobReference(blobName);
+
+                Assert.True(lockBlob.Exists());
+                lockBlob.FetchAttributes();
+
+                Assert.Equal(state, lockBlob.Properties.LeaseState);
+                Assert.Equal(status, lockBlob.Properties.LeaseStatus);
             }
         }
 

@@ -11,7 +11,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal class SingletonListener : IListener
     {
-        private readonly MethodInfo _method;
         private readonly SingletonAttribute _attribute;
         private readonly SingletonManager _singletonManager;
         private readonly SingletonConfiguration _singletonConfig;
@@ -22,14 +21,13 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         public SingletonListener(MethodInfo method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener)
         {
-            _method = method;
             _attribute = attribute;
             _singletonManager = singletonManager;
             _singletonConfig = _singletonManager.Config;
             _innerListener = innerListener;
 
             string boundScopeId = _singletonManager.GetBoundScopeId(_attribute.ScopeId);
-            _lockId = singletonManager.FormatLockId(_method, _attribute.Scope, boundScopeId);
+            _lockId = singletonManager.FormatLockId(method, _attribute.Scope, boundScopeId);
             _lockId += ".Listener";
         }
 

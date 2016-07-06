@@ -32,10 +32,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             product.Start();
 
             RunExecuterWithExpectedBlobs(new List<string>(), product, executor);
-            
+
             string expectedBlobName = CreateAblobAndUploadToContainer(container);
 
-            RunExecuterWithExpectedBlobs(new List<string>(){ expectedBlobName}, product, executor);
+            RunExecuterWithExpectedBlobs(new List<string>() { expectedBlobName }, product, executor);
 
             // Now run again; shouldn't show up. 
             RunExecuterWithExpectedBlobs(new List<string>(), product, executor);
@@ -56,10 +56,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 
             product.Register(container, executor);
             product.Start();
-            
+
             // populate with 5 blobs
             List<string> expectedNames = new List<string>();
-            for (int i = 0; i< 5; i++)
+            for (int i = 0; i < 5; i++)
             {
                 expectedNames.Add(CreateAblobAndUploadToContainer(container));
             }
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             product.Register(firstContainer, executor);
             product.Register(secondContainer, executor);
             product.Start();
-            
+
             // populate first container with 5 blobs > page size and second with 2 blobs < page size
             // page size is going to be testScanBlobLimitPerPoll / number of container 6/2 = 3
             List<string> firstContainerExpectedNames = new List<string>();
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
                 firstContainerExpectedNames.Add(CreateAblobAndUploadToContainer(firstContainer));
             }
 
-            RunExecuteWithMultiPollingInterval(firstContainerExpectedNames, product, executor, testScanBlobLimitPerPoll/containerCount);
+            RunExecuteWithMultiPollingInterval(firstContainerExpectedNames, product, executor, testScanBlobLimitPerPoll / containerCount);
 
             List<string> secondContainerExpectedNames = new List<string>();
             for (int i = 0; i < 2; i++)
@@ -129,8 +129,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             Assert.Equal(logPollingContainers.ToList().Count, containerCount);
         }
 
-        private void RunExecuterWithExpectedBlobsInternal(List<string> expectedBlobNames
-            , IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor, int expectedCount)
+        private void RunExecuterWithExpectedBlobsInternal(List<string> expectedBlobNames, IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor, int expectedCount)
         {
             if (expectedBlobNames.Count == 0)
             {
@@ -154,20 +153,18 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             }
         }
 
-        private void RunExecuterWithExpectedBlobs(List<string> expectedBlobNames
-            , IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor)
+        private void RunExecuterWithExpectedBlobs(List<string> expectedBlobNames, IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor)
         {
             RunExecuterWithExpectedBlobsInternal(expectedBlobNames, product, executor, expectedBlobNames.Count);
         }
 
-        private void RunExecuteWithMultiPollingInterval(List<string> expectedBlobNames
-            , IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor, int expectedCount)
+        private void RunExecuteWithMultiPollingInterval(List<string> expectedBlobNames, IBlobListenerStrategy product, LambdaBlobTriggerExecutor executor, int expectedCount)
         {
             // make sure it is processed in chunks of "expectedCount" size
-            for (int i = 0; i < expectedBlobNames.Count; i+=expectedCount)
+            for (int i = 0; i < expectedBlobNames.Count; i += expectedCount)
             {
-                RunExecuterWithExpectedBlobsInternal(expectedBlobNames, product, executor, 
-                    Math.Min(expectedCount,expectedBlobNames.Count-i));
+                RunExecuterWithExpectedBlobsInternal(expectedBlobNames, product, executor,
+                    Math.Min(expectedCount, expectedBlobNames.Count - i));
             }
         }
 

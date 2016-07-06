@@ -224,7 +224,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
-            
+
+            SingletonConfiguration singletonConfig = new SingletonConfiguration();
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, singletonConfig, trace, hostIdProvider);
+
             if (extensions == null)
             {
                 extensions = new DefaultExtensionRegistry();
@@ -233,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor, sharedContextProvider, extensions, new TestTraceWriter(TraceLevel.Verbose));
+                blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, extensions);
@@ -242,10 +246,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger functionOutputLogger = functionOutputLoggerProvider.GetAsync(CancellationToken.None).Result;
             FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, new TestTraceWriter(TraceLevel.Verbose), null);
-
-            SingletonConfiguration singletonConfig = new SingletonConfiguration();
-            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, singletonConfig, trace, hostIdProvider);
 
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(

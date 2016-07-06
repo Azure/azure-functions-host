@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
                     nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
                     BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                    sharedContextProvider, extensions, new TestTraceWriter(TraceLevel.Verbose));
+                    sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
 
             var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);

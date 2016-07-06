@@ -105,10 +105,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             };
             InvokeExtensionConfigProviders(context);
 
+            if (singletonManager == null)
+            {
+                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, hostIdProvider, config.NameResolver);
+            }
+
             IExtensionRegistry extensions = config.GetExtensions();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
-                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, trace);
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, trace);
 
             if (bindingProvider == null)
             {
@@ -132,11 +137,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 functionOutputLoggerProvider = loggerProvider;
             }
 
-            if (singletonManager == null)
-            {
-                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, hostIdProvider, config.NameResolver);
-            }
-            
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;

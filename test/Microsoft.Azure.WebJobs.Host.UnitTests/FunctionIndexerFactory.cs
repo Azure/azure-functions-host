@@ -41,11 +41,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
             TestTraceWriter logger = new TestTraceWriter(TraceLevel.Verbose);
+            SingletonManager singletonManager = new SingletonManager();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
                 BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                sharedContextProvider, new DefaultExtensionRegistry(), logger);
+                sharedContextProvider, new DefaultExtensionRegistry(), singletonManager, logger);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, new DefaultExtensionRegistry());

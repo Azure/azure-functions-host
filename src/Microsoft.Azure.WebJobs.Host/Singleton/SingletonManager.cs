@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -239,6 +240,21 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             return singletonAttribute;
+        }
+
+        /// <summary>
+        /// Creates and returns singleton listener scoped to the host.
+        /// </summary>
+        /// <param name="innerListener">The inner listener to wrap.</param>
+        /// <param name="scopeId">The scope ID to use.</param>
+        /// <returns>The singleton listener.</returns>
+        public SingletonListener CreateHostSingletonListener(IListener innerListener, string scopeId)
+        {
+            SingletonAttribute singletonAttribute = new SingletonAttribute(scopeId, SingletonScope.Host)
+            {
+                Mode = SingletonMode.Listener
+            };
+            return new SingletonListener(null, singletonAttribute, this, innerListener);
         }
 
         public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, MethodInfo method)

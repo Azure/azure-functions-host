@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly TraceWriter _trace;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
+        private readonly SingletonManager _singletonManager;
 
         public BlobTriggerBinding(ParameterInfo parameter,
             IArgumentBinding<IStorageBlob> argumentBinding,
@@ -51,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
+            SingletonManager singletonManager,
             TraceWriter trace)
         {
             if (parameter == null)
@@ -108,6 +110,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
+            if (singletonManager == null)
+            {
+                throw new ArgumentNullException("singletonManager");
+            }
+
             if (trace == null)
             {
                 throw new ArgumentNullException("trace");
@@ -130,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _singletonManager = singletonManager;
             _trace = trace;
             _converter = CreateConverter(_blobClient);
             _bindingDataContract = CreateBindingDataContract(path);
@@ -225,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor);
+                _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
 
             return factory.CreateAsync(context.CancellationToken);
         }

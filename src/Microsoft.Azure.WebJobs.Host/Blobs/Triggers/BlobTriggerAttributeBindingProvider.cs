@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
+        private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
+            SingletonManager singletonManager,
             TraceWriter trace)
         {
             if (accountProvider == null)
@@ -85,6 +87,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
+            if (singletonManager == null)
+            {
+                throw new ArgumentNullException("singletonManager");
+            }
+
             if (trace == null)
             {
                 throw new ArgumentNullException("trace");
@@ -99,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _singletonManager = singletonManager;
             _trace = trace;
         }
 
@@ -153,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             ITriggerBinding binding = new BlobTriggerBinding(parameter, argumentBinding, hostAccount, dataAccount, path,
                 _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter,
-                _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace);
+                _messageEnqueuedWatcherSetter, _sharedContextProvider, _singletonManager, _trace);
 
             return binding;
         }

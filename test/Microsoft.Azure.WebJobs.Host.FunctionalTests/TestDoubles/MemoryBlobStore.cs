@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 
@@ -52,8 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return _items[containerName].FetchAttributes(blobName);
         }
 
-        public IStorageBlob GetBlobReferenceFromServer(IStorageBlobContainer parent, string containerName,
-            string blobName)
+        public IStorageBlob GetBlobReferenceFromServer(IStorageBlobContainer parent, string containerName, string blobName)
         {
             if (!_items.ContainsKey(containerName))
             {
@@ -254,6 +254,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             public string AcquireLease(string blobName, TimeSpan? leaseTime)
             {
+                if (!Exists(blobName))
+                {
+                    RequestResult result = new RequestResult
+                    {
+                        HttpStatusCode = 404
+                    };
+                    throw new StorageException(result, "Blob does not exist", null);
+                }
+
                 return _items[blobName].AcquireLease(leaseTime);
             }
 
@@ -272,8 +281,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 return _items[blobName].FetchAttributes();
             }
 
-            public IStorageBlob GetBlobReferenceFromServer(MemoryBlobStore store, IStorageBlobContainer parent,
-                string blobName)
+            public IStorageBlob GetBlobReferenceFromServer(MemoryBlobStore store, IStorageBlobContainer parent, string blobName)
             {
                 if (!_items.ContainsKey(blobName))
                 {
@@ -495,7 +503,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 {
                     if (!LeaseExpires.HasValue || LeaseExpires.Value > DateTime.UtcNow)
                     {
-                        throw new InvalidOperationException();
+                        RequestResult result = new RequestResult
+                        {
+                            HttpStatusCode = 409
+                        };
+                        throw new StorageException(result, "Blob is leased", null);
                     }
                 }
             }

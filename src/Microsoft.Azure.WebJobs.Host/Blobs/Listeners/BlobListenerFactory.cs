@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionExecutor _executor;
+        private readonly SingletonManager _singletonManager;
 
         public BlobListenerFactory(IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
@@ -43,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageAccount dataAccount,
             IStorageBlobContainer container,
             IBlobPathSource input,
-            ITriggeredFunctionExecutor executor)
+            ITriggeredFunctionExecutor executor,
+            SingletonManager singletonManager)
         {
             if (hostIdProvider == null)
             {
@@ -105,6 +107,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("executor");
             }
 
+            if (singletonManager == null)
+            {
+                throw new ArgumentNullException("singletonManager");
+            }
+
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
@@ -118,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _container = container;
             _input = input;
             _executor = executor;
+            _singletonManager = singletonManager;
         }
 
         public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
@@ -137,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
             IListener blobDiscoveryToQueueMessageListener = await CreateBlobDiscoveryToQueueMessageListenerAsync(
-                hostId, sharedBlobListener, blobClient, hostBlobTriggerQueue, sharedQueueWatcher, cancellationToken);
+                hostId, sharedBlobListener, blobClient, hostBlobTriggerQueue, sharedQueueWatcher, _singletonManager, cancellationToken);
 
             // Important: We're using the "data account" here, which is the account that the
             // function the listener is for is targeting. This is the account that will be used
@@ -159,13 +167,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageBlobClient blobClient,
             IStorageQueue hostBlobTriggerQueue,
             IMessageEnqueuedWatcher messageEnqueuedWatcher,
+            SingletonManager singletonManager,
             CancellationToken cancellationToken)
         {
             BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(hostId, _functionId, _input,
                 BlobETagReader.Instance, new BlobReceiptManager(blobClient),
                 new BlobTriggerQueueWriter(hostBlobTriggerQueue, messageEnqueuedWatcher));
+
             await sharedBlobListener.RegisterAsync(_container, triggerExecutor, cancellationToken);
-            return new BlobListener(sharedBlobListener);
+
+            // we only want the blob discovery/scan listener to be running on a single instance,
+            // so we make it a singleton
+            var blobListener = new BlobListener(sharedBlobListener);
+            return singletonManager.CreateHostSingletonListener(blobListener, "BlobTrigger");
         }
 
         private IListener CreateQueueMessageToTriggerExecutionListener(

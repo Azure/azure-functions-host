@@ -227,8 +227,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             return newBlobs;
         }
 
-        private async Task NotifyRegistrationsAsync(IStorageBlob blob, ICollection<IStorageBlob> failedNotifications,
-            CancellationToken cancellationToken)
+        private async Task NotifyRegistrationsAsync(IStorageBlob blob, ICollection<IStorageBlob> failedNotifications, CancellationToken cancellationToken)
         {
             IStorageBlobContainer container = blob.Container;
             ContainerScanInfo containerScanInfo;
