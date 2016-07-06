@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace WebJobs.Script.ConsoleHost.Arm.Extensions
@@ -27,8 +28,8 @@ namespace WebJobs.Script.ConsoleHost.Arm.Extensions
 
             foreach (var sourceProperty in _source.GetType().GetProperties())
             {
-                var targetProperty = target.GetType().GetProperty(sourceProperty.Name);
-                var targetPropertyEnum = target.GetType().GetProperty(sourceProperty.Name + "Enum");
+                var targetProperty = target.GetType().GetProperties().FirstOrDefault(p => p.Name.Equals(sourceProperty.Name, StringComparison.OrdinalIgnoreCase));
+                var targetPropertyEnum = target.GetType().GetProperties().FirstOrDefault(p => p.Name.Equals(sourceProperty.Name + "Enum", StringComparison.OrdinalIgnoreCase));
                 new List<PropertyInfo>() { targetProperty, targetPropertyEnum }.ForEach(property =>
                 {
                     if (property == null) return;

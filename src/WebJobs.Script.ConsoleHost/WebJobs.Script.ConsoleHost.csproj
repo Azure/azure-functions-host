@@ -36,7 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ARMClient.Authentication, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\ARMClient.Authentication.0.0.3-alpha\lib\net45\ARMClient.Authentication.dll</HintPath>
+      <HintPath>..\..\packages\ARMClient.Authentication.0.0.4-alpha\lib\net45\ARMClient.Authentication.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="ARMClient.Library, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">

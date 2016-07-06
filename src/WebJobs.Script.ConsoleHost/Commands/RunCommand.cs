@@ -8,6 +8,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Commands
@@ -44,7 +45,7 @@ namespace WebJobs.Script.ConsoleHost.Commands
                     : File.ReadAllText(FileName);
                 invocation = invocation ?? string.Empty;
 
-                var response = await _scriptServer.HttpClient.PostAsync($"api/{FunctionName}?block=true", new StringContent(invocation));
+                var response = await _scriptServer.HttpClient.PostAsync($"api/{FunctionName}?block=true", new StringContent(invocation, Encoding.UTF8, "application/json"));
                 TraceInfo($"Response Status Code: {response.StatusCode}");
                 var contentTask = response?.Content?.ReadAsStringAsync();
                 if (contentTask != null)

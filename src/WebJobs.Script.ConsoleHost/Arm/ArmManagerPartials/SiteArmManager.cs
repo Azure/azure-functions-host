@@ -21,7 +21,6 @@ namespace WebJobs.Script.ConsoleHost.Arm
             }
             //.IgnoreFailures()
             .WhenAll();
-            site.IsLoaded = true;
             return site;
         }
 
@@ -38,7 +37,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
             var armSite = await ArmHttp<ArmWrapper<ArmWebsite>>(HttpMethod.Get, ArmUriTemplates.Site.Bind(site));
 
             site.HostName = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) == -1);
-            site.ScmUri = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1);
+            //site.ScmUri = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1);
             site.Location = armSite.location;
             return site;
         }
@@ -47,7 +46,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
         {
             return site
                 .MergeWith(
-                    await ArmHttp<ArmWrapper<object>>(HttpMethod.Post, ArmUriTemplates.SitePublishingCredentials.Bind(site), NullContent),
+                    await ArmHttp<ArmWrapper<ArmWebsitePublishingCredentials>>(HttpMethod.Post, ArmUriTemplates.SitePublishingCredentials.Bind(site)),
                     t => t.properties
                 );
         }
@@ -55,7 +54,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
         public async Task<Site> LoadSiteConfig(Site site)
         {
             return site.MergeWith(
-                    await ArmHttp<ArmWrapper<ArmWebsiteConfig>>(HttpMethod.Post, ArmUriTemplates.SiteConfig.Bind(site)),
+                    await ArmHttp<ArmWrapper<ArmWebsiteConfig>>(HttpMethod.Get, ArmUriTemplates.SiteConfig.Bind(site)),
                     t => t.properties
                 );
         }
@@ -63,7 +62,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
         public async Task<Site> UpdateSiteConfig(Site site, object config)
         {
             return site.MergeWith(
-                    await ArmHttp<ArmWrapper<object>>(HttpMethod.Put, ArmUriTemplates.SiteConfig.Bind(site), config),
+                    await ArmHttp<ArmWrapper<ArmWebsiteConfig>>(HttpMethod.Put, ArmUriTemplates.SiteConfig.Bind(site), config),
                     t => t.properties
                 );
         }

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using WebJobs.Script.ConsoleHost.Arm.Models;
 using WebJobs.Script.ConsoleHost.Common;
 
 namespace WebJobs.Script.ConsoleHost.Commands
@@ -22,6 +23,9 @@ namespace WebJobs.Script.ConsoleHost.Commands
         [Option('s', "subscription", HelpText = "")]
         public string Subscription { get; set; }
 
+        [Option('l', "location", DefaultValue = GeoLocation.WestUS, HelpText = "")]
+        public GeoLocation Location { get; set; }
+
         public override async Task Run()
         {
             if (NewOption == Functish.Function)
@@ -33,13 +37,15 @@ namespace WebJobs.Script.ConsoleHost.Commands
             {
                 FunctionAppName = FunctionAppName ?? $"functions{Path.GetRandomFileName().Replace(".", "")}";
                 var subscriptions = await _armManager.GetSubscriptions();
-                if (subscriptions.Count() != 1)
+                if (string.IsNullOrEmpty(Subscription) && subscriptions.Count() != 1)
                 {
                     TraceInfo("Can't determin subscription Id, please add -s/--subscription <SubId>");
                 }
                 else
                 {
-                    await _armManager.CreateFunctionApp(subscriptions.First(), FunctionAppName, GeoLocation.WestUS);
+                    var subscription = string.IsNullOrEmpty(Subscription) ? subscriptions.First() : new Subscription(Subscription, string.Empty);
+                    var functionApp = await _armManager.CreateFunctionApp(subscription, FunctionAppName, Location);
+                    TraceInfo($"Function App \"{functionApp.SiteName}\" has been created");
                 }
             }
         }

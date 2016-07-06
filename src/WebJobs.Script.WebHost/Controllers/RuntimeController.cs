@@ -77,8 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else
             {
+                var settings = (WebHostSettings)controllerContext.Configuration.DependencyResolver.GetService(typeof(WebHostSettings));
+
                 // Authorize
-                if (authorizationLevel < httpFunctionMetadata.AuthLevel)
+                if (authorizationLevel < httpFunctionMetadata.AuthLevel && !settings.IsSelfHost)
                 {
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }

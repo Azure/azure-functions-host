@@ -15,18 +15,6 @@ namespace WebJobs.Script.ConsoleHost.Arm
         {
             return await ArmHttp<ArmArrayWrapper<object>>(HttpMethod.Get, ArmUriTemplates.ResourceGroupResources.Bind(resourceGroup));
         }
-        public async Task<ResourceGroup> Load(ResourceGroup resourceGroup)
-        {
-
-            resourceGroup.FunctionsApps = resources.value
-                .Where(r => r.type.Equals(Constants.WebAppArmType, StringComparison.OrdinalIgnoreCase) &&
-                            r.kind?.Equals(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) == true)
-                .Select(r => new Site(resourceGroup.SubscriptionId, resourceGroup.ResourceGroupName, r.name));
-
-
-
-            return resourceGroup;
-        }
 
         public async Task<ResourceGroup> CreateResourceGroup(ResourceGroup resourceGroup)
         {

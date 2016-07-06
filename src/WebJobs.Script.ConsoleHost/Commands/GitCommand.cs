@@ -20,6 +20,7 @@ namespace WebJobs.Script.ConsoleHost.Commands
             if (functionApp != null)
             {
                 await _armManager.EnsureScmType(functionApp);
+                await _armManager.LoadSitePublishingCredentials(functionApp);
                 await RunGit(OriginalCommand, functionApp);
             }
             else
@@ -30,9 +31,8 @@ namespace WebJobs.Script.ConsoleHost.Commands
 
         private async Task RunGit(string command, Site functionApp)
         {
-            var origin = $"{functionApp.ScmUri}/{functionApp.SiteName}.git";
             var commandLine = GitCommandLine?.Aggregate(string.Empty, (a, b) => $"{a} {b}") ?? string.Empty;
-            var git = new Executable("git.exe", $"{command} {origin} {commandLine}");
+            var git = new Executable("git.exe", $"{command} \"{functionApp.ScmUri}\" {commandLine}");
             await git.RunAsync(TraceInfo, TraceInfo);
         }
     }

@@ -85,7 +85,5 @@ namespace WebJobs.Script.ConsoleHost.Arm
                 await Task.Delay(1000);
             }
         }
-
-        public static async Task<T>
     }
 }

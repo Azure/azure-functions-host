@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace WebJobs.Script.ConsoleHost.Commands
 {
-    public class OpenCommand : BaseArmCommand
+    public class OpenCommand : FunctionAppBaseCommand
     {
-        public override Task Run()
+        public override async Task Run()
         {
-            throw new NotImplementedException();
+            var functionApp = await _armManager.GetFunctionApp(FunctionAppName);
+            var currentTenant = await _armManager.GetCurrentTenantDomain();
+            var portalHostName = "https://portal.azure.com";
+            Process.Start($"{portalHostName}/{currentTenant}#resource{functionApp.ArmId}");
         }
     }
 }

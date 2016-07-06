@@ -43,7 +43,7 @@ namespace WebJobs.Script.ConsoleHost.Arm
             return await Load(functionApps.FirstOrDefault(s => s.SiteName.Equals(name, StringComparison.OrdinalIgnoreCase)));
         }
 
-        public async Task CreateFunctionApp(Subscription subscription, string functionAppName, GeoLocation geoLocation)
+        public async Task<Site> CreateFunctionApp(Subscription subscription, string functionAppName, GeoLocation geoLocation)
         {
             var resourceGroup = await EnsureResourceGroup(
                 new ResourceGroup(
@@ -73,12 +73,15 @@ namespace WebJobs.Script.ConsoleHost.Arm
                                     { "AZUREJOBS_EXTENSION_VERSION", "beta" },
                                     { "WEBSITE_NODE_DEFAULT_VERSION", "4.1.2" }
                                 }
+                                .Select(e => new { name = e.Key, value = e.Value})
                             },
                             sku = "Dynamic"
                         },
-                        location = "",
+                        location = geoLocation.ToString(),
                         kind = "functionapp"
                     });
+
+            return functionApp;
         }
 
         public Task Login()
@@ -109,7 +112,8 @@ namespace WebJobs.Script.ConsoleHost.Arm
             if (string.IsNullOrEmpty(functionApp.ScmType) ||
                 functionApp.ScmType.Equals("None", StringComparison.OrdinalIgnoreCase))
             {
-                await UpdateSiteConfig(functionApp, new { scmType = "LocalGit" });
+                await UpdateSiteConfig(functionApp, new { properties = new { scmType = "LocalGit" } });
+                await Task.Delay(TimeSpan.FromSeconds(2));
             }
 
             return functionApp;
@@ -121,6 +125,12 @@ namespace WebJobs.Script.ConsoleHost.Arm
             await response.EnsureSuccessStatusCodeWithFullError();
 
             return await response.Content.ReadAsAsync<T>();
+        }
+
+        public async Task<string> GetCurrentTenantDomain()
+        {
+            var token = await _authHelper.GetToken(id: string.Empty);
+            return _authHelper.GetTenantInfo(token.TenantId).domain;
         }
 
         private async Task ArmHttp(HttpMethod method, Uri uri, object payload = null)
