@@ -138,26 +138,5 @@ namespace WebJobs.Script.ConsoleHost.Arm
             var response = await _client.HttpInvoke(method, uri, payload);
             await response.EnsureSuccessStatusCodeWithFullError();
         }
-
-        public async Task UpdateSiteAppSettings(Site site, StorageAccount storageAccount)
-        {
-            // Assumes site and storage are loaded
-            var update = false;
-            if (!site.AppSettings.ContainsKey(Constants.AzureStorageAppSettingsName))
-            {
-                site.AppSettings[Constants.AzureStorageAppSettingsName] = string.Format(Constants.StorageConnectionStringTemplate, storageAccount.StorageAccountName, storageAccount.StorageAccountKey);
-                site.AppSettings[Constants.AzureStorageDashboardAppSettingsName] = string.Format(Constants.StorageConnectionStringTemplate, storageAccount.StorageAccountName, storageAccount.StorageAccountKey);
-                update = true;
-            }
-
-            if (!site.AppSettings.ContainsKey(Constants.FunctionsExtensionVersion))
-            {
-                site.AppSettings[Constants.FunctionsExtensionVersion] = Constants.Latest;
-                update = true;
-            }
-
-            if (update)
-                await UpdateSiteAppSettings(site);
-        }
     }
 }

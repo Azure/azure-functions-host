@@ -20,19 +20,6 @@ namespace WebJobs.Script.ConsoleHost.Arm
             return subscriptions.value.Select(s => new Subscription(s.subscriptionId, s.displayName));
         }
 
-        public async Task<Subscription> Load(Subscription subscription)
-        {
-                var armResourceGroupsResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.ResourceGroups.Bind(subscription));
-                await armResourceGroupsResponse.EnsureSuccessStatusCodeWithFullError();
-
-                var armResourceGroups = await armResourceGroupsResponse.Content.ReadAsAsync<ArmArrayWrapper<ArmResourceGroup>>();
-
-                subscription.ResourceGroups = armResourceGroups.value
-                    .Select(rg => new ResourceGroup(subscription.SubscriptionId, rg.name, rg.location) { Tags = rg.tags });
-
-                return subscription;
-        }
-
         public async Task<IEnumerable<Site>> GetFunctionApps(Subscription subscription)
         {
             var armSubscriptionWebAppsResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.SubscriptionWebApps.Bind(subscription));

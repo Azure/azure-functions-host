@@ -139,7 +139,6 @@
     <Compile Include="Arm\Constants.cs" />
     <Compile Include="Arm\ArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\ResourceGroupArmManager.cs" />
-    <Compile Include="Arm\ArmManagerPartials\ServerFarmArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\SiteArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\StorageAccountArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\SubscriptionArmManager.cs" />
