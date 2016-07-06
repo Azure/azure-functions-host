@@ -10,6 +10,10 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
+using System.Net.Http;
+using System.Web.Http.Routing;
+using System.Web.Http.Cors;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -31,6 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new ArgumentNullException("settings");
             }
 
+            config.Formatters.Add(new BrowserJsonFormatter());
+            if (settings?.IsSelfHost == true)
+            {
+                var cors = new EnableCorsAttribute(Constants.AzureFunctionsCORS, "*", "*");
+                config.EnableCors(cors);
+            }
+
             // Delete hostingstart.html if any. Azure creates that in all sites by default
             string hostingStart = Path.Combine(settings.ScriptPath, "hostingstart.html");
             if (File.Exists(hostingStart))
@@ -42,17 +53,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             PrependFoldersToEnvironmentPath();
 
             var builder = new ContainerBuilder();
-            builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
-            AutofacBootstrap.Initialize(builder, settings);
+            builder.RegisterApiControllers(typeof(AdminController).Assembly);
+            AutofacBootstrap.Initialize(builder, settings, config);
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
 
-            config.MessageHandlers.Add(new EnsureHostRunningHandler(config)); 
+            config.MessageHandlers.Add(new EnsureHostRunningHandler(config));
 
             // Web API configuration and services
 
             // Web API routes
             config.MapHttpAttributeRoutes();
+
+            config.Routes.MapHttpRoute("vfs-get-files", "api/vfs/{*path}", new { controller = "Vfs", action = "GetItem" }, new { verb = new HttpMethodConstraint(HttpMethod.Get, HttpMethod.Head) });
+            config.Routes.MapHttpRoute("vfs-put-files", "api/vfs/{*path}", new { controller = "Vfs", action = "PutItem" }, new { verb = new HttpMethodConstraint(HttpMethod.Put) });
+            config.Routes.MapHttpRoute("vfs-delete-files", "api/vfs/{*path}", new { controller = "Vfs", action = "DeleteItem" }, new { verb = new HttpMethodConstraint(HttpMethod.Delete) });
+                
+
 
             config.Routes.MapHttpRoute(
                 name: "Home",
@@ -60,9 +77,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 defaults: new { controller = "Home" });
 
             config.Routes.MapHttpRoute(
-                name: "Functions",
+                name: "LogStream",
+                routeTemplate: "api/logstream/{*path}",
+                defaults: new { controller = "LogStream" });
+
+
+            config.Routes.MapHttpRoute(
+                name: "Runtime",
                 routeTemplate: "{*uri}",
-                defaults: new { controller = "Functions" });
+                defaults: new { controller = "Runtime" });
 
             // Initialize WebHook Receivers
             config.InitializeReceiveGenericJsonWebHooks();
@@ -117,7 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 settings.ScriptPath = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
-                settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
+                settings.SecretsPath = System.Web.HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
+                settings.IsSelfHost = true;
             }
             else
             {

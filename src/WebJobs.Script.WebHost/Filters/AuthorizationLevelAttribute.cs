@@ -30,17 +30,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            SecretManager secretManager = (SecretManager)actionContext.ControllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
+            var dependencyResolver = actionContext.ControllerContext.Configuration.DependencyResolver;
+            WebHostSettings settings = (WebHostSettings) dependencyResolver.GetService(typeof(WebHostSettings));
+            SecretManager secretManager = (SecretManager)dependencyResolver.GetService(typeof(SecretManager));
 
-            if (!IsAuthorized(actionContext.Request, Level, secretManager))
+            if (!IsAuthorized(actionContext.Request, Level, secretManager, settings))
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
         }
 
-        public static bool IsAuthorized(HttpRequestMessage request, AuthorizationLevel level, SecretManager secretManager, string functionName = null)
+        public static bool IsAuthorized(HttpRequestMessage request, AuthorizationLevel level, SecretManager secretManager, WebHostSettings settings, string functionName = null)
         {
-            if (level == AuthorizationLevel.Anonymous)
+            if (level == AuthorizationLevel.Anonymous || settings.IsSelfHost)
             {
                 return true;
             }

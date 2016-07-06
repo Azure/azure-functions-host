@@ -76,10 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     IsRunning = false;
 
                     // Create a new host config, but keep the host id from existing one
-                    _config.HostConfig = new JobHostConfiguration
-                    {
-                        HostId = _config.HostConfig.HostId
-                    };
+                    //_config.HostConfig = new JobHostConfiguration
+                    //{
+                    //    HostId = _config.HostConfig.HostId
+                    //};
+                    //_config.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Off;
                     OnInitializeConfig(_config.HostConfig);
                     newInstance = _scriptHostFactory.Create(_config);
                     _traceWriter = newInstance.TraceWriter;

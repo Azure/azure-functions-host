@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -11,6 +12,8 @@ using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -22,15 +25,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
+        private readonly IFunctionsManager _manager;
 
-        public AdminController(WebScriptHostManager scriptHostManager)
+        public AdminController(WebScriptHostManager scriptHostManager, IFunctionsManager manager)
         {
             _scriptHostManager = scriptHostManager;
+            _manager = manager;
         }
 
         [HttpPost]
         [Route("admin/functions/{name}")]
-        public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
+        public async Task<HttpResponseMessage> Invoke(string name, [FromBody] FunctionInvocation invocation, bool block = false)
         {
             if (invocation == null)
             {
@@ -48,7 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
-            Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
+            var runTask = Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
+
+            if (block)
+            {
+                await runTask;
+            }
 
             return new HttpResponseMessage(HttpStatusCode.Accepted);
         }
@@ -93,6 +103,70 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return status;
+        }
+
+        [HttpPut]
+        [Route("api/functions/{name}")]
+        public async Task<HttpResponseMessage> CreateOrUpdate(string name, [FromBody]FunctionEnvelope functionEnvelope)
+        {
+            return Request.CreateResponse(HttpStatusCode.Accepted, await _manager.CreateOrUpdateAsync(name, functionEnvelope));
+        }
+
+        [HttpGet]
+        [Route("api/functions")]
+        [Route("admin/functions")]
+        public Task<IEnumerable<FunctionEnvelope>> List()
+        {
+            return _manager.ListFunctionsConfigAsync();
+        }
+
+        [HttpGet]
+        [Route("api/functions/{name}")]
+        [Route("admin/functions/{name}")]
+        public Task<FunctionEnvelope> Get(string name)
+        {
+            return _manager.GetFunctionConfigAsync(name);
+        }
+
+        [HttpGet]
+        [Route("api/functions/{name}/secrets")]
+        [Route("admin/functions/{name}/secrets")]
+        public Task<Kudu.FunctionSecrets> GetSecrets(string name)
+        {
+            return _manager.GetFunctionSecretsAsync(name);
+        }
+
+        [HttpDelete]
+        [Route("api/functions/{name}")]
+        [Route("admin/functions/{name}")]
+        public HttpResponseMessage Delete(string name)
+        {
+            _manager.DeleteFunction(name);
+            return Request.CreateResponse(HttpStatusCode.NoContent);
+        }
+
+        [HttpGet]
+        [Route("api/functions/config")]
+        [Route("admin/functions/config")]
+        public Task<JObject> GetHostSettings()
+        {
+            return _manager.GetHostConfigAsync();
+        }
+
+        [HttpPut]
+        [Route("api/functions/config")]
+        [Route("admin/functions/config")]
+        public async Task<HttpResponseMessage> PutHostSettings()
+        {
+            return Request.CreateResponse(HttpStatusCode.Created, await _manager.PutHostConfigAsync(await Request.Content.ReadAsAsync<JObject>()));
+        }
+
+        [HttpPost]
+        [Route("admin/run/vscode")]
+        public HttpResponseMessage LaunchVsCode()
+        {
+            Process.Start(@"C:\Program Files (x86)\Microsoft VS Code\Code.exe", System.Environment.CurrentDirectory);
+            return Request.CreateResponse(HttpStatusCode.Accepted);
         }
     }
 }

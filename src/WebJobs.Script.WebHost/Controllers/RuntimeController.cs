@@ -1,7 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.
-
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -16,15 +13,12 @@ using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    /// <summary>
-    /// Controller responsible for handling all http function invocations.
-    /// </summary>
-    public class FunctionsController : ApiController
+    public class RuntimeController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private WebHookReceiverManager _webHookReceiverManager;
 
-        public FunctionsController(WebScriptHostManager scriptHostManager, WebHookReceiverManager webHookReceiverManager)
+        public RuntimeController(WebScriptHostManager scriptHostManager, WebHookReceiverManager webHookReceiverManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHookReceiverManager = webHookReceiverManager;
@@ -83,8 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else
             {
+                var settings = (WebHostSettings)controllerContext.Configuration.DependencyResolver.GetService(typeof(WebHostSettings));
+
                 // Authorize
-                if (authorizationLevel < httpFunctionMetadata.AuthLevel)
+                if (authorizationLevel < httpFunctionMetadata.AuthLevel && !settings.IsSelfHost)
                 {
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }
@@ -99,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // Not a WebHook request so dispatch directly
                 response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
             }
-            
+
             return response;
         }
     }
