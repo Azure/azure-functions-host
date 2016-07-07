@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<SecretManager>(ct => WebHostResolver.GetSecretManager(settings)).ExternallyOwned();
             builder.Register<WebScriptHostManager>(ct => WebHostResolver.GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => WebHostResolver.GetWebHookReceiverManager(settings)).ExternallyOwned();
+            builder.RegisterInstance(settings);
         }
     }
 }

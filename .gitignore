@@ -14,3 +14,6 @@ Publish
 /TestResults
 
 /tools/NuGet.exe
+
+*.ncrunchproject
+*.ncrunchsolution

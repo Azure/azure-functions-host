@@ -24,5 +24,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
+
+        /// <summary>
+        /// Gets or sets the web host settings.
+        /// </summary>
+        [JsonProperty(PropertyName = "webHostSettings", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public WebHostSettings WebHostSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the processId for the host.
+        /// </summary>
+        [JsonProperty(PropertyName = "processId", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public int ProcessId { get; set; }
+
+        internal static string GetAssemblyFileVersion(Assembly assembly)
+        {
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+            return fileVersionAttr?.Version ?? "Unknown";
+        }
     }
 }
