@@ -1,0 +1,19 @@
+{
+  "name": "azure-functions-cli",
+  "version": "0.2.7",
+  "description": "Azure Functions Cli",
+  "scripts": { },
+  "author": "Ahmed ElSayed",
+  "license": "MIT",
+  "preferGlobal": true,
+  "bin": {
+    "func": "lib/main.js",
+    "azfunc": "lib/main.js",
+    "azurefunctions": "lib/main.js"
+  },
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "generator-azurefunctions": "^0.1.6",
+    "yo": "^1.8.4"
+  }
+}

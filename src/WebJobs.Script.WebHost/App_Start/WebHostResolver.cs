@@ -161,7 +161,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
 
             // If running on Azure Web App, derive the host ID from the default subdomain
-            string hostId = _settingsManager.AzureWebsiteDefaultSubdomain;
+            // Otherwise, derive it from machine name and folder name
+            string hostId = _settingsManager.AzureWebsiteDefaultSubdomain
+                ?? $"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}";
             if (!String.IsNullOrEmpty(hostId))
             {
                 // Truncate to the max host name length if needed

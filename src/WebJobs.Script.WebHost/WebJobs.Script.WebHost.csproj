@@ -331,6 +331,10 @@
     </Reference>
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.IO.Abstractions, Version=2.0.0.137, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.Abstractions.2.0.0.137\lib\net40\System.IO.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Net" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -357,6 +361,10 @@
       <HintPath>..\..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Web.Cors, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.Cors.5.2.3\lib\net45\System.Web.Cors.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Web.DynamicData" />
     <Reference Include="System.Web.Entity" />
     <Reference Include="System.Web.ApplicationServices" />
@@ -366,6 +374,10 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Http.Cors, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.WebApi.Cors.5.2.3\lib\net45\System.Web.Http.Cors.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web.Services" />
@@ -403,11 +415,16 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="App_Start\WebHostResolver.cs" />
     <Compile Include="App_Start\WebHostSettings.cs" />
+    <Compile Include="Common\LocalhostConstants.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
     <Compile Include="Diagnostics\EventGenerator.cs" />
+    <Compile Include="Kudu\KuduConstants.cs" />
+    <Compile Include="Controllers\LogStreamController.cs" />
+    <Compile Include="Controllers\VfsController.cs" />
+    <Compile Include="Controllers\VfsControllerBase.cs" />
     <Compile Include="Diagnostics\FastLogger.cs" />
     <Compile Include="Diagnostics\IEventGenerator.cs" />
     <Compile Include="Diagnostics\MetricsEventManager.cs" />
@@ -445,6 +462,24 @@
     <Compile Include="Security\HostSecrets.cs" />
     <Compile Include="Security\IKeyValueConverterFactory.cs" />
     <Compile Include="Security\IKeyValueReader.cs" />
+    <Compile Include="Kudu\ConsoleTracer.cs" />
+    <Compile Include="Kudu\DisposableAction.cs" />
+    <Compile Include="Kudu\Extensions.cs" />
+    <Compile Include="Kudu\FileSystemHelpers.cs" />
+    <Compile Include="Kudu\FunctionEnvelope.cs" />
+    <Compile Include="Kudu\FunctionSecrets.cs" />
+    <Compile Include="Kudu\FunctionsManager.cs" />
+    <Compile Include="Kudu\IEnvironment.cs" />
+    <Compile Include="Kudu\IFunctionsManager.cs" />
+    <Compile Include="Kudu\ITracer.cs" />
+    <Compile Include="Kudu\KuduEnvironment.cs" />
+    <Compile Include="Kudu\LogStream.cs" />
+    <Compile Include="Kudu\MediaTypeMap.cs" />
+    <Compile Include="Kudu\OperationManager.cs" />
+    <Compile Include="Kudu\SecurityUtility.cs" />
+    <Compile Include="Kudu\TraceExtensions.cs" />
+    <Compile Include="Kudu\VfsSpecialFolders.cs" />
+    <Compile Include="Kudu\VfsStatEntry.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Models\FunctionMetrics.cs" />
     <Compile Include="Models\FunctionStatus.cs" />
