@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs
             string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
             IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
-   
+
         /// <summary>
         /// Gets a value indicating whether the <see cref="JobHost"/> is running in a Development environment.
         /// You can use this property in conjunction with <see cref="UseDevelopmentSettings"/> to default
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets or sets the name resolver used during indexing. 
+        /// Gets or sets the name resolver used during indexing.
         /// </summary>
         public INameResolver NameResolver
         {
@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets a helper object for constructing common binding rules for extensions. 
+        /// Gets a helper object for constructing common binding rules for extensions.
         /// </summary>
         public BindingFactory BindingFactory
         {
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs
             }
             set
             {
-                // Expose this for unit tests to override. 
+                // Expose this for unit tests to override.
                 _contextFactory = value;
             }
         }
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Configures various configuration settings on this <see cref="JobHostConfiguration"/> to 
+        /// Configures various configuration settings on this <see cref="JobHostConfiguration"/> to
         /// optimize for local development.
         /// </summary>
         public void UseDevelopmentSettings()

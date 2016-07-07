@@ -1,27 +1,27 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class AttributeClonerTests
     {
-        // Basic attribute. 1 property. No ctor. 
+        // Basic attribute. 1 property. No ctor.
         public class Attr1 : Attribute
         {
             [AutoResolve]
             public string Path { get; set; }
         }
 
-        // 2 attributes, set in ctor. And a non-resolved attribute. 
+        // 2 attributes, set in ctor. And a non-resolved attribute.
         public class Attr2 : Attribute
         {
             public Attr2(string resolvedProp2, string constantProp)
@@ -35,10 +35,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             [AutoResolve]
             public string ResolvedProp2 { get; private set; }
+
             public string ConstantProp { get; private set; }
+
+            [AutoResolve(AllowTokens = false)]
+            public string ResolvedSetting { get; set; }
         }
 
-        // Helper to easily generate a fixed binding contract. 
+        // Helper to easily generate a fixed binding contract.
         private static IReadOnlyDictionary<string, Type> GetBindingContract(params string[] names)
         {
             var d = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
@@ -48,9 +52,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
             return d;
         }
+
         private static IReadOnlyDictionary<string, Type> EmptyContract = new Dictionary<string, Type>();
 
-        // Enforce binding contracts statically. 
+        // Enforce binding contracts statically.
         [Fact]
         public void BindingContractMismatch()
         {
@@ -61,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 var cloner = new AttributeCloner<Attr1>(a1, EmptyContract);
                 Assert.True(false, "Should have caught binding contract mismatch");
             }
-            catch(InvalidOperationException e)
+            catch (InvalidOperationException e)
             {
                 Assert.Equal("No binding parameter exists for 'name'.", e.Message);
             }
@@ -80,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             nameResolver._dict["test"] = "ABC";
 
             var cloner = new AttributeCloner<Attr1>(a1, EmptyContract, nameResolver);
-            Attr1 attr2 = await cloner.ResolveFromInvokeString("xy");
+            Attr1 attr2 = await cloner.ResolveFromInvokeStringAsync("xy");
 
             Assert.Equal("xy", attr2.Path);
         }
@@ -97,12 +102,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             })
             {
                 var cloner = new AttributeCloner<BlobAttribute>(attr, GetBindingContract("name"));
-                BlobAttribute attr2 = await cloner.ResolveFromInvokeString("c/n");
+                BlobAttribute attr2 = await cloner.ResolveFromInvokeStringAsync("c/n");
 
                 Assert.Equal("c/n", attr2.BlobPath);
                 Assert.Equal(attr.Access, attr2.Access);
             }
-        }     
+        }
 
         // Test on an attribute that does NOT implement IAttributeInvokeDescriptor
         // Multiple resolved properties.
@@ -121,14 +126,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(attr.ConstantProp, attrResolved.ConstantProp);
 
             var invokeString = cloner.GetInvokeString(attrResolved);
-            var attr2 = await cloner.ResolveFromInvokeString(invokeString);
+            var attr2 = await cloner.ResolveFromInvokeStringAsync(invokeString);
 
             Assert.Equal(attrResolved.ResolvedProp1, attr2.ResolvedProp1);
             Assert.Equal(attrResolved.ResolvedProp2, attr2.ResolvedProp2);
             Assert.Equal(attrResolved.ConstantProp, attr2.ConstantProp);
         }
 
-        // Easy case - default ctor and all settable properties. 
+        // Easy case - default ctor and all settable properties.
         [Fact]
         public async Task NameResolver()
         {
@@ -137,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var nameResolver = new FakeNameResolver().Add("appsetting", "ABC");
             var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("k"), nameResolver);
 
-            // Get the attribute with %% resolved (happens at indexing time), but not {} (not resolved until runtime) 
+            // Get the attribute with %% resolved (happens at indexing time), but not {} (not resolved until runtime)
             var attrPre = cloner.GetNameResolvedAttribute();
             Assert.Equal("xABCy-{k}", attrPre.Path);
 
@@ -146,12 +151,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 { "k", "v" }
             };
             var ctx = GetCtx(values);
-            var attr2 = await cloner.ResolveFromBindingData(ctx);
+            var attr2 = await cloner.ResolveFromBindingDataAsync(ctx);
 
             Assert.Equal("xABCy-v", attr2.Path);
         }
 
-        // Easy case - default ctor and all settable properties. 
+        // Easy case - default ctor and all settable properties.
         [Fact]
         public async Task Easy()
         {
@@ -165,9 +170,40 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var ctx = GetCtx(values);
 
             var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("key1", "key2"));
-            var attr2 = await cloner.ResolveFromBindingData(ctx);
+            var attr2 = await cloner.ResolveFromBindingDataAsync(ctx);
 
             Assert.Equal("val1-val2", attr2.Path);
+        }
+
+        [Fact]
+        public void Setting()
+        {
+            Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
+
+            var nameResolver = new FakeNameResolver().Add("appsetting", "ABC");
+            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract, nameResolver);
+
+            var a2Cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("ABC", a2Cloned.ResolvedSetting);
+        }
+
+        [Fact]
+        public void Setting_WithNoValueInResolver_Throws()
+        {
+            Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, EmptyContract, null));
+        }
+
+        [Fact]
+        public async Task Setting_Null()
+        {
+            Attr2 a2 = new Attr2(string.Empty, string.Empty);
+
+            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract, null);
+
+            Attr2 a2Clone = await cloner.ResolveFromBindingDataAsync(GetCtx(null));
+
+            Assert.Null(a2Clone.ResolvedSetting);
         }
 
         [Fact]
@@ -182,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var ctx = GetCtx(values);
 
             var cloner = new AttributeCloner<BlobAttribute>(a1, GetBindingContract("name"));
-            var attr2 = await cloner.ResolveFromBindingData(ctx);
+            var attr2 = await cloner.ResolveFromBindingDataAsync(ctx);
 
             Assert.Equal("container/green.txt", attr2.BlobPath);
             Assert.Equal(a1.Access, attr2.Access);
@@ -191,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public async Task CloneNoDefaultCtorShortList()
         {
-            // Use shorter parameter list. 
+            // Use shorter parameter list.
             var a1 = new BlobAttribute("container/{name}.txt");
 
             Dictionary<string, object> values = new Dictionary<string, object>()
@@ -201,22 +237,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var ctx = GetCtx(values);
 
             var cloner = new AttributeCloner<BlobAttribute>(a1, GetBindingContract("name"));
-            var attr2 = await cloner.ResolveFromBindingData(ctx);
+            var attr2 = await cloner.ResolveFromBindingDataAsync(ctx);
 
             Assert.Equal("container/green.txt", attr2.BlobPath);
             Assert.Equal(a1.Access, attr2.Access);
         }
 
-
-        // Malformed %% fail in ctor.  
-        // It's important that the failure comes from the attr cloner ctor because that means it       
-        // will occur during indexing time (ie, sooner than runtime). 
+        // Malformed %% fail in ctor.
+        // It's important that the failure comes from the attr cloner ctor because that means it
+        // will occur during indexing time (ie, sooner than runtime).
         [Fact]
         public void Fail_MalformedPath_MutableProperty()
         {
             Attr1 attr = new Attr1 { Path = "%bad" };
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));            
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
         }
 
         [Fact]
@@ -227,21 +262,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr, EmptyContract));
         }
 
-        // Malformed %% fail in ctor.  
-        // It's important that the failure comes from the attr cloner ctor because that means it       
-        // will occur during indexing time (ie, sooner than runtime). 
+        // Malformed %% fail in ctor.
+        // It's important that the failure comes from the attr cloner ctor because that means it
+        // will occur during indexing time (ie, sooner than runtime).
         [Fact]
         public void Fail_MissingPath()
         {
             Attr1 attr = new Attr1 { Path = "%missing%" };
 
             Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
-
         }
 
-        static BindingContext GetCtx(IReadOnlyDictionary<string,object> values)
+        private static BindingContext GetCtx(IReadOnlyDictionary<string, object> values)
         {
-            BindingContext ctx= new BindingContext(
+            BindingContext ctx = new BindingContext(
                 new ValueBindingContext(null, CancellationToken.None),
                 values);
             return ctx;

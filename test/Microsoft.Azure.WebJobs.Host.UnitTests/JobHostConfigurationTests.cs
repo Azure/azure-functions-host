@@ -2,20 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Xunit;
-using System.IO;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text;
-using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -335,15 +335,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
         }
 
-        class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
+        private class FastLogger : IAsyncCollector<FunctionInstanceLogEntry>
         {
             public List<FunctionInstanceLogEntry> List = new List<FunctionInstanceLogEntry>();
 
-            public static FunctionInstanceLogEntry FlushEntry = new FunctionInstanceLogEntry(); // marker for flushes 
+            public static FunctionInstanceLogEntry FlushEntry = new FunctionInstanceLogEntry(); // marker for flushes
 
             public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
             {
-                var clone = JsonConvert.DeserializeObject< FunctionInstanceLogEntry>(JsonConvert.SerializeObject(item));
+                var clone = JsonConvert.DeserializeObject<FunctionInstanceLogEntry>(JsonConvert.SerializeObject(item));
                 List.Add(clone);
                 return Task.FromResult(0);
             }
@@ -355,13 +355,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
-
         // Test that we can explicitly disable storage and call through a function
-        // And enable the fast table logger and ensure that's getting events. 
+        // And enable the fast table logger and ensure that's getting events.
         [Fact]
         public void JobHost_NoStorage_Succeeds()
         {
-            string prevStorage  = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            string prevStorage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
             string prevDashboard = Environment.GetEnvironmentVariable("AzureWebJobsDashboard");
             try
             {
@@ -372,29 +371,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 {
                     TypeLocator = new FakeTypeLocator(typeof(BasicTest))
                 };
-                // Explicitly disalbe storage. 
+                // Explicitly disalbe storage.
                 config.HostId = Guid.NewGuid().ToString("n");
                 config.DashboardConnectionString = null;
                 config.StorageConnectionString = null;
 
                 var randomValue = Guid.NewGuid().ToString();
 
-                StringBuilder sbLoggingCallbacks = new StringBuilder();                
+                StringBuilder sbLoggingCallbacks = new StringBuilder();
                 var fastLogger = new FastLogger();
                 config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
                 JobHost host = new JobHost(config);
 
-                // Manually invoked. 
+                // Manually invoked.
                 var method = typeof(BasicTest).GetMethod("Method", BindingFlags.Public | BindingFlags.Static);
-                
-                host.Call(method, new { value = randomValue } );
+
+                host.Call(method, new { value = randomValue });
                 Assert.True(BasicTest.Called);
 
-                Assert.Equal(2, fastLogger.List.Count); // We should be batching, so flush not called yet. 
+                Assert.Equal(2, fastLogger.List.Count); // We should be batching, so flush not called yet.
 
                 host.Start(); // required to call stop()
-                host.Stop(); // will ensure flush is called. 
+                host.Stop(); // will ensure flush is called.
 
                 // Verify fast logs
                 Assert.Equal(3, fastLogger.List.Count);
@@ -419,7 +418,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 Assert.Equal("val=" + randomValue, endMsg.LogOutput.Trim());
 
                 Assert.Same(FastLogger.FlushEntry, fastLogger.List[2]);
-
             }
             finally
             {

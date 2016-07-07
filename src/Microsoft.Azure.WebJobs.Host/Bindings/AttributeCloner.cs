@@ -3,37 +3,38 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    // Clone an attribute and resolve it. 
-    // This can be tricky since some read-only properties are set via the constructor. 
-    // This assumes that the property name matches the constructor argument name. 
+    // Clone an attribute and resolve it.
+    // This can be tricky since some read-only properties are set via the constructor.
+    // This assumes that the property name matches the constructor argument name.
     internal class AttributeCloner<TAttribute>
         where TAttribute : Attribute
     {
         private readonly TAttribute _source;
 
         // Which constructor do we invoke to instantiate the new attribute?
-        // The attribute is configured through a) constructor arguments, b) settable properties. 
+        // The attribute is configured through a) constructor arguments, b) settable properties.
         private readonly ConstructorInfo _bestCtor;
 
         // Compute the arguments to pass to the chosen constructor. Arguments are based on binding data.
         private readonly Func<IReadOnlyDictionary<string, object>, object>[] _bestCtorArgBuilder;
 
-        // Compute the values to apply to Settable properties on newly created attribute. 
+        // Compute the values to apply to Settable properties on newly created attribute.
         private readonly Action<TAttribute, IReadOnlyDictionary<string, object>>[] _setProperties;
 
-        // Optional hook for post-processing the attribute. This is intended for legacy hack rules. 
+        // Optional hook for post-processing the attribute. This is intended for legacy hack rules.
         private readonly Func<TAttribute, Task<TAttribute>> _hook;
-                
+
         public AttributeCloner(
             TAttribute source,
             IReadOnlyDictionary<string, Type> bindingDataContract,
-            INameResolver nameResolver = null,            
+            INameResolver nameResolver = null,
             Func<TAttribute, Task<TAttribute>> hook = null)
         {
             _hook = hook;
@@ -54,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             int longestMatch = -1;
 
-            // Pick the ctor with the longest parameter list where all parameters are matched. 
+            // Pick the ctor with the longest parameter list where all parameters are matched.
             var ctors = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
             foreach (var ctor in ctors)
             {
@@ -73,21 +74,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                         hasAllParameters = false;
                         break;
                     }
-                    bool resolve = propInfo.GetCustomAttribute<AutoResolveAttribute>() != null;
 
-                    var propValue = propInfo.GetValue(_source);
-                    getArgFuncs[i] = (bindingData) => propValue;
-                    if (resolve)
+                    BindingTemplate template;
+                    if (TryCreateAutoResolveBindingTemplate(propInfo, nameResolver, out template))
                     {
-                        string str = (string)propValue;
-                        if (str != null)
-                        {
-                            // Resolve %% once upfront. This ensures errors will occur during indexing time. 
-                            str = nameResolver.ResolveWholeString(str);
-                            BindingTemplate template = BindingTemplate.FromString(str);
-                            template.ValidateContractCompatibility(bindingDataContract);
-                            getArgFuncs[i] = (bindingData) => TemplateBind(template, bindingData);
-                        }
+                        template.ValidateContractCompatibility(bindingDataContract);
+                        getArgFuncs[i] = (bindingData) => TemplateBind(template, bindingData);
+                    }
+                    else
+                    {
+                        var propValue = propInfo.GetValue(_source);
+                        getArgFuncs[i] = (bindingData) => propValue;
                     }
                 }
 
@@ -97,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     {
                         var setProperties = new List<Action<TAttribute, IReadOnlyDictionary<string, object>>>();
 
-                        // Record properties too. 
+                        // Record properties too.
                         foreach (var prop in t.GetProperties(BindingFlags.Instance | BindingFlags.Public))
                         {
                             if (!prop.CanWrite)
@@ -105,25 +102,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                                 continue;
                             }
 
-                            bool resolve = prop.GetCustomAttribute<AutoResolveAttribute>() != null;
-
-                            var objValue = prop.GetValue(_source);
-
-                            Action<TAttribute, IReadOnlyDictionary<string, object>> setFunc = (newAttr, bindingData) => prop.SetValue(newAttr, objValue);
-
-                            if (resolve)
+                            BindingTemplate template;
+                            if (TryCreateAutoResolveBindingTemplate(prop, nameResolver, out template))
                             {
-                                string str = (string)objValue;
-                                if (str != null)
-                                {
-                                    str = nameResolver.ResolveWholeString(str);
-                                    BindingTemplate template = BindingTemplate.FromString(str);
-                                    template.ValidateContractCompatibility(bindingDataContract);
-                                    setFunc = (newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(template, bindingData));
-                                }
+                                template.ValidateContractCompatibility(bindingDataContract);
+                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(template, bindingData)));
                             }
-
-                            setProperties.Add(setFunc);
+                            else
+                            {
+                                var objValue = prop.GetValue(_source);
+                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, objValue));
+                            }
                         }
 
                         _setProperties = setProperties.ToArray();
@@ -141,6 +130,49 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
+        private bool TryCreateAutoResolveBindingTemplate(PropertyInfo propInfo, INameResolver nameResolver, out BindingTemplate template)
+        {
+            template = null;
+
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+
+            // Return false if there is no attribute on this property.
+            if (attr == null)
+            {
+                return false;
+            }
+
+            string originalValue = (string)propInfo.GetValue(_source);
+
+            // Return false if the property value is null.
+            if (originalValue == null)
+            {
+                return false;
+            }
+
+            string resolvedValue;
+            if (!attr.AllowTokens)
+            {
+                resolvedValue = nameResolver.Resolve(originalValue);
+
+                // If a value is non-null and cannot be found, we throw to match the behavior
+                // when %% values are not found.
+                if (resolvedValue == null)
+                {
+                    string msg = string.Format(CultureInfo.CurrentCulture, "'{0}' does not resolve to a value.", originalValue);
+                    throw new InvalidOperationException(msg);
+                }
+            }
+            else
+            {
+                resolvedValue = nameResolver.ResolveWholeString(originalValue);
+            }
+
+            template = BindingTemplate.FromString(resolvedValue);
+
+            return true;
+        }
+
         private static string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
         {
             if (bindingData == null)
@@ -150,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return template.Bind(bindingData);
         }
 
-        // Get a attribute with %% resolved, but not runtime {} resolved. 
+        // Get a attribute with %% resolved, but not runtime {} resolved.
         public TAttribute GetNameResolvedAttribute()
         {
             TAttribute attr = ResolveFromBindings(null);
@@ -174,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return invokeString;
         }
 
-        public async Task<TAttribute> ResolveFromInvokeString(string invokeString)
+        public async Task<TAttribute> ResolveFromInvokeStringAsync(string invokeString)
         {
             TAttribute attr;
             var resolver = _source as IAttributeInvokeDescriptor<TAttribute>;
@@ -185,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             else
             {
                 attr = resolver.FromInvokeString(invokeString);
-            } 
+            }
             if (_hook != null)
             {
                 attr = await _hook(attr);
@@ -193,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return attr;
         }
 
-        public async Task<TAttribute> ResolveFromBindingData(BindingContext ctx)
+        public async Task<TAttribute> ResolveFromBindingDataAsync(BindingContext ctx)
         {
             var attr = ResolveFromBindings(ctx.BindingData);
             if (_hook != null)
@@ -223,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return New(overrideProperties);
         }
 
-        // Clone the source attribute, but override the properties with the supplied. 
+        // Clone the source attribute, but override the properties with the supplied.
         internal TAttribute New(IDictionary<string, string> overrideProperties)
         {
             IDictionary<string, object> propertyValues = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -268,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return newAttr;
         }
 
-        // If no name resolver is specified, then any %% becomes an error. 
+        // If no name resolver is specified, then any %% becomes an error.
         private class EmptyNameResolver : INameResolver
         {
             public string Resolve(string name)

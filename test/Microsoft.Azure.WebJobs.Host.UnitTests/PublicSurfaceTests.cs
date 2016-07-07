@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
+                "DefaultNameResolver",
                 "FunctionInstanceLogEntry",
                 "IConverterManager",
                 "BindingFactory",

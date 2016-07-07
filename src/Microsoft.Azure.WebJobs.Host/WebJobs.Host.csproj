@@ -377,6 +377,7 @@
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\Binder.cs" />
+    <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
@@ -871,7 +872,6 @@
     <Compile Include="Listeners\ITriggerExecutor.cs" />
     <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
     <Compile Include="Triggers\TriggerData.cs" />
-    <Compile Include="Indexers\DefaultNameResolver.cs" />
     <Compile Include="NameResolverExtensions.cs" />
     <Compile Include="FunctionInvocationException.cs" />
     <Compile Include="TypeUtility.cs" />
