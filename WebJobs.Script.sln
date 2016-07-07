@@ -361,6 +361,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManualTrigger-CSharp", "Man
 		sample\ManualTrigger-CSharp\run.csx = sample\ManualTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Cli", "src\WebJobs.Script.Cli\WebJobs.Script.Cli.csproj", "{90F0268C-0C38-4D5E-87BF-0565E87F1248}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Cli.Tests", "test\WebJobs.Script.Cli.Tests\WebJobs.Script.Cli.Tests.csproj", "{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -391,6 +395,14 @@ Global
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -457,5 +469,7 @@ Global
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{EB3A602B-4B32-4742-B4A2-39445BD2FBE3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{90F0268C-0C38-4D5E-87BF-0565E87F1248} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{6FA82ABC-5BBA-49C0-A0DA-8FE11613F66F} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 EndGlobal
