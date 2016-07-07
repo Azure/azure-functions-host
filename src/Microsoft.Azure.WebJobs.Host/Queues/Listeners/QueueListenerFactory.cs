@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueConfiguration.MaxPollingInterval);
             
-            SharedQueueWatcher sharedWatcher = _sharedContextProvider.GetOrCreate<SharedQueueWatcher>(
+            SharedQueueWatcher sharedWatcher = _sharedContextProvider.GetOrCreateInstance<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,

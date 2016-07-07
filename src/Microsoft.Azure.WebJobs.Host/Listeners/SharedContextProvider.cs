@@ -8,20 +8,31 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal class SharedContextProvider : ISharedContextProvider
     {
-        private readonly IDictionary<Type, object> _items = new Dictionary<Type, object>();
+        private readonly IDictionary<Type, object> _instances = new Dictionary<Type, object>();
+        private readonly IDictionary<string, object> _items = new Dictionary<string, object>();
 
-        public T GetOrCreate<T>(IFactory<T> factory)
+        public bool TryGetValue(string key, out object value)
+        {
+            return _items.TryGetValue(key, out value);
+        }
+
+        public void SetValue(string key, object value)
+        {
+            _items[key] = value;
+        }
+
+        public T GetOrCreateInstance<T>(IFactory<T> factory)
         {
             Type factoryItemType = typeof(T);
 
-            if (_items.ContainsKey(factoryItemType))
+            if (_instances.ContainsKey(factoryItemType))
             {
-                return (T)_items[factoryItemType];
+                return (T)_instances[factoryItemType];
             }
             else
             {
                 T listener = factory.Create();
-                _items.Add(factoryItemType, listener);
+                _instances.Add(factoryItemType, listener);
                 return listener;
             }
         }
