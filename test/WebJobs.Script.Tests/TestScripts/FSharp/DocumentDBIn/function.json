@@ -1,17 +1,18 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "queueTrigger",
-      "queueName": "documentdb-input",
-      "direction": "in"
-    },
-    {
-      "type": "documentdb",
-      "name": "item",
-      "direction": "in",
-      "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
-      "id": "{QueueTrigger}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "queueName": "documentdb-input-fsharp",
+            "direction": "in"
+        },
+        {
+            "type": "documentDB",
+            "name": "item",
+            "direction": "in",
+            "databaseName": "ItemDb",
+            "collectionName": "ItemCollection",
+            "id": "{documentId}"
+        }
+    ]
 }

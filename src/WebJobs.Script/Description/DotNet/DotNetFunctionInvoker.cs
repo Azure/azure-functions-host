@@ -300,9 +300,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private MethodInfo CreateFunctionTarget(CancellationToken cancellationToken)
         {
-            MemoryStream assemblyStream = null;
-            MemoryStream pdbStream = null;
-
             try
             {
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
@@ -311,27 +308,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
                 TraceCompilationDiagnostics(bindingDiagnostics);
 
-                using (assemblyStream = new MemoryStream())
-                {
-                    using (pdbStream = new MemoryStream())
-                    {
-                        compilation.Emit(assemblyStream, pdbStream, cancellationToken);
-                
-                        // Check if cancellation was requested while we were compiling, 
-                        // and if so quit here. 
-                        cancellationToken.ThrowIfCancellationRequested();
+                Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
-                        Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
-                        _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+                // Get our function entry point
+                _functionSignature = functionSignature;
+                System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
+                    .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
 
-                        // Get our function entry point
-                        _functionSignature = functionSignature;
-                        System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                            .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
-
-                        return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
-                    }
-                }
+                return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
             }
             catch (CompilationErrorException ex)
             {

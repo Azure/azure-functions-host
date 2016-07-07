@@ -16,11 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class EndToEndTestFixture : IDisposable
     {
-        private string _testId;
-
         protected EndToEndTestFixture(string rootPath, string testId)
         {
-            _testId = testId;
+            FixtureId = testId;
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = storageAccount.CreateCloudQueueClient();
@@ -42,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Clear the timer logs first, since one of the tests will
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
-
             Host = ScriptHost.Create(config);
             Host.Start();
         }
@@ -63,13 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudQueue TestQueue { get; private set; }
 
+        public CloudQueue MobileTablesQueue { get; private set; }
+
         public CloudTable TestTable { get; private set; }
 
         public ScriptHost Host { get; private set; }
 
+        public string FixtureId { get; private set; }
+
         public CloudQueue GetNewQueue(string queueName)
         {
-            var queue = QueueClient.GetQueueReference(queueName);
+            var queue = QueueClient.GetQueueReference(string.Format("{0}-{1}", queueName, FixtureId));
             queue.CreateIfNotExists();
             queue.Clear();
             return queue;
@@ -77,17 +78,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected virtual void CreateTestStorageEntities()
         {
-            TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
+            TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", FixtureId));
             TestQueue.CreateIfNotExists();
             TestQueue.Clear();
 
-            TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", _testId));
+            // This queue name should really be suffixed by -fsharp, -csharp, -node etc.
+            MobileTablesQueue = QueueClient.GetQueueReference("mobiletables-input");
+            MobileTablesQueue.CreateIfNotExists(); // do not clear this queue since it is currently shared between fixtures
+
+            TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", FixtureId));
             TestInputContainer.CreateIfNotExists();
             // Processing a large number of blobs on startup can take a while,
             // so let's start with an empty container.
             TestHelpers.ClearContainer(TestInputContainer);
 
-            TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", _testId));
+            TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
             TestOutputContainer.CreateIfNotExists();
 
             TestTable = TableClient.GetTableReference("test");
@@ -110,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
             TestTable.ExecuteBatch(batch);
 
-            string serviceBusQueueName = string.Format("test-input-{0}", _testId);
+            string serviceBusQueueName = string.Format("test-input-{0}", FixtureId);
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
             var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 

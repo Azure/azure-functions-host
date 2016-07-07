@@ -10,6 +10,8 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "Microsoft.Azure.NotificationHubs"
+
 open System
 open System.Collections.Generic
 open Microsoft.Azure.NotificationHubs

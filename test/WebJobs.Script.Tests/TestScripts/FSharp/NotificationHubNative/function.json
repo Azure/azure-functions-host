@@ -6,10 +6,10 @@
             "direction": "in"
         },
         {
-            "type": "mobileTable",
-            "name": "item",
+            "type": "notificationHub",
+            "name": "wnsToastPayload",
             "direction": "out",
-            "connection": "AzureWebJobs_TestMobileUri"
+            "platform": "wns"
         }
     ]
 }

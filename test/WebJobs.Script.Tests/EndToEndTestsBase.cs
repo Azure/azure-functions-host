@@ -209,8 +209,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             catch (Exception ex)
             {
                 // Node: Check innerException, CSharp: check innerExcpetion.innerException
-                if (VerifyNotificationHubExceptionMessage(ex.InnerException)
-                    || VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException))
+                if ((ex.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException)) ||
+                    (ex.InnerException != null & ex.InnerException.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException)))
                 {
                     //Expected if using NH without any registrations
                 }
@@ -232,19 +232,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string id = Guid.NewGuid().ToString();
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "input",  id }
+                { "input", id }
             };
             await Fixture.Host.CallAsync("MobileTableOut", arguments);
             var item = await WaitForMobileTableRecordAsync("Item", id);
 
             Assert.Equal(item["id"], id);
 
-            // Now add that Id to a Queue
-            var queue = Fixture.GetNewQueue("mobiletables-input");
             string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            await Fixture.MobileTablesQueue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
-            // And wait for the text to be updated
+            //TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id) && p.Message.Contains("Updating item"));
+            //Assert.Equal(TraceLevel.Info, traceEvent.Level);
+
+            //string trace = traceEvent.Message;
+            //Assert.True(trace.Contains("Updating item"));
 
             // Only .NET fully supports updating from input bindings. Others will
             // create a new item with -success appended to the id.

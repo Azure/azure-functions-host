@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -44,20 +45,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result.ToImmutable();
         }
 
-        public Assembly Emit()
-        {
-            if (_assemblyOption == null)
-            {
-                throw new CompilationErrorException("Script compilation failed.", this.GetDiagnostics());
-            }
-            return _assemblyOption.Value;
-        }
-
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
         {
             if (_assemblyOption == null)
             {
-                throw new CompilationErrorException("Script compilation failed.", this.GetDiagnostics());
+                var diagnostics = this.GetDiagnostics();
+                var diagnosticsText = new System.Text.StringBuilder();
+                foreach (var diag in diagnostics)
+                {
+                    diagnosticsText.Append(diag.ToString());
+                }
+
+                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText.ToString(), diagnostics);
             }
 
             // Scrape the compiled assembly for entry points
@@ -68,23 +67,42 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             MethodInfo entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
 
-            TypedParameterSymbol
             // For F#, this currently creates a malformed signautre with fewer parameter symbols than parameter names.
             // For validation we only need the parameter names. The implementation of DotNetFunctionSignature copes with the 
             // lists having different lengths.
-            var signature = new FunctionSignature(entryPointReference.DeclaringType.Name, entryPointReference.Name,
-                entryPointReference.GetParameters().Select(x => x.Name).ToImmutableArray(), ImmutableArray<IParameterSymbol>.Empty);
-
-            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name, entryPointReference.Parameters, hasLocalTypeReferences);
+            var parameters = entryPointReference.GetParameters().Select(x => new FunctionParameter(x.Name, x.ParameterType.FullName, x.IsOptional, GetParameterRefKind(x)));
             // For F#, we always set this to true for now.
-            signature.HasLocalTypeReference = true;
+            bool hasLocalTypeReference = true;
 
+            var signature = new FunctionSignature(entryPointReference.DeclaringType.Name, entryPointReference.Name, parameters.ToImmutableArray(), hasLocalTypeReference);
+            
             return signature;
         }
 
-        public void Emit(Stream assemblyStream, Stream pdbStream, CancellationToken cancellationToken)
+        private static RefKind GetParameterRefKind(ParameterInfo x)
         {
-            throw new NotImplementedException();
+            if (x.IsOut)
+            {
+                return RefKind.Out;
+            }
+
+            return RefKind.None;
+        }
+
+        public Assembly EmitAndLoad(CancellationToken cancellationToken)
+        {
+            if (_assemblyOption == null)
+            {
+                var diagnostics = this.GetDiagnostics();
+                var diagnosticsText = new System.Text.StringBuilder();
+                foreach (var diag in diagnostics)
+                {
+                    diagnosticsText.Append(diag.ToString());
+                }
+                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText, this.GetDiagnostics());
+            }
+
+            return _assemblyOption.Value;
         }
     }
 }

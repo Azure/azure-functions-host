@@ -2,6 +2,7 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
+open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -10,14 +11,21 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "System.Threading.Tasks"
+#r "System.Net.Http"
+
 #load "class.fs"
 
+open System
 open System.Net
+open System.Net.Http
+open System.Threading.Tasks
 open System.Diagnostics
+open Microsoft.Azure.WebJobs.Host
 
 let Run(req: HttpRequestMessage) : Task<HttpResponseMessage>  = 
     async {
-        let response = Test().Response
+        let response = Class.Test().Response
         req.Properties.["LoadedScriptResponse"] <- response
 
         return new HttpResponseMessage(HttpStatusCode.OK, Content = new StringContent(response)) 

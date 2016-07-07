@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
     {
-        private const string FsiPathEnvironmentKey = "AzureWebJobs_FsiPath";
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
         private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash };
@@ -66,11 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     string bashPath = ResolveBashPath();
                     await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
-                    break;
-                case ScriptType.FSharp:
-                    scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
-                    string fsiPath = ResolveFSharpPath();
-                    await ExecuteScriptAsync(fsiPath, scriptHostArguments, parameters);
                     break;
             }
         }
@@ -187,24 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // standard Azure WebApp images
             string relativePath = Path.Combine("Git", "bin", "bash.exe");
             return ResolveRelativePathToProgramFiles(relativePath, relativePath, "bash.exe");
-        }
-
-        internal static string ResolveFSharpPath()
-        {
-            // first see if the path is specified as an environment variable
-            // (useful for running locally outside of Azure)
-            string path = Environment.GetEnvironmentVariable(FsiPathEnvironmentKey);
-            if (!string.IsNullOrEmpty(path))
-            {
-                path = Path.Combine(path, "fsi.exe");
-                if (File.Exists(path))
-                {
-                    return path;
-                }
-            }
-
-            string relativePath = Path.Combine(@"Microsoft SDKs", "F#", "4.0", "Framework", "v4.0", "fsi.exe");
-            return ResolveRelativePathToProgramFiles(relativePath, relativePath, "fsi.exe");
         }
 
         private static string ResolveRelativePathToProgramFiles(string relativeX86Path, string relativeX64Path, string target)

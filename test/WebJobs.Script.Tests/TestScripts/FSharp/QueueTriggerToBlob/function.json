@@ -1,16 +1,16 @@
-{
+﻿{
     "bindings": [
         {
             "type": "queueTrigger",
             "name": "input",
-            "direction": "in",
-            "queueName": "test-input-fsharp"
+            "queueName": "test-input-fsharp",
+            "direction": "in"
         },
         {
             "type": "blob",
             "name": "output",
-            "direction": "out",
-            "path": "test-output-fsharp/{id}"
+            "path": "test-output-fsharp/{id}",
+            "direction": "out"
         }
     ]
 }

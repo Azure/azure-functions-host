@@ -11,19 +11,23 @@
 // This is the implementation of the function 
 
 #r "System.Threading.Tasks"
+#r "Newtonsoft.Json"
+
+#r "Microsoft.WindowsAzure.Mobile.dll"
 
 open System
 open System.Threading.Tasks
 open Microsoft.Azure.WebJobs.Host
 open Microsoft.WindowsAzure.MobileServices
 
+[<CLIMutable>]
 type Item = 
-    { mutable Id : string
-      mutable Text : string
-      mutable IsProcessed : bool
-      mutable ProcessedAt : DateTimeOffset  
+    { Id : string
+      Text : string
+      IsProcessed : bool
+      ProcessedAt : DateTimeOffset  
       // Mobile table properties
-      mutable CreatedAt : DateTimeOffset  }
+      CreatedAt : DateTimeOffset  }
 
 
 let Run(input: string , table: IMobileServiceTable<Item>) = 
@@ -35,6 +39,5 @@ let Run(input: string , table: IMobileServiceTable<Item>) =
               ProcessedAt = DateTimeOffset.Now
               CreatedAt = DateTimeOffset.Now }
         do! table.InsertAsync item |> Async.AwaitTask
-        return ()
     } |> Async.StartAsTask
 

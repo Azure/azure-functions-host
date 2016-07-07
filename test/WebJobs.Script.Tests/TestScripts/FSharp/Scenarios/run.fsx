@@ -1,4 +1,4 @@
-﻿//----------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
@@ -14,12 +14,16 @@
 
 open System
 open Microsoft.Azure.WebJobs.Host
-open Newtonsoft.Json.Linq
 
 [<CLIMutable>]
-type QueueInput = 
-   { RecordId : string }
+type ScenarioInput =
+    { Scenario : string
+      Container : string
+      Value: string } 
 
-let Run(input: QueueInput, item: JObject, log: TraceWriter) =
-    item.["Text"] <- JToken.op_Implicit "This was updated!"
-    log.Info(sprintf "Updating item %s" (item.["Id"].ToString()))
+let Run(input: ScenarioInput, blob: byref<string>, log: TraceWriter) =
+    if (input.Scenario = "randGuid") then
+        blob <- input.Value
+    else
+        failwith (sprintf "The scenario '%s' did not match any known scenario." input.Scenario)
+

@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver, traceWriter);
-            
+
             return _functionContexts.AddOrUpdate(metadata.Name, context, (s, o) => context);
         }
 
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private FunctionAssemblyLoadContext GetFunctionContext(Assembly requestingAssembly)
-        { 
+        {
             if (requestingAssembly == null)
             {
                 return null;
@@ -163,9 +163,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return context;
         }
 
-        public static string GetAssemblyNameFromMetadata(string functionName, string suffix)
+        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
         {
-            return AssemblyPrefix + functionName + "#" + suffix;
+            return AssemblyPrefix + metadata.Name + "#" + suffix;
         }
 
         public string GetFunctionNameFromAssembly(Assembly assembly)
@@ -182,5 +182,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return null;
         }
-    }   
+    }
 }

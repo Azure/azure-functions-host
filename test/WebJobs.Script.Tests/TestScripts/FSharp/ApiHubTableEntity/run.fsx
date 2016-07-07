@@ -10,27 +10,21 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
-#r "System.Threading.Tasks"
-#r "System.Net.Http"
+#r "Newtonsoft.Json"
 
 open System
-open System.Linq
-open System.Net
-open System.Net.Http
-open System.Threading.Tasks
-open System.Diagnostics
 open Microsoft.Azure.WebJobs.Host
+open Newtonsoft.Json.Linq
 
+[<CLIMutable>]
+type QueueInput = { Id : int; Value: string }
 
-let MyAsyncMethod() = async { do! Async.Sleep 500 }
+[<CLIMutable>]
+type SampleEntity = { Id: int; mutable Text: string }
 
-let Run(req: HttpRequestMessage ) =
-   async { 
-    // DO NOT modify this RunSynchronously as we want the test to run with it in place to ensure it won't cause a deadlock.
-    do MyAsyncMethod() |> Async.RunSynchronously
+let Run(input: QueueInput, entity: SampleEntity, log: TraceWriter ) = 
+    if (entity.Id <> input.Id) then
+        invalidOp "Expected Id to be bound."
 
-    return new HttpResponseMessage(HttpStatusCode.OK)
-   } |> Async.StartAsTask
-
-
+    entity.Text <- input.Value 
 

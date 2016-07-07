@@ -108,7 +108,7 @@
       <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
     </PropertyGroup>
     <ItemGroup>
-      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
+      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*;$(ScriptHostOutput)\*.optdata;$(ScriptHostOutput)\*.sigdata"/>
       <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
     </ItemGroup>
     <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />

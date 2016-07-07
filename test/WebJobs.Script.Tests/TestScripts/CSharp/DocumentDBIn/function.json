@@ -3,7 +3,7 @@
         {
             "type": "queueTrigger",
             "name": "input",
-            "queueName": "documentdb-input",
+            "queueName": "documentdb-input-csharp",
             "direction": "in"
         },
         {
