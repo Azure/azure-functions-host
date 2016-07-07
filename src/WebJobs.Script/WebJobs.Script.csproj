@@ -47,7 +47,7 @@
       <HintPath>..\..\packages\Edge.js.5.9.1\lib\EdgeJs.dll</HintPath>
       <Private>True</Private>
     </Reference>
-	<Reference Include="FSharp.Compiler.Service, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="FSharp.Compiler.Service, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\FSharp.Compiler.Service.3.0.0.0\lib\net45\FSharp.Compiler.Service.dll</HintPath>
       <Private>True</Private>
     </Reference>
@@ -278,8 +278,8 @@
     <Compile Include="Description\PowerShell\PowerShellFunctionInvoker.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
-	<Compile Include="Description\CSharp\FSharpCompilation.cs" />
-    <Compile Include="Description\CSharp\FSharpCompiler.cs" />
+    <Compile Include="Description\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Description\FSharp\FSharpCompiler.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />

@@ -257,7 +257,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
                 new NodeFunctionDescriptorProvider(this, ScriptConfig),
                 new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                new DotNetFunctionDescriptionProvider(this, ScriptConfig, new FSharpCompiler()),
                 new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
             };
 

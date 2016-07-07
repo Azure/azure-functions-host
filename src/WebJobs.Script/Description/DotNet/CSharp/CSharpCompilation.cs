@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers;
@@ -77,18 +78,30 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
-        public void Emit(Stream assemblyStream, Stream pdbStream, CancellationToken cancellationToken)
+        public Assembly EmitAndLoad(CancellationToken cancellationToken)
         {
-            var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
-            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
-            var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, cancellationToken: cancellationToken);
-
-            diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
-
-            if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
+            using (var assemblyStream = new MemoryStream())
             {
-                throw new CompilationErrorException("Script compilation failed.", diagnostics);
-            }            
+                using (var pdbStream = new MemoryStream())
+                {
+                    var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
+                    var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+                    var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, cancellationToken: cancellationToken);
+
+                    diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
+
+                    if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
+                    {
+                        throw new CompilationErrorException("Script compilation failed.", diagnostics);
+                    }
+
+                    // Check if cancellation was requested while we were compiling, 
+                    // and if so quit here. 
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
+                }
+            }
         }
 
         private static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers()

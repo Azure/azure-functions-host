@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
@@ -21,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal class FSharpCompiler : ICompilationService
     {
         private static readonly string[] TheWatchedFileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
+        private readonly IFunctionMetadataResolver _metadataResolver;
+        private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
+        = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
-        public string[] WatchedFileTypes
+        public FSharpCompiler(IFunctionMetadataResolver metadataResolver)
         {
-            get
-            {
-                return TheWatchedFileTypes;
-            }
+            _metadataResolver = metadataResolver;
         }
 
         public ScriptType ScriptType
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bool debug = true;
 
             // First use the C# compiler to resolve references, to get consistenct with the C# Azure Functions programming model
-            Script<object> script = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: options, assemblyLoader: assemblyLoader);
+            Script<object> script = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
             Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices();
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 File.AppendAllLines(scriptFile, new string[] { "open " + import });
             }
-            File.AppendAllText(scriptFile, functionMetadata.s);
+            File.AppendAllText(scriptFile, File.ReadAllText(functionMetadata.ScriptFile));
             var otherFlags = new List<string>();
 
             // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.

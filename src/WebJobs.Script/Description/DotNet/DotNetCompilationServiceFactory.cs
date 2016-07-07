@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory
     {
-        private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp }.ToImmutableArray();
+        private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp }.ToImmutableArray();
 
         ImmutableArray<ScriptType> ICompilationServiceFactory.SupportedScriptTypes
         {
@@ -30,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 case ScriptType.CSharp:
                     return new CSharpCompilationService(metadataResolver);
+                case ScriptType.FSharp:
+                    return new FSharpCompiler(metadataResolver);
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, 
                         "The script type {0} is not supported by the {1}", scriptType, typeof(DotNetCompilationServiceFactory).Name));
