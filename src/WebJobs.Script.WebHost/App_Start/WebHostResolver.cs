@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         ReinitializeAppSettings();
                     }
 
-                    _activeScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
 
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
@@ -137,19 +138,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static ScriptHostConfiguration GetScriptHostConfiguration(string scriptPath, string logPath)
+        private static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
         {
-            InitializeFileSystem(scriptPath);
+            InitializeFileSystem(settings.ScriptPath);
 
             var scriptHostConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = scriptPath,
-                RootLogPath = logPath,
-                FileLoggingMode = FileLoggingMode.DebugOnly
+                RootScriptPath = settings.ScriptPath,
+                RootLogPath = settings.LogPath,
+                FileLoggingMode = FileLoggingMode.DebugOnly,
+                TraceWriter = settings.TraceWriter
             };
 
             // If running on Azure Web App, derive the host ID from the default subdomain
+            // Otherwise, derive it from machine name and folder name
             string hostId = _settingsManager.AzureWebsiteDefaultSubdomain;
+            if (string.IsNullOrEmpty(hostId))
+            {
+                var sanitizedPath = Path.GetFileName(Environment.CurrentDirectory)
+                    .Where(char.IsLetterOrDigit)
+                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c))
+                    .ToString();
+
+                hostId = $"{Environment.MachineName}-{sanitizedPath}";
+            }
+
             if (!String.IsNullOrEmpty(hostId))
             {
                 // Truncate to the max host name length if needed
