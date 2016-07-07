@@ -3,7 +3,8 @@
     {
       "type": "serviceBusTrigger",
       "direction": "in",
-      "queueName": "test-input"
+      "queueName": "test-input",
+      "name": "input"
     },
     {
       "type": "serviceBus",

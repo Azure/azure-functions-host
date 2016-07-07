@@ -2,7 +2,8 @@
   "bindings": [
     {
       "type": "manualTrigger",
-      "direction": "in"
+      "direction": "in",
+      "name": "input"
     },
     {
       "type": "mobileTable",

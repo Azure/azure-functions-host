@@ -3,7 +3,8 @@
     {
       "type": "queueTrigger",
       "queueName": "documentdb-input",
-      "direction": "in"
+      "direction": "in",
+      "name": "input"
     },
     {
       "type": "documentdb",
