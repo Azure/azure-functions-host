@@ -30,9 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            SecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
+            var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
+            var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
 
-            if (!IsAuthorized(actionContext.Request, Level, secretManager))
+            if (!settings.IsSelfHost && IsAuthorized(actionContext.Request, Level, secretManager))
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
