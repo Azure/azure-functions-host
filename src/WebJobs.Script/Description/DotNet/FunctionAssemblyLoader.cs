@@ -54,13 +54,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (context != null)
             {
                 result = context.ResolveAssembly(args.Name);
+            }
 
-                // Failed to resolve a function assembly dependency, log the failure as this
-                // is usually caused by missing private assemblies.
-                if (result == null)
+            // If we were unable to resolve the assembly, apply the current App Domain policy and attempt to load it.
+            // This allows us to correctly handle retargetable assemblies, redirects, etc.
+            if (result == null)
+            {
+                string assemblyName = ((AppDomain)sender).ApplyPolicy(args.Name);
+
+                // If after applying the current policy, we now have a different target assembly name, attempt to load that 
+                // assembly
+                if (string.Compare(assemblyName, args.Name) != 0)
                 {
-                    context.TraceWriter.Warning(string.Format(CultureInfo.InvariantCulture, "Unable to find assembly '{0}'. Are you missing a private assembly file?", args.Name));
+                    result = Assembly.Load(assemblyName);
                 }
+            }
+
+            // If we have an function context and failed to resolve a function assembly dependency,
+            // log the failure as this is usually caused by missing private assemblies.
+            if (context != null && result == null)
+            {
+                context.TraceWriter.Warning(string.Format(CultureInfo.InvariantCulture,
+                    "Unable to find assembly '{0}'. Are you missing a private assembly file?", args.Name));
             }
 
             return result;

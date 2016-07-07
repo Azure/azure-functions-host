@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
             resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter), traceWriter);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter);
 
-            Assembly result = resolver.ResolveAssembly(null, new System.ResolveEventArgs("MyTestAssembly.dll",
+            Assembly result = resolver.ResolveAssembly(AppDomain.CurrentDomain, new System.ResolveEventArgs("MyTestAssembly.dll",
                 new TestAssembly(new AssemblyName("MyDirectReference"), @"file:///c:/testroot/test2/bin/MyDirectReference.dll")));
 
             Assert.Null(result);
