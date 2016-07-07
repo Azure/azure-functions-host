@@ -3,7 +3,8 @@
     {
       "type": "queueTrigger",
       "queueName": "mobiletables-input",
-      "direction": "in"
+      "direction": "in",
+      "name": "input"
     },
     {
       "type": "mobileTable",
