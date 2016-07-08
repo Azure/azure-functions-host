@@ -231,6 +231,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task MultipleExports()
+        {
+            TestHelpers.ClearFunctionLogs("MultipleExports");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", string.Empty }
+            };
+            await Fixture.Host.CallAsync("MultipleExports", arguments);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("MultipleExports");
+
+            Assert.Equal(3, logs.Count);
+            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=4"));
+        }
+
+        [Fact]
+        public async Task SingleNamedExport()
+        {
+            TestHelpers.ClearFunctionLogs("SingleNamedExport");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", string.Empty }
+            };
+            await Fixture.Host.CallAsync("SingleNamedExport", arguments);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("SingleNamedExport");
+
+            Assert.Equal(3, logs.Count);
+            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=1"));
+        }
+
+        [Fact]
         public async Task HttpTrigger_Get()
         {
             HttpRequestMessage request = new HttpRequestMessage

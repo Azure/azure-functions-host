@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
         private readonly IMetricsLogger _metrics;
+        private readonly string _entryPoint;
 
         private Func<object, Task<object>> _scriptFunc;
         private Func<object, Task<object>> _clearRequireCache;
@@ -58,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            _entryPoint = functionMetadata.EntryPoint;
 
             InitializeFileWatcherIfEnabled();
         }
@@ -284,6 +286,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "bindings", bindings },
                 { "bind", bind }
             };
+
+            if (!string.IsNullOrEmpty(_entryPoint))
+            {
+                context["entryPoint"] = _entryPoint;
+            }
 
             // This is the input value that we will use to extract binding data.
             // Since binding data extraction is based on JSON parsing, in the

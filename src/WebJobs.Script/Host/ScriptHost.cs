@@ -479,6 +479,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     // determine the script type based on the primary script file extension
                     metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
 
+                    metadata.EntryPoint = (string)functionConfig["entryPoint"];
+
                     metadatas.Add(metadata);
                 }
                 catch (Exception ex)
