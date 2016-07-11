@@ -1,0 +1,108 @@
+---
+tableStorage:
+    table: apicountertablelocal
+    partitionKey: items
+    connection: AzureWebJobsStorage
+
+language: CSharp
+
+commonCode: |
+        #r "Microsoft.WindowsAzure.Storage"
+        using System.Net;
+        using Microsoft.WindowsAzure.Storage.Table;
+        using System.Net.Http;
+        public class Counter : TableEntity
+        {
+            public int Value { get; set; }
+        }
+    
+functions:
+    - name: initialize
+      trigger: "PUT@counteryaml/{countername}"
+      bindings:
+        - "counter:table-out"
+      codeLocation: "initialize.csx"
+    - name: get
+      trigger: "GET@counteryaml/{countername}"
+      bindings:
+        - "counters:table-in"
+      code: |
+        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, IQueryable<Counter> counters, string countername)
+        {
+            HttpResponseMessage res = null;
+            try
+            {
+                Counter counter = counters.Where(c => c.RowKey.Equals(countername)).FirstOrDefault();
+                if(counter != null)
+                {
+                    res = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(counter.Value.ToString())
+                    };
+                } 
+                else
+                {                
+                    res = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("0")
+                    };
+                }
+            }
+            catch
+            {
+                res = new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent("The counter could not be accessed")
+                };
+            }
+            return res;
+        }  
+    - name: add
+      trigger: "POST@counteryaml/{countername}/{add:int}"
+      bindings:
+        - "tableBinding:table-out"
+      code: |
+        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, CloudTable tableBinding, int add, string countername)
+        {
+            HttpResponseMessage res = null;
+            try {
+                var getCurrentValue =  new TableQuery<Counter>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, countername));
+                Counter counter = tableBinding.ExecuteQuery(getCurrentValue).First();
+                counter.Value += add;
+                TableOperation updateOperation = TableOperation.Replace(counter);
+                tableBinding.Execute(updateOperation);
+                res = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("Updated the value of the counter by " + add + ".")
+                };
+            } catch {
+                res = new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent("Failed to update the counter.")
+                };
+            }
+            return res;
+        }
+    - name: dailyReset
+      trigger: "TIMER@0 0 * * * *"
+      bindings:
+        - "tableBinding:table-out"
+      code: |
+        public static void Run(TimerInfo timerInfo, TraceWriter log, CloudTable tableBinding)
+        {
+            try 
+            {
+                var countersQuery = new TableQuery<Counter>();
+                var counters = tableBinding.ExecuteQuery(countersQuery);
+                TableOperation updateOperation;
+                foreach (Counter counter in counters){
+                    counter.Value = 0;
+                    updateOperation = TableOperation.Replace(counter);
+                    tableBinding.Execute(updateOperation);
+                }
+            } catch (Exception ex){
+                log.Info(ex.Message);
+            }
+        }
+      
+

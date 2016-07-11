@@ -1,0 +1,26 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "name": "req",
+      "type": "httpTrigger",
+      "methods": [ "post" ],
+      "route": "counter/{countername}/{add:int}",
+      "direction": "in"
+    },
+    {
+      "name": "res",
+      "type": "http",
+      "direction": "out"
+    },
+    {
+      "type": "table",
+      "name": "tableBinding",
+      "tableName": "apicountertablelocal",
+      "connection": "AzureWebJobsStorage",
+      "direction": "in",
+      "partitionKey": "items"
+    }
+  ],
+  "disabled": false
+}

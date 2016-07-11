@@ -211,9 +211,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return manager.IsRunning;
                 });
 
-                FunctionDescriptor function = manager.GetHttpFunctionOrNull(new Uri("http://localhost/api/httptrigger-csharp"));
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/httptrigger-csharp");
-
+                FunctionDescriptor function = manager.GetHttpFunctionOrNull(request);
+                
                 SynchronizationContext currentContext = SynchronizationContext.Current;
                 var resetEvent = new ManualResetEventSlim();
 

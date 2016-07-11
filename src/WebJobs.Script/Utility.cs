@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -102,5 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
                 || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
         }
+
+
     }
 }

@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -55,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
+            
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcher();
@@ -371,6 +373,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<Diagnostic>.Empty;
         }
 
+        private static bool IsCorrectType(string systemType, string queryType)
+        {
+            if ((systemType.Equals("Int32") && queryType.Equals("int"))
+                || (systemType.Equals("Boolean") && queryType.Equals("bool"))
+                || (systemType.Equals("String") && queryType.Equals("string")))
+            {
+                return true;
+            }
+            return false;
+        }
+
         private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {
@@ -403,6 +416,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
                 }
             }
+
+            //foreach (var parameters in _queryParameterTypes)
+            //{
+            //    if (
+            //        !functionSignature.Parameters.Any(
+            //            p =>
+            //                string.Compare(p.Name, parameters.Key, StringComparison.Ordinal) == 0 &&
+            //                IsCorrectType(p.Type.Name, parameters.Value)))
+            //    {
+            //        string message = string.Format(CultureInfo.InvariantCulture, "Missing query argument named '{0}'.", parameters.Key);
+            //        var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,
+            //            "Missing query argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
+
+            //        resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
+            //    }
+            //}
 
             ImmutableArray<Diagnostic> result = resultBuilder.ToImmutable();
 

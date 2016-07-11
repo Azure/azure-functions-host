@@ -49,6 +49,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)
         {
+            if (functionMetadata.ScriptCode != null)
+            {
+                return functionMetadata.ScriptCode;
+            }
             string code = null;
 
             if (File.Exists(functionMetadata.ScriptFile))
@@ -67,16 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (debug)
             {
                 SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
-                var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
-                  encoding: Encoding.UTF8,
-                  path: Path.GetFileName(functionMetadata.ScriptFile),
-                  options: new CSharpParseOptions(kind: SourceCodeKind.Script));
+                if (functionMetadata.ScriptCode == null)
+                {
+                    var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
+                        encoding: Encoding.UTF8,
+                        path: Path.GetFileName(functionMetadata.ScriptFile),
+                        options: new CSharpParseOptions(kind: SourceCodeKind.Script));
 
-                compilationOptimizationLevel = OptimizationLevel.Debug;
+                    compilationOptimizationLevel = OptimizationLevel.Debug;
 
-                compilation = compilation
-                    .RemoveAllSyntaxTrees()
-                    .AddSyntaxTrees(debugTree);
+                    compilation = compilation
+                        .RemoveAllSyntaxTrees()
+                        .AddSyntaxTrees(debugTree);
+                }
             }
 
             return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel))

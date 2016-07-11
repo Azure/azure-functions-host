@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -281,6 +281,64 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "Send
 	ProjectSection(SolutionItems) = preProject
 		sample\SendGrid-PowerShell\function.json = sample\SendGrid-PowerShell\function.json
 		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample2", "sample2", "{C1695CB2-C4CF-4E8A-A656-37C766B60623}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\host.json = sample2\host.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counterapi-get", "counterapi-get", "{1541F8A5-17EF-4435-BA36-16C152D02499}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counterapi-get\function.json = sample2\counterapi-get\function.json
+		sample2\counterapi-get\run.csx = sample2\counterapi-get\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counterapi-increment", "counterapi-increment", "{7CB3B102-3901-4521-8213-C95D78DB82EB}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counterapi-increment\function.json = sample2\counterapi-increment\function.json
+		sample2\counterapi-increment\project.json = sample2\counterapi-increment\project.json
+		sample2\counterapi-increment\run.csx = sample2\counterapi-increment\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counterapi-autoinitialize", "counterapi-autoinitialize", "{535780F8-8B16-4916-BBE8-1F30621D93AC}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counterapi-autoinitialize\function.json = sample2\counterapi-autoinitialize\function.json
+		sample2\counterapi-autoinitialize\run.csx = sample2\counterapi-autoinitialize\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counter", "counter", "{F5F67057-07CC-4250-99FC-A3EF9BB85A15}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counter\api.yaml = sample2\counter\api.yaml
+		sample2\counter\initialize.csx = sample2\counter\initialize.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counternode-get", "counternode-get", "{7FBA890C-8C21-460C-8ABF-BAA0470C001A}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counternode-get\function.json = sample2\counternode-get\function.json
+		sample2\counternode-get\index.js = sample2\counternode-get\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counternode-increment", "counternode-increment", "{E5A45D6A-EB6E-4905-9D64-FB860CBEF355}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\counternode-increment\function.json = sample2\counternode-increment\function.json
+		sample2\counternode-increment\index.js = sample2\counternode-increment\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSampler", "TypeSampler", "{5E000AEA-A2D3-47C4-AD15-F0051A50CFAF}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\TypeSampler\function.json = sample2\TypeSampler\function.json
+		sample2\TypeSampler\run.csx = sample2\TypeSampler\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSamplerNode", "TypeSamplerNode", "{4A9A0ACC-FCEF-4F85-8E7A-C09C52F7CF2A}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\TypeSamplerNode\function.json = sample2\TypeSamplerNode\function.json
+		sample2\TypeSamplerNode\index.js = sample2\TypeSamplerNode\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ConstraintSampler", "ConstraintSampler", "{5111B34F-7A78-4B47-8CA4-A391A190D934}"
+	ProjectSection(SolutionItems) = preProject
+		sample2\ConstraintSampler\function.json = sample2\ConstraintSampler\function.json
+		sample2\ConstraintSampler\run.csx = sample2\ConstraintSampler\run.csx
 	EndProjectSection
 EndProject
 Global
@@ -366,5 +424,19 @@ Global
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{1541F8A5-17EF-4435-BA36-16C152D02499} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{7CB3B102-3901-4521-8213-C95D78DB82EB} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{535780F8-8B16-4916-BBE8-1F30621D93AC} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{1541F8A5-17EF-4435-BA36-16C152D02499} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{7CB3B102-3901-4521-8213-C95D78DB82EB} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{535780F8-8B16-4916-BBE8-1F30621D93AC} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{A751A732-ACCE-4B1F-8244-8DD161619483} = {CDF316B9-AB36-42CB-859B-FCDB56E083B0}
+		{F5F67057-07CC-4250-99FC-A3EF9BB85A15} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{7FBA890C-8C21-460C-8ABF-BAA0470C001A} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{E5A45D6A-EB6E-4905-9D64-FB860CBEF355} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{5E000AEA-A2D3-47C4-AD15-F0051A50CFAF} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{4A9A0ACC-FCEF-4F85-8E7A-C09C52F7CF2A} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{5111B34F-7A78-4B47-8CA4-A391A190D934} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
 	EndGlobalSection
 EndGlobal

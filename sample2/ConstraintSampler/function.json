@@ -1,0 +1,18 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "name": "req",
+      "type": "httpTrigger",
+      "methods": [ "get" ],
+      "route": "constraintsampler/{lenvalue:length(2,5)}/{alphavalue:alpha}/{fixedint:range(0,100)}",
+      "direction": "in"
+    },
+    {
+      "name": "res",
+      "type": "http",
+      "direction": "out"
+    }
+  ],
+  "disabled": false
+}

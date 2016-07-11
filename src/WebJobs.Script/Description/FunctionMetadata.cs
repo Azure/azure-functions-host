@@ -22,10 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public string ScriptFile { get; set; }
 
+
         /// <summary>
         /// Gets or sets the optional named entry point for a function.
         /// </summary>
         public string EntryPoint { get; set; }
+
+        public string ScriptCode { get; set; }
 
         public ScriptType ScriptType { get; set; }
 
