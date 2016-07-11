@@ -22,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
-        private const string JobLogTestFileName = "joblog.txt";
-
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -464,20 +462,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TimerTrigger()
         {
-            // job is running every second, so give it a few seconds to
-            // generate some output
-            await TestHelpers.Await(() =>
-            {
-                if (File.Exists(JobLogTestFileName))
-                {
-                    string[] lines = File.ReadAllLines(JobLogTestFileName);
-                    return lines.Length > 2;
-                }
-                else
-                {
-                    return false;
-                }
-            }, timeout: 10 * 1000);
+            var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
+
+            Assert.Equal(3, logs.Length);
+            Assert.True(logs[1].Contains("Timer function ran!"));
         }
 
         [Fact]
@@ -546,7 +534,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public TestFixture() : base(@"TestScripts\Node", "node")
             {
-                File.Delete(JobLogTestFileName);
             }
         }
 

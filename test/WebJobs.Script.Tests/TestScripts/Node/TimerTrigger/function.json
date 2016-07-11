@@ -4,7 +4,8 @@
             "type": "timerTrigger",
             "name": "timerInfo",
             "direction": "in",
-            "schedule": "* * * * * *"
+            "runOnStartup": true,
+            "schedule": "0 * * * * *"
         },
         {
             "type": "blob",

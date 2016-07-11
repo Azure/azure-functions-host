@@ -66,9 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static void ClearFunctionLogs(string functionName)
         {
             DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
-            foreach (var file in directory.GetFiles())
+            if (directory.Exists)
             {
-                file.Delete();
+                foreach (var file in directory.GetFiles())
+                {
+                    file.Delete();
+                }
             }
         }
 

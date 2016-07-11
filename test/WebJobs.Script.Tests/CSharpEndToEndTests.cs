@@ -15,8 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class CSharpEndToEndTests : EndToEndTestsBase<CSharpEndToEndTests.TestFixture>
     {
-        private const string JobLogTestFileName = "joblog.txt";
-
         public CSharpEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -183,7 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public TestFixture() : base(ScriptRoot, "csharp")
             {
-                File.Delete(JobLogTestFileName);
             }
 
             private static void CreateSharedAssemblies()
