@@ -280,6 +280,7 @@
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionBindingTests.cs" />
     <Compile Include="FunctionDescriptorProviderTests.cs" />
+    <Compile Include="FunctionEntryPointResolverTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\CSharp\PackageAssemblyResolverTests.cs" />
     <Compile Include="FunctionInvokerBaseTests.cs" />

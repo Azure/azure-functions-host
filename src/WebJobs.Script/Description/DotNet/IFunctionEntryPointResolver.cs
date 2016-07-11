@@ -10,6 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         MethodInfo GetFunctionEntryPoint(IList<MethodInfo> declaredMethods);
 
-        T GetFunctionEntryPoint<T>(IEnumerable<T> methods) where T : IMethodReference;
+        T GetFunctionEntryPoint<T>(IEnumerable<T> methods) where T : class, IMethodReference;
     }
 }
