@@ -530,6 +530,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TraceLevel.Info, trace.Level);
         }
 
+        [Fact]
+        public async Task NextTick()
+        {
+            // See https://github.com/tjanczuk/edge/issues/325.
+            // This ensures the workaround is working
+
+            // we're not going to await this call as it may hang if there is 
+            // a regression, instead, monitor for IsCompleted below.
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "scenario", "nextTick" }
+                });
+
+            await TestHelpers.Await(() =>
+            {
+                return t.IsCompleted;
+            }, timeout: 5000, pollingInterval: 1000);
+
+            // Await the task to force any exception to be thrown
+            await t;
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node", "node")
