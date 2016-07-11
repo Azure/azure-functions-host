@@ -1,7 +1,7 @@
-﻿module.exports = function (context, text) {
+﻿module.exports = function (context, input) {
     context.bindings.entity = {
         Id: 5,
-        Text: text
+        Text: input.value
     };
     context.done();
 }

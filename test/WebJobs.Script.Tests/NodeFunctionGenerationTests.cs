@@ -8,9 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
@@ -23,19 +21,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
-            TimerBindingMetadata trigger = new TimerBindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.TimerTrigger,
-                Schedule = "* * * * * *",
-                RunOnStartup = true
-            };
+                { "type", "TimerTrigger" },
+                { "name", "timerInfo" },
+                { "schedule", "* * * * * *" },
+                { "runOnStartup", true },
+                { "direction", "in" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
             // verify trigger parameter
             ParameterInfo parameter = method.GetParameters()[0];
-            Assert.Equal("input", parameter.Name);
+            Assert.Equal("timerInfo", parameter.Name);
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.Equal("* * * * * *", attribute.ScheduleExpression);
@@ -45,11 +45,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
-            QueueBindingMetadata trigger = new QueueBindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.QueueTrigger,
-                QueueName = "test"
-            };
+                { "type", "QueueTrigger" },
+                { "name", "input" },
+                { "direction", "in" },
+                { "queueName", "test" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
@@ -65,11 +67,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
-            BlobBindingMetadata trigger = new BlobBindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.BlobTrigger,
-                Path = "foo/bar"
-            };
+                { "type", "blobTrigger" },
+                { "name", "input" },
+                { "direction", "in" },
+                { "path", "foo/bar" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
@@ -85,10 +89,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateHttpTriggerFunction()
         {
-            HttpTriggerBindingMetadata trigger = new HttpTriggerBindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.HttpTrigger
-            };
+                { "type", "HttpTrigger" },
+                { "name", "req" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
@@ -104,10 +109,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateManualTriggerFunction()
         {
-            BindingMetadata trigger = new BindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.ManualTrigger
-            };
+                { "type", "ManualTrigger" },
+                { "name", "input" },
+                { "direction", "in" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
@@ -123,13 +130,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
-            ServiceBusBindingMetadata trigger = new ServiceBusBindingMetadata
+            BindingMetadata trigger = BindingMetadata.Create(new JObject
             {
-                Type = BindingType.ServiceBusTrigger,
-                TopicName = "testTopic",
-                SubscriptionName = "testSubscription",
-                AccessRights = AccessRights.Listen
-            };
+                { "type", "ServiceBusTrigger" },
+                { "name", "input" },
+                { "direction", "in" },
+                { "topicName", "testTopic" },
+                { "subscriptionName", "testSubscription" },
+                { "accessRights", "Listen" }
+            });
             MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);

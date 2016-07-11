@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -10,15 +11,13 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        internal const string DefaultInputParameterName = "input";
-        internal const string DefaultHttpInputParameterName = "req";
-
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
             Host = host;
@@ -36,35 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException("functionMetadata");
             }
 
-            functionDescriptor = null;
-
-            // Default the trigger binding name if a name hasn't
-            // been specified
-            // TODO: Remove this logic and always require it to be explicitly
-            // specified?
-            foreach (var binding in functionMetadata.Bindings.Where(p => p.IsTrigger))
-            {
-                if (string.IsNullOrEmpty(binding.Name))
-                {
-                    if (binding.Type == BindingType.HttpTrigger)
-                    {
-                        binding.Name = DefaultHttpInputParameterName;
-                    }
-                    else
-                    {
-                        binding.Name = DefaultInputParameterName;
-                    }
-                }
-            }
+            ValidateFunction(functionMetadata);
 
             // parse the bindings
             Collection<FunctionBinding> inputBindings = FunctionBinding.GetBindings(Config, functionMetadata.InputBindings, FileAccess.Read);
             Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
-          
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile);
-
+            functionDescriptor = null;
             IFunctionInvoker invoker = null;
 
             try
@@ -131,34 +110,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected virtual ParameterDescriptor CreateTriggerParameter(BindingMetadata triggerMetadata, Type parameterType = null)
         {
             ParameterDescriptor triggerParameter = null;
-            switch (triggerMetadata.Type)
+            string type = triggerMetadata.Type.ToLowerInvariant();
+            switch (type)
             {
-                case BindingType.QueueTrigger:
-                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
-                    triggerParameter = ParseQueueTrigger((QueueBindingMetadata)triggerMetadata, parameterType);
-                    break;
-                case BindingType.EventHubTrigger:
-                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
-                    triggerParameter = ParseEventHubTrigger((EventHubBindingMetadata)triggerMetadata, parameterType);
-                    break;
-                case BindingType.BlobTrigger:
-                    triggerParameter = ParseBlobTrigger((BlobBindingMetadata)triggerMetadata, parameterType ?? typeof(Stream));
-                    break;
-                case BindingType.ServiceBusTrigger:
-                    parameterType = DefaultParameterType(parameterType, triggerMetadata.DataType);
-                    triggerParameter = ParseServiceBusTrigger((ServiceBusBindingMetadata)triggerMetadata, parameterType);
-                    break;
-                case BindingType.TimerTrigger:
-                    triggerParameter = ParseTimerTrigger((TimerBindingMetadata)triggerMetadata, parameterType ?? typeof(TimerInfo));
-                    break;
-                case BindingType.HttpTrigger:
+                case "httptrigger":
                     triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, parameterType ?? typeof(HttpRequestMessage));
                     break;
-                case BindingType.ManualTrigger:
+                case "manualtrigger":
                     triggerParameter = ParseManualTrigger(triggerMetadata, parameterType ?? typeof(string));
                     break;
-                case BindingType.ApiHubFileTrigger:
-                    triggerParameter = ParseApiHubFileTrigger((ApiHubBindingMetadata)triggerMetadata, parameterType ?? typeof(Stream));
+                default:
+                    TryParseTriggerParameter(triggerMetadata.Raw, out triggerParameter, parameterType);
                     break;
             }
 
@@ -167,24 +129,79 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return triggerParameter;
         }
 
-        /// <summary>
-        /// If the specified parameter Type is null, attempt to default it based on
-        /// the DataType value specified.
-        /// </summary>
-        private static Type DefaultParameterType(Type parameterType, DataType? dataType)
+        private bool TryParseTriggerParameter(JObject metadata, out ParameterDescriptor parameterDescriptor, Type parameterType = null)
         {
-            if (parameterType == null)
+            parameterDescriptor = null;
+
+            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
+            ScriptBinding binding = null;
+            foreach (var provider in this.Config.BindingProviders)
             {
-                parameterType = dataType == DataType.Binary ? typeof(byte[]) : typeof(string);
+                if (provider.TryCreate(bindingContext, out binding))
+                {
+                    break;
+                }
             }
 
-            return parameterType;
+            if (binding != null)
+            {
+                // Construct the Attribute builders for the binding
+                var attributes = binding.GetAttributes();
+                Collection<CustomAttributeBuilder> attributeBuilders = new Collection<CustomAttributeBuilder>();
+                foreach (var attribute in attributes)
+                {
+                    var attributeBuilder = ExtensionBinding.GetAttributeBuilder(attribute);
+                    attributeBuilders.Add(attributeBuilder);
+                }
+
+                Type triggerParameterType = parameterType ?? binding.DefaultType;
+                parameterDescriptor = new ParameterDescriptor(bindingContext.Name, triggerParameterType, attributeBuilders);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        protected internal virtual void ValidateFunction(FunctionMetadata functionMetadata)
+        {
+            // Functions must have a trigger binding
+            var triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
+            if (triggerMetadata == null)
+            {
+                throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
+            }
+
+            HashSet<string> names = new HashSet<string>();
+            foreach (var binding in functionMetadata.Bindings)
+            {
+                ValidateBinding(binding);
+
+                // Ensure no duplicate binding names
+                if (names.Contains(binding.Name))
+                {
+                    throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", binding.Name));
+                }
+                else
+                {
+                    names.Add(binding.Name);
+                }
+            }
+        }
+
+        protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
+        {
+            if (string.IsNullOrEmpty(bindingMetadata.Name))
+            {
+                throw new ArgumentException("A valid name must be assigned to the binding.");
+            }
         }
 
         protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
         {
             if (functionMetadata.IsDisabled ||
-                (triggerMetadata.Type == BindingType.HttpTrigger || triggerMetadata.Type == BindingType.ManualTrigger))
+                (string.Compare("httptrigger", triggerMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare("manualtrigger", triggerMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0))
             {
                 // the function can be run manually, but there will be no automatic
                 // triggering
@@ -195,164 +212,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
-
-        protected ParameterDescriptor ParseEventHubTrigger(EventHubBindingMetadata trigger, Type triggerParameterType)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-            if (triggerParameterType == null)
-            {
-                throw new ArgumentNullException("triggerParameterType");
-            }
-
-            ConstructorInfo ctorInfo = typeof(ServiceBus.EventHubTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string queueName = trigger.Path;
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName });
-
-            string parameterName = trigger.Name;
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
-        }
-
-        protected ParameterDescriptor ParseQueueTrigger(QueueBindingMetadata trigger, Type triggerParameterType)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-            if (triggerParameterType == null)
-            {
-                throw new ArgumentNullException("triggerParameterType");
-            }
-
-            ConstructorInfo ctorInfo = typeof(QueueTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string queueName = trigger.QueueName;
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName });
-
-            string parameterName = trigger.Name;
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-
-            if (!string.IsNullOrEmpty(trigger.Connection))
-            {
-                FunctionBinding.AddStorageAccountAttribute(attributes, trigger.Connection);
-            }
-
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
-        }
-
-        protected ParameterDescriptor ParseBlobTrigger(BlobBindingMetadata trigger, Type triggerParameterType)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-
-            if (triggerParameterType == null)
-            {
-                throw new ArgumentNullException("triggerParameterType");
-            }
-
-            ConstructorInfo ctorInfo = typeof(BlobTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string blobPath = trigger.Path;
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { blobPath });
-
-            string parameterName = trigger.Name;
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-
-            if (!string.IsNullOrEmpty(trigger.Connection))
-            {
-                FunctionBinding.AddStorageAccountAttribute(attributes, trigger.Connection);
-            }
-
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
-        }
-
-        protected ParameterDescriptor ParseServiceBusTrigger(ServiceBusBindingMetadata trigger, Type triggerParameterType)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-
-            if (triggerParameterType == null)
-            {
-                throw new ArgumentNullException("triggerParameterType");
-            }
-
-            string queueName = trigger.QueueName;
-            string topicName = trigger.TopicName;
-            string subscriptionName = trigger.SubscriptionName;
-            AccessRights accessRights = trigger.AccessRights;
-
-            CustomAttributeBuilder attributeBuilder = null;
-            if (!string.IsNullOrEmpty(topicName) && !string.IsNullOrEmpty(subscriptionName))
-            {
-                ConstructorInfo ctorInfo = typeof(ServiceBusTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(AccessRights) });
-                attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { topicName, subscriptionName, accessRights });
-            }
-            else if (!string.IsNullOrEmpty(queueName))
-            {
-                ConstructorInfo ctorInfo = typeof(ServiceBusTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(AccessRights) });
-                attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { queueName, accessRights });
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid ServiceBus trigger configuration.");
-            }
-
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-
-            if (!string.IsNullOrEmpty(trigger.Connection))
-            {
-                ServiceBusBinding.AddServiceBusAccountAttribute(attributes, trigger.Connection);
-            }
-
-            return new ParameterDescriptor(trigger.Name, triggerParameterType, attributes);
-        }
-
-        protected ParameterDescriptor ParseTimerTrigger(TimerBindingMetadata trigger, Type triggerParameterType = null)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-
-            if (triggerParameterType == null)
-            {
-                triggerParameterType = typeof(string);
-            }
-
-            ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            string schedule = trigger.Schedule;
-            bool runOnStartup = trigger.RunOnStartup;
-            
-            PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, 
-                new object[] { schedule }, 
-                new PropertyInfo[] { runOnStartupProperty }, 
-                new object[] { runOnStartup });
-
-            string parameterName = trigger.Name;
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
-        }
 
         protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Type triggerParameterType = null)
         {
@@ -382,30 +241,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
-        }
-
-        protected ParameterDescriptor ParseApiHubFileTrigger(ApiHubBindingMetadata trigger, Type triggerParameterType = null)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-
-            if (triggerParameterType == null)
-            {
-                triggerParameterType = typeof(string);
-            }
-
-            ConstructorInfo ctorInfo = typeof(ApiHubFileTriggerAttribute).GetConstructor(new Type[] { typeof(string), typeof(string), typeof(ApiHub.FileWatcherType), typeof(int) });
-
-            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[] { trigger.Key, trigger.Path, trigger.FileWatcherType, trigger.PollIntervalInSeconds });
-
-            string parameterName = trigger.Name;
-            var attributes = new Collection<CustomAttributeBuilder>
-            {
-                attributeBuilder
-            };
-            return new ParameterDescriptor(parameterName, triggerParameterType, attributes);
         }
     }
 }

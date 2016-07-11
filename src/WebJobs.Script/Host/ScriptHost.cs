@@ -12,12 +12,17 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
+using Microsoft.Azure.WebJobs.Extensions.ApiHub;
+using Microsoft.Azure.WebJobs.Extensions.Bindings;
+using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
+using Microsoft.Azure.WebJobs.Extensions.MobileApps;
+using Microsoft.Azure.WebJobs.Extensions.NotificationHubs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.ServiceBus;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -125,9 +130,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
 
             TraceWriter = ScriptConfig.TraceWriter;
+            TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
             if (ScriptConfig.FileLoggingEnabled)
             {
-                TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
                 string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
                 TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel);
                 if (TraceWriter != null)
@@ -147,8 +152,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                TraceWriter = NullTraceWriter.Instance;
+                // if no TraceWriter has been configured, default it to Console
+                TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
             }
+
+            var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
+            ScriptConfig.BindingProviders = bindingProviders;
 
             TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
 
@@ -205,7 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
                 new NodeFunctionDescriptorProvider(this, ScriptConfig),
-                new DotNetFunctionDescriptionProvider(this, ScriptConfig)
+                new DotNetFunctionDescriptorProvider(this, ScriptConfig),
+                new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
             };
 
             // read all script functions and apply to JobHostConfiguration
@@ -219,7 +229,20 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
 
-            ApplyBindingConfiguration(functions, ScriptConfig.HostConfig);
+            // Allow BindingProviders to complete their initialization
+            foreach (var bindingProvider in ScriptConfig.BindingProviders)
+            {
+                try
+                {
+                    bindingProvider.Initialize();
+                }
+                catch (Exception ex)
+                {
+                    // If we're unable to initialize a binding provider for any reason, log the error
+                    // and continue
+                    TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
+                }
+            }
 
             Functions = functions;
 
@@ -235,35 +258,48 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void PurgeOldLogDirectories()
         {
-            if (!Directory.Exists(this.ScriptConfig.RootScriptPath))
+            try
             {
-                return;
-            }
-
-            // Create a lookup of all potential functions (whether they're valid or not)
-            // It is important that we determine functions based on the presence of a folder,
-            // not whether we've identified a valid function from that folder. This ensures
-            // that we don't delete logs/secrets for functions that transition into/out of
-            // invalid unparsable states.
-            var functionLookup = Directory.EnumerateDirectories(this.ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
-
-            string rootLogFilePath = Path.Combine(this.ScriptConfig.RootLogPath, "Function");
-            var logFileDirectory = new DirectoryInfo(rootLogFilePath);
-            foreach (var logDir in logFileDirectory.GetDirectories())
-            {
-                if (!functionLookup.Contains(logDir.Name))
+                if (!Directory.Exists(this.ScriptConfig.RootScriptPath))
                 {
-                    // the directory no longer maps to a running function
-                    // so delete it
-                    try
+                    return;
+                }
+
+                // Create a lookup of all potential functions (whether they're valid or not)
+                // It is important that we determine functions based on the presence of a folder,
+                // not whether we've identified a valid function from that folder. This ensures
+                // that we don't delete logs/secrets for functions that transition into/out of
+                // invalid unparsable states.
+                var functionLookup = Directory.EnumerateDirectories(this.ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+
+                string rootLogFilePath = Path.Combine(this.ScriptConfig.RootLogPath, "Function");
+                if (!Directory.Exists(rootLogFilePath))
+                {
+                    return;
+                }
+
+                var logFileDirectory = new DirectoryInfo(rootLogFilePath);
+                foreach (var logDir in logFileDirectory.GetDirectories())
+                {
+                    if (!functionLookup.Contains(logDir.Name))
                     {
-                        logDir.Delete(recursive: true);
-                    }
-                    catch
-                    {
-                        // Purge is best effort
+                        // the directory no longer maps to a running function
+                        // so delete it
+                        try
+                        {
+                            logDir.Delete(recursive: true);
+                        }
+                        catch
+                        {
+                            // Purge is best effort
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Purge is best effort
+                TraceWriter.Error("An error occurred while purging log files", ex);
             }
         }
 
@@ -296,6 +332,46 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
+        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
+        {
+            JobHostConfiguration hostConfig = config.HostConfig;
+
+            // Register our built in extensions
+            var bindingProviderTypes = new Collection<Type>()
+            {
+                // binding providers defined in this assembly
+                typeof(WebJobsCoreScriptBindingProvider),
+                typeof(ServiceBusScriptBindingProvider),
+
+                // binding providers defined in known extension assemblies
+                typeof(CoreExtensionsScriptBindingProvider),
+                typeof(ApiHubScriptBindingProvider),
+                typeof(DocumentDBScriptBindingProvider),
+                typeof(MobileAppsScriptBindingProvider),
+                typeof(NotificationHubScriptBindingProvider),
+                typeof(SendGridScriptBindingProvider)
+            };
+
+            // Create the binding providers
+            var bindingProviders = new Collection<ScriptBindingProvider>();
+            foreach (var bindingProviderType in bindingProviderTypes)
+            {
+                try
+                {
+                    var provider = (ScriptBindingProvider)Activator.CreateInstance(bindingProviderType, new object[] { hostConfig, hostMetadata, traceWriter });
+                    bindingProviders.Add(provider);
+                }
+                catch (Exception ex)
+                {
+                    // If we're unable to load create a binding provider for any reason, log
+                    // the error and continue
+                    traceWriter.Error(string.Format("Unable to create binding provider '{0}'", bindingProviderType.FullName), ex);
+                }
+            }
+
+            return bindingProviders;
+        }
+
         private static FunctionMetadata ParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject configMetadata)
         {
             FunctionMetadata functionMetadata = new FunctionMetadata
@@ -314,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = ParseBindingMetadata(binding, nameResolver);
+                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding, nameResolver);
                     functionMetadata.Bindings.Add(bindingMetadata);
                     if (bindingMetadata.IsTrigger)
                     {
@@ -330,94 +406,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.IsDisabled = true;
             }
 
+            JToken value = null;
+            if (configMetadata.TryGetValue("excluded", StringComparison.OrdinalIgnoreCase, out value) &&
+                value.Type == JTokenType.Boolean)
+            {
+                functionMetadata.IsExcluded = (bool)value;
+            }
+
             return functionMetadata;
-        }
-
-        private static BindingMetadata ParseBindingMetadata(JObject binding, INameResolver nameResolver)
-        {
-            BindingMetadata bindingMetadata = null;
-            string bindingTypeValue = (string)binding["type"];
-            string bindingDirectionValue = (string)binding["direction"];
-            string connection = (string)binding["connection"];
-            BindingType bindingType = default(BindingType);
-            BindingDirection bindingDirection = default(BindingDirection);
-
-            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
-                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
-            {
-                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
-            }
-
-            if (!string.IsNullOrEmpty(bindingTypeValue) &&
-                !Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
-            {
-                throw new FormatException(string.Format("'{0}' is not a valid binding type.", bindingTypeValue));
-            }
-
-            if (!string.IsNullOrEmpty(connection) && 
-                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
-            {
-                throw new FormatException("Invalid Connection value specified.");
-            }
-
-            switch (bindingType)
-            {
-                case BindingType.EventHubTrigger:
-                case BindingType.EventHub:
-                    bindingMetadata = binding.ToObject<EventHubBindingMetadata>();
-                    break;
-                case BindingType.QueueTrigger:
-                case BindingType.Queue:
-                    bindingMetadata = binding.ToObject<QueueBindingMetadata>();
-                    break;
-                case BindingType.BlobTrigger:
-                case BindingType.Blob:
-                    bindingMetadata = binding.ToObject<BlobBindingMetadata>();
-                    break;
-                case BindingType.ServiceBusTrigger:
-                case BindingType.ServiceBus:
-                    bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
-                    break;
-                case BindingType.HttpTrigger:
-                    bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                case BindingType.Http:
-                    bindingMetadata = binding.ToObject<HttpBindingMetadata>();
-                    break;
-                case BindingType.Table:
-                    bindingMetadata = binding.ToObject<TableBindingMetadata>();
-                    break;
-                case BindingType.ManualTrigger:
-                    bindingMetadata = binding.ToObject<BindingMetadata>();
-                    break;
-                case BindingType.TimerTrigger:
-                    bindingMetadata = binding.ToObject<TimerBindingMetadata>();
-                    break;
-                case BindingType.MobileTable:
-                    bindingMetadata = binding.ToObject<MobileTableBindingMetadata>();
-                    break;
-                case BindingType.DocumentDB:
-                    bindingMetadata = binding.ToObject<DocumentDBBindingMetadata>();
-                    break;
-                case BindingType.NotificationHub:
-                    bindingMetadata = binding.ToObject<NotificationHubBindingMetadata>();
-                    break;
-                case BindingType.ApiHubFile:
-                case BindingType.ApiHubFileTrigger:
-                    bindingMetadata = binding.ToObject<ApiHubBindingMetadata>();
-                    break;
-                case BindingType.ApiHubTable:
-                    bindingMetadata = binding.ToObject<ApiHubTableBindingMetadata>();
-                    break;
-            }
-
-            bindingMetadata.Type = bindingType;
-            bindingMetadata.Direction = bindingDirection;
-            bindingMetadata.Connection = connection;
-
-            nameResolver.ResolveAllProperties(bindingMetadata);
-
-            return bindingMetadata;
         }
 
         private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
@@ -457,6 +453,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     JObject functionConfig = JObject.Parse(json);
                     FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, functionConfig);
 
+                    if (metadata.IsExcluded)
+                    {
+                        TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                        continue;
+                    }
+
                     // determine the primary script
                     string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
                     if (functionFiles.Length == 0)
@@ -476,6 +478,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // determine the script type based on the primary script file extension
                     metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
+
+                    metadata.EntryPoint = (string)functionConfig["entryPoint"];
 
                     metadatas.Add(metadata);
                 }
@@ -543,7 +547,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "js":
                     return ScriptType.Javascript;
                 case "ps1":
-                    return ScriptType.Powershell;
+                    return ScriptType.PowerShell;
                 case "cmd":
                 case "bat":
                     return ScriptType.WindowsBatch;
@@ -622,32 +626,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig.FileWatchingEnabled = (bool)watchFiles;
             }
 
-            // Apply Queues configuration
-            JObject configSection = (JObject)config["queues"];
-            JToken value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("maxPollingInterval", out value))
-                {
-                    hostConfig.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
-                }
-                if (configSection.TryGetValue("batchSize", out value))
-                {
-                    hostConfig.Queues.BatchSize = (int)value;
-                }
-                if (configSection.TryGetValue("maxDequeueCount", out value))
-                {
-                    hostConfig.Queues.MaxDequeueCount = (int)value;
-                }
-                if (configSection.TryGetValue("newBatchThreshold", out value))
-                {
-                    hostConfig.Queues.NewBatchThreshold = (int)value;
-                }
-            }
-
             // Apply Singleton configuration
-            configSection = (JObject)config["singleton"];
-            value = null;
+            JObject configSection = (JObject)config["singleton"];
+            JToken value = null;
             if (configSection != null)
             {
                 if (configSection.TryGetValue("lockPeriod", out value))
@@ -672,19 +653,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            // Apply ServiceBus configuration
-            ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration();
-            configSection = (JObject)config["serviceBus"];
-            value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("maxConcurrentCalls", out value))
-                {
-                    serviceBusConfig.MessageOptions.MaxConcurrentCalls = (int)value;
-                }
-            }
-            hostConfig.UseServiceBus(serviceBusConfig);
-
             // Apply Tracing/Logging configuration
             configSection = (JObject)config["tracing"];
             if (configSection != null)
@@ -703,29 +671,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     scriptConfig.FileLoggingEnabled = (bool)value;
                 }
             }
-
-            hostConfig.UseTimers();
-            hostConfig.UseCore();
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             HandleHostError((Exception)e.ExceptionObject);
-        }
-
-        // Bindings may require us to update JobHostConfiguration. 
-        private void ApplyBindingConfiguration(Collection<FunctionDescriptor> functions, JobHostConfiguration hostConfig)
-        {
-            JobHostConfigurationBuilder builder = new JobHostConfigurationBuilder(hostConfig, TraceWriter);
-
-            foreach (var func in functions)
-            {
-                foreach (var metadata in func.Metadata.InputBindings.Concat(func.Metadata.OutputBindings))
-                {
-                    metadata.ApplyToConfig(builder);
-                }
-            }
-            builder.Done();
         }
 
         private void HandleHostError(Microsoft.Azure.WebJobs.Extensions.TraceFilter traceFilter)

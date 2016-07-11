@@ -113,5 +113,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
                 return ResourceManager.GetString("ProjectLockFileFormatString", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to using System;
+        ///
+        ///public static void Run(string myQueueItem, TraceWriter log)
+        ///{
+        ///    log.Info($&quot;C# Queue trigger function processed: {myQueueItem}&quot;);
+        ///}.
+        /// </summary>
+        internal static string TestFunctionWithMissingBindingArgumentsCode {
+            get {
+                return ResourceManager.GetString("TestFunctionWithMissingBindingArgumentsCode", resourceCulture);
+            }
+        }
     }
 }

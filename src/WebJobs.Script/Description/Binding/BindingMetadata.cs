@@ -1,6 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Globalization;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Host;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
@@ -24,13 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Gets or sets the type of the binding.
         /// </summary>
-        public BindingType Type { get; set; }
+        public string Type { get; set; }
 
         /// <summary>
         /// Gets or sets the direction of the binding.
         /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
         public BindingDirection Direction { get; set; }
 
+        [JsonConverter(typeof(StringEnumConverter))]
         public DataType? DataType { get; set; }
 
         /// <summary>
@@ -40,25 +50,92 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             get
             {
-                return
-                    Type == BindingType.TimerTrigger ||
-                    Type == BindingType.BlobTrigger ||
-                    Type == BindingType.HttpTrigger ||
-                    Type == BindingType.QueueTrigger ||
-                    Type == BindingType.EventHubTrigger ||
-                    Type == BindingType.ServiceBusTrigger ||
-                    Type == BindingType.ManualTrigger ||
-                    Type == BindingType.ApiHubFileTrigger;
+                return Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
             }
         }
 
         /// <summary>
-        /// Bindings can include information that drives the JobHostConfiguration.
+        /// Gets the raw binding metadata (after name resolution has been applied
+        /// to all values).
         /// </summary>
-        /// <param name="configBuilder"></param>
-        public virtual void ApplyToConfig(JobHostConfigurationBuilder configBuilder)
+        public JObject Raw { get; set; }
+
+        /// <summary>
+        /// Creates an instance from the specified raw metadata.
+        /// </summary>
+        /// <param name="raw">The raw binding metadata.</param>
+        /// <param name="nameResolver">Optional name resolver to use on properties.</param>
+        /// <returns>The new <see cref="BindingMetadata"/> instance.</returns>
+        public static BindingMetadata Create(JObject raw, INameResolver nameResolver = null)
         {
-            // default is nop
-        }        
+            BindingMetadata bindingMetadata = null;
+            string bindingDirectionValue = (string)raw["direction"];
+            string connection = (string)raw["connection"];
+            string bindingType = (string)raw["type"];
+            BindingDirection bindingDirection = default(BindingDirection);
+
+            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
+                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
+            {
+                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
+            }
+
+            // TODO: Validate the binding type somehow?
+
+            if (!string.IsNullOrEmpty(connection) &&
+                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
+            {
+                throw new FormatException("Invalid Connection value specified.");
+            }
+
+            switch (bindingType.ToLowerInvariant())
+            {
+                case "httptrigger":
+                    bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
+                    break;
+                case "http":
+                    bindingMetadata = raw.ToObject<HttpBindingMetadata>();
+                    break;
+                case "table":
+                    bindingMetadata = raw.ToObject<TableBindingMetadata>();
+                    break;
+                case "manualtrigger":
+                    bindingMetadata = raw.ToObject<BindingMetadata>();
+                    break;
+                default:
+                    bindingMetadata = raw.ToObject<BindingMetadata>();
+                    break;
+            }
+
+            bindingMetadata.Type = bindingType;
+            bindingMetadata.Direction = bindingDirection;
+            bindingMetadata.Connection = connection;
+
+            if (nameResolver != null)
+            {
+                nameResolver.ResolveAllProperties(bindingMetadata);
+
+                // We want to pass resolved metadata values into
+                // binding extensions, so we resolve fully here
+                JObject resolved = new JObject(raw);
+                foreach (JProperty property in resolved.Properties().ToArray())
+                {
+                    if (property.Value != null &&
+                        property.Value.Type == JTokenType.String)
+                    {
+                        string val = (string)property.Value;
+                        string newVal = nameResolver.ResolveWholeString(val);
+                        resolved[property.Name] = newVal;
+                    }
+                }
+                bindingMetadata.Raw = resolved;
+            }
+            else
+            {
+                bindingMetadata.Raw = raw;
+            }
+
+            return bindingMetadata;
+        }
     }
 }

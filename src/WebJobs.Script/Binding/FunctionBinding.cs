@@ -5,15 +5,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Newtonsoft.Json;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -45,89 +45,78 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 foreach (var bindingMetadata in bindingMetadatas)
                 {
-                    switch (bindingMetadata.Type)
+                    string type = bindingMetadata.Type.ToLowerInvariant();
+                    switch (type)
                     {
-                        case BindingType.Blob:
-                        case BindingType.BlobTrigger:
-                            BlobBindingMetadata blobBindingMetadata = (BlobBindingMetadata)bindingMetadata;
-                            bindings.Add(new BlobBinding(config, blobBindingMetadata, fileAccess));
-                            break;
-                        case BindingType.EventHub:
-                        case BindingType.EventHubTrigger:
-                            EventHubBindingMetadata eventHubBindingMetadata = (EventHubBindingMetadata)bindingMetadata;
-                            if (!eventHubBindingMetadata.IsTrigger &&
-                                fileAccess != FileAccess.Write)
-                            {
-                                throw new InvalidOperationException("EventHub binding can only be used for output.");
-                            }
-                            bindings.Add(new EventHubBinding(config, eventHubBindingMetadata, fileAccess));
-                            break;
-                        case BindingType.Queue:
-                        case BindingType.QueueTrigger:
-                            QueueBindingMetadata queueBindingMetadata = (QueueBindingMetadata)bindingMetadata;
-                            if (!queueBindingMetadata.IsTrigger &&
-                                fileAccess != FileAccess.Write)
-                            {
-                                throw new InvalidOperationException("Queue binding can only be used for output.");
-                            }
-                            bindings.Add(new QueueBinding(config, queueBindingMetadata, fileAccess));
-                            break;
-                        case BindingType.ServiceBus:
-                        case BindingType.ServiceBusTrigger:
-                            ServiceBusBindingMetadata serviceBusBindingMetadata = (ServiceBusBindingMetadata)bindingMetadata;
-                            if (!serviceBusBindingMetadata.IsTrigger &&
-                                fileAccess != FileAccess.Write)
-                            {
-                                throw new InvalidOperationException("ServiceBus binding can only be used for output.");
-                            }
-                            bindings.Add(new ServiceBusBinding(config, serviceBusBindingMetadata, fileAccess));
-                            break;
-                        case BindingType.Table:
+                        case "table":
                             TableBindingMetadata tableBindingMetadata = (TableBindingMetadata)bindingMetadata;
                             bindings.Add(new TableBinding(config, tableBindingMetadata, fileAccess));
                             break;
-                        case BindingType.Http:
+                        case "http":
                             if (fileAccess != FileAccess.Write)
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
-                            if (string.IsNullOrEmpty(bindingMetadata.Name))
-                            {
-                                // TODO: Why is this here?
-                                bindingMetadata.Name = "res";
-                            }
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
-                        case BindingType.HttpTrigger:
+                        case "httptrigger":
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Read));
                             break;
-                        case BindingType.MobileTable:
-                            MobileTableBindingMetadata mobileTableMetadata = (MobileTableBindingMetadata)bindingMetadata;
-                            bindings.Add(new MobileTableBinding(config, mobileTableMetadata, fileAccess));
-                            break;
-                        case BindingType.DocumentDB:
-                            DocumentDBBindingMetadata docDBMetadata = (DocumentDBBindingMetadata)bindingMetadata;
-                            bindings.Add(new DocumentDBBinding(config, docDBMetadata, fileAccess));
-                            break;
-                        case BindingType.NotificationHub:
-                            NotificationHubBindingMetadata notificationHubMetadata = (NotificationHubBindingMetadata)bindingMetadata;
-                            bindings.Add(new NotificationHubBinding(config, notificationHubMetadata, fileAccess));
-                            break;
-                        case BindingType.ApiHubFile:
-                        case BindingType.ApiHubFileTrigger:
-                            ApiHubBindingMetadata apiHubBindingMetadata = (ApiHubBindingMetadata)bindingMetadata;
-                            apiHubBindingMetadata.Key = Guid.NewGuid().ToString();
-                            bindings.Add(new ApiHubBinding(config, apiHubBindingMetadata, fileAccess));
-                            break;
-                        case BindingType.ApiHubTable:
-                            ApiHubTableBindingMetadata apiHubTableBindingMetadata = (ApiHubTableBindingMetadata)bindingMetadata;
-                            bindings.Add(new ApiHubTableBinding(config, apiHubTableBindingMetadata, fileAccess));
+                        default:
+                            FunctionBinding binding = null;
+                            if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
+                            {
+                                bindings.Add(binding);
+                            }
                             break;
                     }
                 }
             }
 
             return bindings;
+        }
+
+        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, Newtonsoft.Json.Linq.JObject metadata, out FunctionBinding functionBinding)
+        {
+            functionBinding = null;            
+
+            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
+            ScriptBinding scriptBinding = null;
+            foreach (var provider in config.BindingProviders)
+            {
+                if (provider.TryCreate(bindingContext, out scriptBinding))
+                {
+                    break;
+                }
+            }
+
+            if (scriptBinding == null)
+            {
+                return false;
+            }
+
+            BindingMetadata bindingMetadata = BindingMetadata.Create(metadata);
+            functionBinding = new ExtensionBinding(config, scriptBinding, bindingMetadata);
+
+            return true;
+        }
+
+        protected string ResolveAndBind(string value, IReadOnlyDictionary<string, string> bindingData)
+        {
+            BindingTemplate template = BindingTemplate.FromString(value);
+
+            string boundValue = value;
+            if (bindingData != null && template != null)
+            {
+                boundValue = template.Bind(bindingData);
+            }
+
+            if (!string.IsNullOrEmpty(value))
+            {
+                boundValue = Resolve(boundValue);
+            }
+
+            return boundValue;
         }
 
         protected string Resolve(string name)
@@ -190,9 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return values;
         }
 
-        internal static async Task BindAsyncCollectorAsync<T>(BindingContext context, RuntimeBindingContext runtimeContext)
+        internal static async Task BindAsyncCollectorAsync<T>(BindingContext context)
         {
-            IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(runtimeContext);
+            IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(context.Attributes);
 
             IEnumerable values = ReadAsCollection(context.Value);
 
@@ -227,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        internal static async Task BindStreamAsync(BindingContext context, FileAccess access, RuntimeBindingContext runtimeContext)
+        internal static async Task BindStreamAsync(BindingContext context, FileAccess access)
         {
-            Stream stream = await context.Binder.BindAsync<Stream>(runtimeContext);
+            Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
 
             if (access == FileAccess.Write)
             {
@@ -271,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // value is already a stream, so copy it directly
                 valueStream.CopyTo(stream);
-            } 
+            }
         }
 
         public static void ConvertStreamToValue(Stream stream, DataType dataType, ref object converted)

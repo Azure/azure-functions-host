@@ -2,11 +2,13 @@
     "bindings": [
         {
             "type": "httpTrigger",
+            "name": "req",
             "direction": "invalid",
             "methods": [ "get", "post" ]
         },
         {
             "type": "http",
+            "name": "res",
             "direction": "out"
         }
     ]

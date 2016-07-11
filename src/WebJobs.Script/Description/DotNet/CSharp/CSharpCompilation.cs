@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -29,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
         {
-            return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
+            var diagnostics = _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
+            return diagnostics.AddRange(_compilation.GetDiagnostics());
         }
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
@@ -46,8 +48,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             IMethodSymbol entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
             bool hasLocalTypeReferences = entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
+            var functionParameters = entryPointReference.Parameters.Select(p => new FunctionParameter(p.Name, GetFullTypeName(p.Type), p.IsOptional, p.RefKind));
 
-            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name, entryPointReference.Parameters, hasLocalTypeReferences);
+            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name, ImmutableArray.CreateRange(functionParameters.ToArray()), hasLocalTypeReferences);
+        }
+
+        private static string GetFullTypeName(ITypeSymbol type)
+        {
+            if (type == null)
+            {
+                return string.Empty;
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, "{0}.{1}, {2}", type.ContainingNamespace.MetadataName, type.MetadataName, type.ContainingAssembly.ToDisplayString());
         }
 
         private static bool IsOrUsesAssemblyType(ITypeSymbol typeSymbol, IAssemblySymbol assemblySymbol)

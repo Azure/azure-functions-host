@@ -50,13 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = new FunctionMetadataResolver(functionMetadata, TraceWriter);
+            _metadataResolver = new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _triggerInputName = GetTriggerInputName(functionMetadata);
+            _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-                        
+
             InitializeFileWatcher();
 
             _resultProcessor = CreateResultProcessor();
@@ -68,20 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
-        }
-
-        // TODO: Is this function still needed? Can we factor it away?
-        private static string GetTriggerInputName(FunctionMetadata functionMetadata)
-        {
-            BindingMetadata triggerBinding = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger);
-
-            string triggerName = null;
-            if (triggerBinding != null)
-            {
-                triggerName = triggerBinding.Name;
-            }
-
-            return triggerName ?? FunctionDescriptorProvider.DefaultInputParameterName;
         }
 
         private void InitializeFileWatcher()
@@ -116,11 +102,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             TraceWriter.Info("Compiling function script.");
 
-            ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-            ImmutableArray<Diagnostic> compilationResult = compilation.GetDiagnostics();
+            ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
+            FunctionSignature signature = null;
 
-            FunctionSignature signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
-            compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+            try
+            {
+                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                compilationResult = compilation.GetDiagnostics();
+
+                signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+            }
+            catch (CompilationErrorException exc)
+            {
+                compilationResult = compilationResult.AddRange(exc.Diagnostics);
+            }
 
             TraceCompilationDiagnostics(compilationResult);
 
@@ -299,7 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
                 FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+                TraceCompilationDiagnostics(bindingDiagnostics);
 
                 using (assemblyStream = new MemoryStream())
                 {
@@ -392,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var binding in bindings)
             {
-                if (binding.Metadata.Type == BindingType.Http)
+                if (string.Compare("http", binding.Metadata.Type, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     continue;
                 }

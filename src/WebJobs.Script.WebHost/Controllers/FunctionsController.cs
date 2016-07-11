@@ -45,15 +45,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
             AuthorizationLevel authorizationLevel = AuthorizationLevelAttribute.GetAuthorizationLevel(request, secretManager, functionName: function.Name);
 
-            if (function.Metadata.IsDisabled && 
-                authorizationLevel != AuthorizationLevel.Admin)
+            if (function.Metadata.IsExcluded ||
+                (function.Metadata.IsDisabled && authorizationLevel != AuthorizationLevel.Admin))
             {
-                // disabled functions are not publically addressable w/o Admin level auth
+                // disabled functions are not publically addressable w/o Admin level auth,
+                // and excluded functions are also ignored here (though the check above will
+                // already exclude them)
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
             // Dispatch the request
-            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
             bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
             HttpResponseMessage response = null;
             if (isWebHook)

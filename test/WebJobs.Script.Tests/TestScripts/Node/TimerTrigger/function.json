@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "timerTrigger",
+            "name": "timerInfo",
             "direction": "in",
             "schedule": "* * * * * *"
         },

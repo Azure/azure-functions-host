@@ -1,5 +1,5 @@
-﻿
-using System;
+﻿using System;
+using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(string input, out string item, TraceWriter log)
 {

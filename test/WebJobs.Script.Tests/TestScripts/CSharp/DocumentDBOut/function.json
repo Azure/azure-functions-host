@@ -2,10 +2,11 @@
     "bindings": [
         {
             "type": "manualTrigger",
+            "name": "input",
             "direction": "in"
         },
         {
-            "type": "documentdb",
+            "type": "documentDB",
             "name": "item",
             "direction": "out",
             "databaseName": "ItemDb",

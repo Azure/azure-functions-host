@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -10,9 +11,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     public class BindingContext
     {
         /// <summary>
+        /// The collection of Attributes to bind.
+        /// </summary>
+        public Attribute[] Attributes { get; set; }
+
+        /// <summary>
         /// Gets or sets the binder to use to perform the bind.
         /// </summary>
-        public IBinderEx Binder { get; set; }
+        public Binder Binder { get; set; }
 
         /// <summary>
         /// Gets or sets the trigger value that caused the current invocation.
@@ -32,6 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// <summary>
         /// Gets or sets the collection of binding data for this invocation.
         /// </summary>
-        public IReadOnlyDictionary<string, string> BindingData { get; set; }
+        public IReadOnlyDictionary<string, object> BindingData { get; set; }
     }
 }

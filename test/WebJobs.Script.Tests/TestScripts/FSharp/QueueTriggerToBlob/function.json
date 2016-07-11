@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "queueTrigger",
+            "name": "input",
             "direction": "in",
             "queueName": "test-input-fsharp"
         },

@@ -2,9 +2,11 @@
     "bindings": [
         {
             "type": "eventHubTrigger",
+            "name": "workItem",
             "direction": "in",
             "connection": "AzureWebJobsEventHubReceiver",
-            "path": "%AzureWebJobsEventHubPath%"
+            "path": "%AzureWebJobsEventHubPath%",
+            "consumerGroup": "$Default"
         },
         {
             "type": "blob",

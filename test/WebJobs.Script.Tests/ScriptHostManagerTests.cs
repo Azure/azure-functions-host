@@ -3,12 +3,13 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -66,8 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = NullTraceWriter.Instance
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var hostMock = new Mock<TestScriptHost>(config);
@@ -92,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = NullTraceWriter.Instance
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var exception = new Exception("Kaboom!");
@@ -127,6 +126,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Null(target.Object.LastError);
+        }
+
+        [Fact]
+        public async Task EmptyHost_StartsSuccessfully()
+        {
+            string functionDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions", Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionDir);
+
+            // important for the repro that this directory does not exist
+            string logDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString());
+
+            JObject hostConfig = new JObject
+            {
+                { "id", "123456" }
+            };
+            File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration
+            {
+                RootScriptPath = functionDir,
+                RootLogPath = logDir,
+                FileLoggingEnabled = true
+            };
+            ScriptHostManager hostManager = new ScriptHostManager(config);
+
+            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
+
+            hostManager.Stop();
+            Assert.False(hostManager.IsRunning);
+
+            string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
+            string hostLogs = File.ReadAllText(hostLogFilePath);
+
+            Assert.True(hostLogs.Contains("Generating 0 job function(s)"));
+            Assert.True(hostLogs.Contains("No job functions found."));
+            Assert.True(hostLogs.Contains("Job host started"));
+            Assert.True(hostLogs.Contains("Job host stopped"));
         }
 
         // Update the manifest for the timer function

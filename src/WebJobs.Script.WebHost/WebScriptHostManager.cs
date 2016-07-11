@@ -3,12 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -77,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // so add it to the arguments, as a system argument
                 arguments.Add(ScriptConstants.DefaultSystemTriggerParameterName, request);
 
-                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger);
+                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
                 {
                     WebHookHandlerContext webHookContext;
@@ -111,8 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new ArgumentNullException("uri");
             }
 
-            FunctionDescriptor function = null;
-
             if (HttpFunctions == null || HttpFunctions.Count == 0)
             {
                 return null;
@@ -120,7 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Parse the route (e.g. "api/myfunc") to get 'myfunc"
             // including any path after "api/"
-            string route = uri.AbsolutePath;
+            FunctionDescriptor function = null;
+            string route = HttpUtility.UrlDecode(uri.AbsolutePath);
             int idx = route.ToLowerInvariant().IndexOf("api", StringComparison.OrdinalIgnoreCase);
             if (idx > 0)
             {
@@ -156,10 +157,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
+            InitializeHttpFunctions(Instance.Functions);
+
+            // Purge any old Function secrets
+            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
+        }
+
+        internal void InitializeHttpFunctions(Collection<FunctionDescriptor> functions)
+        {
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
-            foreach (var function in Instance.Functions)
+            foreach (var function in functions)
             {
-                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type == BindingType.HttpTrigger);
+                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (httpTriggerBinding != null)
                 {
                     string route = httpTriggerBinding.Route;
@@ -172,9 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     HttpFunctions.Add(route.ToLowerInvariant(), function);
                 }
             }
-
-            // Purge any old Function secrets
-            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath);
         }
     }
 }

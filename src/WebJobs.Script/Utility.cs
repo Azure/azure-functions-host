@@ -2,13 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        public static IReadOnlyDictionary<string, string> ToStringValues(this IReadOnlyDictionary<string, object> data)
+        {
+            return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
+        }
+
         public static string GetFunctionShortName(string functionName)
         {
             int idx = functionName.LastIndexOf('.');

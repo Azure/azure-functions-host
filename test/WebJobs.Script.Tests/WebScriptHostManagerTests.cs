@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -46,19 +49,89 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Equal("WebHookTrigger.json", secretFiles[3]);
         }
 
+        [Fact]
+        public async Task EmptyHost_StartsSuccessfully()
+        {
+            string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionTestDir);
+
+            // important for the repro that these directories no not exist
+            string logDir = Path.Combine(_fixture.TestLogsRoot, Guid.NewGuid().ToString());
+            string secretsDir = Path.Combine(_fixture.TestSecretsRoot, Guid.NewGuid().ToString());
+
+            JObject hostConfig = new JObject
+            {
+                { "id", "123456" }
+            };
+            File.WriteAllText(Path.Combine(functionTestDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration
+            {
+                RootScriptPath = functionTestDir,
+                RootLogPath = logDir,
+                FileLoggingEnabled = true
+            };
+            SecretManager secretManager = new SecretManager(secretsDir);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager);
+
+            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
+
+            hostManager.Stop();
+            Assert.False(hostManager.IsRunning);
+
+            string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
+            string hostLogs = File.ReadAllText(hostLogFilePath);
+
+            Assert.True(hostLogs.Contains("Generating 0 job function(s)"));
+            Assert.True(hostLogs.Contains("No job functions found."));
+            Assert.True(hostLogs.Contains("Job host started"));
+            Assert.True(hostLogs.Contains("Job host stopped"));
+        }
+
+        [Fact]
+        public void GetHttpFunctionOrNull_DecodesUriProperly()
+        {
+            WebScriptHostManager manager = new WebScriptHostManager(new ScriptHostConfiguration(), new SecretManager());
+
+            // Initialize the 
+            FunctionMetadata metadata = new FunctionMetadata();
+            metadata.Bindings.Add(new HttpTriggerBindingMetadata
+            {
+                Type = "HttpTrigger"
+            });
+            TestInvoker invoker = new TestInvoker();
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>()
+            {
+                new FunctionDescriptor("Foo Bar", invoker, metadata, parameters),
+                new FunctionDescriptor("éà  中國", invoker, metadata, parameters)
+            };
+            manager.InitializeHttpFunctions(functions);
+
+            Uri uri = new Uri("http://local/api/Foo Bar");
+            var result = manager.GetHttpFunctionOrNull(uri);
+            Assert.Same(functions[0], result);
+
+            uri = new Uri("http://local/api/éà  中國");
+            result = manager.GetHttpFunctionOrNull(uri);
+            Assert.Same(functions[1], result);
+        }
+
         public class Fixture : IDisposable
         {
             public Fixture()
             {
-                string testRoot = Path.Combine(Path.GetTempPath(), "FunctionTests");
-                if (Directory.Exists(testRoot))
-                {
-                    Directory.Delete(testRoot, recursive: true);
-                }
+                TestFunctionRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
+                TestLogsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs");
+                TestSecretsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Secrets");
 
-                SecretsPath = Path.Combine(testRoot, "TestSecrets");
+                string testRoot = Path.Combine(TestFunctionRoot, Guid.NewGuid().ToString());
+
+                SecretsPath = Path.Combine(TestSecretsRoot, Guid.NewGuid().ToString());
                 Directory.CreateDirectory(SecretsPath);
-                string logRoot = Path.Combine(testRoot, @"Functions");
+                string logRoot = Path.Combine(TestLogsRoot, Guid.NewGuid().ToString(), @"Functions");
                 Directory.CreateDirectory(logRoot);
                 FunctionsLogDir = Path.Combine(logRoot, @"Function");
                 Directory.CreateDirectory(FunctionsLogDir);
@@ -100,12 +173,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             public string SecretsPath { get; private set; }
 
+            public string TestFunctionRoot { get; private set; }
+
+            public string TestLogsRoot { get; private set; }
+
+            public string TestSecretsRoot { get; private set; }
+
             public void Dispose()
             {
                 if (HostManager != null)
                 {
                     HostManager.Stop();
                     HostManager.Dispose();
+                }
+
+                try
+                {
+                    if (Directory.Exists(TestHelpers.FunctionsTestDirectory))
+                    {
+                        Directory.Delete(TestHelpers.FunctionsTestDirectory, recursive: true);
+                    }
+                }
+                catch
+                {
+                    // occasionally get file in use errors
                 }
             }
 

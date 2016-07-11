@@ -1,16 +1,17 @@
 ﻿{
-  "bindings": [
-    {
-      "type": "blobTrigger",
-      "direction": "in",
-      "dataType": "binary",
-      "path": "test-input-node/{name}"
-    },
-    {
-      "type": "blob",
-      "name": "output",
-      "direction": "out",
-      "path": "test-output-node/{name}"
-    }
-  ]
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "name": "input",
+            "direction": "in",
+            "dataType": "binary",
+            "path": "test-input-node/{name}"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "test-output-node/{name}"
+        }
+    ]
 }

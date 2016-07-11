@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -48,6 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task NotificationHub_Out_Notification()
         {
             await NotificationHubTest("NotificationHubOutNotification");
+        }
+
+        [Fact]
+        public async Task NotificationHubNative()
+        {
+            await NotificationHubTest("NotificationHubNative");
         }
 
         [Fact]
@@ -112,10 +119,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
 
             // Test table binding.
+            TestInput input = new TestInput
+            {
+                Id = ApiHubTestHelper.EntityId2,
+                Value = textArgValue
+            };
             await Fixture.Host.CallAsync("ApiHubTable",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.TextArg, textArgValue }
+                    { "input", JsonConvert.SerializeObject(input) }
                 });
 
             await ApiHubTestHelper.AssertTextUpdatedAsync(
@@ -131,10 +143,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
 
             // Test table entity binding.
+            TestInput input = new TestInput
+            {
+                Id = ApiHubTestHelper.EntityId3,
+                Value = textArgValue
+            };
             await Fixture.Host.CallAsync("ApiHubTableEntity",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.TextArg, textArgValue }
+                    { "input", JsonConvert.SerializeObject(input) }
                 });
 
             await ApiHubTestHelper.AssertTextUpdatedAsync(
@@ -220,6 +237,12 @@ namespace SecondaryDependency
                 
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
             }
+        }
+
+        public class TestInput
+        {
+            public int Id { get; set; }
+            public string Value { get; set; }
         }
     }
 }

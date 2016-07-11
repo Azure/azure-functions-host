@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class INameResolverExtensions
     {
-        // Apply the resolver to all string properties on obj that have an [AllowNameResolution] attribute.
+        // Apply the resolver to all string properties on obj that have an [AutoResolve] attribute.
         // Updates the object in-place. 
         public static void ResolveAllProperties(this INameResolver resolver, object value)
         {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (prop.PropertyType == typeof(string))
                 {
-                    if (prop.GetCustomAttribute<AllowNameResolutionAttribute>() != null)
+                    if (prop.GetCustomAttribute<AutoResolveAttribute>() != null)
                     {
                         string val = (string)prop.GetValue(value);
                         string newVal = resolver.ResolveWholeString(val);

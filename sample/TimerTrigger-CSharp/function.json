@@ -2,8 +2,8 @@
     "bindings": [
         {
             "type": "timerTrigger",
+            "name": "timerInfo",
             "schedule": "0 * * * * *",
-            "runOnStartup": true,
             "direction": "in"
         }
     ]

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -250,6 +250,39 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell", "H
 		sample\HttpTrigger-Powershell\run.ps1 = sample\HttpTrigger-Powershell\run.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell-Modules", "HttpTrigger-Powershell-Modules", "{CDF316B9-AB36-42CB-859B-FCDB56E083B0}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Powershell-Modules\function.json = sample\HttpTrigger-Powershell-Modules\function.json
+		sample\HttpTrigger-Powershell-Modules\run.ps1 = sample\HttpTrigger-Powershell-Modules\run.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{A751A732-ACCE-4B1F-8244-8DD161619483}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1
+		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1
+		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Extensibility", "src\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj", "{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid", "SendGrid", "{23E6C413-FCFB-4727-8F4A-5AFEA63090A7}"
+	ProjectSection(SolutionItems) = preProject
+		sample\SendGrid\function.json = sample\SendGrid\function.json
+		sample\SendGrid\index.js = sample\SendGrid\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-CSharp", "SendGrid-CSharp", "{B69D3A0B-829B-4721-B034-8ECECB264458}"
+	ProjectSection(SolutionItems) = preProject
+		sample\SendGrid-CSharp\function.json = sample\SendGrid-CSharp\function.json
+		sample\SendGrid-CSharp\run.csx = sample\SendGrid-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "SendGrid-PowerShell", "{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E}"
+	ProjectSection(SolutionItems) = preProject
+		sample\SendGrid-PowerShell\function.json = sample\SendGrid-PowerShell\function.json
+		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -276,6 +309,10 @@ Global
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -323,5 +360,11 @@ Global
 		{C963B824-334A-4905-9AC7-2F373E5BC9CA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{A751A732-ACCE-4B1F-8244-8DD161619483} = {CDF316B9-AB36-42CB-859B-FCDB56E083B0}
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

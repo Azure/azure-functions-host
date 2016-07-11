@@ -2,11 +2,13 @@
     "bindings": [
         {
             "type": "httpTrigger",
+            "name": "payload",
             "direction": "in",
             "webHookType": "github"
         },
         {
             "type": "http",
+            "name": "res",
             "direction": "out"
         }
     ]

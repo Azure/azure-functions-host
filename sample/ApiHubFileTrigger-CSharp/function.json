@@ -2,14 +2,14 @@
     "bindings": [
         {
             "type": "apiHubFileTrigger",
+            "name": "input",
             "connection": "AzureWebJobsDropBox",
             "direction": "in",
-            "path": "test/{name}",
-            "name": "input"
+            "path": "test/{name}"
         },
         {
-            "name": "output",
             "type": "apiHubFile",
+            "name": "output",
             "connection": "AzureWebJobsDropBox",
             "direction": "out",
             "path": "testOut/{name}"

@@ -30,14 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
+            ApiHubTestHelper.SetDefaultConnectionFactory();
+
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath,
                 TraceWriter = TraceWriter,
                 FileLoggingEnabled = true
             };
-
-            ApiHubTestHelper.SetDefaultConnectionFactory();
 
             Host = ScriptHost.Create(config);
             Host.Start();
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return queue;
         }
 
-        private void CreateTestStorageEntities()
+        protected virtual void CreateTestStorageEntities()
         {
             TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", _testId));
             TestQueue.CreateIfNotExists();

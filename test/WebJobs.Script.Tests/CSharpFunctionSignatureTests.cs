@@ -36,13 +36,47 @@ public static void Run(string id, out string output)
                    .AddSyntaxTrees(tree1));
 
             var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
-                .AddSyntaxTrees(tree1));
+                .AddSyntaxTrees(tree2));
 
             var signature1 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
-            var signature2 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            var signature2 = compilation2.GetEntryPointSignature(new FunctionEntryPointResolver());
 
             Assert.True(signature1.Equals(signature2));
             Assert.Equal(signature1.GetHashCode(), signature2.GetHashCode());
+        }
+
+        [Fact]
+        public void Matches_IsFalse_WhenParametersAreNotEqual()
+        {
+            var function1 = @"using System;
+public static void Run(string identity, out string outputParam)
+{
+    outputParam = string.Empty;
+}";
+
+            var function2 = @"using System;
+public static void Run(string id, out string output)
+{
+    string result = string.Empty;
+    output = result;
+}";
+
+            var tree1 = CSharpSyntaxTree.ParseText(function1, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+            var tree2 = CSharpSyntaxTree.ParseText(function2, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+
+            var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
+
+            var compilation1 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references)
+                   .AddSyntaxTrees(tree1));
+
+            var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
+                .AddSyntaxTrees(tree2));
+
+            var signature1 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            var signature2 = compilation2.GetEntryPointSignature(new FunctionEntryPointResolver());
+
+            Assert.False(signature1.Equals(signature2));
+            Assert.NotEqual(signature1.GetHashCode(), signature2.GetHashCode());
         }
 
         [Fact]
@@ -72,10 +106,10 @@ out String output )
                 .AddSyntaxTrees(tree1));
 
             var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
-                .AddSyntaxTrees(tree1));
+                .AddSyntaxTrees(tree2));
 
             var signature1 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
-            var signature2 = compilation1.GetEntryPointSignature(new FunctionEntryPointResolver());
+            var signature2 = compilation2.GetEntryPointSignature(new FunctionEntryPointResolver());
             
             Assert.True(signature1.Equals(signature2));
             Assert.Equal(signature1.GetHashCode(), signature2.GetHashCode());

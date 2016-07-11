@@ -5,6 +5,8 @@ var f = require('{0}'),
     util = require('util');
 
 return function (context, callback) {{
+    f = getEntryPoint(f, context);
+
     var origLog = context.log;
     context.log = function() {{
         value = util.format.apply(null, arguments);
@@ -41,3 +43,35 @@ return function (context, callback) {{
 
     f.apply(null, inputs);
 }};
+
+function getEntryPoint(f, context) {{
+    if (util.isObject(f)) {{
+        if (context.entryPoint) {{
+            // the module exports multiple functions
+            // and an explicit entry point was named
+            f = f[context.entryPoint];
+            delete context.entryPoint;
+        }}
+        else if (Object.keys(f).length == 1) {{
+            // a single named function was exported
+            f = f[Object.keys(f)[0]];
+        }}
+        else {{
+            // finally, see if there is an exported function named
+            // 'run' by convention
+            f = f['run'];
+        }}
+    }}
+    else if (!util.isFunction(f)) {{
+        // the module must export an object or a function
+        f = null;
+    }}
+
+    if (!f) {{
+        throw "Unable to determine function entry point. If multiple functions are exported, " +
+              "you must indicate the entry point, either by naming it 'run', or by naming it " +
+              "explicitly via the 'entryPoint' metadata property.";
+    }}
+
+    return f;
+}}

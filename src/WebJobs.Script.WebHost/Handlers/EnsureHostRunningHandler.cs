@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
     public class EnsureHostRunningHandler : DelegatingHandler
     {
-        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 10);
+        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 30);
         private readonly int _hostRunningPollIntervalMs = 500;
         private WebScriptHostManager _scriptHostManager;
  
@@ -43,11 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                     timeWaited += TimeSpan.FromMilliseconds(_hostRunningPollIntervalMs);
                 }
 
-                // if the host is not running after or wait time has expired
+                // if the host is not running after our wait time has expired
                 // return a 503
                 if (!_scriptHostManager.IsRunning)
                 {
-                    return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                    return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                    {
+                        Content = new StringContent("Function host is not running.")
+                    };
                 }
             }
 

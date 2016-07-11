@@ -7,7 +7,7 @@
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <SiteExtensionVersion>0.2.$(BuildNumber)</SiteExtensionVersion>
+    <SiteExtensionVersion>0.3.$(BuildNumber)</SiteExtensionVersion>
     <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
     <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
     <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
@@ -26,6 +26,10 @@
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
     <Build Include="src\WebJobs.Script.NuGet\WebJobs.Script.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>

@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
@@ -18,12 +17,13 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    public class ScriptFunctionInvoker : FunctionInvokerBase
+    [CLSCompliant(false)]
+    public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
     {
         private const string FsiPathEnvironmentKey = "AzureWebJobs_FsiPath";
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";
         private const string ProgramFiles64bitKey = "ProgramW6432";
-        private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.Powershell, ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash, ScriptType.FSharp };
+        private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash, ScriptType.FSharp };
         private readonly string _scriptFilePath;
         private readonly IMetricsLogger _metrics;
 
@@ -49,10 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string scriptHostArguments;
             switch (Metadata.ScriptType)
             {
-                case ScriptType.Powershell:
-                    scriptHostArguments = string.Format("-ExecutionPolicy RemoteSigned -File \"{0}\"", _scriptFilePath);
-                    await ExecuteScriptAsync("PowerShell.exe", scriptHostArguments, parameters);
-                    break;
                 case ScriptType.WindowsBatch:
                     scriptHostArguments = string.Format("/c \"{0}\"", _scriptFilePath);
                     await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
@@ -82,27 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = invocationParameters[0];
             TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
-            IBinderEx binder = (IBinderEx)invocationParameters[2];
+            Binder binder = (Binder)invocationParameters[2];
             ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
-
-            // perform any required input conversions
-            object convertedInput = input;
-            if (input != null)
-            {
-                HttpRequestMessage request = input as HttpRequestMessage;
-                if (request != null)
-                {
-                    // TODO: Handle other content types? (E.g. byte[])
-                    if (request.Content != null && request.Content.Headers.ContentLength > 0)
-                    {
-                        convertedInput = ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
-                    }
-                }
-            }
 
             TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
@@ -112,10 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
-            Dictionary<string, string> bindingData = GetBindingData(convertedInput, binder);
+            object convertedInput = ConvertInput(input);
+            ApplyBindingData(convertedInput, binder);
+            Dictionary<string, object> bindingData = binder.BindingData;
             bindingData["InvocationId"] = invocationId;
 
-            await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, bindingData, environmentVariables);
+            await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
 
             // TODO
             // - put a timeout on how long we wait?
@@ -123,6 +106,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
             process.Start();
             process.WaitForExit();
+
+            string output = process.StandardOutput.ReadToEnd();
+            TraceWriter.Info(output);
+            traceWriter.Info(output);
 
             bool failed = process.ExitCode != 0;
             startedEvent.Success = !failed;
@@ -138,139 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ApplicationException(error);
             }
 
-            string output = process.StandardOutput.ReadToEnd();
-            TraceWriter.Info(output);
-            traceWriter.Info(output);
-
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
 
             TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
-        }
-
-        private void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext context)
-        {
-            environmentVariables["InvocationId"] = context.InvocationId.ToString();
-
-            foreach (var outputBinding in _outputBindings)
-            {
-                environmentVariables[outputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
-            }
-
-            Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(HttpRequestMessage))
-            {
-                HttpRequestMessage request = (HttpRequestMessage)input;
-                environmentVariables["REQ_METHOD"] = request.Method.ToString();
-
-                Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
-                foreach (var queryParam in queryParams)
-                {
-                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
-                    environmentVariables[varName] = queryParam.Value;
-                }
-
-                foreach (var header in request.Headers)
-                {
-                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
-                    environmentVariables[varName] = header.Value.First();
-                }
-            }
-        }
-
-        private async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, IBinderEx binder, Dictionary<string, string> bindingData, Dictionary<string, string> environmentVariables)
-        {
-            // if there are any input or output bindings declared, set up the temporary
-            // output directory
-            if (_outputBindings.Count > 0 || _inputBindings.Any())
-            {
-                Directory.CreateDirectory(functionInstanceOutputPath);
-            }
-
-            // process input bindings
-            foreach (var inputBinding in _inputBindings)
-            {
-                string filePath = System.IO.Path.Combine(functionInstanceOutputPath, inputBinding.Metadata.Name);
-                using (FileStream stream = File.OpenWrite(filePath))
-                {
-                    // If this is the trigger input, write it directly to the stream.
-                    // The trigger binding is a special case because it is early bound
-                    // rather than late bound as is the case with all the other input
-                    // bindings.
-                    if (inputBinding.Metadata.IsTrigger)
-                    {
-                        if (input is string)
-                        {
-                            using (StreamWriter sw = new StreamWriter(stream))
-                            {
-                                await sw.WriteAsync((string)input);
-                            }
-                        }
-                        else if (input is byte[])
-                        {
-                            byte[] bytes = input as byte[];
-                            await stream.WriteAsync(bytes, 0, bytes.Length);
-                        }
-                        else if (input is Stream)
-                        {
-                            Stream inputStream = input as Stream;
-                            await inputStream.CopyToAsync(stream);
-                        }
-                    }
-                    else
-                    {
-                        // invoke the input binding
-                        BindingContext bindingContext = new BindingContext
-                        {
-                            Binder = binder,
-                            BindingData = bindingData,
-                            DataType = DataType.Stream,
-                            Value = stream
-                        };
-                        await inputBinding.BindAsync(bindingContext);
-                    }
-                }
-
-                environmentVariables[inputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Metadata.Name);
-            }
-        }
-
-        private static async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
-            object input, IBinderEx binder, Dictionary<string, string> bindingData)
-        {
-            if (outputBindings == null)
-            {
-                return;
-            }
-
-            try
-            {
-                foreach (var outputBinding in outputBindings)
-                {
-                    string filePath = System.IO.Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
-                    if (File.Exists(filePath))
-                    {
-                        using (FileStream stream = File.OpenRead(filePath))
-                        {
-                            BindingContext bindingContext = new BindingContext
-                            {
-                                TriggerValue = input,
-                                Binder = binder,
-                                BindingData = bindingData,
-                                Value = stream
-                            };
-                            await outputBinding.BindAsync(bindingContext);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                // clean up the output directory
-                if (outputBindings.Any() && Directory.Exists(functionInstanceOutputPath))
-                {
-                    Directory.Delete(functionInstanceOutputPath, recursive: true);
-                }
-            }
         }
 
         internal static Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)

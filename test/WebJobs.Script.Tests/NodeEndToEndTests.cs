@@ -150,6 +150,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NotificationHubNative()
+        {
+            await NotificationHubTest("NotificationHubNative");
+        }
+
+        [Fact]
         public async Task MobileTables()
         {
             await MobileTablesTest();
@@ -207,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "input", "doubleDone" }
+                { "scenario", "doubleDone" }
             };
             await Fixture.Host.CallAsync("Scenarios", arguments);
 
@@ -222,6 +228,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the function completed successfully
             Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
+        }
+
+        [Fact]
+        public async Task MultipleExports()
+        {
+            TestHelpers.ClearFunctionLogs("MultipleExports");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", string.Empty }
+            };
+            await Fixture.Host.CallAsync("MultipleExports", arguments);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("MultipleExports");
+
+            Assert.Equal(3, logs.Count);
+            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=4"));
+        }
+
+        [Fact]
+        public async Task SingleNamedExport()
+        {
+            TestHelpers.ClearFunctionLogs("SingleNamedExport");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", string.Empty }
+            };
+            await Fixture.Host.CallAsync("SingleNamedExport", arguments);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("SingleNamedExport");
+
+            Assert.Equal(3, logs.Count);
+            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=1"));
         }
 
         [Fact]
@@ -410,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "payload", request }
             };
             await Fixture.Host.CallAsync("WebHookTrigger", arguments);
 
@@ -443,15 +483,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableEntityIn()
         {
+            TestHelpers.ClearFunctionLogs("ApiHubTableEntityIn");
+
             // Ensure the test entity exists.
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId4);
 
             // Test table entity out binding.
+            JObject input = new JObject
+            {
+                { "table", "SampleTable" },
+                { "id", ApiHubTestHelper.EntityId4 }
+            };
             await Fixture.Host.CallAsync("ApiHubTableEntityIn",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.EntityIdArg, ApiHubTestHelper.EntityId4.ToString() }
+                    { "input", input.ToString() }
                 });
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("ApiHubTableEntityIn");
+            string expectedLog = string.Format("TestResult: {0}", ApiHubTestHelper.EntityId4);
+            Assert.True(logs.Any(p => p.Contains(expectedLog)));
         }
 
         [Fact]
@@ -463,14 +514,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTestHelper.DeleteEntityAsync(ApiHubTestHelper.EntityId5);
 
             // Test table entity out binding.
+            JObject input = new JObject
+            {
+                { "table", "SampleTable" },
+                { "value", textArgValue }
+            };
             await Fixture.Host.CallAsync("ApiHubTableEntityOut",
                 new Dictionary<string, object>()
                 {
-                    { ApiHubTestHelper.TextArg, textArgValue }
+                    { "input", input.ToString() }
                 });
 
             await ApiHubTestHelper.AssertTextUpdatedAsync(
                 textArgValue, ApiHubTestHelper.EntityId5);
+        }
+
+        [Fact]
+        public void ExcludedFunction_NotAddedToHost()
+        {
+            // Make sure the function was not registered
+            var function = Fixture.Host.Functions.SingleOrDefault(p => string.Compare(p.Name, "Excluded") == 0);
+            Assert.Null(function);
+
+            // Make sure the host log was written
+            var trace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message == "Function 'Excluded' is marked as excluded");
+            Assert.NotNull(trace);
+            Assert.Equal(TraceLevel.Info, trace.Level);
         }
 
         public class TestFixture : EndToEndTestFixture

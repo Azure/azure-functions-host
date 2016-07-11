@@ -2,6 +2,7 @@
     "bindings": [
         {
             "type": "blobTrigger",
+            "name": "input",
             "direction": "in",
             "path": "samples-batch/{name}"
         },
