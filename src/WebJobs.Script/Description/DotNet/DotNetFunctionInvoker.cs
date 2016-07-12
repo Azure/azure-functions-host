@@ -396,7 +396,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Metadata.Name, StringComparison.Ordinal) == 0))
                 {
-                    string message = string.Format(CultureInfo.InvariantCulture, "Missing binding argument named '{0}'.", binding.Metadata.Name);
+                    string message = string.Format(CultureInfo.InvariantCulture, 
+                        "Missing binding argument named '{0}'. Mismatched binding argument names may lead to function indexing errors.", binding.Metadata.Name);
+
                     var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,
                         "Missing binding argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 
