@@ -76,11 +76,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             private readonly string _storageConnectionString;
             private readonly EventHubConfiguration _eventHubConfiguration;
+            private readonly INameResolver _nameResolver;
 
             public EventHubScriptBinding(JobHostConfiguration hostConfig, EventHubConfiguration eventHubConfig, ScriptBindingContext context) : base(context)
             {
                 _eventHubConfiguration = eventHubConfig;
                 _storageConnectionString = hostConfig.StorageConnectionString;
+                _nameResolver = hostConfig.NameResolver;
             }
 
             public override Type DefaultType
@@ -104,10 +106,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 Collection<Attribute> attributes = new Collection<Attribute>();
 
                 string eventHubName = Context.GetMetadataValue<string>("path");
+                if (!string.IsNullOrEmpty(eventHubName))
+                {
+                    eventHubName = _nameResolver.ResolveWholeString(eventHubName);
+                }
+
                 string connectionString = Context.GetMetadataValue<string>("connection");
                 if (!string.IsNullOrEmpty(connectionString))
                 {
-                    connectionString = Utility.GetAppSettingOrEnvironmentValue(connectionString);
+                    connectionString = _nameResolver.Resolve(connectionString);
                 }
 
                 if (Context.IsTrigger)

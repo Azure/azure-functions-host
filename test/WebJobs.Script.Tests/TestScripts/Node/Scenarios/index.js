@@ -1,6 +1,7 @@
-﻿var util = require('util');
+var util = require('util');
 
-module.exports = function (context, scenario) {
+﻿module.exports = function (context, input) {
+    var scenario = input.scenario;
     context.log("Running scenario '%s'", scenario);
 
     if (scenario == 'doubleDone') {
@@ -12,6 +13,10 @@ module.exports = function (context, scenario) {
             // without the workaround this would hang
             context.done();
         });
+    }
+    else if (scenario == 'randGuid') {
+        context.bindings.blob = input.value;
+        context.done();
     }
     else {
         // throw if the scenario didn't match

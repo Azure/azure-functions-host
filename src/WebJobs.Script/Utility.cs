@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Text;
 
@@ -70,25 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script
             while ((ex = ex.InnerException) != null);
 
             return flattenedErrorsBuilder.ToString();
-        }
-
-        public static string GetAppSettingOrEnvironmentValue(string name)
-        {
-            // first check app settings
-            string value = ConfigurationManager.AppSettings[name];
-            if (!string.IsNullOrEmpty(value))
-            {
-                return value;
-            }
-
-            // Check environment variables
-            value = Environment.GetEnvironmentVariable(name);
-            if (value != null)
-            {
-                return value;
-            }
-
-            return null;
         }
 
         public static bool IsJson(string input)
