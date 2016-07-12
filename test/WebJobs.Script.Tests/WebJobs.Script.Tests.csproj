@@ -276,6 +276,7 @@
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
+    <Compile Include="ExtensionSharedAssemblyProviderTests.cs" />
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionBindingTests.cs" />

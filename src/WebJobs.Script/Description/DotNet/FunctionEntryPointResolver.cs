@@ -53,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return entryPoint.Value;
         }
 
-
         /// <summary>
         /// Resolves the method that should be used as the entry point.
         /// </summary>
