@@ -2,17 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Configuration;
 using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
-    internal class NameResolver : INameResolver
+    internal class NameResolver : DefaultNameResolver
     {
         private readonly Random _rand = new Random();
 
-        public string Resolve(string name)
+        public override string Resolve(string name)
         {
+            string resolved = base.Resolve(name);
+            if (resolved != null)
+            {
+                return resolved;
+            }
+
             if (name != null)
             {
                 switch (name.ToLowerInvariant())
@@ -25,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
 
             // contract is to return null if not found. 
-            return Utility.GetAppSettingOrEnvironmentValue(name);
+            return null;
         }
     }
 }
