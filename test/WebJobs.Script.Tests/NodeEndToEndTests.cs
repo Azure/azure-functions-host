@@ -260,14 +260,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Fixture.Host.CallAsync("Scenarios", arguments);
             }
 
-            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().OrderBy(p => p.Properties.LastModified).ToArray();
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
             Assert.Equal(3, blobs.Length);
-            for (int i = 0; i < 3; i++)
+            foreach (var blob in blobs)
             {
-                var blob = (CloudBlockBlob)blobs[i];
                 byte[] contents = new byte[4];
                 await blob.DownloadToByteArrayAsync(contents, 0);
-                Assert.Equal(i, BitConverter.ToInt32(contents, 0));
+                int blobInt = BitConverter.ToInt32(contents, 0);
+                Assert.True(blobInt >= 0 && blobInt <= 3);
             }
         }
 
