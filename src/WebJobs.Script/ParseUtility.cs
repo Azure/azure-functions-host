@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 using YamlDotNet.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -26,21 +27,25 @@ namespace Microsoft.Azure.WebJobs.Script
             if (triggerParts[0].Equals("TIMER", StringComparison.OrdinalIgnoreCase))
             {
                 //it is a timer action
-                triggerBindingMetadata = new TimerBindingMetadata();
-                triggerBindingMetadata.Type = BindingType.TimerTrigger;
-                ((TimerBindingMetadata)triggerBindingMetadata).Schedule = triggerParts[1];
+                triggerBindingMetadata = BindingMetadata.Create(new JObject
+                {
+                    { "type", "TimerTrigger" },
+                    { "schedule", triggerParts[1] },
+                    { "runOnStartup", true },
+                    { "direction", "in" }
+                });
             }
             else
             {
                 triggerBindingMetadata = new HttpTriggerBindingMetadata();
-                triggerBindingMetadata.Type = BindingType.HttpTrigger;
+                triggerBindingMetadata.Type = "HttpTrigger";
                 //use the route template from the route/method template
                 ((HttpTriggerBindingMetadata)triggerBindingMetadata).Route = triggerParts[1];
                 //get the method tag from the route/method template
                 Collection<HttpMethod> methods = new Collection<HttpMethod>();
                 methods.Add(new HttpMethod(triggerParts[0]));
-                ((HttpTriggerBindingMetadata) triggerBindingMetadata).Methods = methods;
-                ((HttpTriggerBindingMetadata) triggerBindingMetadata).AuthLevel = AuthorizationLevel.Anonymous;
+                ((HttpTriggerBindingMetadata)triggerBindingMetadata).Methods = methods;
+                ((HttpTriggerBindingMetadata)triggerBindingMetadata).AuthLevel = AuthorizationLevel.Anonymous;
             }
             return triggerBindingMetadata;
         }
@@ -48,44 +53,44 @@ namespace Microsoft.Azure.WebJobs.Script
         public static void CreateDefaultBindings(FunctionMetadata functionMetadata, BindingMetadata triggerBindingMetadata)
         {
             var triggerType = triggerBindingMetadata.Type;
-            if (triggerType == BindingType.HttpTrigger)
+            if (triggerType.Equals("httptrigger", StringComparison.OrdinalIgnoreCase))
             {
                 //add in http trigger if they didn't specify it
                 var httpTrigger = functionMetadata.Bindings.FirstOrDefault(
-                    p => p.Type == BindingType.HttpTrigger && p.Direction == BindingDirection.In);
+                    p => p.Type.Equals("httptrigger", StringComparison.OrdinalIgnoreCase) && p.Direction == BindingDirection.In);
                 if (httpTrigger == null)
                 {
                     httpTrigger = triggerBindingMetadata;
                     httpTrigger.Direction = BindingDirection.In;
                     httpTrigger.Name = DefaultHttpTriggerName;
-                    httpTrigger.Type = BindingType.HttpTrigger;
+                    httpTrigger.Type = "httpTrigger";
                     functionMetadata.Bindings.Add(httpTrigger);
                 }
                 //add in http response if they didn't specify it
                 var response =
                     functionMetadata.Bindings.FirstOrDefault(
-                        p => p.Type == BindingType.Http && p.Direction == BindingDirection.Out);
+                        p => p.Type.Equals("http", StringComparison.OrdinalIgnoreCase) && p.Direction == BindingDirection.Out);
                 if (response == null)
                 {
                     response = new HttpBindingMetadata()
                     {
                         Direction = BindingDirection.Out,
                         Name = DefaultHttpResponseName,
-                        Type = BindingType.Http
+                        Type = "http"
                     };
                     functionMetadata.Bindings.Add(response);
                 }
             }
-            else if (triggerType == BindingType.TimerTrigger)
+            else if (triggerType.Equals("timertrigger", StringComparison.OrdinalIgnoreCase))
             {
                 var timerTrigger = functionMetadata.Bindings.FirstOrDefault(
-                    p => p.Type == BindingType.TimerTrigger && p.Direction == BindingDirection.In);
+                    p => (p.Type.Equals("timertrigger", StringComparison.OrdinalIgnoreCase) && p.Direction == BindingDirection.In));
                 if (timerTrigger == null)
                 {
                     timerTrigger = triggerBindingMetadata;
                     timerTrigger.Direction = BindingDirection.In;
                     timerTrigger.Name = DefaultTimerTriggerName;
-                    timerTrigger.Type = BindingType.TimerTrigger;
+                    timerTrigger.Type = "timerTrigger";
                     functionMetadata.Bindings.Add(timerTrigger);
                 }
             }

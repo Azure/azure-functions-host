@@ -438,19 +438,18 @@ namespace Microsoft.Azure.WebJobs.Script
                     foreach (var binding in function.BindingDetails)
                     {
                         BindingMetadata bindingMetadata;
-                        var type = (BindingType)Enum.Parse(typeof(BindingType), binding.BindingType, true);
-                        switch (type)
+                        switch (binding.BindingType.ToLowerInvariant())
                         {
-                            case BindingType.Table:
+                            case "table":
                                 bindingMetadata = new TableBindingMetadata();
                                 bindingMetadata.Connection = configMetadata.TableStorage.Connection;
                                 ((TableBindingMetadata)bindingMetadata).PartitionKey = configMetadata.TableStorage.PartitionKey;
                                 ((TableBindingMetadata)bindingMetadata).TableName = configMetadata.TableStorage.Table;
                                 break;
-                            case BindingType.HttpTrigger:
+                            case "httptrigger":
                                 bindingMetadata = triggerBindingMetadata;
                                 break;
-                            case BindingType.TimerTrigger:
+                            case "timerTrigger":
                                 bindingMetadata = triggerBindingMetadata;
                                 break;
                             default:
@@ -459,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                         //add universal binding metadata info
                         bindingMetadata.Direction = (BindingDirection) Enum.Parse(typeof(BindingDirection), binding.Direction, true);
-                        bindingMetadata.Type = type;
+                        bindingMetadata.Type = binding.BindingType;
                         bindingMetadata.Name = binding.Name;
 
                         functionMetadata.Bindings.Add(bindingMetadata);
@@ -474,93 +473,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 apiFunctions.Add(functionMetadata);
             }
             return apiFunctions;
-        }
-
-        private static BindingMetadata ParseBindingMetadata(JObject binding, INameResolver nameResolver)
-        {
-            BindingMetadata bindingMetadata = null;
-            string bindingTypeValue = (string)binding["type"];
-            string bindingDirectionValue = (string)binding["direction"];
-            string connection = (string)binding["connection"];
-            BindingType bindingType = default(BindingType);
-            BindingDirection bindingDirection = default(BindingDirection);
-
-            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
-                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
-            {
-                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
-            }
-
-            if (!string.IsNullOrEmpty(bindingTypeValue) &&
-                !Enum.TryParse<BindingType>(bindingTypeValue, true, out bindingType))
-            {
-                throw new FormatException(string.Format("'{0}' is not a valid binding type.", bindingTypeValue));
-            }
-
-            if (!string.IsNullOrEmpty(connection) && 
-                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
-            {
-                throw new FormatException("Invalid Connection value specified.");
-            }
-
-            switch (bindingType)
-            {
-                case BindingType.EventHubTrigger:
-                case BindingType.EventHub:
-                    bindingMetadata = binding.ToObject<EventHubBindingMetadata>();
-                    break;
-                case BindingType.QueueTrigger:
-                case BindingType.Queue:
-                    bindingMetadata = binding.ToObject<QueueBindingMetadata>();
-                    break;
-                case BindingType.BlobTrigger:
-                case BindingType.Blob:
-                    bindingMetadata = binding.ToObject<BlobBindingMetadata>();
-                    break;
-                case BindingType.ServiceBusTrigger:
-                case BindingType.ServiceBus:
-                    bindingMetadata = binding.ToObject<ServiceBusBindingMetadata>();
-                    break;
-                case BindingType.HttpTrigger:
-                    bindingMetadata = binding.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                case BindingType.Http:
-                    bindingMetadata = binding.ToObject<HttpBindingMetadata>();
-                    break;
-                case BindingType.Table:
-                    bindingMetadata = binding.ToObject<TableBindingMetadata>();
-                    break;
-                case BindingType.ManualTrigger:
-                    bindingMetadata = binding.ToObject<BindingMetadata>();
-                    break;
-                case BindingType.TimerTrigger:
-                    bindingMetadata = binding.ToObject<TimerBindingMetadata>();
-                    break;
-                case BindingType.MobileTable:
-                    bindingMetadata = binding.ToObject<MobileTableBindingMetadata>();
-                    break;
-                case BindingType.DocumentDB:
-                    bindingMetadata = binding.ToObject<DocumentDBBindingMetadata>();
-                    break;
-                case BindingType.NotificationHub:
-                    bindingMetadata = binding.ToObject<NotificationHubBindingMetadata>();
-                    break;
-                case BindingType.ApiHubFile:
-                case BindingType.ApiHubFileTrigger:
-                    bindingMetadata = binding.ToObject<ApiHubBindingMetadata>();
-                    break;
-                case BindingType.ApiHubTable:
-                    bindingMetadata = binding.ToObject<ApiHubTableBindingMetadata>();
-                    break;
-            }
-
-            bindingMetadata.Type = bindingType;
-            bindingMetadata.Direction = bindingDirection;
-            bindingMetadata.Connection = connection;
-
-            nameResolver.ResolveAllProperties(bindingMetadata);
-
-            return bindingMetadata;
         }
 
         private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
@@ -595,10 +507,23 @@ namespace Microsoft.Azure.WebJobs.Script
                         // schema validation and give more informative responses 
                         string json = File.ReadAllText(functionConfigPath);
                         JObject functionConfig = JObject.Parse(json);
-                        FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver, functionConfig);
+                        FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver,
+                            functionConfig);
+
+                        if (metadata.IsExcluded)
+                        {
+                            TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                            continue;
+                        }
 
                         // determine the primary script
-                        string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
+                        string[] functionFiles =
+                            Directory.EnumerateFiles(scriptDir)
+                                .Where(
+                                    p =>
+                                        Path.GetFileName(p).ToLowerInvariant() !=
+                                        ScriptConstants.FunctionMetadataFileName)
+                                .ToArray();
                         if (functionFiles.Length == 0)
                         {
                             AddFunctionError(functionName, "No function script files present.");
@@ -614,21 +539,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                         metadata.ScriptFile = scriptFile;
 
-
-                    if (metadata.IsExcluded)
-                    {
-                        TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
-                        continue;
-                    }
-
-                    // determine the primary script
-                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
-                    if (functionFiles.Length == 0)
                         // determine the script type based on the primary script file extension
                         metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
 
+                        metadata.EntryPoint = (string) functionConfig["entryPoint"];
+
                         metadatas.Add(metadata);
-                    } else if (File.Exists(apiConfigPath))
+                    }
+                    else if (File.Exists(apiConfigPath))
                     {
                         string yamlText = File.ReadAllText(apiConfigPath);
                         using (var yaml = new StringReader(yamlText))
@@ -652,14 +570,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         // not a function directory
                         continue;
                     }
-                    metadata.ScriptFile = scriptFile;
-
-                    // determine the script type based on the primary script file extension
-                    metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
-
-                    metadata.EntryPoint = (string)functionConfig["entryPoint"];
-
-                    metadatas.Add(metadata);
                 }
                 catch (Exception ex)
                {

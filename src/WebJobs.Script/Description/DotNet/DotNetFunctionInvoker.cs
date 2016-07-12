@@ -417,22 +417,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
             }
 
-            //foreach (var parameters in _queryParameterTypes)
-            //{
-            //    if (
-            //        !functionSignature.Parameters.Any(
-            //            p =>
-            //                string.Compare(p.Name, parameters.Key, StringComparison.Ordinal) == 0 &&
-            //                IsCorrectType(p.Type.Name, parameters.Value)))
-            //    {
-            //        string message = string.Format(CultureInfo.InvariantCulture, "Missing query argument named '{0}'.", parameters.Key);
-            //        var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,
-            //            "Missing query argument", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
-
-            //        resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
-            //    }
-            //}
-
             ImmutableArray<Diagnostic> result = resultBuilder.ToImmutable();
 
             if (throwIfFailed && result.Any(d => d.Severity == DiagnosticSeverity.Error))

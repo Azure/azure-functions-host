@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string ExtractRouteTemplateFromMetadata(FunctionMetadata metadata)
         {
             var inputBindings = metadata.InputBindings;
-            var trigger = inputBindings.FirstOrDefault(p => p.Type == BindingType.HttpTrigger) as HttpTriggerBindingMetadata;
+            var trigger = inputBindings.FirstOrDefault(p => p.Type.Equals("httptrigger", StringComparison.OrdinalIgnoreCase)) as HttpTriggerBindingMetadata;
             return trigger?.Route;
         }
 
