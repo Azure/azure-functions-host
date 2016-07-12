@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             RoutingUtility.ClearTemplates();
             foreach (var function in functions)
             {
-                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
+                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type.Equals("httptrigger", StringComparison.OrdinalIgnoreCase));
                 if (httpTriggerBinding != null)
                 {
                     string route = httpTriggerBinding.Route ?? function.Name;
