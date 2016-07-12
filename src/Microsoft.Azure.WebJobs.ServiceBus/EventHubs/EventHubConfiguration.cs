@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 return client;
             }
-            throw new InvalidOperationException("No event hub sending named " + eventHubName);
+            throw new InvalidOperationException("No event hub sender named " + eventHubName);
         }
 
         EventProcessorHost IEventHubProvider.GetEventProcessorHost(string eventHubName)
