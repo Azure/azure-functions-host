@@ -3,8 +3,6 @@
 
 using System;
 using System.Globalization;
-using System.Linq;
-using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -64,9 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// Creates an instance from the specified raw metadata.
         /// </summary>
         /// <param name="raw">The raw binding metadata.</param>
-        /// <param name="nameResolver">Optional name resolver to use on properties.</param>
         /// <returns>The new <see cref="BindingMetadata"/> instance.</returns>
-        public static BindingMetadata Create(JObject raw, INameResolver nameResolver = null)
+        public static BindingMetadata Create(JObject raw)
         {
             BindingMetadata bindingMetadata = null;
             string bindingDirectionValue = (string)raw["direction"];
@@ -81,12 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             // TODO: Validate the binding type somehow?
-
-            if (!string.IsNullOrEmpty(connection) &&
-                string.IsNullOrEmpty(Utility.GetAppSettingOrEnvironmentValue(connection)))
-            {
-                throw new FormatException("Invalid Connection value specified.");
-            }
 
             switch (bindingType.ToLowerInvariant())
             {
@@ -110,30 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindingMetadata.Type = bindingType;
             bindingMetadata.Direction = bindingDirection;
             bindingMetadata.Connection = connection;
-
-            if (nameResolver != null)
-            {
-                nameResolver.ResolveAllProperties(bindingMetadata);
-
-                // We want to pass resolved metadata values into
-                // binding extensions, so we resolve fully here
-                JObject resolved = new JObject(raw);
-                foreach (JProperty property in resolved.Properties().ToArray())
-                {
-                    if (property.Value != null &&
-                        property.Value.Type == JTokenType.String)
-                    {
-                        string val = (string)property.Value;
-                        string newVal = nameResolver.ResolveWholeString(val);
-                        resolved[property.Name] = newVal;
-                    }
-                }
-                bindingMetadata.Raw = resolved;
-            }
-            else
-            {
-                bindingMetadata.Raw = raw;
-            }
+            bindingMetadata.Raw = raw;
 
             return bindingMetadata;
         }
