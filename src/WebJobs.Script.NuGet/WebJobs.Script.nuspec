@@ -24,6 +24,7 @@
       <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.0.0-alpha-10318" />
       <dependency id="Edge.js" version="5.9.1" />
       <dependency id="Microsoft.CodeAnalysis.CSharp.Scripting" version="1.2.2" />
+      <dependency id="Microsoft.AspNet.WebApi.Core" version="5.2.3" />
     </dependencies>
   </metadata>
 </package>
