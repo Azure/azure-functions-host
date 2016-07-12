@@ -225,7 +225,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 _etwTaskCancellationSource.Cancel();
                 RaiseMetricsPerFunctionEvent();
-                RaiseMetricEtwEvent(ExecutionStage.Finished);
             }
 
             private void RaiseFunctionMetricEvents()
@@ -262,18 +261,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     runningFunctionInfo.ExecutionStage.ToString(),
                     (long)executionTimespan,
                     runningFunctionInfo.Success);
-            }
-
-            private void RaiseMetricEtwEvent(ExecutionStage executionStage)
-            {
-                var timeSpan = (ulong)(DateTime.UtcNow - _startTime).TotalMilliseconds;
-                var executionCount = _totalExecutionCount;
-                WriteFunctionsMetricEvent(_executionId, timeSpan, executionCount, executionStage.ToString());
-            }
-
-            private void WriteFunctionsMetricEvent(string funcExecutionId, ulong executionTimeSpan, ulong executionCount, string executionStage)
-            {
-                MetricsEventGenerator.RaiseFunctionsMetricEvent(funcExecutionId, (long)executionTimeSpan, (long)executionCount, executionStage);
             }
 
             private static string GetDictionaryKey(string name, Guid invocationId)

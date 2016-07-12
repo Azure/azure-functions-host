@@ -5,8 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public interface IMetricsEventGenerator
     {
-        void RaiseFunctionsMetricEvent(string executionId, long executionTimeSpan, long executionCount, string executionStage);
-
         void RaiseMetricsPerFunctionEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount);
 
         void RaiseFunctionsInfoEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled);

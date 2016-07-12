@@ -7,11 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class MetricsEventGenerator : IMetricsEventGenerator
     {
-        public void RaiseFunctionsMetricEvent(string executionId, long executionTimeSpan, long executionCount, string executionStage)
-        {
-            MetricEventSource.Log.RaiseFunctionsMetricEvent(executionId, (ulong)executionTimeSpan, (ulong)executionCount, executionStage);
-        }
-
         public void RaiseMetricsPerFunctionEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
         {
             MetricEventSource.Log.RaiseMetricsPerFunctionEvent(siteName, functionName, (ulong)executionTimeInMs, (ulong)functionStartedCount, (ulong)functionCompletedCount, (ulong)functionFailedCount);
@@ -31,15 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private sealed class MetricEventSource : EventSource
         {
             internal static readonly MetricEventSource Log = new MetricEventSource();
-
-            [Event(57906, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsMetricEvent(string executionId, ulong executionTimeSpan, ulong executionCount, string executionStage)
-            {
-                if (IsEnabled())
-                {
-                    WriteEvent(57906, executionId, executionTimeSpan, executionCount, executionStage);
-                }
-            }
 
             [Event(57907, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
             public void RaiseMetricsPerFunctionEvent(string siteName, string functionName, ulong executionTimeInMs, ulong functionStartedCount, ulong functionCompletedCount, ulong functionFailedCount)
