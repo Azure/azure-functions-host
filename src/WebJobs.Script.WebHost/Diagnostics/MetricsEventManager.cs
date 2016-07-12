@@ -109,7 +109,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             private readonly string _executionId = Guid.NewGuid().ToString();
             private readonly object _functionMetricEventLockObject = new object();
-            private DateTime _startTime = DateTime.UtcNow;
             private ulong _totalExecutionCount = 0;
             private int _metricEventIntervalInSeconds;
             private CancellationTokenSource _etwTaskCancellationSource = new CancellationTokenSource();
@@ -132,7 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                                 
                                 if (currentSecond >= _metricEventIntervalInSeconds)
                                 {
-                                    RaiseMetricEtwEvent(ExecutionStage.InProgress);
                                     RaiseFunctionMetricEvents();
                                     currentSecond = 0;
                                 }
