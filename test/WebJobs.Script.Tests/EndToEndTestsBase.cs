@@ -13,9 +13,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
-using Microsoft.Azure.WebJobs.Extensions.MobileApps;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -29,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestsBase<TTestFixture> :
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
+        private INameResolver _nameResolver = new NameResolver();
+
         public EndToEndTestsBase(TTestFixture fixture)
         {
             Fixture = fixture;
@@ -298,9 +299,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
         {
-            // Get the URI by creating a config.
-            var config = new MobileAppsConfiguration();
-            var client = new MobileServiceClient(config.MobileAppUri);
+            // We know the tests are using the default INameResolver and the default setting.
+            var mobileAppUri = _nameResolver.Resolve("AzureWebJobsMobileAppUri");
+            var client = new MobileServiceClient(new Uri(mobileAppUri));
             JToken item = null;
             var table = client.GetTable(tableName);
             await TestHelpers.Await(() =>
@@ -337,8 +338,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
-            // Get the connection string via the config
-            var connectionString = new DocumentDBConfiguration().ConnectionString;
+            // We know the tests are using the default INameResolver and the default setting.
+            var connectionString = _nameResolver.Resolve("AzureWebJobsDocumentDBConnectionString");
             var builder = new DbConnectionStringBuilder();
             builder.ConnectionString = connectionString;
             var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
