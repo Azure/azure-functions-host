@@ -270,7 +270,6 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
-    <Compile Include="Config\NameResolver.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
     <Compile Include="Description\DotNet\DotNetConstants.cs" />
