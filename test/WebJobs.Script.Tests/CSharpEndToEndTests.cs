@@ -4,11 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -170,6 +173,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
         }
 
+        [Fact]
+        public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
+        {
+            var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
+            if (container.Exists())
+            {
+                foreach (CloudBlockBlob blob in container.ListBlobs())
+                {
+                    await blob.DeleteAsync();
+                }
+            }
+
+            // Call 3 times - expect 3 separate output blobs
+            for (int i = 0; i < 3; i++)
+            {
+                ScenarioInput input = new ScenarioInput
+                {
+                    Scenario = "randGuid",
+                    Container = "scenarios-output",
+                    Value = i.ToString()
+                };
+                Dictionary<string, object> arguments = new Dictionary<string, object>
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                };
+                await Fixture.Host.CallAsync("Scenarios", arguments);
+            }
+
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            Assert.Equal(3, blobs.Length);
+            foreach (var blob in blobs)
+            {
+                string content = blob.DownloadText();
+                int blobInt = int.Parse(content.Trim());
+                Assert.True(blobInt >= 0 && blobInt <= 3);
+            }
+        }
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\CSharp";
@@ -239,6 +279,13 @@ namespace SecondaryDependency
         public class TestInput
         {
             public int Id { get; set; }
+            public string Value { get; set; }
+        }
+
+        public class ScenarioInput
+        {
+            public string Scenario { get; set; }
+            public string Container { get; set; }
             public string Value { get; set; }
         }
     }
