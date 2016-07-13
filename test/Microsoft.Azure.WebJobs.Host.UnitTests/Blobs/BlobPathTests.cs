@@ -19,19 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         [Fact]
         public void ParseAndValidate_IfBackslashInBlobName_ThrowsFormatException()
         {
-            ExceptionAssert.ThrowsFormat(() => BlobPath.ParseAndValidate(@"container/my\name"), "The given blob name 'my\\name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
-        }
-
-        [Fact]
-        public void ParseAndValidate_IfOpenSquareBracketInBlobName_ThrowsFormatException()
-        {
-            ExceptionAssert.ThrowsFormat(() => BlobPath.ParseAndValidate(@"container/my[name"), "The given blob name 'my[name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
-        }
-
-        [Fact]
-        public void ParseAndValidate_IfCloseSquareBracketInBlobName_ThrowsFormatException()
-        {
-            ExceptionAssert.ThrowsFormat(() => BlobPath.ParseAndValidate(@"container/my]name"), "The given blob name 'my]name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
+            ExceptionAssert.ThrowsFormat(() => BlobPath.ParseAndValidate(@"container/my\name"), "The given blob name 'my\\name' contain illegal characters. A blob name cannot the following character(s): '\\'.");
         }
 
         [Fact]
@@ -47,6 +35,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         {
             BlobPath path = BlobPath.Parse("container/blob", false);
             Assert.Equal("container/blob", path.ToString());
+
+            // '[' ad ']' are valid in blob names
+            path = BlobPath.Parse("container/blob[0]", false);
+            Assert.Equal("container/blob[0]", path.ToString());
 
             path = BlobPath.Parse("container", true);
             Assert.Equal("container", path.ToString());
