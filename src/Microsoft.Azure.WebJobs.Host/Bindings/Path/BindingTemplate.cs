@@ -103,8 +103,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             {
                 if (token.IsParameter)
                 {
+                    // first try to resolve from the binding data parameters
+                    // next try to resolve "built-in" parameters (e.g. rand-guid)
                     string value;
                     if (parameters != null && parameters.TryGetValue(token.Value, out value))
+                    {
+                        builder.Append(value);
+                    }
+                    else if (TryResolveSystem(token.Value, out value))
                     {
                         builder.Append(value);
                     }
@@ -129,6 +135,23 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         public override string ToString()
         {
             return _pattern;
+        }
+
+        /// <summary>
+        /// Try to resolve as a built-in "system" parameter. These are built in values
+        /// that don't come from the binding data bag.
+        /// </summary>
+        private static bool TryResolveSystem(string value, out string resolvedValue)
+        {
+            resolvedValue = null;
+
+            if (string.Compare(value, "rand-guid", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                resolvedValue = Guid.NewGuid().ToString();
+                return true;
+            }
+
+            return false;
         }
     }
 }

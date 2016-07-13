@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                                     "Invalid template '{0}'. The parameter name at position {1} is empty.",
                                     input, m.Index + 1));
                             }
-                            if (!Regex.IsMatch(namedGroup.Value, IdentifierPattern))
+                            if (!IsValidIdentifier(namedGroup.Value))
                             {
                                 throw new FormatException(String.Format(
                                     "Invalid template '{0}'. The parameter name '{1}' is invalid.",
@@ -149,6 +149,20 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                     }
                 }
             }
+        }
+
+        private static bool IsValidIdentifier(string identifier)
+        {
+            // built-in sysetem identifiers are valid
+            if (string.Compare(identifier, "rand-guid", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return true;
+            }
+
+            // match against our identifier regex
+            // note that system identifiers include a '-' character so wouldn't
+            // pass this test
+            return Regex.IsMatch(identifier, IdentifierPattern);
         }
     }
 }

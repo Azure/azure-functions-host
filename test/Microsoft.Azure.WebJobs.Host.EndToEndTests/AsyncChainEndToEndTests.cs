@@ -46,9 +46,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static TimeSpan _timeoutJobDelay;
 
         private readonly CloudQueue _testQueue;
+        private readonly TestFixture _fixture;
 
         public AsyncChainEndToEndTests(TestFixture fixture)
         {
+            _fixture = fixture;
             _resolver = new RandomNameResolver();
             _hostConfig = new JobHostConfiguration()
             {
@@ -97,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.TimeoutJob",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.RandGuidOutput",
                     "Function 'AsyncChainEndToEndTests.DisabledJob' is disabled",
                     "Job host started",
                     "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
@@ -143,11 +146,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
-                Assert.Equal(15, storageClientFactory.TotalBlobClientCount);
+                Assert.Equal(16, storageClientFactory.TotalBlobClientCount);
                 Assert.Equal(8, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
-                Assert.Equal(5, storageClientFactory.ParameterBlobClientCount);
+                Assert.Equal(6, storageClientFactory.ParameterBlobClientCount);
                 Assert.Equal(6, storageClientFactory.ParameterQueueClientCount);
                 Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
@@ -185,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(21, consoleOutputLines.Length);
+                    Assert.Equal(22, consoleOutputLines.Length);
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                     Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
                 }
@@ -219,6 +222,42 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.NotEqual(Guid.Empty, functionException.InstanceId);
             Assert.Equal(string.Format("{0}.{1}", methodInfo.DeclaringType.FullName, methodInfo.Name), functionException.MethodName);
             Assert.True(traceErrors.All(p => functionException == p.Exception));
+        }
+
+        [Fact]
+        public void RandGuidOutput_GeneratesRandomIDs()
+        {
+            JobHost host = new JobHost(_hostConfig);
+
+            var blobClient = _fixture.StorageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference("test-output");
+            if (container.Exists())
+            {
+                foreach (CloudBlockBlob blob in container.ListBlobs())
+                {
+                    blob.Delete();
+                }
+            }
+
+            MethodInfo methodInfo = GetType().GetMethod("RandGuidOutput");
+            for (int i = 0; i < 3; i++)
+            {
+                var arguments = new Dictionary<string, object>
+                {
+                    { "input", i.ToString() }
+                };
+                host.Call(methodInfo, arguments);
+            }
+
+            // We expect 3 separate blobs to have been written
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            Assert.Equal(3, blobs.Length);
+            foreach (var blob in blobs)
+            {
+                string content = blob.DownloadText(Encoding.UTF8);
+                int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
+                Assert.True(blobInt >= 0 && blobInt <= 3);
+            }
         }
 
         [Fact]
@@ -345,6 +384,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public static void AlwaysFailJob()
         {
             throw new Exception("Kaboom!");
+        }
+
+        [NoAutomaticTrigger]
+        public static void RandGuidOutput(string input, [Blob("test-output/{rand-guid}")] out string blob)
+        {
+            blob = input;
         }
 
         [Disable("Disable_DisabledJob")]
