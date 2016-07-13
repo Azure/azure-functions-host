@@ -134,7 +134,7 @@ if not needed and play nicely when building incrementally.
 ****************************************************************************************************
 NuGetPack: Creates a nuget package.  
 **************************************************************************************************** -->
-  <Target Name="NuGetPack" DependsOnTargets="EnsureNuGet;GenerateNuSpecFile;ResolveReferences" Condition="'$(OutputsOutdated)' == 'true'">
+  <Target Name="NuGetPack" DependsOnTargets="EnsureNuGet;GenerateNuSpecFile;ValidateDependencies;ResolveReferences" Condition="'$(OutputsOutdated)' == 'true'">
     <PropertyGroup>
       <NuSpecProperties>$(NuSpecProperties.Trim(';'))</NuSpecProperties>
       <NuGetPackOptions Condition="'$(NuGetPackOptions)' == '' AND '$(NuGetPackSymbols)' != 'true'">-NoPackageAnalysis</NuGetPackOptions>
@@ -376,4 +376,95 @@ NormalizeNuGetContent: Normalize NuGetContent items full path and destination fo
   <Target Name="EnsureNuGet">
     <DownloadNuGet OutputFilename="$(NuGetExePath)" Condition="!Exists('$(NuGetExePath)')" />
   </Target>
+  
+    <!--
+ ==================================================================================================
+  Verifies that dependencies listed in the nuspec match actual packages.config from the project
+ ==================================================================================================-->
+  <UsingTask TaskName="ValidateNugetDependencies" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <ProjectReferences Required="true" ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <NuSpecFile Required="true" ParameterType="System.String" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System.Core" />
+      <Reference Include="System.Xml" />
+      <Reference Include="System.Xml.Linq" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Net" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Xml.Linq"  />
+      <Using Namespace="Microsoft.Build.Framework" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          try
+          {
+              if (ProjectReferences.Length != 1)
+              {
+                throw new InvalidOperationException("The project must contain exactly one project reference. It contains " + ProjectReferences.Length);
+              }
+              if(!File.Exists(NuSpecFile))
+              {
+                throw new InvalidOperationException("The generated nuspec file was not found.");
+              }
+              
+              string projectFile = Path.GetFullPath(ProjectReferences[0].ItemSpec);
+              string sourceFolder = Path.GetDirectoryName(projectFile);
+              string packagesFile = Path.Combine(sourceFolder, "packages.config");
+              
+              var nuspecFile = Path.GetFullPath(NuSpecFile);
+              XElement nuspecXml = XElement.Load(nuspecFile);
+              XNamespace nuspecNamespace = nuspecXml.Name.Namespace;
+              var nuspecDependencyNodes = nuspecXml.Descendants(nuspecNamespace + "dependency");
+              
+              XElement packageConfigXml = XElement.Load(packagesFile);
+              XNamespace packageConfigNamespace = packageConfigXml.Name.Namespace;
+              
+              foreach (var dependency in nuspecDependencyNodes)
+              {
+                var nugetPackage = dependency.Attribute("id").Value;
+                var version = dependency.Attribute("version").Value;
+                
+                // skip if it has replacements
+                if(version.Contains("$"))
+                {
+                  continue;
+                }
+                
+                // check the packages.config for a matching id                
+                var matchingElement = packageConfigXml.Descendants(packageConfigNamespace + "package")
+                  .Where(p => p.Attribute("id").Value == nugetPackage).SingleOrDefault();
+                  
+                if (matchingElement == null)
+                {
+                  throw new InvalidOperationException(string.Format("The package {0} was defined in the nuspec file {1} but not found in the {2}", nugetPackage, nuspecFile, packagesFile));
+                }
+                
+                string packageConfigVersion = matchingElement.Attribute("version").Value;
+                
+                if (packageConfigVersion != version)
+                {
+                  throw new InvalidOperationException(string.Format("The file {0} declares a dependency {1} with a version of {2}. However the file {3} delcares the same package with a version {4}. Update the nuspec file to the correct version.",
+                    nuspecFile, nugetPackage, version, packagesFile, packageConfigVersion));
+                }
+              }
+              
+              return true;
+          }
+          catch (Exception ex)
+          {
+              Log.LogErrorFromException(ex);
+              return false;
+          }
+        ]]>
+      </Code>
+    </Task>    
+  </UsingTask>
+ 
+  <Target Name="ValidateDependencies">
+    <ValidateNugetDependencies ProjectReferences="@(ProjectReference)" NuSpecFile="$(GeneratedNuSpec)" />
+  </Target>
+ 
 </Project>
