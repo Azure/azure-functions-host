@@ -387,7 +387,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [NoAutomaticTrigger]
-        public static void RandGuidOutput(string input, [Blob("test-output/{rand-guid}")] out string blob)
+        public static void RandGuidOutput(
+            [QueueTrigger("test")] string input, 
+            [Blob("test-output/{rand-guid}")] out string blob)
         {
             blob = input;
         }

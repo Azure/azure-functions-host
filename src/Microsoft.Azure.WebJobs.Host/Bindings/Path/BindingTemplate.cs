@@ -153,5 +153,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 
             return false;
         }
+
+        internal static bool IsSystemBindingParameter(string parameterName)
+        {
+            if (string.Compare(parameterName, "rand-guid", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
     }
 }

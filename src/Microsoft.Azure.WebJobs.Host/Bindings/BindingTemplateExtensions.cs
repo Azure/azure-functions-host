@@ -71,6 +71,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 foreach (string parameterName in parameterNames)
                 {
+                    if (BindingTemplate.IsSystemBindingParameter(parameterName))
+                    {
+                        continue;
+                    }
+
                     if (!bindingDataContract.ContainsKey(parameterName))
                     {
                         throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "No binding parameter exists for '{0}'.", parameterName));
