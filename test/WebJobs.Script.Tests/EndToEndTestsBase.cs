@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestsBase<TTestFixture> :
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
-        private INameResolver _nameResolver = new NameResolver();
+        private INameResolver _nameResolver = new DefaultNameResolver();
 
         public EndToEndTestsBase(TTestFixture fixture)
         {

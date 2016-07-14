@@ -198,9 +198,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            // Bindings may use name resolution, so provide this before reading the bindings. 
-            var nameResolver = new NameResolver();
-
             var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             if (storageString == null)
             {
@@ -208,8 +205,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.StorageConnectionString = null;
             }
                       
-            ScriptConfig.HostConfig.NameResolver = nameResolver;
-
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),

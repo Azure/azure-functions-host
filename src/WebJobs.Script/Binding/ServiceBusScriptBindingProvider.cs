@@ -54,6 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     serviceBusConfig.MessageOptions.MaxConcurrentCalls = (int)value;
                 }
+
+                if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    serviceBusConfig.PrefetchCount = (int)value;
+                }
             }
 
             Config.UseServiceBus(serviceBusConfig);
