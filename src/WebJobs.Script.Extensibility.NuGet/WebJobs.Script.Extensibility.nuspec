@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>$NuGetPackageId$</id>
-    <title>Microsoft.Azure.WebJobs.Script</title>
+    <title>Microsoft.Azure.WebJobs.Script.Extensibility</title>
     <version>$NuGetPackageVersion$</version>
     <authors>Microsoft</authors>
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
