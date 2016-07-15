@@ -1,4 +1,4 @@
-﻿WebJobs.Script
+﻿WebJobs.Script (Azure Functions)
 ===
 |Branch|Status|
 |---|---|
