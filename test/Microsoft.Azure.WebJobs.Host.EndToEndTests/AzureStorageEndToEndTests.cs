@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -31,6 +34,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const string TestQueueNameEtag = TestArtifactsPrefix + "etag2equeue%rnd%";
         private const string DoneQueueName = TestArtifactsPrefix + "donequeue%rnd%";
 
+        private const string BadMessageQueue1 = TestArtifactsPrefix + "-badmessage1-%rnd%";
+        private const string BadMessageQueue2 = TestArtifactsPrefix + "-badmessage2-%rnd%";
+
+        private static int _badMessage1Calls;
+        private static int _badMessage2Calls;
+
         private static EventWaitHandle _startWaitHandle;
 
         private static EventWaitHandle _functionChainWaitHandle;
@@ -38,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private CloudStorageAccount _storageAccount;
 
         private RandomNameResolver _resolver;
-         
+
         public AzureStorageEndToEndTests(TestFixture fixture)
         {
             _storageAccount = fixture.StorageAccount;
@@ -143,6 +152,26 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _functionChainWaitHandle.Set();
         }
 
+        /// <summary>
+        /// We'll insert a bad message. It should get here okay. It will
+        /// then pass it on to the next trigger.
+        /// </summary>
+        public static void BadMessage_CloudQueueMessage(
+            [QueueTrigger(BadMessageQueue1)] CloudQueueMessage badMessageIn,
+            [Queue(BadMessageQueue2)] out CloudQueueMessage badMessageOut,
+            TraceWriter log)
+        {
+            _badMessage1Calls++;
+            badMessageOut = badMessageIn;
+        }
+
+        public static void BadMessage_String(
+            [QueueTrigger(BadMessageQueue2)] string message,
+            TraceWriter log)
+        {
+            _badMessage2Calls++;
+        }
+
         // Uncomment the Fact attribute to run
         // [Fact(Timeout = 20 * 60 * 1000)]
         public void AzureStorageEndToEndSlow()
@@ -197,6 +226,81 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             // Verify
             VerifyTableResults();
+        }
+
+        [Fact]
+        public async Task BadQueueMessageE2ETests()
+        {
+            // This test ensures that the host does not crash on a bad message (it previously did)
+            // Insert a bad message into a queue that should:
+            // - trigger BadMessage_CloudQueueMessage, which will put it into a second queue that will
+            // - trigger BadMessage_String, which should fail
+            // - BadMessage_String should fail repeatedly until it is moved to the poison queue
+            // The test will watch that poison queue to know when to complete            
+
+            // Reinitialize the name resolver to avoid conflicts
+            _resolver = new RandomNameResolver();
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration()
+            {
+                NameResolver = _resolver,
+                TypeLocator = new FakeTypeLocator(
+                    this.GetType(),
+                    typeof(BlobToCustomObjectBinder))
+            };
+            var tracer = new TestTraceWriter(TraceLevel.Verbose);
+            hostConfig.Tracing.Tracers.Add(tracer);
+
+            // The jobs host is started
+            JobHost host = new JobHost(hostConfig);
+            host.Start();
+
+            // use reflection to construct a bad message:
+            // - use a GUID as the content, which is not a valid base64 string
+            // - pass 'true', to indicate that it is a base64 string
+            string messageContent = Guid.NewGuid().ToString();
+            object[] parameters = new object[] { messageContent, true };
+            CloudQueueMessage message = Activator.CreateInstance(typeof(CloudQueueMessage),
+                BindingFlags.Instance | BindingFlags.NonPublic, null, parameters, null) as CloudQueueMessage;
+
+            var queueClient = _storageAccount.CreateCloudQueueClient();
+            var queue = queueClient.GetQueueReference(_resolver.ResolveInString(BadMessageQueue1));
+            await queue.CreateIfNotExistsAsync();
+            await queue.ClearAsync();
+
+            // the poison queue will end up off of the second queue
+            var poisonQueue = queueClient.GetQueueReference(_resolver.ResolveInString(BadMessageQueue2) + "-poison");
+            await poisonQueue.DeleteIfExistsAsync();
+
+            await queue.AddMessageAsync(message);
+
+            CloudQueueMessage poisonMessage = null;
+            await TestHelpers.Await(() =>
+            {
+                bool done = false;
+                if (poisonQueue.Exists())
+                {
+                    poisonMessage = poisonQueue.GetMessage();
+                    done = poisonMessage != null;
+                }
+                return done;
+            });
+
+            host.Stop();
+
+            // find the raw string to compare it to the original
+            Assert.NotNull(poisonMessage);
+            var propInfo = typeof(CloudQueueMessage).GetProperty("RawString", BindingFlags.Instance | BindingFlags.NonPublic);
+            string rawString = propInfo.GetValue(poisonMessage) as string;
+            Assert.Equal(messageContent, rawString);
+
+            // Make sure the functions were called correctly
+            Assert.Equal(1, _badMessage1Calls);
+            Assert.Equal(0, _badMessage2Calls);
+
+            // make sure the exception is being properly logged
+            var errors = tracer.Traces.Where(t => t.Level == TraceLevel.Error);
+            Assert.True(errors.All(t => t.Exception.InnerException.InnerException is FormatException));
         }
 
         private void UploadTestObject()

@@ -27,6 +27,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                 // when the message type is binary, AsString will throw if the bytes aren't valid UTF-8.
                 value = null;
             }
+            catch (FormatException)
+            {
+                value = null;
+            }
 
             return value;
         }
