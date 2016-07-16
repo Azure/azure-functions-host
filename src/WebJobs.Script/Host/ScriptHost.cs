@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
+        private static bool? _standbyMode;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
@@ -42,6 +43,34 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
+        }
+
+        public static bool InStandbyMode
+        {
+            get
+            {
+                // once set, never reset
+                if (_standbyMode != null)
+                {
+                    return _standbyMode.Value;
+                }
+
+                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
+                {
+                    return true;
+                }
+
+                // no longer standby mode
+                _standbyMode = false;
+
+                return _standbyMode.Value;
+            }
+        }
+
+        public static void ResetStandbyMode()
+        {
+            // this is for testing only
+            _standbyMode = null;
         }
 
         public TraceWriter TraceWriter { get; private set; }
@@ -198,11 +227,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            if (storageString == null)
+            if (!InStandbyMode)
             {
-                // Disable core storage 
-                ScriptConfig.HostConfig.StorageConnectionString = null;
+                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+                if (storageString == null)
+                {
+                    // Disable core storage 
+                    ScriptConfig.HostConfig.StorageConnectionString = null;
+                }
             }
                       
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()

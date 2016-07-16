@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Info("Starting Host");
+                        _traceWriter.Info(string.Format("Starting Host (Id={0})", newInstance.ScriptConfig.HostConfig.HostId));
                     }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
