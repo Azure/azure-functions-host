@@ -22,14 +22,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             {
                 value = message.AsString;
             }
-            catch (DecoderFallbackException)
+            catch (Exception ex)
             {
-                // when the message type is binary, AsString will throw if the bytes aren't valid UTF-8.
-                value = null;
-            }
-            catch (FormatException)
-            {
-                value = null;
+                if (ex is DecoderFallbackException || ex is FormatException)
+                {
+                    value = null;
+                }
+                else
+                {
+                    throw;
+                }
             }
 
             return value;
