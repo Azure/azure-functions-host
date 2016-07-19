@@ -26,10 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionName;
         }
 
-        public static string FlattenException(Exception ex)
+        public static string FlattenException(Exception ex, Func<string, string> sourceFormatter = null)
         {
             StringBuilder flattenedErrorsBuilder = new StringBuilder();
             string lastError = null;
+            sourceFormatter = sourceFormatter ?? ((s) => s);
 
             if (ex is AggregateException)
             {
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 StringBuilder currentErrorBuilder = new StringBuilder();
                 if (!string.IsNullOrEmpty(ex.Source))
                 {
-                    currentErrorBuilder.AppendFormat("{0}: ", ex.Source);
+                    currentErrorBuilder.AppendFormat("{0}: ", sourceFormatter(ex.Source));
                 }
 
                 currentErrorBuilder.Append(ex.Message);
