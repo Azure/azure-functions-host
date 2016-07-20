@@ -11,7 +11,8 @@
             "name": "item",
             "direction": "in",
             "tableName": "Item",
-            "id": "{recordId}"
+            "id": "{recordId}",
+            "connection": "AzureWebJobs_TestMobileUri"
         }
     ]
 }

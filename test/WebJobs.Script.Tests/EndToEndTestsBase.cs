@@ -14,7 +14,6 @@ using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -273,9 +272,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             resultBlob.DeleteIfExists();
 
             var root = ItemFactory.Parse(apiHubConnectionString);
-            if (root.FileExists(apiHubFile))
+            if (await root.FileExistsAsync(apiHubFile))
             {
-                var file = await root.GetFileReferenceAsync(apiHubFile);
+                var file = root.GetFileReference(apiHubFile);
                 await file.DeleteAsync();
             }
 
@@ -299,8 +298,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
         {
-            // We know the tests are using the default INameResolver and the default setting.
-            var mobileAppUri = _nameResolver.Resolve("AzureWebJobsMobileAppUri");
+            // We know the tests are using the default INameResolver and this setting.
+            var mobileAppUri = _nameResolver.Resolve("AzureWebJobs_TestMobileUri");
             var client = new MobileServiceClient(new Uri(mobileAppUri));
             JToken item = null;
             var table = client.GetTable(tableName);

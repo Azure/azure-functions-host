@@ -11,13 +11,15 @@
             "name": "itemIn",
             "direction": "in",
             "tableName": "Item",
-            "id": "{recordId}"
+            "id": "{recordId}",
+            "connection": "AzureWebJobs_TestMobileUri"
         },
         {
             "type": "mobileTable",
             "direction": "out",
             "name": "itemOut",
-            "tableName": "Item"
+            "tableName": "Item",
+            "connection": "AzureWebJobs_TestMobileUri"
         }
     ]
 }
