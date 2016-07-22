@@ -1,0 +1,14 @@
+﻿{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "direction": "in",
+      "name": "input"
+    },
+    {
+      "type": "mobileTable",
+      "name": "table",
+      "direction": "in"
+    }
+  ]
+}

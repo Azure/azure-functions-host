@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver, traceWriter);
-            
+
             return _functionContexts.AddOrUpdate(metadata.Name, context, (s, o) => context);
         }
 
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private FunctionAssemblyLoadContext GetFunctionContext(Assembly requestingAssembly)
-        { 
+        {
             if (requestingAssembly == null)
             {
                 return null;
@@ -182,5 +182,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return null;
         }
-    }   
+    }
 }

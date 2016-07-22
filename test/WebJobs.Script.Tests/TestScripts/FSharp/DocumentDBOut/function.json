@@ -1,0 +1,17 @@
+﻿{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "direction": "in",
+      "name": "input"
+    },
+    {
+      "type": "documentdb",
+      "name": "item",
+      "direction": "out",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "createIfNotExists": true
+    }
+  ]
+}
