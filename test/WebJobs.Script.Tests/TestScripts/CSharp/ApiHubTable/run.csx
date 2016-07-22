@@ -1,7 +1,7 @@
 ﻿#r "Microsoft.Azure.ApiHub.Sdk"
 
 using System;
-using Microsoft.Azure.ApiHub.Sdk.Table;
+using Microsoft.Azure.ApiHub;
 
 public class TestInput
 {
