@@ -389,17 +389,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<Diagnostic>.Empty;
         }
 
-        private static bool IsCorrectType(string systemType, string queryType)
-        {
-            if ((systemType.Equals("Int32") && queryType.Equals("int"))
-                || (systemType.Equals("Boolean") && queryType.Equals("bool"))
-                || (systemType.Equals("String") && queryType.Equals("string")))
-            {
-                return true;
-            }
-            return false;
-        }
-
         private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {

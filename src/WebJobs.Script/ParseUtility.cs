@@ -13,16 +13,26 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ParseUtility
     {
-    
         private const string DefaultHttpTriggerName = "req";
         private const string DefaultHttpResponseName = "res";
         private const string DefaultTimerTriggerName = "timerInfo";
 
         public static BindingMetadata GetTriggerBindingMetadata(string trigger)
         {
+            if (trigger == null)
+            {
+                return null;
+            }
+
             //parse the trigger template to fill out trigger information
             var triggerTemplate = trigger;
             string[] triggerParts = triggerTemplate.Trim(new char[] { ']', '[' }).Split('@');
+           
+            //ensure not an invalid string representation of a trigger
+            if (triggerParts.Length != 2)
+            {
+                return null;
+            }
             BindingMetadata triggerBindingMetadata;
             if (triggerParts[0].Equals("TIMER", StringComparison.OrdinalIgnoreCase))
             {
@@ -42,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 //use the route template from the route/method template
                 ((HttpTriggerBindingMetadata)triggerBindingMetadata).Route = triggerParts[1];
                 //get the method tag from the route/method template
+                //todo: add validation that the method type is one supported by Functions
                 Collection<HttpMethod> methods = new Collection<HttpMethod>();
                 methods.Add(new HttpMethod(triggerParts[0]));
                 ((HttpTriggerBindingMetadata)triggerBindingMetadata).Methods = methods;
@@ -103,8 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public string Language { get; set; }
         public TableDetails TableStorage { get; set; }
         public string CommonCode { get; set; }
-        //supressed to allow yaml parser to assign a value
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public Collection<FunctionDetails> Functions { get; set; }
     }
 
@@ -124,9 +133,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public string Trigger { get; set; }
         public string Code { get; set; }
         public string CodeLocation { get; set; }
-        //supressed to allow yaml parser to assign a value to the property
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage",
-            "CA2227:CollectionPropertiesShouldBeReadOnly")]
         [YamlMember(Alias = "bindings")]
         public Collection<string> BindingStrings
         {

@@ -7,26 +7,16 @@ using System;
 
 public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, string strvalue, bool boolvalue, long longvalue, double doubvalue, DateTime date)
 {
+    //build response text line by line, showcasing each of the parameter values extracted from the route
     var responseText = new StringBuilder();
-    responseText.Append("String value: " + strvalue + "\n");
-    responseText.Append("Bool value: " + boolvalue + "\n");
-    responseText.Append("Long value: " + longvalue + "\n");
-    responseText.Append("Double value: " + doubvalue + "\n");
-    responseText.Append("Date value: " + date.ToString() + "\n");
-    HttpResponseMessage res = null;
-    try
+    responseText.AppendLine("String value: " + strvalue);
+    responseText.AppendLine("Bool value: " + boolvalue);
+    responseText.AppendLine("Long value: " + longvalue);
+    responseText.AppendLine("Double value: " + doubvalue);
+    responseText.AppendLine("Date value: " + date.ToString());
+
+    return new HttpResponseMessage(HttpStatusCode.OK)
     {
-        res = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(responseText.ToString())
-        };
-    }
-    catch
-    {
-        res = new HttpResponseMessage(HttpStatusCode.BadRequest)
-        {
-            Content = new StringContent("The counter has not properly initialized.")
-        };
-    }
-    return res;
+        Content = new StringContent(responseText.ToString())
+    };
 }

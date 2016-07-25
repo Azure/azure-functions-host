@@ -428,6 +428,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 BindingMetadata triggerBindingMetadata = ParseUtility.GetTriggerBindingMetadata(function.Trigger);
 
+                //if there is no valid trigger for this function, skip to the next function in the file
+                if (triggerBindingMetadata == null)
+                {
+                    continue;
+                }
+
                 if (function.BindingDetails != null)
                 {
                     foreach (var binding in function.BindingDetails)
@@ -560,14 +566,9 @@ namespace Microsoft.Azure.WebJobs.Script
                             }
                         }
                     }
-                    else
-                    {
-                        // not a function directory
-                        continue;
-                    }
                 }
                 catch (Exception ex)
-               {
+                {
                     // log any unhandled exceptions and continue
                     AddFunctionError(functionName, ex.Message);
                 }

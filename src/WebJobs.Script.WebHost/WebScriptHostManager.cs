@@ -36,8 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
 
-        private List<KeyValuePair<string, FunctionDescriptor>> RouteTemplates { get; set; }
-
         public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // All authentication is assumed to have been done on the request
@@ -105,27 +103,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             //error for any parameters it doesn't find values from through bindings.
             var bindingNames = function.Metadata.Bindings.Select(b => b.Name).ToImmutableSortedSet();
 
-            //extract all possible parameter values
+            //extract all possible parameter values from the route
             var route = RoutingUtility.ExtractRouteTemplateFromMetadata(function.Metadata);
-            var parameters = RoutingUtility.ExtractRouteParameters(route, request);
-            
+            var parameters = RoutingUtility.ExtractRouteParameters(route, request);          
             foreach (var pair in parameters)
             {
                 arguments.Add(pair.Key, pair.Value);
             }
 
+            //Extract parameters from the query string if match a parameter name that is not a binding
             var queryStringParameters = request.GetQueryNameValuePairs().ToImmutableDictionary();
             foreach (var parameter in function.Parameters)
             {
-                // if the parameter is not a binding then assume it is a 
-                if (!bindingNames.Contains(parameter.Name))
+                // if the parameter is not a binding or already found in the routes then assume it is a parameter to be extracted from the query string
+                if (!bindingNames.Contains(parameter.Name) && !arguments.ContainsKey(parameter.Name))
                 {
+                    //extract the value from the query string parameters and convert it before adding it as an argument.
                     string value = null;
                     queryStringParameters.TryGetValue(parameter.Name, out value);
-                    if (value != null)
+                    object properValue = value != null ? Convert.ChangeType(value, parameter.Type) : null;
+                    if (properValue != null)
                     {
-                        //convert to the proper type if possible
-                        object properValue = Convert.ChangeType(value, parameter.Type);
                         arguments.Add(parameter.Name, properValue);
                     }
                 }
@@ -213,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal void InitializeHttpFunctions(Collection<FunctionDescriptor> functions)
         {
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
-            RoutingUtility.ClearTemplates();
+            RoutingUtility.ClearCache();
             foreach (var function in functions)
             {
                 HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type.Equals("httptrigger", StringComparison.OrdinalIgnoreCase));

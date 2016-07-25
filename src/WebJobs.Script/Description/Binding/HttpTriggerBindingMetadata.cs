@@ -29,6 +29,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public AuthorizationLevel AuthLevel { get; set; }
 
         public string WebHookType { get; set; }
-
     }
 }

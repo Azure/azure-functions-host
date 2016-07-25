@@ -18,70 +18,56 @@ commonCode: |
     
 functions:
     - name: initialize
-      trigger: "PUT@counteryaml/{countername}"
+      trigger: "PUT@counter/{counterName}"
       bindings:
         - "counter:table-out"
       codeLocation: "initialize.csx"
     - name: get
-      trigger: "GET@counteryaml/{countername}"
+      trigger: "GET@counter/{counterName}"
       bindings:
         - "counters:table-in"
       code: |
-        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, IQueryable<Counter> counters, string countername)
+        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, IQueryable<Counter> counters, string counterName)
         {
-            HttpResponseMessage res = null;
-            try
+            Counter counter = counters.Where(c => c.RowKey.Equals(counterName)).FirstOrDefault();
+            if(counter == null)
             {
-                Counter counter = counters.Where(c => c.RowKey.Equals(countername)).FirstOrDefault();
-                if(counter != null)
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
                 {
-                    res = new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = new StringContent(counter.Value.ToString())
-                    };
-                } 
-                else
-                {                
-                    res = new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = new StringContent("0")
-                    };
-                }
-            }
-            catch
-            {
-                res = new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = new StringContent("The counter could not be accessed")
+                    Content = new StringContent("The counter you are trying to retrieve does not exist.")
                 };
             }
-            return res;
-        }  
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("The counter's value is " + counter.Value)
+            };
+        }
     - name: add
-      trigger: "POST@counteryaml/{countername}/{add:int}"
+      trigger: "POST@counter/{counterName}/{addValue:int}"
       bindings:
         - "tableBinding:table-out"
       code: |
-        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, CloudTable tableBinding, int add, string countername)
+        public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log, CloudTable tableBinding, string counterName, int addValue)
         {
-            HttpResponseMessage res = null;
-            try {
-                var getCurrentValue =  new TableQuery<Counter>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, countername));
-                Counter counter = tableBinding.ExecuteQuery(getCurrentValue).First();
-                counter.Value += add;
-                TableOperation updateOperation = TableOperation.Replace(counter);
-                tableBinding.Execute(updateOperation);
-                res = new HttpResponseMessage(HttpStatusCode.OK)
+            //retrieve the value of the counter if it exists
+            var getCurrentValue = new TableQuery<Counter>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, counterName));
+            Counter counter = tableBinding.ExecuteQuery(getCurrentValue).FirstOrDefault();
+            //if the counter doesn't exist, return a bad request
+            if(counter == null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
                 {
-                    Content = new StringContent("Updated the value of the counter by " + add + ".")
+                    Content = new StringContent("The counter you are trying to update doesn't yet exist.")
                 };
-            } catch {
-                res = new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = new StringContent("Failed to update the counter.")
-                };
-            }
-            return res;
+            } 
+            //add the appropriate value to the counter and update the database
+            counter.Value += addValue;
+            TableOperation updateOperation = TableOperation.Replace(counter);
+            tableBinding.Execute(updateOperation);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Updated the value of the counter by " + addValue + ".")
+            };
         }
     - name: dailyReset
       trigger: "TIMER@0 0 * * * *"

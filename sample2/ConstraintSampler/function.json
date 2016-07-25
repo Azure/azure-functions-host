@@ -5,7 +5,7 @@
       "name": "req",
       "type": "httpTrigger",
       "methods": [ "get" ],
-      "route": "constraintsampler/{lenvalue:length(2,5)}/{alphavalue:alpha}/{fixedint:range(0,100)}",
+      "route": "constraintsampler/{lenValue:length(2,5)}/{alphaValue:alpha}/{longRange:range(0,100)}",
       "direction": "in"
     },
     {
