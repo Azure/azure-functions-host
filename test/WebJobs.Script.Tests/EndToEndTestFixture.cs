@@ -39,6 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileLoggingEnabled = true
             };
 
+            // Clear the timer logs first, since one of the tests will
+            // be checking them
+            TestHelpers.ClearFunctionLogs("TimerTrigger");
+
             Host = ScriptHost.Create(config);
             Host.Start();
         }

@@ -4,9 +4,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.ApiHub.Sdk;
-using Microsoft.Azure.ApiHub.Sdk.Table;
-using Microsoft.Azure.ApiHub.Sdk.Table.Internal;
+using Microsoft.Azure.ApiHub;
+using Microsoft.Azure.ApiHub.Table.Internal;
 using Microsoft.Azure.WebJobs.Extensions.ApiHub.Common;
 using Xunit;
 

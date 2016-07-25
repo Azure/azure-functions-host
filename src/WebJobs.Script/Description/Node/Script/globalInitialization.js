@@ -8,6 +8,9 @@ return function (context, callback) {{
         context.handleUncaughtException(err.stack);
     }});
 
+    // TEMP HACK: workaround for https://github.com/tjanczuk/edge/issues/325
+    process.nextTick = global.setImmediate;
+
     callback();
 }};
 

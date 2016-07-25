@@ -203,9 +203,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            // Bindings may use name resolution, so provide this before reading the bindings. 
-            var nameResolver = new NameResolver();
-
             var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             if (storageString == null)
             {
@@ -213,8 +210,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.StorageConnectionString = null;
             }
                       
-            ScriptConfig.HostConfig.NameResolver = nameResolver;
-
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -377,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return bindingProviders;
         }
 
-        private static FunctionMetadata ParseFunctionMetadata(string functionName, INameResolver nameResolver, JObject configMetadata)
+        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata)
         {
             FunctionMetadata functionMetadata = new FunctionMetadata
             {
@@ -395,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding, nameResolver);
+                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
                     functionMetadata.Bindings.Add(bindingMetadata);
                     if (bindingMetadata.IsTrigger)
                     {
@@ -419,7 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionMetadata;
-		}
+        }
 
         private static List<FunctionMetadata> ParseApiMetadata(string apiPath, ApiConfig configMetadata)
         {
@@ -507,8 +502,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         // schema validation and give more informative responses 
                         string json = File.ReadAllText(functionConfigPath);
                         JObject functionConfig = JObject.Parse(json);
-                        FunctionMetadata metadata = ParseFunctionMetadata(functionName, config.HostConfig.NameResolver,
-                            functionConfig);
+                        FunctionMetadata metadata = ParseFunctionMetadata(functionName, functionConfig);
+
 
                         if (metadata.IsExcluded)
                         {

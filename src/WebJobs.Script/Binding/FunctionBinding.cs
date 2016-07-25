@@ -10,8 +10,6 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings.Path;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -99,24 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             functionBinding = new ExtensionBinding(config, scriptBinding, bindingMetadata);
 
             return true;
-        }
-
-        protected string ResolveAndBind(string value, IReadOnlyDictionary<string, string> bindingData)
-        {
-            BindingTemplate template = BindingTemplate.FromString(value);
-
-            string boundValue = value;
-            if (bindingData != null && template != null)
-            {
-                boundValue = template.Bind(bindingData);
-            }
-
-            if (!string.IsNullOrEmpty(value))
-            {
-                boundValue = Resolve(boundValue);
-            }
-
-            return boundValue;
         }
 
         protected string Resolve(string name)
@@ -249,6 +229,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else if (type == typeof(string))
                 {
                     bytes = Encoding.UTF8.GetBytes((string)value);
+                }
+                else if (type == typeof(int))
+                {
+                    bytes = BitConverter.GetBytes((int)value);
+                }
+                else if (type == typeof(bool))
+                {
+                    bytes = BitConverter.GetBytes((bool)value);
+                }
+                else if (type == typeof(double))
+                {
+                    bytes = BitConverter.GetBytes((double)value);
                 }
 
                 using (valueStream = new MemoryStream(bytes))

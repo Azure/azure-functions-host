@@ -50,7 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public virtual void OnError(Exception ex)
         {
             string error = Utility.FlattenException(ex);
-            TraceWriter.Error(error);
+
+            TraceError(error);
+        }
+
+        protected virtual void TraceError(string errorMessage)
+        {
+            TraceWriter.Error(errorMessage);
 
             // when any errors occur, we want to flush immediately
             TraceWriter.Flush();

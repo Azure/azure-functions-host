@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // add the line to the current buffer batch, which is flushed
             // on a timer
-            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), line.Trim());
+            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), line.Trim());
             _logBuffer.Enqueue(line);
         }
 
@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // we include a machine identifier in the log file name to ensure we don't have any
             // log file contention between scaled out instances
-            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", Guid.NewGuid(), _instanceId));
+            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK"), _instanceId));
             _currentLogFileInfo = new FileInfo(filePath);
         }
 

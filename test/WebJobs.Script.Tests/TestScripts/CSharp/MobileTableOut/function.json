@@ -8,7 +8,8 @@
         {
             "type": "mobileTable",
             "name": "item",
-            "direction": "out"
+            "direction": "out",
+            "connection": "AzureWebJobs_TestMobileUri"
         }
     ]
 }

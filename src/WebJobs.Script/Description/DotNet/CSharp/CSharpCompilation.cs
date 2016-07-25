@@ -60,7 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return string.Empty;
             }
 
-            return string.Format(CultureInfo.InvariantCulture, "{0}.{1}, {2}", type.ContainingNamespace.MetadataName, type.MetadataName, type.ContainingAssembly.ToDisplayString());
+            return type.ContainingAssembly == null
+                ? type.ToDisplayString()
+                : string.Format(CultureInfo.InvariantCulture, "{0}, {1}", type.ToDisplayString(), type.ContainingAssembly.ToDisplayString());
         }
 
         private static bool IsOrUsesAssemblyType(ITypeSymbol typeSymbol, IAssemblySymbol assemblySymbol)

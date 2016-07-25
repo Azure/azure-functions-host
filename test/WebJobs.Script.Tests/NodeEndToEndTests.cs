@@ -22,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
-        private const string JobLogTestFileName = "joblog.txt";
-
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -211,9 +209,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
 
-            Dictionary<string, object> arguments = new Dictionary<string, object>
+            JObject input = new JObject
             {
                 { "scenario", "doubleDone" }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
             };
             await Fixture.Host.CallAsync("Scenarios", arguments);
 
@@ -228,6 +230,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the function completed successfully
             Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
+        }
+
+        [Fact]
+        public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
+        {
+            var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
+            if (container.Exists())
+            {
+                foreach (CloudBlockBlob blob in container.ListBlobs())
+                {
+                    await blob.DeleteAsync();
+                }
+            }
+
+            // Call 3 times - expect 3 separate output blobs
+            for (int i = 0; i < 3; i++)
+            {
+                JObject input = new JObject
+                {
+                    { "scenario", "randGuid" },
+                    { "container", "scenarios-output" },
+                    { "value", i }
+                };
+                Dictionary<string, object> arguments = new Dictionary<string, object>
+                {
+                    { "input", input.ToString() }
+                };
+                await Fixture.Host.CallAsync("Scenarios", arguments);
+            }
+
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            Assert.Equal(3, blobs.Length);
+            foreach (var blob in blobs)
+            {
+                byte[] contents = new byte[4];
+                await blob.DownloadToByteArrayAsync(contents, 0);
+                int blobInt = BitConverter.ToInt32(contents, 0);
+                Assert.True(blobInt >= 0 && blobInt <= 3);
+            }
         }
 
         [Fact]
@@ -464,20 +505,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TimerTrigger()
         {
-            // job is running every second, so give it a few seconds to
-            // generate some output
-            await TestHelpers.Await(() =>
-            {
-                if (File.Exists(JobLogTestFileName))
-                {
-                    string[] lines = File.ReadAllLines(JobLogTestFileName);
-                    return lines.Length > 2;
-                }
-                else
-                {
-                    return false;
-                }
-            }, timeout: 10 * 1000);
+            var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
+
+            Assert.True(logs[1].Contains("Timer function ran!"));
         }
 
         [Fact]
@@ -542,11 +572,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TraceLevel.Info, trace.Level);
         }
 
+        [Fact]
+        public async Task NextTick()
+        {
+            // See https://github.com/tjanczuk/edge/issues/325.
+            // This ensures the workaround is working
+
+            // we're not going to await this call as it may hang if there is 
+            // a regression, instead, monitor for IsCompleted below.
+            JObject input = new JObject
+            {
+                { "scenario", "nextTick" }
+            };
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "input", input.ToString() }
+                });
+
+            await TestHelpers.Await(() =>
+            {
+                return t.IsCompleted;
+            }, timeout: 5000, pollingInterval: 1000);
+
+            // Await the task to force any exception to be thrown
+            await t;
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node", "node")
             {
-                File.Delete(JobLogTestFileName);
             }
         }
 

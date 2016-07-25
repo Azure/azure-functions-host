@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -16,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class ExtensionSharedAssemblyProvider : ISharedAssemblyProvider
     {
         private readonly Collection<ScriptBindingProvider> _bindingProviders;
-
+        
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
@@ -32,10 +34,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var bindingProvider in _bindingProviders)
             {
-                if (bindingProvider.TryResolveAssembly(assemblyName, out assembly))
+                if (bindingProvider.TryResolveAssembly(assemblyName, out assembly) ||
+                    TryResolveExtensionAssembly(bindingProvider, assemblyName, out assembly))
                 {
                     break;
                 }
+            }
+
+            return assembly != null;
+        }
+
+        private static bool TryResolveExtensionAssembly(ScriptBindingProvider bindingProvider, string assemblyName, out Assembly assembly)
+        {
+            assembly = null;
+            Assembly providerAssembly = bindingProvider.GetType().Assembly;
+
+            if (string.Compare(assemblyName, providerAssembly.GetName().Name) == 0)
+            {
+                assembly = providerAssembly;
             }
 
             return assembly != null;
