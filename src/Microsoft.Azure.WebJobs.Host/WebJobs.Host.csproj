@@ -332,6 +332,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
       <Link>Storage\StorageExceptionExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\OperationContextInitializer.cs">
+      <Link>Storage\OperationContextInitializer.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IEntityResolver.cs">
       <Link>Storage\Table\IEntityResolver.cs</Link>
     </Compile>

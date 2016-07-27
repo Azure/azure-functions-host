@@ -26,6 +26,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         private readonly IStorageQueueClient _parent;
         private readonly CloudQueue _sdk;
 
+        static StorageQueue()
+        {
+            // Add WebJobs to user agent to make it easier to collect usage information from Storage telemetry
+            OperationContextInitializer.Initialize();
+        }
+
         /// <summary>Initializes a new instance of the <see cref="StorageQueue"/> class.</summary>
         /// <param name="parent">The parent queue client.</param>
         /// <param name="sdk">The SDK queue to wrap.</param>
