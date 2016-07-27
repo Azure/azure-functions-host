@@ -267,6 +267,7 @@
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
     <Compile Include="Binding\ScriptBindingContextTests.cs" />
+    <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />

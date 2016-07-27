@@ -21,6 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
 
+        /// <summary>
+        /// Gets or sets the flag indicating whether this host is the primary instance.
+        /// </summary>
+        [JsonProperty(PropertyName = "isPrimary")]
+        public bool IsPrimary { get; set; }
+
         private static string GetExecutingAssemblyFileVersion()
         {
             AssemblyFileVersionAttribute fileVersionAttr = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>();

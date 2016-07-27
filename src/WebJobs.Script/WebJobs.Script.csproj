@@ -299,6 +299,7 @@
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
+    <Compile Include="Host\BlobLeaseManager.cs" />
     <Compile Include="Host\ScriptHost.cs" />
     <Compile Include="Host\ScriptHostManager.cs" />
     <Compile Include="Description\FunctionMetadata.cs" />

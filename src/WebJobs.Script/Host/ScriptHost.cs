@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
+        private BlobLeaseManager _blobLeaseManager;
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
@@ -44,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
         }
+
+        public event EventHandler IsPrimaryChanged;
 
         public static bool InStandbyMode
         {
@@ -54,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     return _standbyMode.Value;
                 }
-
                 if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
                 {
                     return true;
@@ -67,12 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static void ResetStandbyMode()
-        {
-            // this is for testing only
-            _standbyMode = null;
-        }
-
         public TraceWriter TraceWriter { get; private set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
@@ -81,12 +77,26 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
+        public bool IsPrimary
+        {
+            get
+            {
+                return _blobLeaseManager?.HasLease ?? false;
+            }
+        }
+
         public AutoResetEvent RestartEvent
         {
             get
             {
                 return _restartEvent;
             }
+        }
+
+        public static void ResetStandbyMode()
+        {
+            // this is for testing only
+            _standbyMode = null;
         }
 
         internal void AddFunctionError(string functionName, string error)
@@ -235,6 +245,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Disable core storage 
                     ScriptConfig.HostConfig.StorageConnectionString = null;
                 }
+
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // and subscribe for change notifications.
+                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, TraceWriter);
+                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
             }
                       
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
@@ -277,6 +292,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 PurgeOldLogDirectories();
             }
+        }
+
+        private void BlobLeaseManagerHasLeaseChanged(object sender, EventArgs e)
+        {
+            IsPrimaryChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -880,6 +900,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
+
+                _blobLeaseManager?.Dispose();
             }
         }
     }
