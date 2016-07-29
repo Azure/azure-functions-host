@@ -31,14 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metadataResolver = metadataResolver;
         }
 
-        public ScriptType ScriptType
-        {
-            get
-            {
-                return ScriptType.FSharp;
-            }
-        }
-
         public IEnumerable<string> SupportedFileTypes
         {
             get

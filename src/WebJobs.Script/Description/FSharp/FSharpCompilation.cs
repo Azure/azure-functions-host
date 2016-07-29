@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return signature;
         }
 
-        private RefKind GetParameterRefKind(ParameterInfo x)
+        private static RefKind GetParameterRefKind(ParameterInfo x)
         {
             if (x.IsOut)
             {
