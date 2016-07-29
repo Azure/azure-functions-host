@@ -50,8 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Initialize();
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
-            : base(host, functionMetadata)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
+            : base(host, functionMetadata, traceWriterFactory)
         {
             _trigger = trigger;
             string scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // clear the node module cache
                 ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
-                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
+                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
             }
         }
 

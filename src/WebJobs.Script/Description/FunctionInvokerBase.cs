@@ -14,33 +14,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
+        private const string PrimaryHostTracePropertyName = "PrimaryHost";
+        private readonly static IDictionary<string, object> _primaryHostTraceProperties = new Dictionary<string, object> { { PrimaryHostTracePropertyName, null } };
+
         private FileSystemWatcher _fileWatcher;
         private bool _disposed = false;
 
-        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
             Host = host;
             Metadata = functionMetadata;
-            TraceWriter = CreateTraceWriter(host.ScriptConfig, functionMetadata.Name);
+
+            traceWriterFactory = traceWriterFactory ?? new FunctionTraceWriterFactory(functionMetadata.Name, Host.ScriptConfig);
+            TraceWriter traceWriter = traceWriterFactory.Create();
+            TraceWriter = new ConditionalTraceWriter(traceWriter, t => !(t.Properties?.ContainsKey(PrimaryHostTracePropertyName) ?? false) || Host.IsPrimary);
         }
+
+        protected static IDictionary<string, object> PrimaryHostTraceProperties => _primaryHostTraceProperties;
 
         public ScriptHost Host { get; private set; }
 
         public FunctionMetadata Metadata { get; private set; }
 
-        public TraceWriter TraceWriter { get; private set; }
-
-        private static TraceWriter CreateTraceWriter(ScriptHostConfiguration scriptConfig, string functionName)
-        {
-            if (scriptConfig.FileLoggingEnabled)
-            {
-                TraceLevel functionTraceLevel = scriptConfig.HostConfig.Tracing.ConsoleLevel;
-                string logFilePath = Path.Combine(scriptConfig.RootLogPath, "Function", functionName);
-                return new FileTraceWriter(logFilePath, functionTraceLevel);
-            }
-
-            return NullTraceWriter.Instance;
-        }
+        public TraceWriter TraceWriter { get; }
 
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
@@ -89,21 +85,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
+        protected void TraceOnPrimaryHost(string message, TraceLevel level)
+        {
+            TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    if (_fileWatcher != null)
-                    {
-                        _fileWatcher.Dispose();
-                    }
+                    _fileWatcher?.Dispose();
 
-                    if (TraceWriter != null && TraceWriter is IDisposable)
-                    {
-                        ((IDisposable)TraceWriter).Dispose();
-                    }
+                    (TraceWriter as IDisposable)?.Dispose();
                 }
 
                 _disposed = true;

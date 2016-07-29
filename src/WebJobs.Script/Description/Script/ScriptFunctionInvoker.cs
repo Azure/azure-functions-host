@@ -30,8 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
 
-        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHost host, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
-            : base(host, functionMetadata)
+        internal ScriptFunctionInvoker(string scriptFilePath, ScriptHost host, FunctionMetadata functionMetadata,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
+            : base(host, functionMetadata, traceWriterFactory)
         {
             _scriptFilePath = scriptFilePath;
             _inputBindings = inputBindings;

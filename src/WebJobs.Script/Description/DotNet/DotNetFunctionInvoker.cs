@@ -45,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
-            ICompilationServiceFactory compilationServiceFactory)
-            : base(host, functionMetadata)
+            ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null)
+            : base(host, functionMetadata, traceWriterFactory)
         {
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
@@ -114,10 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Reset cached function
             ResetFunctionValue();
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
-
-            TraceWriter.Info("Compiling function script.");
-
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
+            
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
             FunctionSignature signature = null;
 
@@ -138,8 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.",
-                compilationSucceeded ? "succeeded" : "failed"));
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
 
             // If the compilation succeeded, AND:
             //  - We haven't cached a function (failed to compile on load), OR
@@ -173,19 +170,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private void RestorePackages()
         {
-            TraceWriter.Info("Restoring packages.");
+            TraceOnPrimaryHost("Restoring packages.", TraceLevel.Info);
 
             _metadataResolver.RestorePackagesAsync()
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                     {
-                        TraceWriter.Info("Package restore failed:");
-                        TraceWriter.Info(t.Exception.ToString());
+                        TraceOnPrimaryHost("Package restore failed:", TraceLevel.Info);
+                        TraceOnPrimaryHost(t.Exception.ToString(), TraceLevel.Info);
                         return;
                     }
 
-                    TraceWriter.Info("Packages restored.");
+                    TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
                     _reloadScript();
                 });
         }
@@ -338,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException ex)
             {
-                TraceWriter.Error("Function compilation error");
+                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
                 TraceCompilationDiagnostics(ex.Diagnostics);
                 throw;
             }
@@ -349,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
                 TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
-                TraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
+                TraceWriter.Trace(diagnostic.ToString(), level, PrimaryHostTraceProperties);
 
                 ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
 

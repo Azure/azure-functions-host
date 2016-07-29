@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
@@ -51,22 +53,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
                 new Collection<Script.Binding.FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty), 
-                dependencies.CompilationServiceFactory.Object);
+                dependencies.CompilationServiceFactory.Object, dependencies.TraceWriterFactory.Object);
 
             // Update the file to trigger a reload
-            File.WriteAllText(filePath, string.Empty);            
+            File.WriteAllText(filePath, string.Empty);
 
-            // Verify that our expected messages were logged, including the compilation result
-            await TestHelpers.Await(() => 
+            CompilationErrorException resultException = await Assert.ThrowsAsync<CompilationErrorException>(() => invoker.GetFunctionTargetAsync());
+
+            await TestHelpers.Await(() =>
             {
-                Collection<string> logs = TestHelpers.GetFunctionLogsAsync(metadata.Name, false).Result;
-                if (logs != null)
-                {
-                    return logs.Any(s => s.Contains("Compilation failed.")) && logs.Any(s => s.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
-                }
-
-                return false;
-            }, 10 * 1000);
+                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                 dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+            });
         }
 
         [Fact]
@@ -96,25 +94,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory());
+                new DotNetCompilationServiceFactory(), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
-            // Verify that our expected messages were logged, including the compilation result
-            await TestHelpers.Await(() =>
-            {
-                Collection<string> logs = TestHelpers.GetFunctionLogsAsync(metadata.Name, false).Result;
-                if (logs != null)
-                {
-                    //Check that our warning diagnostic was logged (e.g. "warning AF004: Missing binding argument named 'TestBinding'.");
-                    return logs.Any(s => s.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && s.Contains("'TestBinding'"));
-                }
-
-                return false;
-            }, 10 * 1000);
+            Assert.Contains(dependencies.TraceWriter.Traces,
+                t => t.Message.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && t.Message.Contains("'TestBinding'"));
         }
 
-        private RunDependencies CreateDependencies()
+        [Fact]
+        public async Task Compilation_OnSecondaryHost_SuppressesLogs()
+        {
+            // Create the compilation exception we expect to throw during the reload           
+            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(rootFunctionsFolder);
+
+            // Create the invoker dependencies and setup the appropriate method to throw the exception
+            RunDependencies dependencies = CreateDependencies();
+            
+            // Set the host to secondary
+            dependencies.Host.SetupGet(h => h.IsPrimary).Returns(false);
+
+            // Create a dummy file to represent our function
+            string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
+            File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
+
+            var metadata = new FunctionMetadata
+            {
+                ScriptFile = filePath,
+                Name = Guid.NewGuid().ToString(),
+                ScriptType = ScriptType.CSharp
+            };
+
+            metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+
+            var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+
+            var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                new DotNetCompilationServiceFactory(), dependencies.TraceWriterFactory.Object);
+
+            await invoker.GetFunctionTargetAsync();
+
+            // Verify that our expected messages were logged
+            TraceEvent trace = dependencies.TraceWriter.Traces.FirstOrDefault();
+            Assert.NotNull(trace);
+            Assert.Equal(System.Diagnostics.TraceLevel.Verbose, trace.Level);
+            Assert.Contains("[Supressed 'Warning' trace]", trace.Message);
+        }
+
+        private RunDependencies CreateDependencies(TraceLevel traceLevel = TraceLevel.Info)
         {
             var dependencies = new RunDependencies();
 
@@ -127,7 +156,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 FileWatchingEnabled = true
             };
 
+            scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
+
             var host = new Mock<ScriptHost>(scriptHostConfiguration);
+            host.SetupGet(h => h.IsPrimary).Returns(true);
+
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
 
             var compilation = new Mock<ICompilation>();
@@ -142,7 +175,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 
             var compilationServiceFactory = new Mock<ICompilationServiceFactory>();
             compilationServiceFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>()))
-            .Returns(compilationService.Object);
+                .Returns(compilationService.Object);
+
+            var traceWriterFactory = new Mock<ITraceWriterFactory>();
+            traceWriterFactory.Setup(f => f.Create())
+                .Returns(traceWriter);
 
             return new RunDependencies
             {
@@ -150,7 +187,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 EntrypointResolver = entrypointResolver,
                 Compilation = compilation,
                 CompilationService = compilationService,
-                CompilationServiceFactory = compilationServiceFactory
+                CompilationServiceFactory = compilationServiceFactory,
+                TraceWriterFactory = traceWriterFactory,
+                TraceWriter = traceWriter
             };
         }
 
@@ -161,6 +200,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             public Mock<ICompilation> Compilation { get; set; }
             public Mock<ICompilationService> CompilationService { get; set; }
             public Mock<ICompilationServiceFactory> CompilationServiceFactory { get; set; }
+            public Mock<ITraceWriterFactory> TraceWriterFactory { get; set; }
+            public TestTraceWriter TraceWriter { get; set; }
         }
     }
 }

@@ -354,6 +354,7 @@
     <Compile Include="HttpTriggerBindingTests.cs" />
     <Compile Include="TestScripts\PowerShellFunctionGenerationTests.cs" />
     <Compile Include="TestTraceWriter.cs" />
+    <Compile Include="TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebScriptHostManagerTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />

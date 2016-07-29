@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
-        public bool IsPrimary
+        public virtual bool IsPrimary
         {
             get
             {
