@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -111,6 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_activeHostManager == null)
                 {
+                    if (_standbyHostManager != null)
+                    {
+                        // reintialize app settings if earlier in standby
+                        ReinitializeAppSettings();
+                    }
+
                     _activeScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
                     _activeSecretManager = GetSecretManager(settings.SecretsPath);
                     _activeHookManager = new WebHookReceiverManager(_activeSecretManager);
@@ -135,6 +143,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _standbyHookManager = new WebHookReceiverManager(_standbySecretManager);
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _standbySecretManager, settings);
                 }
+            }
+        }
+
+        private static void ReinitializeAppSettings()
+        {
+            // only in azure environment
+            if (WebScriptHostManager.IsAzureEnvironment)
+            {
+                // the nature of this is only add or update (not remove).
+                // so there may be settings from standby site leak over.
+                var assembly = AppDomain.CurrentDomain.GetAssemblies().First(a => a.FullName.StartsWith("EnvSettings, "));
+                var envSettingType = assembly.GetType("EnvSettings.SettingsProcessor", throwOnError: true);
+                var startMethod = envSettingType.GetMethod("Start", BindingFlags.Public | BindingFlags.Static);
+                startMethod.Invoke(null, new object[0]);
             }
         }
 

@@ -40,6 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostSettings = webHostSettings;
         }
 
+        // Same as Kudu logic
+        public static bool IsAzureEnvironment
+        {
+            get { return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")); }
+        }
+
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
 
         protected override void Dispose(bool disposing)
