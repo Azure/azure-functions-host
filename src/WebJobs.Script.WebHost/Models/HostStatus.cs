@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// Gets the host version.
         /// </summary>
         [JsonProperty(PropertyName = "version")]
-        public static readonly string Version = GetExecutingAssemblyFileVersion();
+        public static readonly string Version = GetAssemblyFileVersion(Assembly.GetExecutingAssembly());
 
         /// <summary>
         /// Gets or sets the collection of errors for the host.
@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty(PropertyName = "isPrimary")]
         public bool IsPrimary { get; set; }
 
-        private static string GetExecutingAssemblyFileVersion()
+        internal static string GetAssemblyFileVersion(Assembly assembly)
         {
-            AssemblyFileVersionAttribute fileVersionAttr = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>();
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             return fileVersionAttr?.Version ?? "Unknown";
         }
     }
