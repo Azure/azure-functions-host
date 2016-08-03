@@ -25,7 +25,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
-    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisCulture>en-US</CodeAnalysisCulture>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
