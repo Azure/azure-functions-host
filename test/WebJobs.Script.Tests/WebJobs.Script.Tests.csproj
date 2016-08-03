@@ -536,15 +536,17 @@
     <None Include="TestScripts\FSharp\MobileTableTable\run.fsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+-->
     <None Include="TestScripts\FSharp\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\FSharp\QueueTriggerToBlob\function.json">
+	<None Include="TestScripts\FSharp\QueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\QueueTriggerToBlob\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+<!--
     <None Include="TestScripts\FSharp\MobileTableIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
