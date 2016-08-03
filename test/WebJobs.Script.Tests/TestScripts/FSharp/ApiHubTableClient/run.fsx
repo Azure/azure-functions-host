@@ -10,10 +10,12 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "System.Runtime"
 #r "System.Threading.Tasks"
 #r "Microsoft.Azure.ApiHub.Sdk"
 
 open System
+open Microsoft.Azure.WebJobs.Host
 open Microsoft.Azure.ApiHub
 
 type SampleEntity = { Id : int; Text: string } 

@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "Newtonsoft.Json"
 
 open System
 open Microsoft.Azure.WebJobs.Host

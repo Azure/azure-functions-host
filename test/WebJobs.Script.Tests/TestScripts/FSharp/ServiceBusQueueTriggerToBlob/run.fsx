@@ -13,11 +13,12 @@
 #r "Newtonsoft.Json"
 
 open System
+open System.Runtime.InteropServices
 open Newtonsoft.Json
 
 type message = { id: string; count : int }
 
-let Run(input: string, message: byref<string>, completed: byref<string>) =
+let Run(input: string, [<Out>] message: byref<string>, completed: byref<string>) =
     message <- null
     completed <- null
 

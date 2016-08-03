@@ -13,6 +13,7 @@
 #r "Newtonsoft.Json"
 
 open System
+open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
 [<CLIMutable>]
@@ -21,7 +22,7 @@ type ScenarioInput =
       Container : string
       Value: string } 
 
-let Run(input: ScenarioInput, blob: byref<string>, log: TraceWriter) =
+let Run(input: ScenarioInput, [<Out>] blob: byref<string>, log: TraceWriter) =
     blob <- null
 
     if (input.Scenario = "randGuid") then

@@ -11,8 +11,9 @@
 // This is the implementation of the function 
 
 open System
+open System.Runtime.InteropServices
 
-type Out = { id: string; text: string }
+type OutputData = { id: string; text: string }
 
-let Run(input: string , item: byref<obj>) =
+let Run(input: string , [<Out>] item: byref<obj>) =
     item <- { id = input; text = "Hello from C#!" }

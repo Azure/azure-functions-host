@@ -11,6 +11,7 @@
 // This is the implementation of the function 
 
 open System
+open System.Runtime.InteropServices
 
-let Run(input: string, messageProperties: byref<string>) =
+let Run(input: string, [<Out>] messageProperties: byref<string>) =
     messageProperties <- """{"message":"Hello from F# ! ","location":"Cambridge"}""";

@@ -10,6 +10,8 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "System.Net.Http"
+
 open System
 open System.Linq
 open System.Net

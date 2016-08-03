@@ -18,6 +18,6 @@ open Newtonsoft.Json.Linq
 
 let Run(input: string, item: JObject, log: TraceWriter) =
 
-    item.["Text"] <- "This was updated!"
+    item.["Text"] <- JToken.op_Implicit "This was updated!"
 
-    log.Info(sprintf "Updating item %s" item.["Id"])
+    log.Info(sprintf "Updating item %s" (item.["Id"].ToString()))

@@ -17,4 +17,4 @@ open Microsoft.Azure.WebJobs.Host
 open Newtonsoft.Json.Linq
 
 let Run(input: string, item: JObject) =
-    item.["text"] <- "This was updated!"
+    item.["text"] <- JToken.op_Implicit "This was updated!"
