@@ -451,6 +451,7 @@
     <None Include="TestScripts\CSharp\AssembliesFromSharedLocation\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+<!--
     <None Include="TestScripts\FSharp\ApiHubTableClient\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -568,6 +569,7 @@
     <None Include="TestScripts\FSharp\AssembliesFromSharedLocation\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+-->
     <None Include="TestScripts\FunctionGeneration\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
