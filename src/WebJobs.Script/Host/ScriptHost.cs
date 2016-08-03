@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _blobLeaseManager?.HasLease ?? false;
+                return _blobLeaseManager?.HasLease ?? !ScriptConfig.RoleDetectionEnabled;
             }
         }
 
@@ -244,12 +245,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Disable core storage 
                     ScriptConfig.HostConfig.StorageConnectionString = null;
-                }
 
-                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
-                // and subscribe for change notifications.
-                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, TraceWriter);
-                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
+                    if (ScriptConfig.RoleDetectionEnabled)
+                    {
+                        // Role detection is enabled, but we're missing the storage string
+                        throw new ConfigurationErrorsException("Unable to initialize role detection. Missing storage connection string.");
+                    }
+                }
+                else if (ScriptConfig.RoleDetectionEnabled)
+                {
+                    // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                    // and subscribe for change notifications.
+                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, TraceWriter);
+                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
+                }
             }
                       
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()

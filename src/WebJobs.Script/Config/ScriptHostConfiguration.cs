@@ -55,6 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool FileLoggingEnabled { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether host role detection should be enabled.
+        /// The default is false, which will disable automatic primary host detection,
+        /// and <see cref="ScriptHost.IsPrimary"/> will be true.
+        /// </summary>
+        public bool RoleDetectionEnabled { get; set; }
+
+        /// <summary>
         /// Gets the list of functions that should be run. This list can be used to filter
         /// the set of functions that will be enabled - it can be a subset of the actual
         /// function directories. When left null (the default) all discovered functions will

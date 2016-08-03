@@ -184,7 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootScriptPath = scriptPath,
                 RootLogPath = logPath,
                 FileLoggingEnabled = true,
-                FileWatchingEnabled = !ScriptHost.InStandbyMode
+                FileWatchingEnabled = !ScriptHost.InStandbyMode,
+                RoleDetectionEnabled = !ScriptHost.InStandbyMode
             };
 
             // If running on Azure Web App, derive the host ID from the site name
