@@ -13,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal sealed class BlobLeaseManager : IDisposable
     {
-        private const string LockBlobName = "hostlock";
-        private const string HostContainerName = "azure-functions-host";
+        internal const string LockBlobName = "host";
+        internal const string HostContainerName = "azure-functions-host";
 
         private readonly Timer _timer;
         private readonly TimeSpan _leaseTimeout;
@@ -22,17 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TimeSpan _leaseRetryInterval;
         private readonly TraceWriter _traceWriter;
         private readonly string _hostId;
+        private readonly string _instanceId;
         private ICloudBlob _lockBlob;
         private string _leaseId;
         private bool _disposed;
         private bool _processingLease;
 
-        internal BlobLeaseManager(ICloudBlob lockBlob, TimeSpan leaseTimeout, string hostId, TraceWriter traceWriter, TimeSpan? renewalInterval = null)
+        internal BlobLeaseManager(ICloudBlob lockBlob, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter, TimeSpan? renewalInterval = null)
         {
             _lockBlob = lockBlob;
             _leaseTimeout = leaseTimeout;
             _traceWriter = traceWriter;
             _hostId = hostId;
+            _instanceId = instanceId;
 
             // Renew the lease three seconds before it expires
             _renewalInterval = renewalInterval ?? leaseTimeout.Add(TimeSpan.FromSeconds(-3));
@@ -67,21 +69,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnHasLeaseChanged() => HasLeaseChanged?.Invoke(this, EventArgs.Empty);
 
-        public static async Task<BlobLeaseManager> CreateAsync(string accountConnectionString, TimeSpan leaseTimeout, string hostId, TraceWriter traceWriter)
+        public static async Task<BlobLeaseManager> CreateAsync(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter)
         {
             if (leaseTimeout.TotalSeconds < 15 || leaseTimeout.TotalSeconds > 60)
             {
                 throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds");
             }
 
-            ICloudBlob blob = await GetLockBlobAsync(accountConnectionString);
-            var manager = new BlobLeaseManager(blob, leaseTimeout, hostId, traceWriter);
+            ICloudBlob blob = await GetLockBlobAsync(accountConnectionString, GetBlobName(hostId));
+            var manager = new BlobLeaseManager(blob, leaseTimeout, hostId, instanceId, traceWriter);
             return manager;
         }
 
-        public static BlobLeaseManager Create(string accountConnectionString, TimeSpan leaseTimeout, string hostId, TraceWriter traceWriter)
+        public static BlobLeaseManager Create(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter)
         {
-            return CreateAsync(accountConnectionString, leaseTimeout, hostId, traceWriter).GetAwaiter().GetResult();
+            return CreateAsync(accountConnectionString, leaseTimeout, hostId, instanceId, traceWriter).GetAwaiter().GetResult();
         }
 
         private void ProcessLeaseTimerTick(object state)
@@ -120,8 +122,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    LeaseId = await _lockBlob.AcquireLeaseAsync(_leaseTimeout, _hostId);
-                    _traceWriter.Info($"Host lock lease acquired by host ID '{_hostId}'.");
+                    LeaseId = await _lockBlob.AcquireLeaseAsync(_leaseTimeout, _instanceId);
+                    _traceWriter.Info($"Host lock lease acquired by instance ID '{_instanceId}'.");
 
                     // We've successfully acquired the lease, change the timer to use our renewal interval
                     SetTimerInterval(_renewalInterval);
@@ -143,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     ResetLease();
 
                     // Create the blob and retry
-                    _lockBlob = await GetLockBlobAsync(_lockBlob.ServiceClient);
+                    _lockBlob = await GetLockBlobAsync(_lockBlob.ServiceClient, GetBlobName(_hostId));
                     await AcquireOrRenewLeaseAsync();
                 }
                 else
@@ -153,6 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        internal static string GetBlobName(string hostId) => $"locks/{hostId}/{LockBlobName}";
+        
         private void ProcessLeaseError(string reason)
         {
             if (HasLease)
@@ -163,19 +167,19 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _traceWriter.Verbose($"Host '{_hostId}' failed to acquire host lock lease: {reason}");
+                _traceWriter.Verbose($"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}");
             }
         }
 
-        private static async Task<ICloudBlob> GetLockBlobAsync(string accountConnectionString)
+        private static async Task<ICloudBlob> GetLockBlobAsync(string accountConnectionString, string blobName)
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             CloudBlobClient client = account.CreateCloudBlobClient();
 
-            return await GetLockBlobAsync(client);
+            return await GetLockBlobAsync(client, blobName);
         }
 
-        private static async Task<ICloudBlob> GetLockBlobAsync(CloudBlobClient client)
+        private static async Task<ICloudBlob> GetLockBlobAsync(CloudBlobClient client, string blobName)
         {
             var container = client.GetContainerReference(HostContainerName);
 
@@ -189,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new StorageException("The host container is pending deletion and currently inaccessible.");
             }
 
-            CloudBlockBlob blob = container.GetBlockBlobReference(LockBlobName);
+            CloudBlockBlob blob = container.GetBlockBlobReference(blobName);
             if (!await blob.ExistsAsync())
             {
                 try
@@ -224,6 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (HasLease)
                 {
                     _lockBlob.ReleaseLease(new AccessCondition { LeaseId = LeaseId });
+                    _traceWriter.Verbose($"Host instance '{_instanceId}' released lock lease.");
                 }
             }
             catch (Exception)

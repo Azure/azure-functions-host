@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private static bool? _standbyMode;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
+        private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
@@ -70,6 +71,20 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public string InstanceId
+        {
+            get
+            {
+                if (_instanceId == null)
+                {
+                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID") ?? Guid.NewGuid().ToString("N");
+                    _instanceId = _instanceId.Substring(0, 32);
+                }
+
+                return _instanceId;
+            }
+        }
+
         public TraceWriter TraceWriter { get; private set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
@@ -82,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _blobLeaseManager?.HasLease ?? !ScriptConfig.RoleDetectionEnabled;
+                return _blobLeaseManager?.HasLease ?? false;
             }
         }
 
@@ -245,18 +260,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Disable core storage 
                     ScriptConfig.HostConfig.StorageConnectionString = null;
-
-                    if (ScriptConfig.RoleDetectionEnabled)
-                    {
-                        // Role detection is enabled, but we're missing the storage string
-                        throw new ConfigurationErrorsException("Unable to initialize role detection. Missing storage connection string.");
-                    }
                 }
-                else if (ScriptConfig.RoleDetectionEnabled)
+                else
                 {
                     // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
                     // and subscribe for change notifications.
-                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, TraceWriter);
+                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
                     _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
                 }
             }
@@ -901,6 +910,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
+                _blobLeaseManager?.Dispose();
+
                 _restartEvent.Dispose();
 
                 if (TraceWriter != null && TraceWriter is IDisposable)
@@ -909,8 +920,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
-
-                _blobLeaseManager?.Dispose();
             }
         }
     }

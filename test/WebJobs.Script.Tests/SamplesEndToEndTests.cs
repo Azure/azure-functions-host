@@ -372,8 +372,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.True(jsonContent["isPrimary"].ToObject<bool>());
-
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.Equal(fileVersionAttr.Version, jsonContent["version"].ToString());
         }
