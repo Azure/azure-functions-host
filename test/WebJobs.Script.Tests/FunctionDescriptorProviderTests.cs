@@ -12,9 +12,10 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionDescriptorProviderTests
+    public class FunctionDescriptorProviderTests : IDisposable
     {
         private readonly FunctionDescriptorProvider _provider;
+        private readonly ScriptHost _host;
 
         public FunctionDescriptorProviderTests()
         {
@@ -23,8 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath
             };
-            ScriptHost host = ScriptHost.Create(config);
-            _provider = new TestDescriptorProvider(host, config);
+
+            _host = ScriptHost.Create(config);
+            _provider = new TestDescriptorProvider(_host, config);
         }
 
         [Fact]
@@ -87,6 +89,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal("A valid name must be assigned to the binding.", ex.Message);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _host?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
