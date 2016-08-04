@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
@@ -13,8 +12,8 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -54,6 +53,15 @@ namespace Microsoft.Azure.WebJobs
         public JobHost()
             : this(new JobHostConfiguration())
         {
+        }
+
+        static JobHost()
+        {
+            // add webjobs to user agent for all storage calls
+            OperationContext.GlobalSendingRequest += (sender, e) =>
+            {
+                e.Request.UserAgent += " AzureWebJobs";
+            };
         }
 
         /// <summary>

@@ -31,12 +31,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         private readonly IStorageBlobClient _parent;
         private readonly CloudBlobContainer _sdk;
 
-        static StorageBlobContainer()
-        {
-            // Add WebJobs to user agent to make it easier to collect usage information from Storage telemetry
-            OperationContextInitializer.Initialize();
-        }
-
         /// <summary>Initializes a new instance of the <see cref="StorageBlobContainer"/> class.</summary>
         /// <param name="parent">The parent blob client.</param>
         /// <param name="sdk">The SDK container to wrap.</param>
