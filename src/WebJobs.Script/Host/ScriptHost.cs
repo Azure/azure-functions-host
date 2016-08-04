@@ -94,9 +94,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        // this is for testing only
         public static void ResetStandbyMode()
         {
-            // this is for testing only
             _standbyMode = null;
         }
 

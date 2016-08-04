@@ -314,6 +314,7 @@
     <Compile Include="Diagnostics\MetricsEventGenerator.cs" />
     <Compile Include="Diagnostics\MetricsEventManager.cs" />
     <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
+    <Compile Include="Extensions\DependencyResolverExtensions.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
     <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">

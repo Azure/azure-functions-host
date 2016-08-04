@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var scriptHostManager = (WebScriptHostManager)_config.DependencyResolver.GetService(typeof(WebScriptHostManager));
+            var scriptHostManager = _config.DependencyResolver.GetService<WebScriptHostManager>();
 
             // some routes do not require the host to be running (most do)
             // in standby mode, we don't want to wait for host start
