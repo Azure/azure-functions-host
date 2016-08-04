@@ -15,9 +15,9 @@
     <tags>Microsoft Azure WebJobs Jobs ServiceBus windowsazureofficial Web Service Bus</tags>
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs" version="[$WebJobsPackageVersion$]" />
-      <dependency id="Newtonsoft.Json" version="8.0.3"/>
-      <dependency id="WindowsAzure.ServiceBus" version="3.1.7"/>
-      <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.1.5" />
+      <dependency id="Newtonsoft.Json" version="9.0.1"/>
+      <dependency id="WindowsAzure.ServiceBus" version="3.3.2"/>
+      <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.5" />
     </dependencies>
   </metadata>
 </package>
