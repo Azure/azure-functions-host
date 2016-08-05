@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-/*
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
+/*
         [Fact]
         public async Task ServiceBusQueueTriggerToBlobTest()
         {
@@ -210,19 +210,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
         }
+*/        
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\FSharp";
 
             static TestFixture()
             {
-                CreateSharedAssemblies();
+                //CreateSharedAssemblies();
             }
 
             public TestFixture() : base(ScriptRoot, "FSharp")
             {
             }
 
+/*
             private static void CreateSharedAssemblies()
             {
                 string sharedAssembliesPath = Path.Combine(ScriptRoot, "SharedAssemblies");
@@ -274,8 +276,10 @@ namespace SecondaryDependency
 
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
             }
+*/
         }
 
+/*
         public class TestInput
         {
             public int Id { get; set; }
@@ -288,6 +292,6 @@ namespace SecondaryDependency
             public string Container { get; set; }
             public string Value { get; set; }
         }
+*/
     }
 }
-*/
