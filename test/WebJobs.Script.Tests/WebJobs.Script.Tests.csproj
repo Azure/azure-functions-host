@@ -482,13 +482,19 @@
     <None Include="TestScripts\FSharp\ApiHubFileTrigger\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-<!--
     <None Include="TestScripts\FSharp\DocumentDBIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\DocumentDBIn\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\FSharp\DocumentDBOut\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FSharp\DocumentDBOut\run.fsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+<!--
     <None Include="TestScripts\FSharp\LoadScriptReference\class.fs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -517,12 +523,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\NotificationHubOut\run.fsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="TestScripts\FSharp\DocumentDBOut\function.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="TestScripts\FSharp\DocumentDBOut\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\MobileTableOut\function.json">

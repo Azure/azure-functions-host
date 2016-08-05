@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await MobileTablesTest(isDotNet: true);
         }
+*/
 
         [Fact]
         public async Task DocumentDB()
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await DocumentDBTest();
         }
 
+/*
         [Fact]
         public async Task NotificationHub()
         {
