@@ -525,6 +525,13 @@
     <None Include="TestScripts\FSharp\NotificationHubOut\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+-->
+    <None Include="TestScripts\FSharp\MobileTableIn\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FSharp\MobileTableIn\run.fsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\FSharp\MobileTableOut\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -537,7 +544,6 @@
     <None Include="TestScripts\FSharp\MobileTableTable\run.fsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
--->
     <None Include="TestScripts\FSharp\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -548,12 +554,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
 <!--
-    <None Include="TestScripts\FSharp\MobileTableIn\function.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="TestScripts\FSharp\MobileTableIn\run.fsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="TestScripts\FSharp\Scenarios\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
