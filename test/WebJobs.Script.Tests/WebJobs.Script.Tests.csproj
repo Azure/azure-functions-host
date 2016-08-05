@@ -514,9 +514,6 @@
     <None Include="TestScripts\FSharp\NotificationHubOutNotification\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\FSharp\NotificationHubOutNotification\project.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="TestScripts\FSharp\NotificationHubOutNotification\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
