@@ -504,6 +504,7 @@
     <None Include="TestScripts\FSharp\LoadScriptReference\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+-->
     <None Include="TestScripts\FSharp\NotificationHubNative\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -525,7 +526,6 @@
     <None Include="TestScripts\FSharp\NotificationHubOut\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
--->
     <None Include="TestScripts\FSharp\MobileTableIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

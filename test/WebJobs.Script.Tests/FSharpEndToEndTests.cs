@@ -41,7 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await DocumentDBTest();
         }
 
-/*
         [Fact]
         public async Task NotificationHub()
         {
@@ -60,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await NotificationHubTest("NotificationHubNative");
         }
 
+/*
         [Fact]
         public async Task MobileTablesTable()
         {
