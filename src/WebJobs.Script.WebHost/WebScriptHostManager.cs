@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class WebScriptHostManager : ScriptHostManager
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
+        private static bool? _standbyMode;
         private readonly IMetricsLogger _metricsLogger;
         private readonly SecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
@@ -54,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                if (ScriptHost.InStandbyMode)
+                if (InStandbyMode)
                 {
                     return _warmupComplete;
                 }
@@ -62,6 +63,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _hostStarted;
                 }
+            }
+        }
+
+        public static bool InStandbyMode
+        {
+            get
+            {
+                // once set, never reset
+                if (_standbyMode != null)
+                {
+                    return _standbyMode.Value;
+                }
+                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
+                {
+                    return true;
+                }
+
+                // no longer standby mode
+                _standbyMode = false;
+
+                return _standbyMode.Value;
             }
         }
 
@@ -94,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             lock (_syncLock)
             {
-                if (ScriptHost.InStandbyMode)
+                if (InStandbyMode)
                 {
                     if (!_warmupComplete)
                     {
@@ -206,6 +228,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             base.Dispose(disposing);
+        }
+
+        // this is for testing only
+        internal static void ResetStandbyMode()
+        {
+            _standbyMode = null;
         }
 
         private static MethodInfo CreateGetWebHookDataMethodInfo()

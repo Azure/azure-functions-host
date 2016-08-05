@@ -17,20 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (new TestEnvironment())
             {
                 // initially false
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
 
             using (new TestEnvironment())
             {
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
-                Assert.Equal(true, ScriptHost.InStandbyMode);
+                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
 
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "0");
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
         }
 
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private void Reset()
             {
-                ScriptHost.ResetStandbyMode();
+                WebScriptHostManager.ResetStandbyMode();
                 WebHostResolver.Reset();
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", null);
             }

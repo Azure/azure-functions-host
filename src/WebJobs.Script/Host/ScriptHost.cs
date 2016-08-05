@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -32,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        private static bool? _standbyMode;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
@@ -49,27 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public event EventHandler IsPrimaryChanged;
-
-        public static bool InStandbyMode
-        {
-            get
-            {
-                // once set, never reset
-                if (_standbyMode != null)
-                {
-                    return _standbyMode.Value;
-                }
-                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
-                {
-                    return true;
-                }
-
-                // no longer standby mode
-                _standbyMode = false;
-
-                return _standbyMode.Value;
-            }
-        }
 
         public string InstanceId
         {
@@ -107,12 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return _restartEvent;
             }
-        }
-
-        // this is for testing only
-        public static void ResetStandbyMode()
-        {
-            _standbyMode = null;
         }
 
         internal void AddFunctionError(string functionName, string error)
@@ -253,21 +224,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            if (!InStandbyMode)
+            var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            if (storageString == null)
             {
-                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-                if (storageString == null)
-                {
-                    // Disable core storage 
-                    ScriptConfig.HostConfig.StorageConnectionString = null;
-                }
-                else
-                {
-                    // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
-                    // and subscribe for change notifications.
-                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
-                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
-                }
+                // Disable core storage 
+                ScriptConfig.HostConfig.StorageConnectionString = null;
+            }
+            else
+            {
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // and subscribe for change notifications.
+                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
             }
                       
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()

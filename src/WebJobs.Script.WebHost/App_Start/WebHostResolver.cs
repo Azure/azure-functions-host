@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // standby mode can only change from true to false
             // When standby mode changes, we reset all instances
-            var standbyMode = ScriptHost.InStandbyMode;
+            var standbyMode = WebScriptHostManager.InStandbyMode;
             if (!standbyMode)
             {
                 if (_activeHostManager == null)
@@ -182,8 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 RootScriptPath = scriptPath,
                 RootLogPath = logPath,
-                FileLoggingEnabled = true,
-                FileWatchingEnabled = !ScriptHost.InStandbyMode
+                FileLoggingEnabled = true
             };
 
             // If running on Azure Web App, derive the host ID from the site name
