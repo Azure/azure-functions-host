@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("TestClass", request.Properties["LoadedScriptResponse"]);
         }
-
+*/
         [Fact]
         public async Task ApiHub()
         {
@@ -159,6 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 textArgValue, ApiHubTestHelper.EntityId3);
         }
 
+/*
         [Fact]
         public async Task SharedAssemblyDependenciesAreLoaded()
         {

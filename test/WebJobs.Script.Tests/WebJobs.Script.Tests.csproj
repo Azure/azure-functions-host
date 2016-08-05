@@ -452,7 +452,6 @@
     <None Include="TestScripts\CSharp\AssembliesFromSharedLocation\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-<!--
     <None Include="TestScripts\FSharp\ApiHubTableClient\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -483,6 +482,7 @@
     <None Include="TestScripts\FSharp\ApiHubFileTrigger\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+<!--
     <None Include="TestScripts\FSharp\DocumentDBIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
