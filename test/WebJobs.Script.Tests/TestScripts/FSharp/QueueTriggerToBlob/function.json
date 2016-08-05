@@ -3,13 +3,13 @@
         {
             "type": "queueTrigger",
             "name": "input",
-            "queueName": "test-input-csharp",
+            "queueName": "test-input-fsharp",
             "direction": "in"
         },
         {
             "type": "blob",
             "name": "output",
-            "path": "test-output-csharp/{id}",
+            "path": "test-output-fsharp/{id}",
             "direction": "out"
         }
     ]

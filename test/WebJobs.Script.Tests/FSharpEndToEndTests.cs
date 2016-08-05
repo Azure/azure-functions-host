@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CreateSharedAssemblies();
             }
 
-            public TestFixture() : base(ScriptRoot, "FSharp")
+            public TestFixture() : base(ScriptRoot, "fsharp")
             {
             }
 

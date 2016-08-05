@@ -11,7 +11,7 @@
             "type": "blob",
             "name": "output",
             "direction": "out",
-            "path": "test-output-csharp/teste2e"
+            "path": "test-output-fsharp/teste2e"
         }
     ]
 }
