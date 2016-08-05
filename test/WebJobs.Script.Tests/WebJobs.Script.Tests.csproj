@@ -548,14 +548,12 @@
     <None Include="TestScripts\FSharp\QueueTriggerToBlob\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-<!--
     <None Include="TestScripts\FSharp\Scenarios\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\FSharp\Scenarios\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
--->
     <None Include="TestScripts\FSharp\ServiceBusQueueTriggerToBlob\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
