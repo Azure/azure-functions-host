@@ -21,14 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-/*
         [Fact]
         public async Task ServiceBusQueueTriggerToBlobTest()
         {
             await ServiceBusQueueTriggerToBlobTestImpl();
         }
 
-*/
         [Fact]
         public async Task MobileTables()
         {
