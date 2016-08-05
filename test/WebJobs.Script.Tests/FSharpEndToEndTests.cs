@@ -282,13 +282,13 @@ namespace SecondaryDependency
             }
         }
 
-        /*
                 public class TestInput
                 {
                     public int Id { get; set; }
                     public string Value { get; set; }
                 }
 
+/*
                 public class ScenarioInput
                 {
                     public string Scenario { get; set; }
