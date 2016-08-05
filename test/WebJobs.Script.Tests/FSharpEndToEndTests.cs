@@ -217,16 +217,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             static TestFixture()
             {
-                //CreateSharedAssemblies();
+                CreateSharedAssemblies();
             }
 
             public TestFixture() : base(ScriptRoot, "FSharp")
             {
             }
 
-/*
             private static void CreateSharedAssemblies()
             {
+/*
                 string sharedAssembliesPath = Path.Combine(ScriptRoot, "SharedAssemblies");
 
                 if (Directory.Exists(sharedAssembliesPath))
@@ -275,23 +275,23 @@ namespace SecondaryDependency
                     .WithReferences(MetadataReference.CreateFromFile(secondaryDependencyPath), MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
+*/
             }
-*/
         }
 
-/*
-        public class TestInput
-        {
-            public int Id { get; set; }
-            public string Value { get; set; }
-        }
+        /*
+                public class TestInput
+                {
+                    public int Id { get; set; }
+                    public string Value { get; set; }
+                }
 
-        public class ScenarioInput
-        {
-            public string Scenario { get; set; }
-            public string Container { get; set; }
-            public string Value { get; set; }
-        }
-*/
+                public class ScenarioInput
+                {
+                    public string Scenario { get; set; }
+                    public string Container { get; set; }
+                    public string Value { get; set; }
+                }
+        */
     }
 }
