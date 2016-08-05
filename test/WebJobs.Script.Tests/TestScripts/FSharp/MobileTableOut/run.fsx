@@ -14,13 +14,14 @@ open System
 open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
+[<CLIMutable>]
 type Item = 
-    { mutable Id : string
-      mutable Text : string
-      mutable IsProcessed : bool
-      mutable ProcessedAt : DateTimeOffset  
+    { Id : string
+      Text : string
+      IsProcessed : bool
+      ProcessedAt : DateTimeOffset  
       // Mobile table properties
-      mutable CreatedAt : DateTimeOffset  }
+      CreatedAt : DateTimeOffset  }
 
 let Run(input: string, [<Out>] item: byref<Item>, log: TraceWriter) =
     item <-
