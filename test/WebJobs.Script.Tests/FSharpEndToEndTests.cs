@@ -57,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await NotificationHubTest("NotificationHubNative");
         }
 
-/*
         [Fact]
         public async Task MobileTablesTable()
         {
@@ -72,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await WaitForMobileTableRecordAsync("Item", id);
         }
 
+/*
         [Fact]
         public async Task ScriptReference_LoadsScript()
         {
