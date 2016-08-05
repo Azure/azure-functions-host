@@ -158,7 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 textArgValue, ApiHubTestHelper.EntityId3);
         }
 
-/*
         [Fact]
         public async Task SharedAssemblyDependenciesAreLoaded()
         {
@@ -172,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
         }
-
+/*
         [Fact]
         public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
@@ -226,7 +225,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private static void CreateSharedAssemblies()
             {
-/*
                 string sharedAssembliesPath = Path.Combine(ScriptRoot, "SharedAssemblies");
 
                 if (Directory.Exists(sharedAssembliesPath))
@@ -275,7 +273,6 @@ namespace SecondaryDependency
                     .WithReferences(MetadataReference.CreateFromFile(secondaryDependencyPath), MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
-*/
             }
         }
 
