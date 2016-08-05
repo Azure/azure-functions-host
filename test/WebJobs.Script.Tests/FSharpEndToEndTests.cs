@@ -71,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await WaitForMobileTableRecordAsync("Item", id);
         }
 
-/*
         [Fact]
         public async Task ScriptReference_LoadsScript()
         {
@@ -85,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("TestClass", request.Properties["LoadedScriptResponse"]);
         }
-*/
+
         [Fact]
         public async Task ApiHub()
         {
