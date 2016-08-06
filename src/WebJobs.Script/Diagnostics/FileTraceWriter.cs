@@ -21,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
         private readonly string _instanceId;
-        private readonly int _processId;
 
         private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
@@ -35,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
-            _processId = Process.GetCurrentProcess().Id;
 
             _logDirectory = new DirectoryInfo(logFilePath);
             if (!_logDirectory.Exists)
@@ -207,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // we include a machine identifier in the log file name to ensure we don't have any
             // log file contention between scaled out instances
-            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}-{2}.log", DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK"), _instanceId, _processId));
+            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK"), _instanceId));
             _currentLogFileInfo = new FileInfo(filePath);
         }
 
