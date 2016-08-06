@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Info(string.Format("Starting Host (Id={0})", newInstance.ScriptConfig.HostConfig.HostId));
+                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1})", newInstance.ScriptConfig.HostConfig.HostId, Process.GetCurrentProcess().Id));
                     }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
