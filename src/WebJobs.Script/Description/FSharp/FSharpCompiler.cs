@@ -80,6 +80,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         otherFlags.Add("-r:" + mdr.Display);
                     }
                 }
+                otherFlags.Add("-r:System.Linq.dll"); // System.Linq.Expressions.Expression<T> 
+                otherFlags.Add("-r:System.Reflection.dll"); // System.Reflection.ParameterInfo
+                otherFlags.Add("-r:System.Linq.Expressions.dll"); // System.Linq.IQueryable<T>
+                otherFlags.Add("-r:System.Threading.Tasks.dll"); // valuetype [System.Threading.Tasks]System.Threading.CancellationToken
+                otherFlags.Add("-r:System.IO.dll");  //  System.IO.TextWriter
+                                                 //yield "System.Console"  //  System.Console.Out etc.
+                otherFlags.Add("-r:System.Net.Requests.dll");  //  System.Net.WebResponse etc.
+                otherFlags.Add("-r:System.Collections.dll"); // System.Collections.Generic.List<T>
+                otherFlags.Add("-r:System.Runtime.Numerics.dll"); // BigInteger
+                otherFlags.Add("-r:System.Threading.dll");  // OperationCanceledException
+                otherFlags.Add("-r:System.Runtime.dll");
 
                 if (debug)
                 {
