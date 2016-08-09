@@ -85,49 +85,56 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
-            TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
+            try
+            {
+                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
-            string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-            string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
+                string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
+                string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
 
-            Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
-            InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
+                Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
+                InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
-            object convertedInput = ConvertInput(input);
-            ApplyBindingData(convertedInput, binder);
-            Dictionary<string, object> bindingData = binder.BindingData;
-            bindingData["InvocationId"] = invocationId;
+                object convertedInput = ConvertInput(input);
+                ApplyBindingData(convertedInput, binder);
+                Dictionary<string, object> bindingData = binder.BindingData;
+                bindingData["InvocationId"] = invocationId;
 
-            await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
+                await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
 
-            // TODO
-            // - put a timeout on how long we wait?
-            // - need to periodically flush the standard out to the TraceWriter
-            Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
-            process.Start();
-            process.WaitForExit();
+                // TODO
+                // - put a timeout on how long we wait?
+                // - need to periodically flush the standard out to the TraceWriter
+                Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
+                process.Start();
+                process.WaitForExit();
 
-            string output = process.StandardOutput.ReadToEnd();
-            TraceWriter.Info(output);
-            traceWriter.Info(output);
+                string output = process.StandardOutput.ReadToEnd();
+                TraceWriter.Info(output);
+                traceWriter.Info(output);
 
-            bool failed = process.ExitCode != 0;
-            startedEvent.Success = !failed;
-            _metrics.EndEvent(startedEvent);
+                startedEvent.Success = process.ExitCode == 0;
 
-            if (failed)
+                if (!startedEvent.Success)
+                {
+                    string error = process.StandardError.ReadToEnd();
+                    throw new ApplicationException(error);
+                }
+
+                await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
+
+                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
+            }
+            catch
             {
                 startedEvent.Success = false;
-
                 TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-
-                string error = process.StandardError.ReadToEnd();
-                throw new ApplicationException(error);
+                throw;
             }
-
-            await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
-
-            TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
+            finally
+            {
+                _metrics.EndEvent(startedEvent);
+            }
         }
 
         internal static Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)
