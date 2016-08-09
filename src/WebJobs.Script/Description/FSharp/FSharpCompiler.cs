@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     File.AppendAllLines(scriptFile, new string[] { "open " + import });
                     
                 }
-                File.AppendAllLines(scriptFile, new string[] { "# 1 @\"" + functionMetadata.ScriptFile + "\"" });
+                File.AppendAllLines(scriptFile, new string[] { "# 0 @\"" + functionMetadata.ScriptFile + "\"" });
                 File.AppendAllText(scriptFile, File.ReadAllText(functionMetadata.ScriptFile));
                 var otherFlags = new List<string>();
 
