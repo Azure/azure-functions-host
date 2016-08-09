@@ -209,8 +209,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             catch (Exception ex)
             {
                 // Node: Check innerException, CSharp: check innerExcpetion.innerException
-                if (VerifyNotificationHubExceptionMessage(ex.InnerException)
-                    || VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException))
+                if ((ex.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException)) ||
+                    (ex.InnerException != null & ex.InnerException.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException)))
                 {
                     //Expected if using NH without any registrations
                 }
