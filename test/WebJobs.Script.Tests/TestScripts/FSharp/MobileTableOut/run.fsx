@@ -2,6 +2,7 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
+open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -11,7 +12,6 @@
 // This is the implementation of the function 
 
 open System
-open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
 [<CLIMutable>]
@@ -28,8 +28,8 @@ let Run(input: string, [<Out>] item: byref<Item>, log: TraceWriter) =
         { Id = input
           Text = "Hello from F#!"
           IsProcessed = false
-          ProcessedAt = DateTimeOffset.Now
-          CreatedAt = DateTimeOffset.Now }
+          ProcessedAt = DateTimeOffset()
+          CreatedAt = DateTimeOffset() }
 
     log.Info(sprintf "Inserting item %s" item.Id)
 

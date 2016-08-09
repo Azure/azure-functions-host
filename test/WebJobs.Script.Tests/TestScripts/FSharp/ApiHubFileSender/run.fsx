@@ -2,6 +2,7 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
+open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -12,7 +13,6 @@
 
 
 open System
-open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
 // Had to add the <Out> attribute here to make the bindings happy, without it, the type validation fails

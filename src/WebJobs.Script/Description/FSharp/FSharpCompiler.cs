@@ -50,47 +50,61 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices();
-            var scriptFile = Path.ChangeExtension(Path.GetTempFileName(), "fsx");
-            foreach (var import in script.Options.Imports)
-            {
-                File.AppendAllLines(scriptFile, new string[] { "open " + import });
-            }
-            File.AppendAllText(scriptFile, File.ReadAllText(functionMetadata.ScriptFile));
-            var otherFlags = new List<string>();
 
-            // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
-            otherFlags.Add("fsc.exe");
-
-            otherFlags.Add("--noframework");
-
-            foreach (var mdr in compilation.References)
-            {
-                if (!mdr.Display.Contains("Unresolved "))
-                {
-                    otherFlags.Add("-r:" + mdr.Display);
-                }
-            }
-
-            otherFlags.Add("--optimize+");
-            if (debug)
-            {
-                otherFlags.Add("--debug+");
-                //otherFlags.Add("--tailcalls-");
-            }
-
-            // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
-            otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "exe"));
-
-            otherFlags.Add(scriptFile);
-
-            var outStreams = FSharpOption<Tuple<TextWriter, TextWriter>>.Some(new Tuple<TextWriter, TextWriter>(Console.Out, Console.Error));
-
-            var result = compiler.CompileToDynamicAssembly(otherFlags: otherFlags.ToArray(), execute: outStreams);
-
-            var errors = result.Item1;
+            // We currently create the script file in the directory itself
+            var scriptFile = Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile),Path.ChangeExtension(Path.GetTempFileName(), "fsx"));
+            FSharpErrorInfo[] errors = null;
             //var exitCode = result.Item2;
-            var assemblyOption = result.Item3;
+            FSharpOption<Assembly> assemblyOption = null;
+            try
+            {
+                File.AppendAllLines(scriptFile, new string[] { "open System.Runtime.InteropServices" });
+                foreach (var import in script.Options.Imports)
+                {
+                    File.AppendAllLines(scriptFile, new string[] { "open " + import });
+                    
+                }
+                File.AppendAllLines(scriptFile, new string[] { "# 1 @\"" + "\""});
+                File.AppendAllText(scriptFile, File.ReadAllText(functionMetadata.ScriptFile));
+                var otherFlags = new List<string>();
 
+                // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
+                otherFlags.Add("fsc.exe");
+
+                otherFlags.Add("--noframework");
+
+                foreach (var mdr in compilation.References)
+                {
+                    if (!mdr.Display.Contains("Unresolved "))
+                    {
+                        otherFlags.Add("-r:" + mdr.Display);
+                    }
+                }
+
+                if (debug)
+                {
+                    otherFlags.Add("--optimize-");
+                    otherFlags.Add("--debug+");
+                    otherFlags.Add("--tailcalls-");
+                }
+
+                // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
+                otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "exe"));
+
+                otherFlags.Add(scriptFile);
+
+                var outStreams = FSharpOption<Tuple<TextWriter, TextWriter>>.Some(new Tuple<TextWriter, TextWriter>(Console.Out, Console.Error));
+
+                var result = compiler.CompileToDynamicAssembly(otherFlags: otherFlags.ToArray(), execute: outStreams);
+
+                errors = result.Item1;
+                //var exitCode = result.Item2;
+                assemblyOption = result.Item3;
+            }
+            finally
+            {
+                File.Delete(scriptFile);
+            }
             return new FSharpCompilation(errors, assemblyOption);
         }
 

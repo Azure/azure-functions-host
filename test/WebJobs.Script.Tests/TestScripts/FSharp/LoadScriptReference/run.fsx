@@ -2,6 +2,7 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
+open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -20,7 +21,6 @@ open System.Net
 open System.Net.Http
 open System.Threading.Tasks
 open System.Diagnostics
-open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
 let Run(req: HttpRequestMessage) : Task<HttpResponseMessage>  = 

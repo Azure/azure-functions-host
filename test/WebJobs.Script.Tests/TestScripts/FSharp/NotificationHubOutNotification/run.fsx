@@ -2,18 +2,19 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
+open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
-#r "Microsoft.Azure.NotificationHubs.dll"
 #endif
 
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "Microsoft.Azure.NotificationHubs"
+
 open System
 open System.Collections.Generic
-open System.Runtime.InteropServices
 open Microsoft.Azure.NotificationHubs
 
 
