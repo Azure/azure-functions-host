@@ -13,8 +13,9 @@ open System.Runtime.InteropServices
 
 open System
 
-[<CLIMutable>]
-type OutputData = { id: string; text: string }
+type OutputData() = 
+    member val id: string = "" with get,set
+    member val text: string  = "" with get,set
 
 let Run(input: string , [<Out>] item: byref<obj>) =
-    item <- { id = input; text = "Hello from C#!" }
+    item <- OutputData(id = input, text = "Hello from F#!")
