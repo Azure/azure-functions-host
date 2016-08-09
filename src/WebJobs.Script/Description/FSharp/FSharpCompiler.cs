@@ -54,10 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // We currently create the script file in the directory itself
             var scriptFile = Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile),Path.ChangeExtension(Path.GetTempFileName(), "fsx"));
             FSharpErrorInfo[] errors = null;
+
             //var exitCode = result.Item2;
             FSharpOption<Assembly> assemblyOption = null;
             try
             {
+                // Write an adjusted version of the script file, prefixing some 'open' decarations
                 File.AppendAllLines(scriptFile, new string[] { "open System.Runtime.InteropServices" });
                 foreach (var import in script.Options.Imports)
                 {
@@ -65,14 +67,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     
                 }
                 File.AppendAllLines(scriptFile, new string[] { "# 0 @\"" + functionMetadata.ScriptFile + "\"" });
-                File.AppendAllText(scriptFile, File.ReadAllText(functionMetadata.ScriptFile));
+                var scriptSource = File.ReadAllText(functionMetadata.ScriptFile);
+                File.AppendAllText(scriptFile, scriptSource);
                 var otherFlags = new List<string>();
 
                 // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
                 otherFlags.Add("fsc.exe");
 
+                // The --noframework option is used because we will shortly add references to mscorlib and FSharp.Core
+                // as dictated by the C# reference resolver, and F# doesn't like getting multiple references to those.
                 otherFlags.Add("--noframework");
 
+                // Add the references as reported by the C# reference resolver.
                 foreach (var mdr in compilation.References)
                 {
                     if (!mdr.Display.Contains("Unresolved "))
@@ -80,6 +86,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         otherFlags.Add("-r:" + mdr.Display);
                     }
                 }
+
+                // Above we have used the C# reference resolver to get the basic set of DLL references for the compilation.
+                //
+                // However F# has its own view on default options. For scripts these should include the
+                // following framework facade references.
+
                 otherFlags.Add("-r:System.Linq.dll"); // System.Linq.Expressions.Expression<T> 
                 otherFlags.Add("-r:System.Reflection.dll"); // System.Reflection.ParameterInfo
                 otherFlags.Add("-r:System.Linq.Expressions.dll"); // System.Linq.IQueryable<T>
@@ -91,6 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add("-r:System.Runtime.Numerics.dll"); // BigInteger
                 otherFlags.Add("-r:System.Threading.dll");  // OperationCanceledException
                 otherFlags.Add("-r:System.Runtime.dll");
+                otherFlags.Add("-r:System.Numerics.dll");
+
 
                 if (debug)
                 {
@@ -102,10 +116,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
                 otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "exe"));
 
+                // Get the #load closure
+                var loadFileOptionsAsync = FSharp.Compiler.SourceCodeServices.FSharpChecker.Create().GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
+                var loadFileOptions = Microsoft.FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
+                foreach (var loadedFileName in loadFileOptions.ProjectFileNames)
+                {
+                    if (Path.GetFileName(loadedFileName) != Path.GetFileName(functionMetadata.ScriptFile))
+                    {
+                        otherFlags.Add(loadedFileName);
+                    }
+                }
+
+                // Add the (adjusted) script file itself
                 otherFlags.Add(scriptFile);
 
+                // Make the output streams (unused)
                 var outStreams = FSharpOption<Tuple<TextWriter, TextWriter>>.Some(new Tuple<TextWriter, TextWriter>(Console.Out, Console.Error));
 
+                // Compile the script to a dynamic assembly
                 var result = compiler.CompileToDynamicAssembly(otherFlags: otherFlags.ToArray(), execute: outStreams);
 
                 errors = result.Item1;
