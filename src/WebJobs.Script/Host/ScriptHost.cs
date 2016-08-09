@@ -54,7 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_instanceId == null)
                 {
-                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID") ?? Guid.NewGuid().ToString("N");
+                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")
+                        ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+
                     _instanceId = _instanceId.Substring(0, 32);
                 }
 
