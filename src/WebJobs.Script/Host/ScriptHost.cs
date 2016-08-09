@@ -433,8 +433,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(functionName, triggerDisabledValue) ||
-                IsDisabled(functionName, (JValue)configMetadata["disabled"]))
+            if (IsDisabled(triggerDisabledValue) ||
+                IsDisabled((JValue)configMetadata["disabled"]))
             {
                 functionMetadata.IsDisabled = true;
             }
@@ -490,6 +490,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
                         continue;
+                    }
+
+                    if (metadata.IsDisabled)
+                    {
+                        TraceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
                     }
 
                     // determine the primary script
@@ -818,19 +823,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // host restart
                 _restart(e);
             }
-        }
-
-        private static bool IsDisabled(string functionName, JValue disabledValue)
-        {
-            if (disabledValue != null && IsDisabled(disabledValue))
-            {
-                // TODO: this needs to be written to the TraceWriter, not
-                // Console
-                Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "Function '{0}' is disabled", functionName));
-                return true;
-            }
-
-            return false;
         }
 
         private static bool IsDisabled(JToken isDisabledValue)
