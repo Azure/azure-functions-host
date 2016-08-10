@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -283,6 +283,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "Send
 		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Poco", "HttpTrigger-CSharp-Poco", "{49A40362-2EB9-424C-B605-6BEE16A1C8B6}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CSharp-Poco\function.json = sample\HttpTrigger-CSharp-Poco\function.json
+		sample\HttpTrigger-CSharp-Poco\run.csx = sample\HttpTrigger-CSharp-Poco\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -366,5 +372,6 @@ Global
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
