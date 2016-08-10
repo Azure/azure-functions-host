@@ -20,21 +20,53 @@ open System.IO
 open Newtonsoft.Json
 open Microsoft.ServiceBus.Messaging
 
-[<CLIMutable>]
-type message = { id: string; count : int }
+type Message() = 
+    member val id : string = "" with get,set
+    member val count : int = 0 with get,set
 
-let Run(input: BrokeredMessage, [<Out>] message: byref<string>, completed: byref<string>) =
+let Run(input: BrokeredMessage, [<Out>] message: byref<string>, [<Out>] completed: byref<string>) =
 
     let stream = input.GetBody<Stream>();
     use reader = new StreamReader(stream)
     let json = reader.ReadToEnd();
-    let inputObject = JsonConvert.DeserializeObject<message>(json)
+    let obj = JsonConvert.DeserializeObject<Message>(json)
 
-    if (inputObject.count < 2) then
-        let outputObject = { inputObject with count = inputObject.count + 1 }
+    if (obj.count < 2) then
+        obj.count <- obj.count 
         
-        message <- JsonConvert.SerializeObject(outputObject)
+        message <- JsonConvert.SerializeObject(obj)
         completed <- null
     else
         message <- null
-        completed <- inputObject.id
+        completed <- obj.id
+
+(*
+type Message() = 
+    member val id : string = "" with get,set
+    member val count : int = 0 with get,set
+
+type Message2 = 
+    { id: string; count : int }
+
+[<CLIMutable>]
+type Message3 = 
+    { id: string; count : int }
+
+[<CLIMutable>]
+type Message4 = 
+    { mutable id: string; mutable count : int }
+
+let obj = JsonConvert.DeserializeObject<Message>("{id: 'abc', count: 1}")
+let obj2 = JsonConvert.DeserializeObject<Message2>("{id: 'abc', count: 1}")
+let obj3 = JsonConvert.DeserializeObject<Message3>("{id: 'abc', count: 1}")
+let obj4 = JsonConvert.DeserializeObject<Message4>("{id: 'abc', count: 1}")
+
+obj.id
+obj.count
+
+JsonConvert.SerializeObject(obj)
+JsonConvert.SerializeObject(obj2)
+JsonConvert.SerializeObject(obj3)
+JsonConvert.SerializeObject(obj4) // Note this gives ""{"id@":"abc","count@":1,"id":"abc","count":1}" which is not the right JSON
+
+ *)
