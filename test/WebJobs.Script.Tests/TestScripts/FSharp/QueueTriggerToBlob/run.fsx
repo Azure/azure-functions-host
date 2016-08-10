@@ -17,8 +17,12 @@ open System.Threading.Tasks
 open System.IO
 open Microsoft.Azure.WebJobs.Host
 
-type WorkItem() =
-    member val Id = "" with get, set
+//type WorkItem() =
+//    member val Id = "" with get, set
+
+[<CLIMutable>]
+type WorkItem =
+    { Id : string }
 
 let Run(input: WorkItem, [<Out>] output: byref<string>, log: TraceWriter) = 
     let json = String.Format("{{ \"id\": \"{0}\" }}", input.Id)    

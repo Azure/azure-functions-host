@@ -186,7 +186,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks()
+        internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_CSharp()
+        {
+            await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("csharp");
+        }
+
+        [Fact]
+        internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_FSharp()
+        {
+            await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("fsharp");
+        }
+
+
+        internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks(string fixture)
         {
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
@@ -212,8 +224,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return manager.IsRunning;
                 });
 
-                FunctionDescriptor function = manager.GetHttpFunctionOrNull(new Uri("http://localhost/api/httptrigger-csharp"));
-                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/httptrigger-csharp");
+                FunctionDescriptor function = manager.GetHttpFunctionOrNull(new Uri(String.Format("http://localhost/api/httptrigger-{0}", fixture)));
+                var request = new HttpRequestMessage(HttpMethod.Get, String.Format("http://localhost/api/httptrigger-{0}", fixture));
 
                 SynchronizationContext currentContext = SynchronizationContext.Current;
                 var resetEvent = new ManualResetEventSlim();

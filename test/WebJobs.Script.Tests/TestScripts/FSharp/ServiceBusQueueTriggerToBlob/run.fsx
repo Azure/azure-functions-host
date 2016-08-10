@@ -20,9 +20,8 @@ open System.IO
 open Newtonsoft.Json
 open Microsoft.ServiceBus.Messaging
 
-type Message() = 
-    member val id : string = "" with get,set
-    member val count : int = 0 with get,set
+type Message = 
+    { id: string; count : int }
 
 let Run(input: BrokeredMessage, [<Out>] message: byref<string>, [<Out>] completed: byref<string>) =
 
@@ -32,9 +31,9 @@ let Run(input: BrokeredMessage, [<Out>] message: byref<string>, [<Out>] complete
     let obj = JsonConvert.DeserializeObject<Message>(json)
 
     if (obj.count < 2) then
-        obj.count <- obj.count + 1
+        let newObj = { obj with count = obj.count + 1 }
         
-        message <- JsonConvert.SerializeObject(obj)
+        message <- JsonConvert.SerializeObject(newObj)
         completed <- null
     else
         message <- null
