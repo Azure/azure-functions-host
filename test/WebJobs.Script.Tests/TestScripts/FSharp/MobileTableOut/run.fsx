@@ -24,7 +24,7 @@ type Item() =
 let Run(input: string, item: byref<Item>, log: TraceWriter) =
     item <-
         Item(Id = input, 
-             Text = "Hello from F#!",
+             Text = "This was updated!",
              IsProcessed = false,
              ProcessedAt = DateTimeOffset(),
              CreatedAt = DateTimeOffset())
