@@ -13,9 +13,14 @@ open System.Runtime.InteropServices
 
 open System
 
-type OutputData() = 
-    member val id: string = "" with get,set
-    member val text: string  = "" with get,set
+//type OutputData() = 
+//    member val id: string = "" with get,set
+//    member val text: string  = "" with get,set
+
+type OuputData =
+    { id : string
+      text : string }
 
 let Run(input: string , [<Out>] item: byref<obj>) =
-    item <- OutputData(id = input, text = "Hello from F#!")
+    item <- { id = input; text = "Hello from F#!" } 
+    //item <- OutputData(id = input, text = "Hello from F#!")

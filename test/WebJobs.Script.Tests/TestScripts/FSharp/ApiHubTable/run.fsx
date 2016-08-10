@@ -17,7 +17,7 @@ open Microsoft.Azure.WebJobs.Host
 open Microsoft.Azure.ApiHub
 
 [<CLIMutable>]
-type TestInput = { Id : int; Value: string }
+type TestInput = { Id : int; Value: string; ExtraField: int }
 
 [<CLIMutable>]
 type SampleEntity = { Id : int; Text: string }

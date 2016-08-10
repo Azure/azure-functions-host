@@ -19,7 +19,7 @@ open Microsoft.Azure.WebJobs.Host
 [<CLIMutable>]
 type ScenarioInput =
     { Scenario : string
-      Container : string
+      //Container : string
       Value: string } 
 
 let Run(input: ScenarioInput, [<Out>] blob: byref<string>, log: TraceWriter) =

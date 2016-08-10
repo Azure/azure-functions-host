@@ -16,9 +16,9 @@ open System
 open Microsoft.Azure.WebJobs.Host
 open Newtonsoft.Json.Linq
 
-//[<CLIMutable>]
-//type QueueInput() =
-//    member val DocumentId : string = "" with get,set
+[<CLIMutable>]
+type QueueInput =
+    { DocumentId : string }
 
-let Run(input: string, item: JObject) =
+let Run(input: QueueInput, item: JObject) =
     item.["text"] <- JToken.op_Implicit "This was updated!"
