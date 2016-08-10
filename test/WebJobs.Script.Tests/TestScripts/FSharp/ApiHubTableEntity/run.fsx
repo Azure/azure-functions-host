@@ -20,11 +20,11 @@ open Newtonsoft.Json.Linq
 type TestInput = { Id : int; Value: string }
 
 [<CLIMutable>]
-type SampleEntity = { Id: int; mutable Text: string }
+type SampleEntity = { Id: int; Text: string }
 
-let Run(input: TestInput , entity: SampleEntity , log: TraceWriter ) = 
+let Run(input: TestInput, entity: byref<SampleEntity>, log: TraceWriter ) = 
     if (entity.Id <> input.Id) then
         invalidOp ("Expected Id to be bound.")
 
-    entity.Text <- input.Value
+    entity <- { entity with Text = input.Value }
 

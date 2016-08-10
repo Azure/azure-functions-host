@@ -39,6 +39,5 @@ let Run(input: string , table: IMobileServiceTable<Item>) =
               ProcessedAt = DateTimeOffset.Now
               CreatedAt = DateTimeOffset.Now }
         do! table.InsertAsync item |> Async.AwaitTask
-        return ()
     } |> Async.StartAsTask
 

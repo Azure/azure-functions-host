@@ -24,6 +24,8 @@ type SampleEntity = { Id : int; Text: string }
 
 let Run(input: TestInput , table: ITable<SampleEntity> , log: TraceWriter ) =
     async { 
-        return! table.UpdateEntityAsync( input.Id.ToString(), {   Id = input.Id; Text = input.Value }) |> Async.AwaitTask
+        let! ct = Async.CancellationToken
+        return! table.UpdateEntityAsync(input.Id.ToString(), { Id = input.Id; Text = input.Value }, ct) |> Async.AwaitTask
     } |> Async.StartAsTask
+
 

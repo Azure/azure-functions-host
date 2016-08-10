@@ -21,4 +21,6 @@ type QueueInput =
     { DocumentId : string }
 
 let Run(input: QueueInput, item: JObject) =
-    item.["text"] <- JToken.op_Implicit "This was updated!"
+    async {
+        item.["text"] <- JToken.op_Implicit "This was updated!"
+    } |> Async.StartAsTask
