@@ -49,7 +49,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (_assemblyOption == null)
             {
-                throw new CompilationErrorException("Script compilation failed.", this.GetDiagnostics());
+                var diagnostics = this.GetDiagnostics();
+                var diagnosticsText = new System.Text.StringBuilder();
+                foreach (var diag in diagnostics)
+                {
+                    diagnosticsText.Append(diag.ToString());
+                }
+
+                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText.ToString(), diagnostics);
             }
 
             // Scrape the compiled assembly for entry points
@@ -86,7 +93,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (_assemblyOption == null)
             {
-                throw new CompilationErrorException("Script compilation failed.", this.GetDiagnostics());
+                var diagnostics = this.GetDiagnostics();
+                var diagnosticsText = new System.Text.StringBuilder();
+                foreach (var diag in diagnostics)
+                {
+                    diagnosticsText.Append(diag.ToString());
+                }
+                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText, this.GetDiagnostics());
             }
 
             return _assemblyOption.Value;

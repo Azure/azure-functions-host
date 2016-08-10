@@ -4,17 +4,19 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FSharpEndToEndTests : EndToEndTestsBase<FSharpEndToEndTests.TestFixture>
     {
-        private const string JobLogTestFileName = "joblog.txt";
-
         public FSharpEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -28,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task MobileTables()
         {
-            await MobileTablesTest(isDotNet: true);
+            await MobileTablesTest("fsharp", isDotNet: true);
         }
 
         [Fact]
@@ -46,8 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task NotificationHub_Out_Notification()
         {
-            await Fixture.TouchProjectJson("NotificationHubOutNotification");
             await NotificationHubTest("NotificationHubOutNotification");
+        }
+
+        [Fact]
+        public async Task NotificationHubNative()
+        {
+            await NotificationHubTest("NotificationHubNative");
         }
 
         [Fact]
@@ -58,8 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "input",  id }
             };
-
-            await Fixture.TouchProjectJson("MobileTableTable");
 
             await Fixture.Host.CallAsync("MobileTableTable", arguments);
 
@@ -86,51 +91,200 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTest();
         }
 
-        public class TestFixture : EndToEndTestFixture
+        [Fact]
+        public async Task ApiHubTableClientBindingTest()
         {
-            public TestFixture() : base(@"TestScripts\FSharp", "fsharp")
-            {
-                File.Delete(JobLogTestFileName);
-                DownloadNuget();
-            }
+            var textArgValue = ApiHubTestHelper.NewRandomString();
 
-            public async Task TouchProjectJson(string scriptFolderName)
-            {
-                string scriptPath = Path.Combine(@"TestScripts\FSharp", scriptFolderName);
-                string projectLockJson = Path.Combine(scriptPath, "project.lock.json");
-                string projectJson = Path.Combine(scriptPath, "project.json");
-                if (File.Exists(projectLockJson))
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
+
+            // Test table client binding.
+            await Fixture.Host.CallAsync("ApiHubTableClient",
+                new Dictionary<string, object>()
                 {
-                    // If the file was already there, the host won't restart as nothing
-                    // has changed. Assume everything is good and exit.
-                    return;
-                }
-
-                ScriptHost oldHost = Host;
-                File.SetLastWriteTimeUtc(projectJson, DateTime.UtcNow);
-
-                // Wait for the new host to start up.
-                await TestHelpers.Await(() =>
-                {
-                    return !Object.ReferenceEquals(oldHost, Host);
+                    { ApiHubTestHelper.TextArg, textArgValue }
                 });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId1);
+        }
+
+        [Fact]
+        public async Task ApiHubTableBindingTest()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
+
+            // Test table binding.
+            TestInput input = new TestInput
+            {
+                Id = ApiHubTestHelper.EntityId2,
+                Value = textArgValue
+            };
+            await Fixture.Host.CallAsync("ApiHubTable",
+                new Dictionary<string, object>()
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId2);
+        }
+
+        [Fact]
+        public async Task ApiHubTableEntityBindingTest()
+        {
+            var textArgValue = ApiHubTestHelper.NewRandomString();
+
+            // Ensure the test entity exists.
+            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
+
+            // Test table entity binding.
+            TestInput input = new TestInput
+            {
+                Id = ApiHubTestHelper.EntityId3,
+                Value = textArgValue
+            };
+            await Fixture.Host.CallAsync("ApiHubTableEntity",
+                new Dictionary<string, object>()
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                });
+
+            await ApiHubTestHelper.AssertTextUpdatedAsync(
+                textArgValue, ApiHubTestHelper.EntityId3);
+        }
+
+        [Fact]
+        public async Task SharedAssemblyDependenciesAreLoaded()
+        {
+            var request = new System.Net.Http.HttpRequestMessage();
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
+
+            await Fixture.Host.CallAsync("AssembliesFromSharedLocation", arguments);
+
+            Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
+        }
+        [Fact]
+        public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
+        {
+            var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
+            if (container.Exists())
+            {
+                foreach (CloudBlockBlob blob in container.ListBlobs())
+                {
+                    await blob.DeleteAsync();
+                }
             }
 
-            private void DownloadNuget()
+            // Call 3 times - expect 3 separate output blobs
+            for (int i = 0; i < 3; i++)
             {
-                string fileName = @"Nuget\nuget.exe";
-                Directory.CreateDirectory("Nuget");
-
-                fileName = Path.GetFullPath(fileName);
-
-                if (!File.Exists(fileName))
+                ScenarioInput input = new ScenarioInput
                 {
-                    WebClient webClient = new WebClient();
-                    webClient.DownloadFile("https://dist.nuget.org/win-x86-commandline/latest/nuget.exe", fileName);
-                }
+                    Scenario = "randGuid",
+                    Container = "scenarios-output",
+                    Value = i.ToString()
+                };
+                Dictionary<string, object> arguments = new Dictionary<string, object>
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                };
+                await Fixture.Host.CallAsync("Scenarios", arguments);
+            }
 
-                Environment.SetEnvironmentVariable("AzureWebJobs_NuGetPath", fileName);
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            Assert.Equal(3, blobs.Length);
+            foreach (var blob in blobs)
+            {
+                string content = blob.DownloadText();
+                int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
+                Assert.True(blobInt >= 0 && blobInt <= 3);
             }
         }
+        public class TestFixture : EndToEndTestFixture
+        {
+            private const string ScriptRoot = @"TestScripts\FSharp";
+
+            static TestFixture()
+            {
+                CreateSharedAssemblies();
+            }
+
+            public TestFixture() : base(ScriptRoot, "fsharp")
+            {
+            }
+
+            private static void CreateSharedAssemblies()
+            {
+                string sharedAssembliesPath = Path.Combine(ScriptRoot, "SharedAssemblies");
+
+                if (Directory.Exists(sharedAssembliesPath))
+                {
+                    Directory.Delete(sharedAssembliesPath, true);
+                }
+
+                Directory.CreateDirectory(sharedAssembliesPath);
+
+                string secondaryDependencyPath = Path.Combine(sharedAssembliesPath, "SecondaryDependency.dll");
+
+                string primaryReferenceSource = @"
+using SecondaryDependency;
+
+namespace PrimaryDependency
+{
+    public class Primary
+    {
+        public string GetValue()
+        {
+            var secondary = new Secondary();
+            return secondary.GetSecondaryValue();
+        }
+    }
+}";
+                string secondaryReferenceSource = @"
+namespace SecondaryDependency
+{
+    public class Secondary
+    {
+        public string GetSecondaryValue()
+        {
+            return ""secondary type value"";
+        }
+    }
+}";
+                var secondarySyntaxTree = CSharpSyntaxTree.ParseText(secondaryReferenceSource);
+                Compilation secondaryCompilation = CSharpCompilation.Create("SecondaryDependency", new[] { secondarySyntaxTree })
+                    .WithReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+                    .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                secondaryCompilation.Emit(secondaryDependencyPath);
+
+                var primarySyntaxTree = CSharpSyntaxTree.ParseText(primaryReferenceSource);
+                Compilation primaryCompilation = CSharpCompilation.Create("PrimaryDependency", new[] { primarySyntaxTree })
+                    .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                    .WithReferences(MetadataReference.CreateFromFile(secondaryDependencyPath), MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+
+                primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
+            }
+        }
+
+                public class TestInput
+                {
+                    public int Id { get; set; }
+                    public string Value { get; set; }
+                }
+
+                public class ScenarioInput
+                {
+                    public string Scenario { get; set; }
+                    public string Container { get; set; }
+                    public string Value { get; set; }
+                }
     }
 }

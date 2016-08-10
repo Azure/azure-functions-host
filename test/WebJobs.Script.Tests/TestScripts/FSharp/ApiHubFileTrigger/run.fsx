@@ -10,6 +10,8 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "System.Net.Http"
+
 open System
 open System.Linq
 open System.Net
@@ -17,11 +19,10 @@ open System.Net.Http
 open System.Threading.Tasks
 open System.Diagnostics
 open Microsoft.Azure.WebJobs.Host
-open System.Runtime.InteropServices
 
 // Had to add the <Out> attribute here to make the bindings happy, without it, the type validation fails
 // at indexing time. Need to see if there's something we can do...
-let Run(input: string,[<Out>] output: byref<string>, log: TraceWriter) =
+let Run(input: string, output: byref<string>, log: TraceWriter) =
     log.Info "F# ApiHub trigger function processed a file..."
 
     output <- input

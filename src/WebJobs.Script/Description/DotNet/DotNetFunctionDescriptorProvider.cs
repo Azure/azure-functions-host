@@ -120,7 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     else
                     {
                         Type parameterType = parameter.ParameterType;
-                        if (parameterType.IsByRef)
+                        bool parameterIsByRef = parameterType.IsByRef;
+                        if (parameterIsByRef)
                         {
                             parameterType = parameterType.GetElementType();
                         }
@@ -139,7 +140,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             }
                         }
 
-                        if (parameter.IsOut)
+                        // In the C# programming model, IsOut is set for out parameters
+                        // In the F# programming model, neither IsOut nor IsIn are set for byref parameters (which are used as out parameters).
+                        //   Justification for this cariation of the programming model is that declaring 'out' parameters is (deliberately)
+                        //   awkward in F#, they require opening System.Runtime.InteropServices and adding the [<Out>] attribute, and using 
+                        //   a byref parameter. In contrast declaring a byref parameter alone (neither labelled In nor Out) is simple enough.
+                        if (parameter.IsOut || (functionMetadata.ScriptType == ScriptType.FSharp && parameterIsByRef && !parameter.IsIn))
                         {
                             descriptor.Attributes |= ParameterAttributes.Out;
                         }

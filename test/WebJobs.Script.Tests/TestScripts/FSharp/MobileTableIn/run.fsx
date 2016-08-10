@@ -16,8 +16,11 @@ open System
 open Microsoft.Azure.WebJobs.Host
 open Newtonsoft.Json.Linq
 
-let Run(input: string, item: JObject, log: TraceWriter) =
+type QueueInput() = 
+   member val RecordId = "" with get,set 
 
-    item.["Text"] <- "This was updated!"
+let Run(input: QueueInput, item: JObject, log: TraceWriter) =
 
-    log.Info(sprintf "Updating item %s" item.["Id"])
+    item.["Text"] <- JToken.op_Implicit "This was updated!"
+
+    log.Info(sprintf "Updating item %s" (item.["Id"].ToString()))

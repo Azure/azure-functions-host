@@ -25,26 +25,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
 
-            using (var manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, traceWriter))
+            using (var manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter))
             {
                 await TestHelpers.Await(() => manager.HasLease);
 
-                Assert.Equal(hostId, manager.LeaseId);
+                Assert.Equal(instanceId, manager.LeaseId);
             }
-        }
 
+            await ClearLeaseBlob(hostId);
+        }
+        
         [Fact]
         [Trait("Category", "E2E")]
         public async Task HasLeaseChanged_WhenLeaseIsAcquiredAndStateChanges_IsFired()
         {
             string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var resetEvent = new ManualResetEventSlim();
 
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            ICloudBlob blob = await GetLockBlobAsync(connectionString);
+            ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
 
             // Acquire a lease on the host lock blob
             string leaseId = await blob.AcquireLeaseAsync(TimeSpan.FromSeconds(15));
@@ -53,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, traceWriter);
+                manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter);
                 manager.HasLeaseChanged += (s, a) => resetEvent.Set();
             }
             finally
@@ -67,24 +71,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(resetEvent.IsSet);
             Assert.True(manager.HasLease, $"{nameof(BlobLeaseManager.HasLease)} was not correctly set to 'true' when lease was acquired.");
-            Assert.Equal(hostId, manager.LeaseId);
+            Assert.Equal(instanceId, manager.LeaseId);
+
+            await ClearLeaseBlob(hostId);
         }
 
         [Fact]
         [Trait("Category", "E2E")]
         public async Task HasLeaseChanged_WhenLeaseIsLostAndStateChanges_IsFired()
         {
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            ICloudBlob blob = await GetLockBlobAsync(connectionString);
-
             string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
+            
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var resetEvent = new ManualResetEventSlim();
 
             BlobLeaseManager manager = null;
             string tempLeaseId = null;
 
-            using (manager = new BlobLeaseManager(blob, TimeSpan.FromSeconds(15), hostId, traceWriter, TimeSpan.FromSeconds(3)))
+            using (manager = new BlobLeaseManager(blob, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, TimeSpan.FromSeconds(3)))
             {
                 try
                 {
@@ -109,12 +116,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(resetEvent.IsSet);
             Assert.False(manager.HasLease, $"{nameof(BlobLeaseManager.HasLease)} was not correctly set to 'false' when lease lost.");
+
+            await ClearLeaseBlob(hostId);
         }
 
         [Fact]
         public void AcquiringLease_WithServerError_LogsAndRetries()
         {
-            var hostId = "123";
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
 
@@ -131,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Callback(() => renewResetEvent.Set());
 
             BlobLeaseManager manager;
-            using (manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, traceWriter))
+            using (manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
             }
@@ -145,12 +155,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Trait("Category", "E2E")]
         public async Task Renew_WhenBlobIsDeleted_RecreatesBlob()
         {
-            var hostId = Guid.NewGuid().ToString();
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
 
-            ICloudBlob blob = await GetLockBlobAsync(connectionString);
+            ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
 
             var blobMock = new Mock<ICloudBlob>();
             blobMock.Setup(b => b.AcquireLeaseAsync(It.IsAny<TimeSpan>(), It.IsAny<string>()))
@@ -165,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Delete the blob
             await blob.DeleteIfExistsAsync();
 
-            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(15), hostId, traceWriter, TimeSpan.FromSeconds(3)))
+            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, TimeSpan.FromSeconds(3)))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
 
@@ -176,23 +187,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(renewResetEvent.IsSet);
             Assert.True(blobExists);
+
+            await ClearLeaseBlob(hostId);
         }
 
         [Fact]
         [Trait("Category", "E2E")]
         public async Task Dispose_ReleasesBlobLease()
         {
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-
             string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
 
-            using (var manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, traceWriter))
+            using (var manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter))
             {
                 await TestHelpers.Await(() => manager.HasLease);
             }
 
-            ICloudBlob blob = await GetLockBlobAsync(connectionString);
+            ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
 
             string leaseId = null;
             try
@@ -207,12 +221,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             Assert.False(string.IsNullOrEmpty(leaseId), "Failed to acquire a blob lease. The lease was not properly released.");
+
+            await ClearLeaseBlob(hostId);
         }
 
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseIsAcquired()
         {
-            var hostId = "123";
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
 
@@ -221,18 +238,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => Task.FromResult(hostId));
 
             blobMock.Setup(b => b.RenewLeaseAsync(It.IsAny<AccessCondition>()))
-                .Returns(() => Task.Delay(1000))
-                .Callback(() => renewResetEvent.Set());
-            
-            var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, traceWriter);
-            renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-            manager.Dispose();
+                .Returns(() => Task.Delay(10).ContinueWith(t => renewResetEvent.Set()));
 
-            // Make sure we have enough time to trace the renewal
-            await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
+            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
+            {
+                renewResetEvent.Wait(TimeSpan.FromSeconds(10));
+
+                // Make sure we have enough time to trace the renewal
+                await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
+            }
 
             TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host lock lease acquired by host ID '{hostId}'.", acquisitionEvent.Message);
+            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
 
             TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
@@ -243,7 +260,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseAcquisitionFails()
         {
-            var hostId = "123";
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var acquisitionResetEvent = new ManualResetEventSlim();
 
@@ -252,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => Task.FromException<string>(new StorageException(new RequestResult { HttpStatusCode = 409 }, "test", null)))
                 .Callback(() => acquisitionResetEvent.Set());
 
-            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(10), hostId, traceWriter))
+            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(10), hostId, instanceId, traceWriter))
             {
                 acquisitionResetEvent.Wait(TimeSpan.FromSeconds(5));
             }
@@ -261,14 +279,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() => traceWriter.Traces.Count == 1, 5000, 500);
 
             TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host '{hostId}' failed to acquire host lock lease: Another host has an active lease.", acquisitionEvent.Message);
+            Assert.Contains($"Host instance '{instanceId}' failed to acquire host lock lease: Another host has an active lease.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Verbose, acquisitionEvent.Level);
         }
 
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseRenewalFails()
         {
-            var hostId = "123";
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
 
@@ -280,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => Task.FromException(new StorageException(new RequestResult { HttpStatusCode = 409 }, "test", null)))
                 .Callback(() => renewResetEvent.Set());
 
-            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, traceWriter))
+            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
                 // Make sure we have enough time to trace the renewal
@@ -288,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host lock lease acquired by host ID '{hostId}'.", acquisitionEvent.Message);
+            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
 
             TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
@@ -296,21 +315,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TraceLevel.Info, renewalEvent.Level);
         }
 
-        private static async Task<ICloudBlob> GetLockBlobAsync(string accountConnectionString)
+        [Fact]
+        [Trait("Category", "E2E")]
+        public async Task DifferentHosts_UsingSameStorageAccount_CanObtainLease()
+        {
+            string hostId1 = Guid.NewGuid().ToString();
+            string hostId2 = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            using (var manager1 = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId1, instanceId, traceWriter))
+            using (var manager2 = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId2, instanceId, traceWriter))
+            {
+                Task manager1Check = TestHelpers.Await(() => manager1.HasLease);
+                Task manager2Check = TestHelpers.Await(() => manager2.HasLease);
+
+                await Task.WhenAll(manager1Check, manager2Check);
+            }
+
+            await Task.WhenAll(ClearLeaseBlob(hostId1), ClearLeaseBlob(hostId2));
+        }
+
+        private static async Task<ICloudBlob> GetLockBlobAsync(string accountConnectionString, string hostId)
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             CloudBlobClient client = account.CreateCloudBlobClient();
 
-            var container = client.GetContainerReference("azure-functions-host");
+            var container = client.GetContainerReference(BlobLeaseManager.HostContainerName);
 
             await container.CreateIfNotExistsAsync();
-            CloudBlockBlob blob = container.GetBlockBlobReference("hostlock");
+            CloudBlockBlob blob = container.GetBlockBlobReference(BlobLeaseManager.GetBlobName(hostId));
             if (!await blob.ExistsAsync())
             {
                 await blob.UploadFromStreamAsync(new MemoryStream());
             }
 
             return blob;
+        }
+
+        private async Task ClearLeaseBlob(string hostId)
+        {
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
+
+            try
+            {
+                await blob.BreakLeaseAsync(TimeSpan.Zero);
+            }
+            catch
+            {
+            }
+
+            await blob.DeleteIfExistsAsync();
         }
     }
 }

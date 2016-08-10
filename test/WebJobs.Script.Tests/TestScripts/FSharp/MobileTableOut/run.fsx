@@ -13,22 +13,21 @@
 open System
 open Microsoft.Azure.WebJobs.Host
 
-type Item = 
-    { mutable Id : string
-      mutable Text : string
-      mutable IsProcessed : bool
-      mutable ProcessedAt : DateTimeOffset  
-      // Mobile table properties
-      mutable CreatedAt : DateTimeOffset  }
+type Item() = 
+    member val Id = "" with get,set
+    member val Text = "" with get,set
+    member val IsProcessed = false with get,set
+    member val ProcessedAt = DateTimeOffset() with get,set
+    // Mobile table properties
+    member val CreatedAt = DateTimeOffset() with get,set
 
 let Run(input: string, item: byref<Item>, log: TraceWriter) =
-    let i =
-        { Id = input
-          Text = "Hello from F#!"
-          IsProcessed = false
-          ProcessedAt = DateTimeOffset.Now
-          CreatedAt = DateTimeOffset.Now }
-    item <- i
+    item <-
+        Item(Id = input, 
+             Text = "Hello from F#",
+             IsProcessed = false,
+             ProcessedAt = DateTimeOffset(),
+             CreatedAt = DateTimeOffset())
 
     log.Info(sprintf "Inserting item %s" item.Id)
 

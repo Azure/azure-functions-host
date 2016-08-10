@@ -85,7 +85,20 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace">
+  <Target Name="UpdateAssemblyInfo" Condition="'$(BuildNumber)' != '0'">   
+    <PropertyGroup>
+      <CommonAssemblyInfoFile>$(MSBuildProjectDirectory)\src\Common\CommonAssemblyInfo.cs</CommonAssemblyInfoFile>
+    </PropertyGroup>
+    
+    <Message Text="Updating the AssemblyFileVersion to include the build number: $(BuildNumber)" />
+    
+    <ReplaceFileText 
+      FileName="$(CommonAssemblyInfoFile)"
+      MatchExpression="(?&lt;=\[assembly: AssemblyFileVersion\(&quot;\d+.\d+.)\d+(?=.\d+&quot;\)\])" 
+      ReplacementText="$(BuildNumber)" />         
+  </Target>
+  
+  <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace;UpdateAssemblyInfo">
     <MSBuild Projects="@(Binplace)"
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
@@ -95,7 +108,7 @@
       <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
     </PropertyGroup>
     <ItemGroup>
-      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
+      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*;$(ScriptHostOutput)\*.optdata;$(ScriptHostOutput)\*.sigdata"/>
       <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
     </ItemGroup>
     <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
@@ -291,5 +304,24 @@
       </Code>
     </Task>
   </UsingTask>
+  
+  <UsingTask TaskName="ReplaceFileText" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+  <ParameterGroup>
+    <FileName ParameterType="System.String" Required="true" />    
+    <MatchExpression ParameterType="System.String" Required="true" />
+    <ReplacementText ParameterType="System.String" Required="true" />
+  </ParameterGroup>
+  <Task>
+    <Reference Include="System.Core" />
+    <Using Namespace="System" />
+    <Using Namespace="System.IO" />
+    <Using Namespace="System.Text.RegularExpressions" />
+    <Code Type="Fragment" Language="cs">
+      <![CDATA[
+            File.WriteAllText(FileName, Regex.Replace(File.ReadAllText(FileName), MatchExpression, ReplacementText));
+          ]]>
+    </Code>
+  </Task>
+</UsingTask>
 
 </Project>

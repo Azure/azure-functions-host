@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task MobileTables()
         {
-            await MobileTablesTest(isDotNet: true);
+            await MobileTablesTest("csharp", isDotNet: true);
         }
 
         [Fact]

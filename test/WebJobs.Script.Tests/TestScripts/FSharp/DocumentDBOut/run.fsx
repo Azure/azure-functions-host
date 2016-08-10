@@ -12,7 +12,17 @@
 
 open System
 
-type Out = { id: string; text: string }
+type OutputData =
+    { id : string
+      text : string }
 
-let Run(input: string , item: byref<obj>) =
-    item <- { id = input; text = "Hello from C#!" }
+let Run(input: string , item: byref<OutputData>) =
+    item <- { id = input; text = "Hello from F#!" } 
+
+// Note: you can also use a POCO object:
+//
+//type OutputData() = 
+//    member val id: string = "" with get,set
+//    member val text: string  = "" with get,set
+
+    //item <- OutputData(id = input, text = "Hello from F#!")

@@ -40,26 +40,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostSettings = webHostSettings;
         }
 
-        // Same as Kudu logic
         public static bool IsAzureEnvironment
         {
-            get { return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")); }
+            get
+            {
+                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID"));
+            }
         }
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_secretManager != null)
-                {
-                    _secretManager.Dispose();
-                }
-            }
-
-            base.Dispose(disposing);
-        }
 
         public bool Initialized
         {
@@ -192,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                traceWriter.Error(string.Format("Warm up failed with {0}", ex));
+                traceWriter.Error(string.Format("Warm up failed: {0}", ex));
             }
             finally
             {
@@ -204,6 +193,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 traceWriter.Dispose();
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_secretManager != null)
+                {
+                    _secretManager.Dispose();
+                }
+            }
+
+            base.Dispose(disposing);
         }
 
         private static MethodInfo CreateGetWebHookDataMethodInfo()
