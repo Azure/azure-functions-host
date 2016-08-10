@@ -197,7 +197,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("fsharp");
         }
 
-
         internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks(string fixture)
         {
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
