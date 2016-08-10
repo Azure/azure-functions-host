@@ -1,0 +1,21 @@
+{
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "name": "data",
+            "direction": "in",
+            "methods": [ "get", "post" ]
+        },
+        {
+            "type": "http",
+            "name": "res",
+            "direction": "out"
+        },
+        {
+            "type": "blob",
+            "name": "outBlob",
+            "direction": "out",
+            "path": "samples-output/{Id}"
+        }
+    ]
+}

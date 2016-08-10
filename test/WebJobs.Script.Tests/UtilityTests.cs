@@ -2,13 +2,35 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class UtilityTests
     {
+        [Fact]
+        public void ApplyBindingData_HandlesNestedJsonPayloads()
+        {
+            string input = "{ 'test': 'testing', 'baz': 123, 'nested': [ { 'nesting': 'yes' } ] }";
+
+            var bindingData = new Dictionary<string, object>
+            {
+                { "foo", "Value1" },
+                { "bar", "Value2" },
+                { "baz", "Value3" }
+            };
+
+            Utility.ApplyBindingData(input, bindingData);
+
+            Assert.Equal("Value1", bindingData["foo"]);
+            Assert.Equal("Value2", bindingData["bar"]);
+            Assert.Equal("testing", bindingData["test"]);
+
+            // input data overrides ambient data
+            Assert.Equal("123", bindingData["baz"]);
+        }
+
         [Fact]
         public void FlattenException_AggregateException_ReturnsExpectedResult()
         {

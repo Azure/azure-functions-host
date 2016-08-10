@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
 
-            Dictionary<string, object> arguments = await GetFunctionArgumentsAsync(function, request);
+            Dictionary<string, object> arguments = GetFunctionArguments(function, request);
 
             // Suspend the current synchronization context so we don't pass the ASP.NET
             // context down to the function.
@@ -241,38 +241,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return typeof(WebHookHandlerContextExtensions).GetMethod("GetDataOrDefault", BindingFlags.Public | BindingFlags.Static);
         }
 
-        private static async Task<Dictionary<string, object>> GetFunctionArgumentsAsync(FunctionDescriptor function, HttpRequestMessage request)
+        private static Dictionary<string, object> GetFunctionArguments(FunctionDescriptor function, HttpRequestMessage request)
         {
             ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>();
-            object triggerArgument = null;
-            if (triggerParameter.Type == typeof(HttpRequestMessage))
-            {
-                triggerArgument = request;
-            }
-            else
-            {
-                // We'll replace the trigger argument but still want to flow the request
-                // so add it to the arguments, as a system argument
-                arguments.Add(ScriptConstants.DefaultSystemTriggerParameterName, request);
 
+            if (triggerParameter.Type != typeof(HttpRequestMessage))
+            {
                 HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
                 {
                     WebHookHandlerContext webHookContext;
                     if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsWebHookContextKey, out webHookContext))
                     {
-                        triggerArgument = GetWebHookData(triggerParameter.Type, webHookContext);
+                        // For WebHooks we want to use the WebHook library conversion methods
+                        // Stuff the resolved data into the request context so the HttpTrigger binding
+                        // can access it
+                        var webHookData = GetWebHookData(triggerParameter.Type, webHookContext);
+                        request.Properties.Add(ScriptConstants.AzureFunctionsWebHookDataKey, webHookData);
                     }
                 }
 
-                if (triggerArgument == null)
+                // see if the function defines a parameter to receive the HttpRequestMessage and
+                // if so, pass it along
+                ParameterDescriptor requestParameter = function.Parameters.FirstOrDefault(p => p.Type == typeof(HttpRequestMessage));
+                if (requestParameter != null)
                 {
-                    triggerArgument = await request.Content.ReadAsAsync(triggerParameter.Type);
+                    arguments.Add(requestParameter.Name, request);
                 }
             }
 
-            arguments.Add(triggerParameter.Name, triggerArgument);
+            arguments.Add(triggerParameter.Name, request);
 
             return arguments;
         }

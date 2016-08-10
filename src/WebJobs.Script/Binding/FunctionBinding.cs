@@ -57,9 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             }
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
-                        case "httptrigger":
-                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Read));
-                            break;
                         default:
                             FunctionBinding binding = null;
                             if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
@@ -74,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return bindings;
         }
 
-        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, Newtonsoft.Json.Linq.JObject metadata, out FunctionBinding functionBinding)
+        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, JObject metadata, out FunctionBinding functionBinding)
         {
             functionBinding = null;            
 

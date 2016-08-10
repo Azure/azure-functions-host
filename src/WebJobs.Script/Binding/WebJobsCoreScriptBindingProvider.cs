@@ -4,7 +4,9 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     Config.Queues.NewBatchThreshold = (int)value;
                 }
             }
+
+            Config.UseHttp();
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -61,8 +65,36 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 binding = new BlobScriptBinding(context);
             }
+            else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                binding = new HttpScriptBinding(context);
+            }
 
             return binding != null;
+        }
+
+        private class HttpScriptBinding : ScriptBinding
+        {
+            public HttpScriptBinding(ScriptBindingContext context) : base(context)
+            {
+            }
+
+            public override Type DefaultType
+            {
+                get
+                {
+                    return typeof(HttpRequestMessage);
+                }
+            }
+
+            public override Collection<Attribute> GetAttributes()
+            {
+                Collection<Attribute> attributes = new Collection<Attribute>();
+
+                attributes.Add(new HttpTriggerAttribute());
+
+                return attributes;
+            }
         }
 
         private class QueueScriptBinding : ScriptBinding

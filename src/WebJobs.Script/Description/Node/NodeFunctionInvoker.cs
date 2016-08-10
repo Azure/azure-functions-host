@@ -292,12 +292,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 context["entryPoint"] = _entryPoint;
             }
 
-            // This is the input value that we will use to extract binding data.
-            // Since binding data extraction is based on JSON parsing, in the
-            // various conversions below, we set this to the appropriate JSON
-            // string when possible.
-            object bindDataInput = input;
-
             if (input is HttpRequestMessage)
             {
                 // convert the request to a json object
@@ -309,7 +303,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (rawBody != null)
                 {
                     requestObject["rawBody"] = rawBody;
-                    bindDataInput = rawBody;
                 }
 
                 // If this is a WebHook function, the input should be the
@@ -344,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 FunctionBinding.ConvertStreamToValue((Stream)input, dataType, ref input);
             }
 
-            ApplyBindingData(bindDataInput, binder);
+            Utility.ApplyBindingData(input, binder.BindingData);
 
             // normalize the bindingData object passed into Node
             // we must convert values to types supported by Edge

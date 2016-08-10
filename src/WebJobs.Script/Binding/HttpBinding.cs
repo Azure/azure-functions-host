@@ -117,19 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return;
             }
 
-            HttpRequestMessage request = null;
-            object argValue = null;
-            if (functionArguments.TryGetValue(triggerInputName, out argValue) && argValue is HttpRequestMessage)
-            {
-                request = (HttpRequestMessage)argValue;
-            }
-            else
-            {
-                // No argument is bound to the request message, so we should have 
-                // it in the system arguments
-                request = systemArguments.FirstOrDefault(a => a is HttpRequestMessage) as HttpRequestMessage;
-            }
-
+            HttpRequestMessage request = (HttpRequestMessage)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequestMessage);
             if (request != null)
             {
                 HttpResponseMessage response = result as HttpResponseMessage;

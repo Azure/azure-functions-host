@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
 
                 object convertedInput = ConvertInput(input);
-                ApplyBindingData(convertedInput, binder);
+                Utility.ApplyBindingData(convertedInput, binder.BindingData);
                 Dictionary<string, object> bindingData = binder.BindingData;
                 bindingData["InvocationId"] = invocationId;
 

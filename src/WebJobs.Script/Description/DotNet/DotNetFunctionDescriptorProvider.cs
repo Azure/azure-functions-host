@@ -102,7 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
-                bool addHttpRequestSystemParameter = false;
                 foreach (var parameter in parameters)
                 {
                     // Is it the trigger parameter?
@@ -110,12 +109,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         ParameterDescriptor triggerParameter = CreateTriggerParameter(triggerMetadata, parameter.ParameterType);
                         descriptors.Add(triggerParameter);
-
-                        if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 && 
-                            parameter.ParameterType != typeof(HttpRequestMessage))
-                        {
-                            addHttpRequestSystemParameter = true;
-                        }
                     }
                     else
                     {
@@ -148,15 +141,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
 
-                // Add any additional common System parameters
-                // Add ExecutionContext to provide access to InvocationId, etc.
-                descriptors.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
-                
-                // If we have an HTTP trigger binding but we're not binding
-                // to the HttpRequestMessage, require it as a system parameter
-                if (addHttpRequestSystemParameter)
+                // Add any additional required System parameters (if they haven't already been defined by the user)
+                if (!descriptors.Any(p => p.Type == typeof(ExecutionContext)))
                 {
-                    descriptors.Add(new ParameterDescriptor(ScriptConstants.DefaultSystemTriggerParameterName, typeof(HttpRequestMessage)));
+                    // Add ExecutionContext to provide access to InvocationId, etc.
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
+                }
+
+                // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequestMessage,
+                // add it as a system parameter
+                if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 &&
+                    !descriptors.Any(p => p.Type == typeof(HttpRequestMessage)))
+                {
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequestMessage)));
                 }
 
                 return descriptors;

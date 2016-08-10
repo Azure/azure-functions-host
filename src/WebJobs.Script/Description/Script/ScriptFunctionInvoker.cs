@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
 
                 object convertedInput = ConvertInput(input);
-                ApplyBindingData(convertedInput, binder);
+                Utility.ApplyBindingData(convertedInput, binder.BindingData);
                 Dictionary<string, object> bindingData = binder.BindingData;
                 bindingData["InvocationId"] = invocationId;
 

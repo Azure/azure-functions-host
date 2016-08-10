@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ScriptReference_LoadsScript()
         {
-            var request = new System.Net.Http.HttpRequestMessage();
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }
@@ -163,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task SharedAssemblyDependenciesAreLoaded()
         {
-            var request = new System.Net.Http.HttpRequestMessage();
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }

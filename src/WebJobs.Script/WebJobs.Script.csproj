@@ -292,6 +292,9 @@
     <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
+    <Compile Include="Binding\Http\HttpJobHostConfigurationExtensions.cs" />
+    <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
+    <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TableBinding.cs" />

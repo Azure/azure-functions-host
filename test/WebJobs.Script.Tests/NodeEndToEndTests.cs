@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
                 Method = HttpMethod.Get,
             };
             request.Headers.Add("test-header", "Test Request Header");
@@ -332,6 +332,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null((string)resultObject["reqBody"]);
             Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
             Assert.Null((string)resultObject["reqRawBody"]);
+
+            // verify binding data was populated from query parameters
+            Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
+            Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
 
             // validate input headers
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
@@ -369,10 +373,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HttpTrigger_Post_JsonObject()
         {
-            string testData = Guid.NewGuid().ToString();
             JObject testObject = new JObject
             {
-                { "testData", testData }
+                { "name", "Mathew Charles" },
+                { "location", "Seattle" }
             };
             string rawBody = testObject.ToString();
             HttpRequestMessage request = new HttpRequestMessage
@@ -396,8 +400,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject resultObject = JObject.Parse(body);
             Assert.Equal("object", (string)resultObject["reqBodyType"]);
             Assert.False((bool)resultObject["reqBodyIsArray"]);
-            Assert.Equal(testData, (string)resultObject["reqBody"]["testData"]);
-            Assert.Equal(testData, (string)resultObject["bindingData"]["testData"]);
+
+            Assert.Equal("Mathew Charles", (string)resultObject["reqBody"]["name"]);
+            Assert.Equal("Seattle", (string)resultObject["reqBody"]["location"]);
+
+            Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
+            Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
+
             Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
             Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }

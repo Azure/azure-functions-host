@@ -197,15 +197,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                // Separate system parameters from the actual method parameters
+                ExecutionContext functionExecutionContext = (ExecutionContext)parameters.First(p => p is ExecutionContext);
+                invocationId = functionExecutionContext.InvocationId.ToString();
+
+                // Separate any system parameters we might have added from the actual method parameters
                 object[] originalParameters = parameters;
                 MethodInfo function = await GetFunctionTargetAsync();
                 int actualParameterCount = function.GetParameters().Length;
                 object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
                 parameters = parameters.Take(actualParameterCount).ToArray();
-
-                ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
-                invocationId = functionExecutionContext.InvocationId.ToString();
 
                 startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
                 _metrics.BeginEvent(startedEvent);
@@ -458,9 +458,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 processor = (function, args, systemArgs, result) =>
                 {
-                    // Find the binding parameter input by
-                    // checking if we have the raw value (passed as the DefaultSystemTriggerParameterName)
-                    // or getting the function input parameter
                     ParameterInfo[] parameters = function.GetParameters();
                     IDictionary<string, object> functionArguments = parameters.ToDictionary(p => p.Name, p => args[p.Position]);
                     foreach (var processingBinding in bindings)

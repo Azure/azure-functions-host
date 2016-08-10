@@ -96,13 +96,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             parameters.Add(triggerParameter);
 
             // Add a TraceWriter for logging
-            parameters.Add(new ParameterDescriptor("log", typeof(TraceWriter)));
+            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemLogParameterName, typeof(TraceWriter)));
 
             // Add an IBinder to support the binding programming model
-            parameters.Add(new ParameterDescriptor("binder", typeof(IBinder)));
+            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemBinderParameterName, typeof(IBinder)));
 
             // Add ExecutionContext to provide access to InvocationId, etc.
-            parameters.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
+            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
 
             return parameters;
         }
@@ -113,9 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string type = triggerMetadata.Type.ToLowerInvariant();
             switch (type)
             {
-                case "httptrigger":
-                    triggerParameter = ParseHttpTrigger((HttpTriggerBindingMetadata)triggerMetadata, parameterType ?? typeof(HttpRequestMessage));
-                    break;
                 case "manualtrigger":
                     triggerParameter = ParseManualTrigger(triggerMetadata, parameterType ?? typeof(string));
                     break;

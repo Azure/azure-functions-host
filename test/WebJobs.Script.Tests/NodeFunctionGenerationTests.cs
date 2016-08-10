@@ -164,17 +164,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify TextWriter parameter
             ParameterInfo parameter = parameters[1];
-            Assert.Equal("log", parameter.Name);
+            Assert.Equal("_log", parameter.Name);
             Assert.Equal(typeof(TraceWriter), parameter.ParameterType);
 
             // verify IBinder parameter
             parameter = parameters[2];
-            Assert.Equal("binder", parameter.Name);
+            Assert.Equal("_binder", parameter.Name);
             Assert.Equal(typeof(IBinder), parameter.ParameterType);
 
             // verify ExecutionContext parameter
             parameter = parameters[3];
-            Assert.Equal("context", parameter.Name);
+            Assert.Equal("_context", parameter.Name);
             Assert.Equal(typeof(ExecutionContext), parameter.ParameterType);
         }
 

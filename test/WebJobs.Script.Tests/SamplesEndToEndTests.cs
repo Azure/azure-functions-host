@@ -70,6 +70,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_CSharp_Poco_Post_Succeeds()
+        {
+            string uri = "api/httptrigger-csharp-poco?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+
+            string id = Guid.NewGuid().ToString();
+            JObject requestBody = new JObject
+            {
+                { "Id", id },
+                { "Value", "Testing" }
+            };
+            request.Content = new StringContent(requestBody.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_Poco_Post_Xml_Succeeds()
+        {
+            string uri = "api/httptrigger-csharp-poco?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            string id = Guid.NewGuid().ToString();
+            request.Content = new StringContent(string.Format("<RequestData xmlns=\"http://functions\"><Id>{0}</Id><Value>Testing</Value></RequestData>", id));
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml");
+            
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_Poco_Get_Succeeds()
+        {
+            string id = Guid.NewGuid().ToString();
+            string uri = string.Format("api/httptrigger-csharp-poco?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc&Id={0}&Value=Testing", id);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        }
+
+        [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
             string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";
