@@ -3,7 +3,7 @@
         {
             "type": "queueTrigger",
             "name": "input",
-            "queueName": "mobiletables-input",
+            "queueName": "mobiletables-input-fsharp",
             "direction": "in"
         },
         {

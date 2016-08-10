@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        protected async Task MobileTablesTest(bool isDotNet = false)
+        protected async Task MobileTablesTest(string suffix, bool isDotNet = false)
         {
             // MobileApps needs the following environment vars:
             // "AzureWebJobsMobileAppUri" - the URI to the mobile app
@@ -240,11 +240,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(item["id"], id);
 
             // Now add that Id to a Queue
-            var queue = Fixture.GetNewQueue("mobiletables-input");
+            var queue = Fixture.GetNewQueue("mobiletables-input-" + suffix);
             string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
-
-            // And wait for the text to be updated
 
             // Only .NET fully supports updating from input bindings. Others will
             // create a new item with -success appended to the id.
