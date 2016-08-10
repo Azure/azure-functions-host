@@ -67,6 +67,6 @@ obj.count
 JsonConvert.SerializeObject(obj)
 JsonConvert.SerializeObject(obj2)
 JsonConvert.SerializeObject(obj3)
-JsonConvert.SerializeObject(obj4) // Note this gives ""{"id@":"abc","count@":1,"id":"abc","count":1}" which is not the right JSON
+JsonConvert.SerializeObject(obj4) // Note this gives "{"id@":"abc","count@":1,"id":"abc","count":1}" which is not the right JSON
 
  *)
