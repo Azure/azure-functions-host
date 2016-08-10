@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -13,14 +12,17 @@ open System.Runtime.InteropServices
 
 open System
 
-type OutputData() = 
-    member val id: string = "" with get,set
-    member val text: string  = "" with get,set
+type OutputData =
+    { id : string
+      text : string }
 
-//type OuputData =
-//    { id : string
-//      text : string }
-
-let Run(input: string , [<Out>] item: byref<obj>) =
+let Run(input: string , item: byref<OutputData>) =
     item <- { id = input; text = "Hello from F#!" } 
+
+// Note: you can also use a POCO object:
+//
+//type OutputData() = 
+//    member val id: string = "" with get,set
+//    member val text: string  = "" with get,set
+
     //item <- OutputData(id = input, text = "Hello from F#!")

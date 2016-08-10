@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -22,7 +21,7 @@ type Item() =
     // Mobile table properties
     member val CreatedAt = DateTimeOffset() with get,set
 
-let Run(input: string, [<Out>] item: byref<Item>, log: TraceWriter) =
+let Run(input: string, item: byref<Item>, log: TraceWriter) =
     item <-
         Item(Id = input, 
              Text = "Hello from F#!",

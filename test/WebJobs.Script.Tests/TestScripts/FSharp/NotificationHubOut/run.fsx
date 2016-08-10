@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -13,5 +12,5 @@ open System.Runtime.InteropServices
 
 open System
 
-let Run(input: string, [<Out>] messageProperties: byref<string>) =
+let Run(input: string, messageProperties: byref<string>) =
     messageProperties <- """{"message":"Hello from F# ! ","location":"Cambridge"}""";

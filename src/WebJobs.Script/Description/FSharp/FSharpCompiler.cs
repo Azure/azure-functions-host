@@ -60,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             try
             {
                 // Write an adjusted version of the script file, prefixing some 'open' decarations
-                File.AppendAllLines(scriptFile, new string[] { "open System.Runtime.InteropServices" });
                 foreach (var import in script.Options.Imports)
                 {
                     File.AppendAllLines(scriptFile, new string[] { "open " + import });

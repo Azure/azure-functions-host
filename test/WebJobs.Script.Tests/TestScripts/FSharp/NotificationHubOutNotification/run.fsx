@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -23,5 +22,5 @@ let GetTemplateNotification(message: string) =
     templateProperties.["message"] <- message
     new TemplateNotification(templateProperties)
 
-let Run(input: string, [<Out>] notification: byref<Notification>) =
+let Run(input: string, notification: byref<Notification>) =
     notification <- GetTemplateNotification(input)
