@@ -32,7 +32,7 @@ let Run(input: BrokeredMessage, [<Out>] message: byref<string>, [<Out>] complete
     let obj = JsonConvert.DeserializeObject<Message>(json)
 
     if (obj.count < 2) then
-        obj.count <- obj.count 
+        obj.count <- obj.count + 1
         
         message <- JsonConvert.SerializeObject(obj)
         completed <- null
