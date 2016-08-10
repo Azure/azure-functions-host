@@ -17,14 +17,14 @@ open Microsoft.Azure.WebJobs.Host
 open Newtonsoft.Json.Linq
 
 [<CLIMutable>]
-type TestInput = { Id : int; Value: string }
+type QueueInput = { Id : int; Value: string }
 
 [<CLIMutable>]
-type SampleEntity = { Id: int; Text: string }
+type SampleEntity = { Id: int; mutable Text: string }
 
-let Run(input: TestInput, entity: byref<SampleEntity>, log: TraceWriter ) = 
+let Run(input: QueueInput, entity: SampleEntity, log: TraceWriter ) = 
     if (entity.Id <> input.Id) then
-        invalidOp ("Expected Id to be bound.")
+        invalidOp "Expected Id to be bound."
 
-    entity <- { entity with Text = input.Value }
+    entity.Text <- input.Value 
 

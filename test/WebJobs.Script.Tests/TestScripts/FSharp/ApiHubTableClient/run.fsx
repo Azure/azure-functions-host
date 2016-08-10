@@ -31,4 +31,4 @@ let Run(text: string, client: ITableClient, log: TraceWriter) =
        let dataSet = client.GetDataSetReference();
        let table = dataSet.GetTableReference<SampleEntity>("SampleTable")
 
-       table.UpdateEntityAsync("1",{ Id = 1; Text = text }).RunSynchronously()
+       table.UpdateEntityAsync("1",{ Id = 1; Text = text }).Wait()
