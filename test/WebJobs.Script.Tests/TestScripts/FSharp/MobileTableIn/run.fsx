@@ -17,7 +17,7 @@ open Microsoft.Azure.WebJobs.Host
 open Newtonsoft.Json.Linq
 
 type QueueInput() = 
-   member val RecordId : string = null with get,set 
+   member val RecordId = "" with get,set 
 
 let Run(input: QueueInput, item: JObject, log: TraceWriter) =
 
