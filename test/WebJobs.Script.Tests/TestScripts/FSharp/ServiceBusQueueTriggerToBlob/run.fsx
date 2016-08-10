@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -23,7 +22,7 @@ open Microsoft.ServiceBus.Messaging
 type Message = 
     { id: string; count : int }
 
-let Run(input: BrokeredMessage, [<Out>] message: byref<string>, [<Out>] completed: byref<string>) =
+let Run(input: BrokeredMessage, message: byref<string>, completed: byref<string>) =
 
     let stream = input.GetBody<Stream>();
     use reader = new StreamReader(stream)

@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -24,7 +23,7 @@ open Microsoft.Azure.WebJobs.Host
 type WorkItem =
     { Id : string }
 
-let Run(input: WorkItem, [<Out>] output: byref<string>, log: TraceWriter) = 
+let Run(input: WorkItem, output: byref<string>, log: TraceWriter) = 
     let json = String.Format("{{ \"id\": \"{0}\" }}", input.Id)    
     log.Info(sprintf "F# script processed queue message '%s'" json)
     output <- json

@@ -2,7 +2,6 @@
 // This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
 #if !COMPILED
-open System.Runtime.InteropServices
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
@@ -22,7 +21,7 @@ type ScenarioInput =
       Container : string
       Value: string } 
 
-let Run(input: ScenarioInput, [<Out>] blob: byref<string>, log: TraceWriter) =
+let Run(input: ScenarioInput, blob: byref<string>, log: TraceWriter) =
     blob <- null
 
     if (input.Scenario = "randGuid") then
