@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Bash", "bash")
-            { 
+            {
             }
 
             public string TestBlobContents { get; private set; }
@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             protected override void CreateTestStorageEntities()
             {
+                // This will ensure the input container is created.
                 base.CreateTestStorageEntities();
 
                 TestBlobContents = "My Test Blob";
@@ -47,9 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // write the test blob before the host starts, so it gets picked
                 // up relatively quickly by the blob trigger test
-                CloudBlobContainer inputContainer = BlobClient.GetContainerReference("test-input-bash");
-                inputContainer.CreateIfNotExists();
-                CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(TestBlobName);
+                CloudBlockBlob inputBlob = TestInputContainer.GetBlockBlobReference(TestBlobName);
                 inputBlob.UploadText(TestBlobContents);
             }
         }

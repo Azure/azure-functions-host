@@ -197,7 +197,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             string secretsPath = Path.Combine(Path.GetTempPath(), @"FunctionTests\Secrets");
-            using (var manager = new WebScriptHostManager(config, new SecretManager(secretsPath)))
+            WebHostSettings webHostSettings = new WebHostSettings();
+            using (var manager = new WebScriptHostManager(config, new SecretManager(secretsPath), webHostSettings))
             {
                 Thread runLoopThread = new Thread(_ =>
                 {

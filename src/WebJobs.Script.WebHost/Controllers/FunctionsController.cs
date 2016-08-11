@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             // Determine the authorization level of the request
-            SecretManager secretManager = (SecretManager)controllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
+            SecretManager secretManager = controllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
             AuthorizationLevel authorizationLevel = AuthorizationLevelAttribute.GetAuthorizationLevel(request, secretManager, functionName: function.Name);
 
             if (function.Metadata.IsExcluded ||

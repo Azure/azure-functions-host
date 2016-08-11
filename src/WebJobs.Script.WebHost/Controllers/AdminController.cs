@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public HostStatus GetHostStatus()
         {
             HostStatus status = new HostStatus();
-
+            
             var lastError = _scriptHostManager.LastError;
             if (lastError != null)
             {

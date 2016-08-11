@@ -283,6 +283,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "Send
 		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Poco", "HttpTrigger-CSharp-Poco", "{49A40362-2EB9-424C-B605-6BEE16A1C8B6}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CSharp-Poco\function.json = sample\HttpTrigger-CSharp-Poco\function.json
+		sample\HttpTrigger-CSharp-Poco\run.csx = sample\HttpTrigger-CSharp-Poco\run.csx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample2", "sample2", "{C1695CB2-C4CF-4E8A-A656-37C766B60623}"
 	ProjectSection(SolutionItems) = preProject
 		sample2\host.json = sample2\host.json
@@ -399,5 +405,6 @@ Global
 		{5E000AEA-A2D3-47C4-AD15-F0051A50CFAF} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
 		{4A9A0ACC-FCEF-4F85-8E7A-C09C52F7CF2A} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
 		{5111B34F-7A78-4B47-8CA4-A391A190D934} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
+		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

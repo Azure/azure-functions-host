@@ -11,3 +11,9 @@ using System.Runtime.InteropServices;
 
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(true)]
+
+[assembly: AssemblyVersion("1.0.0.0")]
+
+// The official build will replace the third place with the build number.
+// For example, 1.0.0.0 becomes 1.0.1234.0
+[assembly: AssemblyFileVersion("1.0.0.0")]

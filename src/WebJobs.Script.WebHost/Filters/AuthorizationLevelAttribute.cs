@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            SecretManager secretManager = (SecretManager)actionContext.ControllerContext.Configuration.DependencyResolver.GetService(typeof(SecretManager));
+            SecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
 
             if (!IsAuthorized(actionContext.Request, Level, secretManager))
             {

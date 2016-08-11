@@ -6,11 +6,13 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.Storage;
@@ -148,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent(Resources.AzureWebHookEventRequest);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            
+
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
@@ -303,6 +305,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // write input blob
             CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-batch");
+            await inputContainer.CreateIfNotExistsAsync();
+            // Processing a large number of blobs on startup can take a while,
+            // so let's start with an empty container.
+            TestHelpers.ClearContainer(inputContainer);
+
             string blobName = Guid.NewGuid().ToString();
             string testData = "This is a test";
             CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(blobName);
@@ -355,6 +362,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
             Assert.Equal(string.Format("{0} messages processed", max), result.Trim());
+        }
+
+        [Fact]
+        public async Task HostStatus_Succeeds()
+        {
+            string uri = "admin/host/status";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string content = await response.Content.ReadAsStringAsync();
+            JObject jsonContent = JObject.Parse(content);
+
+            AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+            Assert.Equal(fileVersionAttr.Version, jsonContent["version"].ToString());
         }
 
         public class TestFixture : IDisposable

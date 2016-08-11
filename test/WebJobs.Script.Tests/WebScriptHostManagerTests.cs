@@ -73,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileLoggingEnabled = true
             };
             SecretManager secretManager = new SecretManager(secretsDir);
-            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager);
+            WebHostSettings webHostSettings = new WebHostSettings();
+            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager, webHostSettings);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -94,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [Fact]
         public void GetHttpFunctionOrNull_DecodesUriProperly()
         {
-            WebScriptHostManager manager = new WebScriptHostManager(new ScriptHostConfiguration(), new SecretManager());
+            WebHostSettings webHostSettings = new WebHostSettings();
+            WebScriptHostManager manager = new WebScriptHostManager(new ScriptHostConfiguration(), new SecretManager(), webHostSettings);
 
             // Initialize the 
             FunctionMetadata metadata = new FunctionMetadata();
@@ -161,7 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 };
 
                 SecretManager secretManager = new SecretManager(SecretsPath);
-                HostManager = new WebScriptHostManager(config, secretManager);
+                WebHostSettings webHostSettings = new WebHostSettings();
+                HostManager = new WebScriptHostManager(config, secretManager, webHostSettings);
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 
                 TestHelpers.Await(() =>

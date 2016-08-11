@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int LogFlushIntervalMs = 1000;
         private readonly string _logFilePath;
         private readonly string _instanceId;
+
         private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
         private FileInfo _currentLogFileInfo;

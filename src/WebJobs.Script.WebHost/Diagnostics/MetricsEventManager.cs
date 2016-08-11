@@ -21,13 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private int _metricEventIntervalInSeconds;
         private static string siteName;
 
-        static MetricsEventManager()
-        {
-            siteName = GetNormalizedString(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
-        }
-
         internal MetricsEventManager(IMetricsEventGenerator generator, int metricEventIntervalInSeconds)
         {
+            // we read this in ctor (not static ctor) since it can change on the fly
+            siteName = GetNormalizedString(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+
             _metricsEventGenerator = generator;
             _metricEventIntervalInSeconds = metricEventIntervalInSeconds;
         }
