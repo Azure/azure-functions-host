@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
 
-
             hostManager.Stop();
             Assert.False(hostManager.IsRunning);
 

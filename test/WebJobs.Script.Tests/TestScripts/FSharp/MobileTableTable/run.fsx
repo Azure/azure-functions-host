@@ -3,10 +3,8 @@
 
 #if !COMPILED
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
-#r "Microsoft.WindowsAzure.Mobile.dll"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
-#r "Microsoft.Azure.WebJobs.Extensions.MobileApps.dll"
 #endif
 
 //----------------------------------------------------------------------------------------
@@ -14,6 +12,8 @@
 
 #r "System.Threading.Tasks"
 #r "Newtonsoft.Json"
+
+#r "Microsoft.WindowsAzure.Mobile.dll"
 
 open System
 open System.Threading.Tasks
@@ -39,6 +39,5 @@ let Run(input: string , table: IMobileServiceTable<Item>) =
               ProcessedAt = DateTimeOffset.Now
               CreatedAt = DateTimeOffset.Now }
         do! table.InsertAsync item |> Async.AwaitTask
-        return ()
     } |> Async.StartAsTask
 

@@ -5,15 +5,15 @@
 #I "../../../../../bin/Binaries/WebJobs.Script.Host"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
-#r "Microsoft.Azure.NotificationHubs.dll"
 #endif
 
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
+#r "Microsoft.Azure.NotificationHubs"
+
 open System
 open System.Collections.Generic
-open System.Runtime.InteropServices
 open Microsoft.Azure.NotificationHubs
 
 
@@ -22,5 +22,5 @@ let GetTemplateNotification(message: string) =
     templateProperties.["message"] <- message
     new TemplateNotification(templateProperties)
 
-let Run(input: string, [<Out>] notification: byref<Notification>) =
+let Run(input: string, notification: byref<Notification>) =
     notification <- GetTemplateNotification(input)

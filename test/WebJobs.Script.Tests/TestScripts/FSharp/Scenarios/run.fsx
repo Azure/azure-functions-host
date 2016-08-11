@@ -13,7 +13,6 @@
 #r "Newtonsoft.Json"
 
 open System
-open System.Runtime.InteropServices
 open Microsoft.Azure.WebJobs.Host
 
 [<CLIMutable>]
@@ -22,11 +21,9 @@ type ScenarioInput =
       Container : string
       Value: string } 
 
-let Run(input: ScenarioInput, [<Out>] blob: byref<string>, log: TraceWriter) =
-    blob <- null
-
+let Run(input: ScenarioInput, blob: byref<string>, log: TraceWriter) =
     if (input.Scenario = "randGuid") then
-        blob <- input.Value;
+        blob <- input.Value
     else
         failwith (sprintf "The scenario '%s' did not match any known scenario." input.Scenario)
 

@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-/*
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,11 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ServiceBusQueueTriggerToBlobTestImpl();
         }
 
-        [Fact]
-        public async Task MobileTables()
-        {
-            await MobileTablesTest(isDotNet: true);
-        }
+        //[Fact]
+        //public async Task MobileTables()
+        //{
+        //    await MobileTablesTest(isDotNet: true);
+        //}
 
         [Fact]
         public async Task DocumentDB()
@@ -172,7 +171,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
         }
-
         [Fact]
         public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
@@ -219,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CreateSharedAssemblies();
             }
 
-            public TestFixture() : base(ScriptRoot, "FSharp")
+            public TestFixture() : base(ScriptRoot, "fsharp")
             {
             }
 
@@ -276,18 +274,17 @@ namespace SecondaryDependency
             }
         }
 
-        public class TestInput
-        {
-            public int Id { get; set; }
-            public string Value { get; set; }
-        }
+                public class TestInput
+                {
+                    public int Id { get; set; }
+                    public string Value { get; set; }
+                }
 
-        public class ScenarioInput
-        {
-            public string Scenario { get; set; }
-            public string Container { get; set; }
-            public string Value { get; set; }
-        }
+                public class ScenarioInput
+                {
+                    public string Scenario { get; set; }
+                    public string Container { get; set; }
+                    public string Value { get; set; }
+                }
     }
 }
-*/

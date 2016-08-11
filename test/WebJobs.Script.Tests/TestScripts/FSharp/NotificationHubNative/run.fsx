@@ -11,7 +11,6 @@
 // This is the implementation of the function 
 
 open System
-open System.Runtime.InteropServices
 
-let Run(input: string, [<Out>] wnsToastPayload: byref<string>) =
-    wnsToastPayload <- "<toast><visual><binding template=\"ToastText01\"><text id=\"1\">Test message from C#</text></binding></visual></toast>";
+let Run(input: string, wnsToastPayload: byref<string>) =
+    wnsToastPayload <- "<toast><visual><binding template=\"ToastText01\"><text id=\"1\">Test message from F#</text></binding></visual></toast>";

@@ -96,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock.Protected().Verify("Dispose", Times.Once(), true);
         }
 
+/*
         [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
@@ -136,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Null(target.Object.LastError);
         }
+*/
 
         [Fact]
         public async Task EmptyHost_StartsSuccessfully()
