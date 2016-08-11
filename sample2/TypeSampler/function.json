@@ -5,7 +5,7 @@
       "name": "req",
       "type": "httpTrigger",
       "methods": [ "get" ],
-      "route": "typesampler/{strvalue}/{boolvalue:bool}/{longvalue:long}/{doubvalue:double}/{date:datetime}",
+      "route": "typesampler/{strvalue}/{boolvalue:bool}/{longvalue:long}/{doubvalue:double}/{*date:datetime:regex(\\d{4}/\\d{2}/\\d{2})}",
       "direction": "in"
     },
     {

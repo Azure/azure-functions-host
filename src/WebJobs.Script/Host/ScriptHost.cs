@@ -474,39 +474,39 @@ namespace Microsoft.Azure.WebJobs.Script
                     continue;
                 }
 
-                if (function.BindingDetails != null)
-                {
-                    foreach (var binding in function.BindingDetails)
-                    {
-                        BindingMetadata bindingMetadata;
-                        switch (binding.BindingType.ToLowerInvariant())
-                        {
-                            case "table":
-                                bindingMetadata = new TableBindingMetadata();
-                                bindingMetadata.Connection = configMetadata.TableStorage.Connection;
-                                ((TableBindingMetadata)bindingMetadata).PartitionKey = configMetadata.TableStorage.PartitionKey;
-                                ((TableBindingMetadata)bindingMetadata).TableName = configMetadata.TableStorage.Table;
-                                break;
-                            case "httptrigger":
-                                bindingMetadata = triggerBindingMetadata;
-                                break;
-                            case "timerTrigger":
-                                bindingMetadata = triggerBindingMetadata;
-                                break;
-                            default:
-                                bindingMetadata = new BindingMetadata();
-                                break;
-                        }
-                        //add universal binding metadata info
-                        bindingMetadata.Direction = (BindingDirection) Enum.Parse(typeof(BindingDirection), binding.Direction, true);
-                        bindingMetadata.Type = binding.BindingType;
-                        bindingMetadata.Name = binding.Name;
+                function.BindingDetails = function.BindingDetails ?? new Collection<BindingDetail>();
 
-                        functionMetadata.Bindings.Add(bindingMetadata);
+                foreach (var binding in function.BindingDetails)
+                {
+                    BindingMetadata bindingMetadata;
+                    switch (binding.BindingType.ToLowerInvariant())
+                    {
+                        case "table":
+                            bindingMetadata = new TableBindingMetadata();
+                            bindingMetadata.Connection = configMetadata.TableStorage.Connection;
+                            ((TableBindingMetadata)bindingMetadata).PartitionKey = configMetadata.TableStorage.PartitionKey;
+                            ((TableBindingMetadata)bindingMetadata).TableName = configMetadata.TableStorage.Table;
+                            break;
+                        case "httptrigger":
+                            bindingMetadata = triggerBindingMetadata;
+                            break;
+                        case "timerTrigger":
+                            bindingMetadata = triggerBindingMetadata;
+                            break;
+                        default:
+                            bindingMetadata = new BindingMetadata();
+                            break;
                     }
-                    //fill in default bindings (i.e. httptrigger-in and http-out if not present)
-                    ParseUtility.CreateDefaultBindings(functionMetadata, triggerBindingMetadata);
+                    //add universal binding metadata info
+                    bindingMetadata.Direction = (BindingDirection) Enum.Parse(typeof(BindingDirection), binding.Direction, true);
+                    bindingMetadata.Type = binding.BindingType;
+                    bindingMetadata.Name = binding.Name;
+
+                    functionMetadata.Bindings.Add(bindingMetadata);
                 }
+                //fill in default bindings (i.e. httptrigger-in and http-out if not present)
+                ParseUtility.CreateDefaultBindings(functionMetadata, triggerBindingMetadata);
+
                 //add generic function metadata
                 functionMetadata.ScriptType = (ScriptType) Enum.Parse(typeof(ScriptType), configMetadata.Language, true);
                 functionMetadata.ScriptCode = configMetadata.CommonCode != null && function.Code != null ? configMetadata.CommonCode + "\n" + function.Code : function.Code;

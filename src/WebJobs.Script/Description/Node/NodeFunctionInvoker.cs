@@ -401,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var httpTrigger = _trigger as HttpTriggerBindingMetadata;
             if (httpTrigger != null)
             {
-                requestObject["parameters"] = RoutingUtility.ExtractRouteParameters(httpTrigger.Route, request);
+                requestObject["params"] = RoutingUtility.ExtractRouteParameters(httpTrigger.Route, request);
             }
 
             Dictionary<string, string> headers = new Dictionary<string, string>();

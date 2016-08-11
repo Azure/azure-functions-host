@@ -1,7 +1,7 @@
 ﻿module.exports = function (context, req) {
     try {
         //build the response string using the parameters extracted from the routes
-        var parameters = req.parameters;
+        var parameters = req.params;
         var responseString = "";
         responseString += "String value: " + parameters.strvalue + "\n";
         responseString += "Bool value: " + parameters.boolvalue + "\n";

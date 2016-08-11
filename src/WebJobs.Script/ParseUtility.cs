@@ -160,6 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public Collection<BindingDetail> BindingDetails
         {
             get { return _bindingDetails; }
+            set { _bindingDetails = value; }
         }
     }
 

@@ -43,7 +43,7 @@ functions:
             };
         }
     - name: add
-      trigger: "POST@counter/{counterName}/{addValue:int}"
+      trigger: "POST@counters/{counterName}/addValue/{addValue:int}"
       bindings:
         - "tableBinding:table-out"
       code: |

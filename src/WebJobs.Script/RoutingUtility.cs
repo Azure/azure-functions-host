@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -33,7 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {typeof(GuidRouteConstraint), (str => Guid.Parse(str)) },
             {typeof(IntRouteConstraint), (str => Convert.ToInt32(str)) },
             {typeof(LongRouteConstraint), (str => Convert.ToInt64(str)) },
-            {typeof(RangeRouteConstraint), (str => Convert.ToInt64(str)) }
+            {typeof(RangeRouteConstraint), (str => Convert.ToInt64(str)) },
+            {typeof(MaxRouteConstraint), (str => Convert.ToInt64(str)) },
+            {typeof(MinRouteConstraint), (str => Convert.ToInt64(str)) }
         };  
 
         private static TemplateMatcher GetTemplateMatcherAndUpdateCache(string queryTemplate)
@@ -92,6 +95,31 @@ namespace Microsoft.Azure.WebJobs.Script
             ConstraintsMap.Clear();
         }
 
+        public static string EscapeRegexRoutes(string route)
+        {
+            string regexIndicator = ":regex(";
+            if (route == null || !route.Contains(regexIndicator))
+            {
+                return route;
+            }
+            int currentIndex = 0;
+            StringBuilder newString = new StringBuilder();
+            int regexIndex = route.IndexOf(regexIndicator, currentIndex, StringComparison.Ordinal);
+            int endSectionIndex = 0;
+            while (regexIndex != -1)
+            {
+                endSectionIndex = regexIndex + regexIndicator.Length;
+                newString.Append(route.Substring(currentIndex, endSectionIndex));
+                currentIndex = endSectionIndex;
+                endSectionIndex = route.IndexOf(")", currentIndex, StringComparison.Ordinal);
+                string regexSectionString = route.Substring(currentIndex, endSectionIndex-currentIndex);
+                newString.Append(regexSectionString.Replace("{", "{{").Replace("}", "}}"));
+                regexIndex = route.IndexOf(regexIndicator, currentIndex, StringComparison.Ordinal);
+            }
+            newString.Append(route.Substring(endSectionIndex));
+            return newString.ToString();
+        }
+
         public static bool MatchesTemplate(string queryTemplate, string query)
         {
             try
@@ -129,8 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script
             var values = new RouteValueDictionary();
             if (queryTemplate != null)
             {
-                string requestUri = request.RequestUri.AbsoluteUri;
-                int idx = requestUri.ToLowerInvariant().IndexOf("api", StringComparison.OrdinalIgnoreCase);
+                string requestUri = request.RequestUri.AbsolutePath;
+                int idx = requestUri.ToLowerInvariant().IndexOf("api/", StringComparison.OrdinalIgnoreCase);
                 string uri = null;
                 if (idx > 0)
                 {
@@ -165,8 +193,41 @@ namespace Microsoft.Azure.WebJobs.Script
         private static object CoerceArgumentType(string value, IRouteConstraint constraint)
         {
             Func<string, object> conversion;
-            StringConverter.TryGetValue(constraint.GetType(), out conversion);
-            return conversion != null ? conversion.Invoke(value) : value;     
+            var compositeConstraint = constraint as CompositeRouteConstraint;
+            if (compositeConstraint == null)
+            {
+                StringConverter.TryGetValue(constraint.GetType(), out conversion);
+                if (conversion != null)
+                {
+                    try
+                    {
+                        return conversion.Invoke(value);
+                    }
+                    catch
+                    {
+                        return value;
+                    }
+                }
+                return value;
+            }
+            //go through the subConstraints until one properly converts the type
+            foreach (var subConstraint in compositeConstraint.Constraints)
+            {
+                StringConverter.TryGetValue(subConstraint.GetType(), out conversion);
+                if (conversion != null)
+                {
+                    try
+                    {
+                        object newVal = conversion.Invoke(value);
+                        return newVal;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+                }
+            }
+            return value;
         }
 
         public static string ExtractRouteTemplateFromMetadata(FunctionMetadata metadata)
