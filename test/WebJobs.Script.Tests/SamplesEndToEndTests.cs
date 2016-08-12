@@ -305,6 +305,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // write input blob
             CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-batch");
+            await inputContainer.CreateIfNotExistsAsync();
+            // Processing a large number of blobs on startup can take a while,
+            // so let's start with an empty container.
+            TestHelpers.ClearContainer(inputContainer);
+
             string blobName = Guid.NewGuid().ToString();
             string testData = "This is a test";
             CloudBlockBlob inputBlob = inputContainer.GetBlockBlobReference(blobName);
@@ -371,8 +376,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
-
-            Assert.True(jsonContent["isPrimary"].ToObject<bool>());
 
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.Equal(fileVersionAttr.Version, jsonContent["version"].ToString());

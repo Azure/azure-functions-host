@@ -116,6 +116,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, files.Length);
         }
 
+        [Fact]
+        public void WriteLogs_ReusesLastFile()
+        {
+            DirectoryInfo directory = new DirectoryInfo(_logFilePath);
+            directory.Create();
+
+            int count = directory.EnumerateFiles().Count();
+            Assert.Equal(0, count);
+
+            for (int i = 0; i < 3; i++)
+            {
+                FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
+                traceWriter.Verbose("Testing");
+                traceWriter.Flush();
+            }
+
+            count = directory.EnumerateFiles().Count();
+            Assert.Equal(1, count);
+
+            string logFile = directory.EnumerateFiles().First().FullName;
+            string[] fileLines = File.ReadAllLines(logFile);
+            Assert.Equal(3, fileLines.Length);
+        }
+
         private void WriteLogs(string logFilePath, int numLogs)
         {
             FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);

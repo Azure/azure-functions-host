@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -32,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost
     {
         private const string HostAssemblyName = "ScriptHost";
-        private static bool? _standbyMode;
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
+        private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
@@ -49,24 +48,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public event EventHandler IsPrimaryChanged;
 
-        public static bool InStandbyMode
+        public string InstanceId
         {
             get
             {
-                // once set, never reset
-                if (_standbyMode != null)
+                if (_instanceId == null)
                 {
-                    return _standbyMode.Value;
-                }
-                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
-                {
-                    return true;
+                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")
+                        ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+
+                    _instanceId = _instanceId.Substring(0, 32);
                 }
 
-                // no longer standby mode
-                _standbyMode = false;
-
-                return _standbyMode.Value;
+                return _instanceId;
             }
         }
 
@@ -82,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _blobLeaseManager?.HasLease ?? !ScriptConfig.RoleDetectionEnabled;
+                return _blobLeaseManager?.HasLease ?? false;
             }
         }
 
@@ -92,12 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return _restartEvent;
             }
-        }
-
-        public static void ResetStandbyMode()
-        {
-            // this is for testing only
-            _standbyMode = null;
         }
 
         internal void AddFunctionError(string functionName, string error)
@@ -238,27 +226,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            if (!InStandbyMode)
+            var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            if (storageString == null)
             {
-                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-                if (storageString == null)
-                {
-                    // Disable core storage 
-                    ScriptConfig.HostConfig.StorageConnectionString = null;
-
-                    if (ScriptConfig.RoleDetectionEnabled)
-                    {
-                        // Role detection is enabled, but we're missing the storage string
-                        throw new ConfigurationErrorsException("Unable to initialize role detection. Missing storage connection string.");
-                    }
-                }
-                else if (ScriptConfig.RoleDetectionEnabled)
-                {
-                    // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
-                    // and subscribe for change notifications.
-                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, TraceWriter);
-                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
-                }
+                // Disable core storage 
+                ScriptConfig.HostConfig.StorageConnectionString = null;
+            }
+            else
+            {
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // and subscribe for change notifications.
+                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
             }
                       
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
@@ -456,8 +435,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(functionName, triggerDisabledValue) ||
-                IsDisabled(functionName, (JValue)configMetadata["disabled"]))
+            if (IsDisabled(triggerDisabledValue) ||
+                IsDisabled((JValue)configMetadata["disabled"]))
             {
                 functionMetadata.IsDisabled = true;
             }
@@ -513,6 +492,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
                         continue;
+                    }
+
+                    if (metadata.IsDisabled)
+                    {
+                        TraceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
                     }
 
                     // determine the primary script
@@ -843,19 +827,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static bool IsDisabled(string functionName, JValue disabledValue)
-        {
-            if (disabledValue != null && IsDisabled(disabledValue))
-            {
-                // TODO: this needs to be written to the TraceWriter, not
-                // Console
-                Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "Function '{0}' is disabled", functionName));
-                return true;
-            }
-
-            return false;
-        }
-
         private static bool IsDisabled(JToken isDisabledValue)
         {
             if (isDisabledValue != null)
@@ -901,6 +872,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
+                _blobLeaseManager?.Dispose();
+
                 _restartEvent.Dispose();
 
                 if (TraceWriter != null && TraceWriter is IDisposable)
@@ -909,8 +882,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
-
-                _blobLeaseManager?.Dispose();
             }
         }
     }

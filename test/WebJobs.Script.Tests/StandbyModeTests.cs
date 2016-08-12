@@ -12,57 +12,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class StandbyModeTests
     {
         [Fact]
-        public void StanbyMode_Getter_Default()
+        public void InStandbyMode_ReturnsExpectedValue()
         {
             using (new TestEnvironment())
             {
                 // initially false
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
-        }
 
-        [Fact]
-        public void StanbyMode_Getter_WarmUp()
-        {
             using (new TestEnvironment())
             {
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
-                Assert.Equal(true, ScriptHost.InStandbyMode);
+                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
 
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "0");
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
-                Assert.Equal(false, ScriptHost.InStandbyMode);
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
         }
 
         [Fact]
-        public void StanbyMode_GetScriptHostConfiguration()
+        public void GetScriptHostConfiguration_ReturnsExpectedValue()
         {
-            StanbyMode_GetInstance(WebHostResolver.GetScriptHostConfiguration);
+            TestGetter(WebHostResolver.GetScriptHostConfiguration);
         }
 
         [Fact]
-        public void StanbyMode_GetSecretManager()
+        public void GetSecretManager_ReturnsExpectedValue()
         {
-            StanbyMode_GetInstance(WebHostResolver.GetSecretManager);
+            TestGetter(WebHostResolver.GetSecretManager);
         }
 
         [Fact]
-        public void StanbyMode_GetWebHookReceiverManager()
+        public void GetWebHookReceiverManager_ReturnsExpectedValue()
         {
-            StanbyMode_GetInstance(WebHostResolver.GetWebHookReceiverManager);
+            TestGetter(WebHostResolver.GetWebHookReceiverManager);
         }
 
         [Fact]
-        public void StanbyMode_GetWebScriptHostManager()
+        public void GetWebScriptHostManager_ReturnsExpectedValue()
         {
-            StanbyMode_GetInstance(WebHostResolver.GetWebScriptHostManager);
+            TestGetter(WebHostResolver.GetWebScriptHostManager);
         }
 
-        private void StanbyMode_GetInstance<T>(Func<WebHostSettings, T> func)
+        private void TestGetter<T>(Func<WebHostSettings, T> func)
         {
             using (new TestEnvironment())
             {
@@ -98,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void StanbyMode_WarmupTest()
+        public void Warmup_Succeeds()
         {
             using (new TestEnvironment())
             {
@@ -152,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private void Reset()
             {
-                ScriptHost.ResetStandbyMode();
+                WebScriptHostManager.ResetStandbyMode();
                 WebHostResolver.Reset();
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", null);
             }

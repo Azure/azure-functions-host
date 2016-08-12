@@ -30,9 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
                 Type = "HttpTrigger",
                 Name = inputBindingName
             };
-            var scriptHostInfo = GetScriptHostInfo();
-            MethodInfo method = GenerateMethod(trigger, scriptHostInfo);
 
+            MethodInfo method = GenerateMethod(trigger);
+           
             VerifyCommonProperties(method);
 
             // verify trigger parameter
@@ -54,8 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
                 { "direction", "in" },
                 { "queueName", "test" }
             });
-            var scriptHostInfo = GetScriptHostInfo();
-            MethodInfo method = GenerateMethod(trigger, scriptHostInfo);
+
+            MethodInfo method = GenerateMethod(trigger);
 
             VerifyCommonProperties(method);
 
@@ -86,12 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
                 { "QueueName", "test" }
             };
 
-            var scriptHostInfo = GetScriptHostInfo();
-            Exception ex = Assert.Throws<InvalidOperationException>(() => GenerateMethod(trigger, scriptHostInfo));
-            Assert.Equal("Sequence contains no elements", ex.Message);
-            
-            var functionError = scriptHostInfo.Host.FunctionErrors[FunctionName];
-            Assert.True(functionError.Contains(expectedError));
+            using (var scriptHostInfo = GetScriptHostInfo())
+            {
+                Exception ex = Assert.Throws<InvalidOperationException>(() => GenerateMethod(trigger, scriptHostInfo));
+                Assert.Equal("Sequence contains no elements", ex.Message);
+
+                var functionError = scriptHostInfo.Host.FunctionErrors[FunctionName];
+                Assert.True(functionError.Contains(expectedError));
+            }
         }
 
         private static void VerifyCommonProperties(MethodInfo method)
@@ -115,6 +117,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
             parameter = parameters[3];
             Assert.Equal("context", parameter.Name);
             Assert.Equal(typeof(ExecutionContext), parameter.ParameterType);
+        }
+
+        private static MethodInfo GenerateMethod(BindingMetadata trigger)
+        {
+            using (var scriptHostInfo = GetScriptHostInfo())
+            {
+                return GenerateMethod(trigger, scriptHostInfo);
+            }
         }
 
         private static MethodInfo GenerateMethod(BindingMetadata trigger, ScriptHostInfo scriptHostInfo)
@@ -146,18 +156,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
             {
                 RootScriptPath = rootPath
             };
-            ScriptHost host = ScriptHost.Create(scriptConfig);
-            return new ScriptHostInfo { Host = host, Configuration = scriptConfig, RootPath = rootPath };
+            var host = ScriptHost.Create(scriptConfig);
+            return new ScriptHostInfo(host, scriptConfig, rootPath);
         }
     }
 
     [SuppressMessage("Microsoft.StyleCop.CSharp.MaintainabilityRules", "SA1402:FileMayOnlyContainASingleClass")]
-    internal class ScriptHostInfo
+    internal class ScriptHostInfo : IDisposable
     {
-        public ScriptHost Host { get; set; }
+        public ScriptHostInfo(ScriptHost host, ScriptHostConfiguration config, string rootPath)
+        {
+            Host = host;
+            Configuration = config;
+            RootPath = rootPath;
+        }
 
-        public ScriptHostConfiguration Configuration { get; set; }
+        public ScriptHost Host { get; }
 
-        public string RootPath { get; set; }
+        public ScriptHostConfiguration Configuration { get; }
+
+        public string RootPath { get; }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Host.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
     }
 }

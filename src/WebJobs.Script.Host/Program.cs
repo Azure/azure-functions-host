@@ -22,8 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath,
-                RoleDetectionEnabled = true
+                RootScriptPath = rootPath
             };
 
             ScriptHostManager scriptHostManager = new ScriptHostManager(config);

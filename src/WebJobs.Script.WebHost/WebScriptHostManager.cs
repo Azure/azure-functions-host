@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class WebScriptHostManager : ScriptHostManager
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
+        private static bool? _standbyMode;
         private readonly IMetricsLogger _metricsLogger;
         private readonly SecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
@@ -40,32 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostSettings = webHostSettings;
         }
 
-        // Same as Kudu logic
         public static bool IsAzureEnvironment
         {
-            get { return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")); }
+            get
+            {
+                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID"));
+            }
         }
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_secretManager != null)
-                {
-                    _secretManager.Dispose();
-                }
-            }
-
-            base.Dispose(disposing);
-        }
 
         public bool Initialized
         {
             get
             {
-                if (ScriptHost.InStandbyMode)
+                if (InStandbyMode)
                 {
                     return _warmupComplete;
                 }
@@ -73,6 +63,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _hostStarted;
                 }
+            }
+        }
+
+        public static bool InStandbyMode
+        {
+            get
+            {
+                // once set, never reset
+                if (_standbyMode != null)
+                {
+                    return _standbyMode.Value;
+                }
+                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
+                {
+                    return true;
+                }
+
+                // no longer standby mode
+                _standbyMode = false;
+
+                return _standbyMode.Value;
             }
         }
 
@@ -105,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             lock (_syncLock)
             {
-                if (ScriptHost.InStandbyMode)
+                if (InStandbyMode)
                 {
                     if (!_warmupComplete)
                     {
@@ -192,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                traceWriter.Error(string.Format("Warm up failed with {0}", ex));
+                traceWriter.Error(string.Format("Warm up failed: {0}", ex));
             }
             finally
             {
@@ -204,6 +215,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 traceWriter.Dispose();
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_secretManager != null)
+                {
+                    _secretManager.Dispose();
+                }
+            }
+
+            base.Dispose(disposing);
+        }
+
+        // this is for testing only
+        internal static void ResetStandbyMode()
+        {
+            _standbyMode = null;
         }
 
         private static MethodInfo CreateGetWebHookDataMethodInfo()
