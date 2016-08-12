@@ -88,6 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", FixtureId));
             TestInputContainer.CreateIfNotExists();
+            // Processing a large number of blobs on startup can take a while,
+            // so let's start with an empty container.
+            TestHelpers.ClearContainer(TestInputContainer);
 
             TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
             TestOutputContainer.CreateIfNotExists();

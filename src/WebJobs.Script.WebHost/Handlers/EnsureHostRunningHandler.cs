@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             // some routes do not require the host to be running (most do)
             // in standby mode, we don't want to wait for host start
             bool bypassHostCheck = request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().EndsWith("admin/host/status") ||
-                ScriptHost.InStandbyMode;
+                WebScriptHostManager.InStandbyMode;
 
             if (!scriptHostManager.Initialized)
             {
