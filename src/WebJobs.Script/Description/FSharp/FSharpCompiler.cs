@@ -41,7 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {
-            string code = GetFunctionSource(functionMetadata);
             // TODO: Get debug flag from context. Set to true for now.
             bool debug = true;
 
@@ -66,8 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     
                 }
                 File.AppendAllLines(scriptFile, new string[] { "# 0 @\"" + functionMetadata.ScriptFile + "\"" });
-                var scriptSource = File.ReadAllText(functionMetadata.ScriptFile);
+
+                string scriptSource = GetFunctionSource(functionMetadata);
+
                 File.AppendAllText(scriptFile, scriptSource);
+
                 var otherFlags = new List<string>();
 
                 // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
