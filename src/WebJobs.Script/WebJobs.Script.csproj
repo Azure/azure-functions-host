@@ -337,10 +337,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="YamlDotNet, Version=3.9.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\YamlDotNet.3.9.0\lib\net35\YamlDotNet.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizationLevel.cs" />
@@ -352,7 +348,6 @@
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
-    <Compile Include="ParseUtility.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />

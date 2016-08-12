@@ -289,33 +289,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Poco", "
 		sample\HttpTrigger-CSharp-Poco\run.csx = sample\HttpTrigger-CSharp-Poco\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample2", "sample2", "{C1695CB2-C4CF-4E8A-A656-37C766B60623}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ConstraintSampler", "ConstraintSampler", "{74D2E018-F063-42AE-B32A-4D21960AB250}"
 	ProjectSection(SolutionItems) = preProject
-		sample2\host.json = sample2\host.json
+		sample\ConstraintSampler\function.json = sample\ConstraintSampler\function.json
+		sample\ConstraintSampler\run.csx = sample\ConstraintSampler\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "counter", "counter", "{F5F67057-07CC-4250-99FC-A3EF9BB85A15}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSampler-CSharp", "TypeSampler-CSharp", "{A66577B9-E5D1-4F81-A453-D27C0F0D3003}"
 	ProjectSection(SolutionItems) = preProject
-		sample2\counter\api.yaml = sample2\counter\api.yaml
-		sample2\counter\initialize.csx = sample2\counter\initialize.csx
+		sample\TypeSampler-CSharp\function.json = sample\TypeSampler-CSharp\function.json
+		sample\TypeSampler-CSharp\run.csx = sample\TypeSampler-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSampler", "TypeSampler", "{5E000AEA-A2D3-47C4-AD15-F0051A50CFAF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSampler-Node", "TypeSampler-Node", "{4474CA29-F153-41E5-8D7B-EE96F3545569}"
 	ProjectSection(SolutionItems) = preProject
-		sample2\TypeSampler\function.json = sample2\TypeSampler\function.json
-		sample2\TypeSampler\run.csx = sample2\TypeSampler\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TypeSamplerNode", "TypeSamplerNode", "{4A9A0ACC-FCEF-4F85-8E7A-C09C52F7CF2A}"
-	ProjectSection(SolutionItems) = preProject
-		sample2\TypeSamplerNode\function.json = sample2\TypeSamplerNode\function.json
-		sample2\TypeSamplerNode\index.js = sample2\TypeSamplerNode\index.js
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ConstraintSampler", "ConstraintSampler", "{5111B34F-7A78-4B47-8CA4-A391A190D934}"
-	ProjectSection(SolutionItems) = preProject
-		sample2\ConstraintSampler\function.json = sample2\ConstraintSampler\function.json
-		sample2\ConstraintSampler\run.csx = sample2\ConstraintSampler\run.csx
+		sample\TypeSampler-Node\function.json = sample\TypeSampler-Node\function.json
+		sample\TypeSampler-Node\index.js = sample\TypeSampler-Node\index.js
 	EndProjectSection
 EndProject
 Global
@@ -401,10 +390,9 @@ Global
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{F5F67057-07CC-4250-99FC-A3EF9BB85A15} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
-		{5E000AEA-A2D3-47C4-AD15-F0051A50CFAF} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
-		{4A9A0ACC-FCEF-4F85-8E7A-C09C52F7CF2A} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
-		{5111B34F-7A78-4B47-8CA4-A391A190D934} = {C1695CB2-C4CF-4E8A-A656-37C766B60623}
 		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{74D2E018-F063-42AE-B32A-4D21960AB250} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{A66577B9-E5D1-4F81-A453-D27C0F0D3003} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{4474CA29-F153-41E5-8D7B-EE96F3545569} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
