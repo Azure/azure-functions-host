@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -113,11 +114,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             manager.InitializeHttpFunctions(functions);
 
             Uri uri = new Uri("http://local/api/Foo Bar");
-            var result = manager.GetHttpFunctionOrNull(uri);
+            HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Post, uri);
+            var result = manager.GetHttpFunctionOrNull(message);
             Assert.Same(functions[0], result);
 
             uri = new Uri("http://local/api/éà  中國");
-            result = manager.GetHttpFunctionOrNull(uri);
+            message = new HttpRequestMessage(HttpMethod.Post, uri);
+            result = manager.GetHttpFunctionOrNull(message);
             Assert.Same(functions[1], result);
         }
 

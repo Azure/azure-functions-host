@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class WebScriptHostManager : ScriptHostManager
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
+        private readonly HttpMethod _defaultMethod = HttpMethod.Post;
         private static bool? _standbyMode;
         private readonly IMetricsLogger _metricsLogger;
         private readonly SecretManager _secretManager;
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _metricsLogger = new WebHostMetricsLogger();
             _secretManager = secretManager;
             _webHostSettings = webHostSettings;
+            CustomRouteFunctions = new List<KeyValuePair<string, FunctionDescriptor>>();
         }
 
         public static bool IsAzureEnvironment
@@ -86,6 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return _standbyMode.Value;
             }
         }
+
+        private List<KeyValuePair<string, FunctionDescriptor>> CustomRouteFunctions { get; set; } 
 
         public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -274,6 +279,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             arguments.Add(triggerParameter.Name, triggerArgument);
 
+            //extract all possible parameter values from the route
+            var route = RoutingUtility.ExtractRouteTemplateFromMetadata(function.Metadata);
+            var parameters = RoutingUtility.ExtractRouteParameters(route, request);          
+            foreach (var pair in parameters)
+            {
+                arguments.Add(pair.Key, pair.Value);
+            }
+
             return arguments;
         }
 
@@ -293,21 +306,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return getDataMethod.Invoke(null, new object[] { context });
         }
 
-        public FunctionDescriptor GetHttpFunctionOrNull(Uri uri)
+        public FunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request)
         {
-            if (uri == null)
+            if (request == null)
             {
-                throw new ArgumentNullException("uri");
+                throw new ArgumentNullException("request");
             }
 
-            if (HttpFunctions == null || HttpFunctions.Count == 0)
+            var uri = request.RequestUri;
+            FunctionDescriptor function = null;
+
+            if (HttpFunctions == null || CustomRouteFunctions == null || (HttpFunctions.Count == 0 && CustomRouteFunctions.Count == 0))
             {
                 return null;
             }
 
             // Parse the route (e.g. "api/myfunc") to get 'myfunc"
             // including any path after "api/"
-            FunctionDescriptor function = null;
             string route = HttpUtility.UrlDecode(uri.AbsolutePath);
             int idx = route.ToLowerInvariant().IndexOf("api", StringComparison.OrdinalIgnoreCase);
             if (idx > 0)
@@ -315,9 +330,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 idx = route.IndexOf('/', idx);
                 route = route.Substring(idx + 1).Trim('/');
 
-                HttpFunctions.TryGetValue(route.ToLowerInvariant(), out function);
-            }
+                route = (request.Method.Method + "/" + route).ToLowerInvariant();
 
+                //attempt to find if any of the keys exactly match this route
+                HttpFunctions.TryGetValue(route, out function);
+
+                //if still haven't found a function look at all of the templates
+                if (function == null)
+                {
+                    function = (from func in CustomRouteFunctions
+                                where RoutingUtility.MatchesTemplate(func.Key, route)
+                                select func.Value)
+                                .FirstOrDefault();
+                }   
+            }
             return function;
         }
 
@@ -353,19 +379,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal void InitializeHttpFunctions(Collection<FunctionDescriptor> functions)
         {
             HttpFunctions = new Dictionary<string, FunctionDescriptor>();
+            RoutingUtility.ClearCache();
             foreach (var function in functions)
             {
-                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
+                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => p.Type.Equals("httptrigger", StringComparison.OrdinalIgnoreCase));
                 if (httpTriggerBinding != null)
                 {
-                    string route = httpTriggerBinding.Route;
-                    if (!string.IsNullOrEmpty(route))
+                    var methods = httpTriggerBinding.Methods ?? new Collection<HttpMethod>(new HttpMethod[] { _defaultMethod });
+                    if (httpTriggerBinding.Route == null)
                     {
-                        route += "/";
+                        foreach (var method in methods)
+                        {
+                            HttpFunctions.Add((method + "/" + function.Name).ToLowerInvariant(), function);
+                        }
                     }
-                    route += function.Name;
-
-                    HttpFunctions.Add(route.ToLowerInvariant(), function);
+                    else
+                    {
+                        httpTriggerBinding.Route = RoutingUtility.EscapeRegexRoutes(httpTriggerBinding.Route);
+                        foreach (var method in methods)
+                        {
+                            CustomRouteFunctions.Add(new KeyValuePair<string, FunctionDescriptor>((method + "/" + httpTriggerBinding.Route).ToLowerInvariant(), function));
+                        }
+                    }
                 }
             }
         }

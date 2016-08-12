@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             HttpRequestMessage request = controllerContext.Request;
 
             // First see if the request maps to an HTTP function
-            FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request.RequestUri);
+            FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request);
             if (function == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
