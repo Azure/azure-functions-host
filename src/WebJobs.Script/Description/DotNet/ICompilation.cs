@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
@@ -16,6 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver);
 
-        void Emit(Stream assemblyStream, Stream pdbStream, CancellationToken cancellationToken);
+        Assembly EmitAndLoad(CancellationToken cancellationToken);
     }
 }

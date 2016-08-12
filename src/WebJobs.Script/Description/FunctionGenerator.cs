@@ -35,9 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             AssemblyBuilder assemblyBuilder =
                 AppDomain.CurrentDomain.DefineDynamicAssembly(
                     assemblyName,
-                    AssemblyBuilderAccess.RunAndSave);
+                    AssemblyBuilderAccess.Run);
 
-            ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name, assemblyName.Name + ".dll");
+            ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
 
             TypeBuilder tb = mb.DefineType(typeName, TypeAttributes.Public);
 
