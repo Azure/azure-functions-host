@@ -332,7 +332,6 @@
     <Compile Include="FunctionEntryPointResolverTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\CSharp\PackageAssemblyResolverTests.cs" />
-    <Compile Include="HostStatusTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="PowerShellInvokerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
