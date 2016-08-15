@@ -13,7 +13,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 namespace WebJobs.Script.Cli.Verbs.List
 {
     [Verb("list", Scope = Listable.Secrets, HelpText = "Lists function apps in current tenant. See switch-tenant command")]
-    internal class Secrets : BaseListVerb
+    internal class ListSecrets : BaseListVerb
     {
         private readonly ISecretsManager _secretsManager;
 
@@ -23,7 +23,7 @@ namespace WebJobs.Script.Cli.Verbs.List
         [Option('a', "show", DefaultValue = false)]
         public bool ShowSecrets { get; set; }
 
-        public Secrets(ISecretsManager secretsManager)
+        public ListSecrets(ISecretsManager secretsManager)
         {
             _secretsManager = secretsManager;
         }
