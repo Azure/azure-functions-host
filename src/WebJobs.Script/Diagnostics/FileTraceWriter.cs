@@ -130,7 +130,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("traceEvent");
             }
 
+            if (Level < traceEvent.Level)
+            {
+                return;
+            }
+
             AppendLine(traceEvent.Message);
+
             if (traceEvent.Exception != null)
             {
                 if (traceEvent.Exception is FunctionInvocationException ||

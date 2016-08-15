@@ -140,6 +140,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, fileLines.Length);
         }
 
+        [Fact]
+        public void Trace_AppliesLevelFilter()
+        {
+            DirectoryInfo directory = new DirectoryInfo(_logFilePath);
+            directory.Create();
+
+            int count = directory.EnumerateFiles().Count();
+            Assert.Equal(0, count);
+
+            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Info);
+
+            traceWriter.Verbose("Test Verbose");
+            traceWriter.Info("Test Info");
+            traceWriter.Warning("Test Warning");
+            traceWriter.Error("Test Error");
+
+            traceWriter.Flush();
+
+            string logFile = directory.EnumerateFiles().First().FullName;
+            string text = File.ReadAllText(logFile);
+            Assert.True(text.Contains("Test Error"));
+            Assert.True(text.Contains("Test Warning"));
+            Assert.True(text.Contains("Test Info"));
+            Assert.False(text.Contains("Test Verbose"));
+        }
+
         private void WriteLogs(string logFilePath, int numLogs)
         {
             FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);

@@ -71,9 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionName = "HttpTrigger-PowerShellWithError";
             TestHelpers.ClearFunctionLogs(functionName);
 
-            string innerException = "PowerShell script error";
-            string errorRecordMessage = "Test Error in Get-DateToday";
-            string expectedModuleRelativePath = string.Format("/{0}/modules/Get-DateToday.psm1", functionName);
             HttpRequestMessage request = new HttpRequestMessage
             {
                 RequestUri =
@@ -87,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "req", request }
             };
 
+            string innerException = "PowerShell script error";
+            string errorRecordMessage = "Test Error in Get-DateToday";
             Exception ex = await
                 Assert.ThrowsAsync<FunctionInvocationException>(async () => await Fixture.Host.CallAsync(functionName, arguments));
             var runtimeException = (RuntimeException)ex.InnerException;
@@ -95,10 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var logs = await TestHelpers.GetFunctionLogsAsync(functionName);
             Assert.True(logs.Any(p => p.Contains("Function started")));
-
-            // verify module was loaded
-            Assert.True(logs.Any(p => p.Contains("Loaded modules:")));
-            Assert.True(logs.Any(p => p.IndexOf(expectedModuleRelativePath, StringComparison.OrdinalIgnoreCase) >= 0));
 
             // verify an error was written
             Assert.True(logs.Any(p => p.Contains(errorRecordMessage)));
