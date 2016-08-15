@@ -12,8 +12,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using NCli;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Helpers;
-using static WebJobs.Script.Cli.Common.OutputTheme;
-using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs
 {
@@ -36,13 +34,17 @@ namespace WebJobs.Script.Cli.Verbs
 
         public WebVerb()
         {
+            ConfigureDefaultEnvironmentVariables();
             ReadSecrets();
+        }
+
+        private static void ConfigureDefaultEnvironmentVariables()
+        {
+            Environment.SetEnvironmentVariable("EDGE_NODE_PARAMS", "--debug", EnvironmentVariableTarget.Process);
         }
 
         public override async Task RunAsync()
         {
-            
-
             var baseAddress = Setup();
 
             var config = new HttpSelfHostConfiguration(baseAddress)

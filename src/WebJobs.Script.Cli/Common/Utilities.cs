@@ -8,7 +8,7 @@ namespace WebJobs.Script.Cli
 {
     internal static class Utilities
     {
-        public static async Task SafeguardAsync(Func<Task> action)
+        public static async Task SafeGuardAsync(Func<Task> action)
         {
             try
             {
@@ -20,7 +20,7 @@ namespace WebJobs.Script.Cli
             }
         }
 
-        public static async Task<T> SafeguardAsync<T>(Func<Task<T>> action)
+        public static async Task<T> SafeGuardAsync<T>(Func<Task<T>> action)
         {
             try
             {
@@ -29,6 +29,18 @@ namespace WebJobs.Script.Cli
             catch (Exception e)
             {
                 System.Diagnostics.Trace.TraceError($"SafeGuard<T> Exception: {e.ToString()}");
+                return default(T);
+            }
+        }
+
+        public static T SafeGuard<T>(Func<T> action)
+        {
+            try
+            {
+                return action();
+            }
+            catch
+            {
                 return default(T);
             }
         }
