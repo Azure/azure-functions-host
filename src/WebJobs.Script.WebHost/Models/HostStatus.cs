@@ -37,6 +37,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty(PropertyName = "processId", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public int ProcessId { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether the process has a debugger attached or not.
+        /// </summary>
+        [JsonProperty(PropertyName = "isDebuggerAttached", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool IsDebuggerAttached { get; set; }
+
         internal static string GetAssemblyFileVersion(Assembly assembly)
         {
             AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
