@@ -16,17 +16,17 @@ namespace WebJobs.Script.Cli.Extensions
 
         public static Task IgnoreFailure(this Task task)
         {
-            return Utilities.SafeguardAsync(() => task);
+            return Utilities.SafeGuardAsync(() => task);
         }
 
         public static Task<T> IgnoreFailure<T>(this Task<T> task)
         {
-            return Utilities.SafeguardAsync<T>(() => task);
+            return Utilities.SafeGuardAsync<T>(() => task);
         }
 
         public static async Task<IEnumerable<T>> IgnoreAndFilterFailures<T>(this IEnumerable<Task<T>> collection)
         {
-            return (await collection.Select(t => Utilities.SafeguardAsync<T>(() => t)).WhenAll()).NotDefaults();
+            return (await collection.Select(t => Utilities.SafeGuardAsync<T>(() => t)).WhenAll()).NotDefaults();
         }
 
         public static Task WhenAll(this IEnumerable<Task> collection)

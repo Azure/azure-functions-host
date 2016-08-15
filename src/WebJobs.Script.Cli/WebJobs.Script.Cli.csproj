@@ -164,6 +164,7 @@
     <Compile Include="Common\ProcessManager.cs" />
     <Compile Include="Common\SecretsManager.cs" />
     <Compile Include="Common\Loadable.cs" />
+    <Compile Include="Extensions\FunctionStatusExtensions.cs" />
     <Compile Include="Extensions\GenericExtensions.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
     <Compile Include="Extensions\TaskExtensions.cs" />
@@ -184,10 +185,12 @@
     <Compile Include="Common\Utilities.cs" />
     <Compile Include="DependencyResolver.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Helpers\DebuggerHelper.cs" />
     <Compile Include="Interfaces\IProcessInfo.cs" />
     <Compile Include="Interfaces\IProcessManager.cs" />
     <Compile Include="Interfaces\ISecretsManager.cs" />
     <Compile Include="Interfaces\ISettings.cs" />
+    <Compile Include="NativeMethods\ProcessNativeMethods.cs" />
     <Compile Include="NCli\ConsoleApp.cs" />
     <Compile Include="NCli\Constants.cs" />
     <Compile Include="NCli\DefaultHelp.cs" />
@@ -243,6 +246,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="npm\package.json" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
@@ -271,7 +275,9 @@
   <ItemGroup>
     <CodeAnalysisDictionary Include="CodeAnalysisDictionary.xml" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="npm\lib\main.js" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

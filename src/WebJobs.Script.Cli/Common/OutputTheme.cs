@@ -1,4 +1,7 @@
-﻿using Colors.Net;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Colors.Net;
 using static Colors.Net.StringStaticMethods;
 
 namespace WebJobs.Script.Cli.Common
@@ -10,7 +13,7 @@ namespace WebJobs.Script.Cli.Common
         public static RichString AdditionalInfoColor(string value) => Cyan(value);
         public static RichString ExampleColor(string value) => DarkYellow(value);
         public static RichString ErrorColor(string value) => Red(value);
-        public static RichString QuestionColor(string value) => DarkMagenta(value);
+        public static RichString QuestionColor(string value) => DarkCyan(value);
 
     }
 }
