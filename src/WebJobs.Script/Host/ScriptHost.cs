@@ -46,6 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
         }
 
+        public static readonly string Version = GetAssemblyFileVersion(Assembly.GetExecutingAssembly());
+
         public event EventHandler IsPrimaryChanged;
 
         public string InstanceId
@@ -849,6 +851,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
+        }
+
+        internal static string GetAssemblyFileVersion(Assembly assembly)
+        {
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+            return fileVersionAttr?.Version ?? "Unknown";
         }
 
         protected override void Dispose(bool disposing)

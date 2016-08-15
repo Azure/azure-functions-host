@@ -3,12 +3,14 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Web.Http;
+using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -442,7 +444,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject jsonContent = JObject.Parse(content);
 
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-            Assert.Equal(fileVersionAttr.Version, jsonContent["version"].ToString());
+            string expectedVersion = fileVersionAttr.Version;
+            Assert.Equal(expectedVersion, jsonContent["version"].ToString());
+
+            // Now ensure XML content works
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+            request.Headers.Add("Accept", "text/xml");
+
+            response = await this._fixture.HttpClient.SendAsync(request);
+            content = await response.Content.ReadAsStringAsync();
+
+            string ns = "http://schemas.datacontract.org/2004/07/Microsoft.Azure.WebJobs.Script.WebHost.Models";
+            XDocument doc = XDocument.Parse(content);
+            var node = doc.Descendants(XName.Get("Version", ns)).Single();
+            Assert.Equal(expectedVersion, node.Value);
+
+            node = doc.Descendants(XName.Get("Errors", ns)).Single();
+            Assert.True(node.IsEmpty);
         }
 
         public class TestFixture : IDisposable

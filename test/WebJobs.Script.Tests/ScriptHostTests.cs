@@ -5,8 +5,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -15,6 +17,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class ScriptHostTests
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
+
+        [Fact]
+        public void Version_ReturnsAssemblyVersion()
+        {
+            string version = ScriptHost.Version;
+            Assert.Equal("1.0.0", version);
+        }
+
+        [Fact]
+        public void GetAssemblyFileVersion_Unknown()
+        {
+            var asm = new AssemblyMock();
+            var version = ScriptHost.GetAssemblyFileVersion(asm);
+
+            Assert.Equal("Unknown", version);
+        }
+
+        [Fact]
+        public void GetAssemblyFileVersion_ReturnsVersion()
+        {
+            var fileAttr = new AssemblyFileVersionAttribute("1.2.3.4");
+            var asmMock = new Mock<AssemblyMock>();
+            asmMock.Setup(a => a.GetCustomAttributes(typeof(AssemblyFileVersionAttribute), true))
+               .Returns(new Attribute[] { fileAttr })
+               .Verifiable();
+
+            var version = ScriptHost.GetAssemblyFileVersion(asmMock.Object);
+
+            Assert.Equal("1.2.3.4", version);
+            asmMock.Verify();
+        }
 
         [Theory]
         [InlineData("QUEUETriggER.py")]
@@ -326,6 +359,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
+        }
+
+        public class AssemblyMock : Assembly
+        {
+            public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+            {
+                return new Attribute[] { };
+            }
         }
     }
 }
