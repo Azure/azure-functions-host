@@ -36,7 +36,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTest
             armManager.GetUserAsync().Returns(new ArmWebsitePublishingCredentials { PublishingUserName = "test" });
 
             // Test
-            var listVerb = new Verbs.List.FunctionApps(armManager);
+            var listVerb = new Verbs.List.ListFunctionApps(armManager);
 
             await listVerb.RunAsync();
 

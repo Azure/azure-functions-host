@@ -209,9 +209,10 @@
     <Compile Include="Verbs\ConfigVerb.cs" />
     <Compile Include="Verbs\HelpVerb.cs" />
     <Compile Include="Verbs\List\BaseListVerb.cs" />
-    <Compile Include="Verbs\List\FunctionApps.cs" />
-    <Compile Include="Verbs\List\Secrets.cs" />
-    <Compile Include="Verbs\List\StorageAccounts.cs" />
+    <Compile Include="Verbs\List\ListFunctionApps.cs" />
+    <Compile Include="Verbs\List\ListSecrets.cs" />
+    <Compile Include="Verbs\List\ListStorageAccounts.cs" />
+    <Compile Include="Verbs\List\ListTenants.cs" />
     <Compile Include="Verbs\LoadVerb.cs" />
     <Compile Include="Verbs\LoginVerb.cs" />
     <Compile Include="Verbs\LogoutVerb.cs" />

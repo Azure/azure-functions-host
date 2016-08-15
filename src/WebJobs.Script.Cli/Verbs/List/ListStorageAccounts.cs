@@ -1,4 +1,7 @@
-﻿using System.Linq;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System.Linq;
 using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
@@ -8,12 +11,12 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs.List
 {
-    [Verb("list", Scope = Listable.FunctionApps, HelpText = "Lists function apps in current tenant. See switch-tenant command")]
-    internal class FunctionApps : BaseListVerb
+    [Verb("list", Scope = Listable.StorageAccounts, HelpText = "Lists function apps in current tenant. See switch-tenant command")]
+    internal class ListStorageAccounts : BaseListVerb
     {
         private readonly IArmManager _armManager;
 
-        public FunctionApps(IArmManager armManager)
+        public ListStorageAccounts(IArmManager armManager)
         {
             _armManager = armManager;
         }
@@ -25,23 +28,21 @@ namespace WebJobs.Script.Cli.Verbs.List
                 .WriteLine(VerboseColor($"Tenant: {tenant.displayName} ({tenant.domain})"))
                 .WriteLine();
 
-            var user = await _armManager.GetUserAsync();
-            var functionApps = await _armManager.GetFunctionAppsAsync();
-            if (functionApps.Any())
+            var storageAccounts = await _armManager.GetStorageAccountsAsync();
+            if (storageAccounts.Any())
             {
-                ColoredConsole.WriteLine(TitleColor("Function Apps:"));
+                ColoredConsole.WriteLine(TitleColor("Storage Accounts:"));
 
-                foreach (var app in functionApps)
+                foreach (var storageAccount in storageAccounts)
                 {
                     ColoredConsole
-                        .WriteLine($"   -> {TitleColor("Name")}:   {app.SiteName} ({AdditionalInfoColor(app.Location)})")
-                        .WriteLine($"      {TitleColor("Git Url")}: https://{user.PublishingUserName}@{app.SiteName}.scm.azurewebsites.net/")
+                        .WriteLine($"   -> {TitleColor("Name")}: {storageAccount.StorageAccountName} ({AdditionalInfoColor(storageAccount.Location)})")
                         .WriteLine();
                 }
             }
             else
             {
-                ColoredConsole.Error.WriteLine(ErrorColor("   -> No function apps found"));
+                ColoredConsole.Error.WriteLine(ErrorColor("   -> No storage accounts found"));
             }
 
             ColoredConsole
