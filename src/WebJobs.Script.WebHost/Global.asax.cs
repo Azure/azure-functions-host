@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected void Application_End(object sender, EventArgs e)
         {
-            WebScriptHostManager webScriptHostManager = (WebScriptHostManager)GlobalConfiguration.Configuration.DependencyResolver.GetService(typeof(WebScriptHostManager));
+            WebScriptHostManager webScriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
             if (webScriptHostManager != null)
             {
                 webScriptHostManager.Stop();

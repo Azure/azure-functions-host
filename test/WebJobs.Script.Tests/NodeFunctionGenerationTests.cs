@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -192,13 +193,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath
             };
-            ScriptHost host = ScriptHost.Create(scriptConfig);
-            FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
-            {
-                new NodeFunctionDescriptorProvider(host, scriptConfig)
-            };
 
-            var functionDescriptors = host.ReadFunctions(metadatas, descriptorProviders);
+            Collection<FunctionDescriptor> functionDescriptors = null;
+            using (ScriptHost host = ScriptHost.Create(scriptConfig))
+            {
+                FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
+                {
+                new NodeFunctionDescriptorProvider(host, scriptConfig)
+                };
+
+                functionDescriptors = host.ReadFunctions(metadatas, descriptorProviders);
+            }
+
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();

@@ -28,10 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
         
         private readonly Dictionary<string, IWebHookReceiver> _receiverLookup;
         private HttpConfiguration _httpConfiguration;
+        private SecretManager _secretManager;
         private bool disposedValue = false;
 
         public WebHookReceiverManager(SecretManager secretManager)
         {
+            _secretManager = secretManager;
             _httpConfiguration = new HttpConfiguration();
 
             var builder = new ContainerBuilder();
@@ -90,6 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
                     if (_httpConfiguration != null)
                     {
                         _httpConfiguration.Dispose();
+                    }
+
+                    if (_secretManager != null)
+                    {
+                        _secretManager.Dispose();
                     }
                 }
 

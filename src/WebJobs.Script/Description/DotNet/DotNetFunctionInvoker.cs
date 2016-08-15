@@ -94,6 +94,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        public override void OnError(Exception ex)
+        {
+            string error = Utility.FlattenException(ex, s =>
+            {
+                string baseAssemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(Metadata, string.Empty);
+                if (s != null && s.StartsWith(baseAssemblyName))
+                {
+                    return Metadata.Name;
+                }
+
+                return s;
+            });
+
+            TraceError(error);
+        }
+
         private void ReloadScript()
         {
             // Reset cached function

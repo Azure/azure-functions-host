@@ -15,50 +15,59 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait("Category", "E2E")]
-    public class ScriptHostManagerTests 
+    public class ScriptHostManagerTests
     {
         // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes. 
         // Test with timers: 
         [Fact]
         public async Task UpdateFileAndRestart()
         {
-            Random r = new Random();
-
             CancellationTokenSource cts = new CancellationTokenSource();
 
             var fixture = new NodeEndToEndTests.TestFixture();
             var blob1 = UpdateOutputName("testblob", "first", fixture);
 
             await fixture.Host.StopAsync();
-            var config = fixture.Host.ScriptConfig;            
+            var config = fixture.Host.ScriptConfig;
+
+            var success = true;
 
             using (var manager = new ScriptHostManager(config))
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock(). 
                 Thread t = new Thread(_ =>
                    {
-                       // Wait for initial execution.
-                       TestHelpers.Await(() =>
+                       try
                        {
-                           return blob1.Exists();
-                       }, timeout: 10 * 1000).Wait();
+                           // Wait for initial execution.
+                           TestHelpers.Await(() =>
+                           {
+                               return blob1.Exists();
+                           }, timeout: 10 * 1000).Wait();
 
-                       // This changes the bindings so that we now write to blob2
-                       var blob2 = UpdateOutputName("first", "second", fixture);
+                           // This changes the bindings so that we now write to blob2
+                           var blob2 = UpdateOutputName("first", "second", fixture);
 
-                       // wait for newly executed
-                       TestHelpers.Await(() =>
+                           // wait for newly executed
+                           TestHelpers.Await(() =>
+                           {
+                               return blob2.Exists();
+                           }, timeout: 30 * 1000).Wait();
+                       }
+                       catch
                        {
-                           return blob2.Exists();
-                       }, timeout: 10 * 1000).Wait();
+                           success = false;
+                       }
 
-                       manager.Stop();
+                       cts.Cancel();
                    });
-                t.Start();                           
+                t.Start();
 
                 manager.RunAndBlock(cts.Token);
 
                 t.Join();
+
+                Assert.True(success);
             }
         }
 
@@ -175,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string name = hint;
 
             string manifestPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\TimerTrigger\function.json");
-            string content = File.ReadAllText(manifestPath);            
+            string content = File.ReadAllText(manifestPath);
             content = content.Replace(prev, name);
             File.WriteAllText(manifestPath, content);
 

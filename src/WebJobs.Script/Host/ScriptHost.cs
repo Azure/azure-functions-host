@@ -32,9 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string HostAssemblyName = "ScriptHost";
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
+        private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
         private FileSystemWatcher _fileWatcher;
         private int _directoryCountSnapshot;
+        private BlobLeaseManager _blobLeaseManager;
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
@@ -44,6 +46,24 @@ namespace Microsoft.Azure.WebJobs.Script
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
         }
 
+        public event EventHandler IsPrimaryChanged;
+
+        public string InstanceId
+        {
+            get
+            {
+                if (_instanceId == null)
+                {
+                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")
+                        ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+
+                    _instanceId = _instanceId.Substring(0, 32);
+                }
+
+                return _instanceId;
+            }
+        }
+
         public TraceWriter TraceWriter { get; private set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
@@ -51,6 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public Collection<FunctionDescriptor> Functions { get; private set; }
 
         public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
+
+        public bool IsPrimary
+        {
+            get
+            {
+                return _blobLeaseManager?.HasLease ?? false;
+            }
+        }
 
         public AutoResetEvent RestartEvent
         {
@@ -198,18 +226,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
             }
 
-            // Bindings may use name resolution, so provide this before reading the bindings. 
-            var nameResolver = new NameResolver();
-
             var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             if (storageString == null)
             {
                 // Disable core storage 
                 ScriptConfig.HostConfig.StorageConnectionString = null;
             }
+            else
+            {
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // and subscribe for change notifications.
+                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
+            }
                       
-            ScriptConfig.HostConfig.NameResolver = nameResolver;
-
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -250,6 +280,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 PurgeOldLogDirectories();
             }
+        }
+
+        private void BlobLeaseManagerHasLeaseChanged(object sender, EventArgs e)
+        {
+            IsPrimaryChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -400,8 +435,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(functionName, triggerDisabledValue) ||
-                IsDisabled(functionName, (JValue)configMetadata["disabled"]))
+            if (IsDisabled(triggerDisabledValue) ||
+                IsDisabled((JValue)configMetadata["disabled"]))
             {
                 functionMetadata.IsDisabled = true;
             }
@@ -457,6 +492,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
                         continue;
+                    }
+
+                    if (metadata.IsDisabled)
+                    {
+                        TraceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
                     }
 
                     // determine the primary script
@@ -787,19 +827,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static bool IsDisabled(string functionName, JValue disabledValue)
-        {
-            if (disabledValue != null && IsDisabled(disabledValue))
-            {
-                // TODO: this needs to be written to the TraceWriter, not
-                // Console
-                Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "Function '{0}' is disabled", functionName));
-                return true;
-            }
-
-            return false;
-        }
-
         private static bool IsDisabled(JToken isDisabledValue)
         {
             if (isDisabledValue != null)
@@ -844,6 +871,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         invoker.Dispose();
                     }
                 }
+
+                _blobLeaseManager?.Dispose();
 
                 _restartEvent.Dispose();
 

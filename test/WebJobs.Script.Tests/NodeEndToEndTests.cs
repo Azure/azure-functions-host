@@ -507,7 +507,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
 
-            Assert.Equal(3, logs.Length);
             Assert.True(logs[1].Contains("Timer function ran!"));
         }
 

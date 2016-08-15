@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class SecretManager
+    public class SecretManager : IDisposable
     {
         private readonly string _secretsPath;
         private readonly ConcurrentDictionary<string, FunctionSecrets> _secretsMap = new ConcurrentDictionary<string, FunctionSecrets>();
@@ -40,6 +40,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _fileWatcher.Created += OnChanged;
             _fileWatcher.Deleted += OnChanged;
             _fileWatcher.Renamed += OnChanged;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _fileWatcher?.Dispose();
+            }
         }
 
         public virtual HostSecrets GetHostSecrets()
