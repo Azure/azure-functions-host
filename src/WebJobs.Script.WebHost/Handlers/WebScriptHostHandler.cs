@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -10,19 +11,20 @@ using System.Web.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
-    public class EnsureHostRunningHandler : DelegatingHandler
+    public class WebScriptHostHandler : DelegatingHandler
     {
-        private readonly TimeSpan _hostTimeout = new TimeSpan(0, 0, 30);
+        private readonly TimeSpan _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMs = 500;
         private readonly HttpConfiguration _config;
  
-        public EnsureHostRunningHandler(HttpConfiguration config)
+        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = 30)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
+            _hostTimeoutSeconds = new TimeSpan(0, 0, hostTimeoutSeconds);
             _config = config;
         }
 
@@ -46,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 // initialize. This might happen if http requests come in while the
                 // host is starting up for the first time, or if it is restarting.
                 TimeSpan timeWaited = TimeSpan.Zero;
-                while (!scriptHostManager.IsRunning && (timeWaited < _hostTimeout))
+                while (!scriptHostManager.IsRunning && (timeWaited < _hostTimeoutSeconds))
                 {
                     await Task.Delay(_hostRunningPollIntervalMs);
                     timeWaited += TimeSpan.FromMilliseconds(_hostRunningPollIntervalMs);

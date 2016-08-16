@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void WriteLogs_ReusesLastFile()
+        public void Trace_ReusesLastFile()
         {
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
@@ -138,6 +137,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logFile = directory.EnumerateFiles().First().FullName;
             string[] fileLines = File.ReadAllLines(logFile);
             Assert.Equal(3, fileLines.Length);
+        }
+
+        [Fact]
+        public async Task Trace_ThrottlesLogs()
+        {
+            DirectoryInfo directory = new DirectoryInfo(_logFilePath);
+            directory.Create();
+
+            int numLogs = 10000;
+            int numIterations = 3;
+            for (int i = 0; i < numIterations; i++)
+            {
+                Task ignore = Task.Run(() => WriteLogs(_logFilePath, numLogs));
+                await Task.Delay(1000);
+            }
+
+            string logFile = directory.EnumerateFiles().First().FullName;
+            string[] fileLines = File.ReadAllLines(logFile);
+            Assert.True(fileLines.Length == ((FileTraceWriter.MaxLogLinesPerFlushInterval * numIterations) + 3));
+            Assert.Equal(3, fileLines.Count(p => p.Contains("Log output threshold exceeded.")));
         }
 
         [Fact]

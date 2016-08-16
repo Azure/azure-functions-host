@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Moq;
@@ -14,9 +16,100 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class ScriptHostTests
+    public class ScriptHostTests : IClassFixture<ScriptHostTests.TestFixture>
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
+        private readonly TestFixture _fixture;
+
+        public ScriptHostTests(TestFixture fixture)
+        {
+            _fixture = fixture;
+        }
+
+        [Fact]
+        public async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
+        {
+            ScriptHost host = _fixture.Host;
+            string debugModeFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "debug");
+
+            host.LastDebugNotify = DateTime.MinValue;
+            Assert.False(host.InDebugMode);
+
+            // verify that our file watcher for the debug file is configured
+            // properly by touching the file and ensuring that our host goes into
+            // debug mode
+            File.SetLastWriteTimeUtc(debugModeFilePath, DateTime.UtcNow);
+
+            await TestHelpers.Await(() =>
+            {
+                return host.InDebugMode;
+            });
+
+            Assert.True(host.InDebugMode);
+        }
+
+        [Fact]
+        public void InDebugMode_ReturnsExpectedValue()
+        {
+            ScriptHost host = _fixture.Host;
+
+            host.LastDebugNotify = DateTime.MinValue;
+            Assert.False(host.InDebugMode);
+
+            host.LastDebugNotify = DateTime.Now - TimeSpan.FromSeconds(60 * ScriptHost.DebugModeTimeoutMinutes);
+            Assert.False(host.InDebugMode);
+
+            host.LastDebugNotify = DateTime.Now - TimeSpan.FromSeconds(60 * (ScriptHost.DebugModeTimeoutMinutes - 1));
+            Assert.True(host.InDebugMode);
+        }
+
+        [Fact]
+        public void FileLoggingEnabled_ReturnsExpectedValue()
+        {
+            ScriptHost host = _fixture.Host;
+
+            host.ScriptConfig.FileLoggingMode = FileLoggingMode.DebugOnly;
+            host.LastDebugNotify = DateTime.MinValue;
+            Assert.False(host.FileLoggingEnabled);
+            host.NotifyDebug();
+            Assert.True(host.FileLoggingEnabled);
+
+            host.ScriptConfig.FileLoggingMode = FileLoggingMode.Never;
+            Assert.False(host.FileLoggingEnabled);
+
+            host.ScriptConfig.FileLoggingMode = FileLoggingMode.Always;
+            Assert.True(host.FileLoggingEnabled);
+            host.LastDebugNotify = DateTime.MinValue;
+            Assert.True(host.FileLoggingEnabled);
+        }
+
+        [Fact]
+        public void NotifyDebug_UpdatesDebugMarkerFileAndTimestamp()
+        {
+            ScriptHost host = _fixture.Host;
+
+            string debugModeFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "debug");
+            File.Delete(debugModeFilePath);
+            host.LastDebugNotify = DateTime.MinValue;
+
+            Assert.False(host.InDebugMode);
+
+            DateTime lastDebugNotify = host.LastDebugNotify;
+            host.NotifyDebug();
+            Assert.True(host.InDebugMode);
+            Assert.True(File.Exists(debugModeFilePath));
+            Assert.True(host.LastDebugNotify > lastDebugNotify);
+
+            Thread.Sleep(100);
+
+            DateTime lastModified = File.GetLastWriteTime(debugModeFilePath);
+            lastDebugNotify = host.LastDebugNotify;
+            host.NotifyDebug();
+            Assert.True(host.InDebugMode);
+            Assert.True(File.Exists(debugModeFilePath));
+            Assert.True(File.GetLastWriteTime(debugModeFilePath) > lastModified);
+            Assert.True(host.LastDebugNotify > lastDebugNotify);
+        }
 
         [Fact]
         public void Version_ReturnsAssemblyVersion()
@@ -273,14 +366,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
 
             Assert.Equal(TraceLevel.Info, scriptConfig.HostConfig.Tracing.ConsoleLevel);
-            Assert.False(scriptConfig.FileLoggingEnabled);
+            Assert.Equal(FileLoggingMode.Never, scriptConfig.FileLoggingMode);
 
             tracing["consoleLevel"] = "Verbose";
-            tracing["fileLoggingEnabled"] = true;
+            tracing["fileLoggingMode"] = "Always";
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TraceLevel.Verbose, scriptConfig.HostConfig.Tracing.ConsoleLevel);
-            Assert.True(scriptConfig.FileLoggingEnabled);
+            Assert.Equal(FileLoggingMode.Always, scriptConfig.FileLoggingMode);
+
+            tracing["fileLoggingMode"] = "DebugOnly";
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(FileLoggingMode.DebugOnly, scriptConfig.FileLoggingMode);
         }
 
         [Fact]
@@ -370,6 +467,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return new Attribute[] { };
             }
+        }
+
+        public class TestFixture
+        {
+            public TestFixture()
+            {
+                ScriptHostConfiguration config = new ScriptHostConfiguration();
+                config.HostConfig.HostId = ID;
+                Host = ScriptHost.Create(config);
+            }
+
+            public ScriptHost Host { get; private set; }
         }
     }
 }

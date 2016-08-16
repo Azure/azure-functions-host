@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Returns true if the <see cref="ScriptHost"/> is up and running and ready to
         /// process requests.
         /// </summary>
-        public bool IsRunning { get; private set; }
+        public virtual bool IsRunning { get; private set; }
 
         public ScriptHost Instance
         {
@@ -87,7 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1})", newInstance.ScriptConfig.HostConfig.HostId, Process.GetCurrentProcess().Id));
+                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1}, Debug={2})", 
+                            newInstance.ScriptConfig.HostConfig.HostId, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString()));
                     }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 

@@ -118,24 +118,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return hostMock.Object;
                 });
 
-            var target = new Mock<ScriptHostManager>(config, factoryMock.Object);
-            Task taskIgnore = Task.Run(() => target.Object.RunAndBlock());
+            var mockHostManager = new Mock<ScriptHostManager>(config, factoryMock.Object)
+            {
+                CallBase = true
+            };
+            mockHostManager.Protected().Setup("OnHostStarted");
+            Task taskIgnore = Task.Run(() => mockHostManager.Object.RunAndBlock());
 
             // we expect a host exception immediately
             await Task.Delay(2000);
 
-            Assert.False(target.Object.IsRunning);
-            Assert.Same(exception, target.Object.LastError);
+            Assert.False(mockHostManager.Object.IsRunning);
+            Assert.Same(exception, mockHostManager.Object.LastError);
 
             // now verify that if no error is thrown on the next iteration
             // the cached error is cleared
             exception = null;
             await TestHelpers.Await(() =>
             {
-                return target.Object.IsRunning;
+                return mockHostManager.Object.IsRunning;
             });
 
-            Assert.Null(target.Object.LastError);
+            Assert.Null(mockHostManager.Object.LastError);
         }
 */
 
@@ -158,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = functionDir,
                 RootLogPath = logDir,
-                FileLoggingEnabled = true
+                FileLoggingMode = FileLoggingMode.Always
             };
             ScriptHostManager hostManager = new ScriptHostManager(config);
 

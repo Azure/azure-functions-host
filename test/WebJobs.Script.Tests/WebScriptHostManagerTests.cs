@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 RootScriptPath = functionTestDir,
                 RootLogPath = logDir,
-                FileLoggingEnabled = true
+                FileLoggingMode = FileLoggingMode.Always
             };
             SecretManager secretManager = new SecretManager(secretsDir);
             WebHostSettings webHostSettings = new WebHostSettings();
@@ -81,6 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             hostManager.Stop();
             Assert.False(hostManager.IsRunning);
+
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
@@ -156,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     RootScriptPath = @"TestScripts\Node",
                     RootLogPath = logRoot,
-                    FileLoggingEnabled = true
+                    FileLoggingMode = FileLoggingMode.Always
                 };
 
                 SecretManager secretManager = new SecretManager(SecretsPath);

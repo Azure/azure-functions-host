@@ -1,14 +1,20 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
 
-namespace Microsoft.Azure.WebJobs.Host
+namespace Microsoft.Azure.WebJobs.Script
 {
     public static class TraceWriterExtensions
     {
+        public static TraceWriter Conditional(this TraceWriter traceWriter, Func<TraceEvent, bool> predicate)
+        {
+            return new ConditionalTraceWriter(traceWriter, predicate);
+        }
+
         public static void Verbose(this TraceWriter traceWriter, string message, IDictionary<string, object> properties)
         {
             TraceEvent traceEvent = CreateEvent(message, TraceLevel.Verbose, properties);

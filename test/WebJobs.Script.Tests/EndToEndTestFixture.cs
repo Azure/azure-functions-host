@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath,
                 TraceWriter = TraceWriter,
-                FileLoggingEnabled = true
+                FileLoggingMode = FileLoggingMode.Always
             };
 
             // Clear the timer logs first, since one of the tests will

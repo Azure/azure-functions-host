@@ -38,6 +38,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task AdminRequests_PutHostInDebugMode()
+        {
+            var debugFilePath = Path.Combine(_fixture.HostSettings.LogPath, "debug");
+
+            File.Delete(debugFilePath);
+
+            HttpResponseMessage response = await GetHostStatusAsync();
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            Assert.True(File.Exists(debugFilePath));
+            var lastModified = File.GetLastWriteTime(debugFilePath);
+
+            await Task.Delay(100);
+
+            response = await GetHostStatusAsync();
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(lastModified < File.GetLastWriteTime(debugFilePath));
+        }
+
+        [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
@@ -437,7 +457,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
 
-            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            HttpResponseMessage response = await GetHostStatusAsync();
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string content = await response.Content.ReadAsStringAsync();
@@ -464,20 +484,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(node.IsEmpty);
         }
 
+        private async Task<HttpResponseMessage> GetHostStatusAsync()
+        {
+            string uri = "admin/host/status";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+
+            return await this._fixture.HttpClient.SendAsync(request);
+        }
+
         public class TestFixture : IDisposable
         {
             public TestFixture()
             {
                 HttpConfiguration config = new HttpConfiguration();
 
-                WebHostSettings settings = new WebHostSettings
+                HostSettings = new WebHostSettings
                 {
                     IsSelfHost = true,
                     ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample"),
                     LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                     SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
                 };
-                WebApiConfig.Register(config, settings);
+                WebApiConfig.Register(config, HostSettings);
 
                 HttpServer = new HttpServer(config);
                 this.HttpClient = new HttpClient(HttpServer);
@@ -507,6 +536,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 WaitForHost();
             }
+
+            public WebHostSettings HostSettings { get; private set; }
 
             public CloudTableClient TableClient { get; set; }
 

@@ -359,6 +359,7 @@
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />
+    <Compile Include="WebScriptHostHandlerTests.cs" />
     <Compile Include="WebScriptHostManagerTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
     <None Include="app.config">

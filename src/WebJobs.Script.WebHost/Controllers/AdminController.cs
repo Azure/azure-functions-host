@@ -6,8 +6,10 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -93,6 +95,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return status;
+        }
+
+        public override Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
+        {
+            // For all admin api requests, we'll update the ScriptHost debug timeout
+            // For now, we'll enable debug mode on ANY admin requests. Since the Portal interacts through
+            // the admin API this is sufficient for identifying when the Portal is connected.
+            _scriptHostManager.Instance.NotifyDebug();
+
+            return base.ExecuteAsync(controllerContext, cancellationToken);
         }
     }
 }

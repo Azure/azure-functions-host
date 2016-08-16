@@ -351,7 +351,7 @@
     <Compile Include="Description\Binding\TableBindingMetadata.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
-    <Compile Include="Diagnostics\FailedConditionTraceBehavior.cs" />
+    <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
@@ -359,7 +359,7 @@
     <Compile Include="Diagnostics\MetricEvent.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
-    <Compile Include="Diagnostics\TraceWriterExtensions.cs" />
+    <Compile Include="Extensions\TraceWriterExtensions.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\BlobLeaseManager.cs" />

@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
 
-            config.MessageHandlers.Add(new EnsureHostRunningHandler(config));
+            config.MessageHandlers.Add(new WebScriptHostHandler(config));
 
             // Web API configuration and services
 

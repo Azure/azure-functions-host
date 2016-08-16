@@ -317,7 +317,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
-    <Compile Include="Handlers\EnsureHostRunningHandler.cs" />
+    <Compile Include="Handlers\WebScriptHostHandler.cs" />
     <Compile Include="HostSecrets.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Models\FunctionMetrics.cs" />

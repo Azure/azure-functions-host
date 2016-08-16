@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
 
-        public bool Initialized
+        public virtual bool Initialized
         {
             get
             {
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 ScriptHostConfiguration config = new ScriptHostConfiguration
                 {
                     RootScriptPath = rootPath,
-                    FileLoggingEnabled = false,
+                    FileLoggingMode = FileLoggingMode.Never,
                     RootLogPath = settings.LogPath,
                     TraceWriter = traceWriter,
                     FileWatchingEnabled = false

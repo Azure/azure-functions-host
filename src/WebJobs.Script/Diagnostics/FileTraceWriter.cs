@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int LastModifiedCutoffDays = 1;
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
         internal const int LogFlushIntervalMs = 1000;
+        internal const int MaxLogLinesPerFlushInterval = 250;
         private readonly string _logFilePath;
         private readonly string _instanceId;
 
@@ -130,8 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("traceEvent");
             }
 
-            if (Level < traceEvent.Level)
+            if (Level < traceEvent.Level || _logBuffer.Count > MaxLogLinesPerFlushInterval)
             {
+                return;
+            }
+
+            if (_logBuffer.Count == MaxLogLinesPerFlushInterval)
+            {
+                AppendLine("Log output threshold exceeded.");
                 return;
             }
 

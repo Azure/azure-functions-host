@@ -30,11 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHost : JobHost
     {
+        internal const int DebugModeTimeoutMinutes = 15;
         private const string HostAssemblyName = "ScriptHost";
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
-        private FileSystemWatcher _fileWatcher;
+        private FileSystemWatcher _scriptFileWatcher;
+        private FileSystemWatcher _debugModeFileWatcher;
         private int _directoryCountSnapshot;
         private BlobLeaseManager _blobLeaseManager;
 
@@ -87,6 +89,53 @@ namespace Microsoft.Azure.WebJobs.Script
             get
             {
                 return _restartEvent;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the host is in debug mode.
+        /// </summary>
+        public virtual bool InDebugMode
+        {
+            get
+            {
+                return (DateTime.Now - LastDebugNotify).TotalMinutes < DebugModeTimeoutMinutes;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether logs should be written to disk.
+        /// </summary>
+        internal virtual bool FileLoggingEnabled
+        {
+            get
+            {
+                return ScriptConfig.FileLoggingMode == FileLoggingMode.Always ||
+                    (ScriptConfig.FileLoggingMode == FileLoggingMode.DebugOnly && InDebugMode);
+            }
+        }
+
+        internal DateTime LastDebugNotify { get; set; }
+
+        /// <summary>
+        /// Notifies this host that it should be in debug mode.
+        /// </summary>
+        public void NotifyDebug()
+        {
+            // This is redundant, since we're also watching the debug marker
+            // file. However, we leave this here for assurances.
+            LastDebugNotify = DateTime.Now;
+
+            // create or update the debug marker file to trigger a
+            // debug timeout update across all instances
+            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
+            if (!File.Exists(debugModeFilePath))
+            {
+                File.Create(debugModeFilePath).Dispose();
+            }
+            else
+            {
+                File.SetLastWriteTimeUtc(debugModeFilePath, DateTime.UtcNow);
             }
         }
 
@@ -161,10 +210,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             TraceWriter = ScriptConfig.TraceWriter;
             TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
-            if (ScriptConfig.FileLoggingEnabled)
+            if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
             {
+                // Host file logging is only done conditionally
                 string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-                TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel);
+                TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel).Conditional(p => FileLoggingEnabled);
+
                 if (TraceWriter != null)
                 {
                     // create a composite writer so our host logs are written to both
@@ -175,6 +226,16 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = fileTraceWriter;
                 }
             }
+
+            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
+            this.LastDebugNotify = File.GetLastWriteTime(debugModeFilePath);
+
+            _debugModeFileWatcher = new FileSystemWatcher(ScriptConfig.RootLogPath, "debug")
+            {
+                EnableRaisingEvents = true
+            };
+            _debugModeFileWatcher.Created += OnDebugModeFileChanged;
+            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
             if (TraceWriter != null)
             {
@@ -193,15 +254,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (ScriptConfig.FileWatchingEnabled)
             {
-                _fileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
+                _scriptFileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
                 {
                     IncludeSubdirectories = true,
                     EnableRaisingEvents = true
                 };
-                _fileWatcher.Changed += OnFileChanged;
-                _fileWatcher.Created += OnFileChanged;
-                _fileWatcher.Deleted += OnFileChanged;
-                _fileWatcher.Renamed += OnFileChanged;
+                _scriptFileWatcher.Changed += OnFileChanged;
+                _scriptFileWatcher.Created += OnFileChanged;
+                _scriptFileWatcher.Deleted += OnFileChanged;
+                _scriptFileWatcher.Renamed += OnFileChanged;
             }
 
             // If a file change should result in a restart, we debounce the event to
@@ -278,10 +339,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             Functions = functions;
 
-            if (ScriptConfig.FileLoggingEnabled)
+            if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
             {
                 PurgeOldLogDirectories();
             }
+        }
+
+        /// <summary>
+        /// Whenever the debug marker file changes we update our debug timeout
+        /// </summary>
+        private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
+        {
+            LastDebugNotify = DateTime.Now;
         }
 
         private void BlobLeaseManagerHasLeaseChanged(object sender, EventArgs e)
@@ -708,9 +777,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
-                if (configSection.TryGetValue("fileLoggingEnabled", out value))
+                if (configSection.TryGetValue("fileLoggingMode", out value))
                 {
-                    scriptConfig.FileLoggingEnabled = (bool)value;
+                    FileLoggingMode fileLoggingMode;
+                    if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
+                    {
+                        scriptConfig.FileLoggingMode = fileLoggingMode;
+                    }
                 }
             }
         }
@@ -865,29 +938,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (disposing)
             {
-                if (_fileWatcher != null)
-                {
-                    _fileWatcher.Dispose();
-                }
+                _scriptFileWatcher?.Dispose();
+                _debugModeFileWatcher?.Dispose();
 
                 foreach (var function in Functions)
                 {
-                    var invoker = function.Invoker as IDisposable;
-
-                    if (invoker != null)
-                    {
-                        invoker.Dispose();
-                    }
+                    (function.Invoker as IDisposable)?.Dispose();
                 }
 
                 _blobLeaseManager?.Dispose();
-
                 _restartEvent.Dispose();
-
-                if (TraceWriter != null && TraceWriter is IDisposable)
-                {
-                    ((IDisposable)TraceWriter).Dispose();
-                }
+                (TraceWriter as IDisposable)?.Dispose();
 
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
             }

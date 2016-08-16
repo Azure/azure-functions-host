@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public TraceWriter Create()
         {
-            if (_scriptHostConfig.FileLoggingEnabled)
+            if (_scriptHostConfig.FileLoggingMode != FileLoggingMode.Never)
             {
                 TraceLevel functionTraceLevel = _scriptHostConfig.HostConfig.Tracing.ConsoleLevel;
                 string logFilePath = Path.Combine(_scriptHostConfig.RootLogPath, "Function", _functionName);

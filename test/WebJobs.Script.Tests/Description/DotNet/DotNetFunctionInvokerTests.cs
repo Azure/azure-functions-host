@@ -136,11 +136,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 
             await invoker.GetFunctionTargetAsync();
 
-            // Verify that our expected messages were logged
-            TraceEvent trace = dependencies.TraceWriter.Traces.FirstOrDefault();
-            Assert.NotNull(trace);
-            Assert.Equal(System.Diagnostics.TraceLevel.Verbose, trace.Level);
-            Assert.Contains("[Supressed 'Warning' trace]", trace.Message);
+            // Verify that logs on the second instance were suppressed
+            int count = dependencies.TraceWriter.Traces.Count();
+            Assert.Equal(0, count);
         }
 
         private RunDependencies CreateDependencies(TraceLevel traceLevel = TraceLevel.Info)
@@ -152,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             {
                 HostConfig = new JobHostConfiguration(),
                 TraceWriter = traceWriter,
-                FileLoggingEnabled = true,
+                FileLoggingMode = FileLoggingMode.Always,
                 FileWatchingEnabled = true
             };
 

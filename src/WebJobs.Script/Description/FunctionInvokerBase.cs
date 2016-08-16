@@ -27,7 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             traceWriterFactory = traceWriterFactory ?? new FunctionTraceWriterFactory(functionMetadata.Name, Host.ScriptConfig);
             TraceWriter traceWriter = traceWriterFactory.Create();
-            TraceWriter = new ConditionalTraceWriter(traceWriter, t => !(t.Properties?.ContainsKey(PrimaryHostTracePropertyName) ?? false) || Host.IsPrimary);
+
+            // Function file logging is only done conditionally
+            TraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(PrimaryHostTracePropertyName) ?? false) || Host.IsPrimary));
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties => _primaryHostTraceProperties;

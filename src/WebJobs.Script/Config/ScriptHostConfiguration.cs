@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HostConfig = new JobHostConfiguration();
             FileWatchingEnabled = true;
+            FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
         }
@@ -48,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool FileWatchingEnabled { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether logs should be written to disk.
-        /// The default is false. When set to true, logs will be written to the directory
-        /// specified by <see cref="RootLogPath"/>.
+        /// Gets or sets a value governing when logs should be written to disk.
+        /// When enabled, logs will be written to the directory specified by 
+        /// <see cref="RootLogPath"/>.
         /// </summary>
-        public bool FileLoggingEnabled { get; set; }
+        public FileLoggingMode FileLoggingMode { get; set; }
 
         /// <summary>
         /// Gets the list of functions that should be run. This list can be used to filter
