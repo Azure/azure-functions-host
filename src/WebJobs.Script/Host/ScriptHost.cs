@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
         }
 
-        public static readonly string Version = GetAssemblyFileVersion(Assembly.GetExecutingAssembly());
+        public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
         public event EventHandler IsPrimaryChanged;
 

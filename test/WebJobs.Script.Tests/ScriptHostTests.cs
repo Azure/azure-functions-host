@@ -21,8 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Version_ReturnsAssemblyVersion()
         {
+            Assembly assembly = typeof(ScriptHost).Assembly;
+            AssemblyFileVersionAttribute fileVersionAttribute = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
             string version = ScriptHost.Version;
-            Assert.Equal("1.0.0.0", version);
+            Assert.Equal(fileVersionAttribute.Version, version);
         }
 
         [Fact]
