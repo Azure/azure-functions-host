@@ -9,9 +9,15 @@ namespace NCli
     public sealed class OptionAttribute : Attribute
     {
         public object DefaultValue { get; set; }
+
         public string HelpText { get; set; }
+
+        public bool ShowInHelp { get; set; } = true;
+
         internal char _shortName { get; }
+
         internal string _longName { get; }
+
         internal int _order { get; }
 
         public OptionAttribute(char shortName, string longName)

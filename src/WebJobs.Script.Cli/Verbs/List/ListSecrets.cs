@@ -17,10 +17,10 @@ namespace WebJobs.Script.Cli.Verbs.List
     {
         private readonly ISecretsManager _secretsManager;
 
-        [Option(0)]
+        [Option(0, ShowInHelp = false)]
         public Listable AzureResource { get; set; }
 
-        [Option('a', "show", DefaultValue = false)]
+        [Option('a', "show", DefaultValue = false, HelpText = "Display the secret value")]
         public bool ShowSecrets { get; set; }
 
         public ListSecrets(ISecretsManager secretsManager)

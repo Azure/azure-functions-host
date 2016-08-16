@@ -47,7 +47,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Colors.Net, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Colors.Net.1.0.2\lib\net45\Colors.Net.dll</HintPath>
+      <HintPath>..\..\packages\Colors.Net.1.0.5\lib\net45\Colors.Net.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="FluentAssertions, Version=4.13.0.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
