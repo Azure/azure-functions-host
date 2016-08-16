@@ -17,6 +17,8 @@ namespace NCli
 
         public object Scope { get; set; }
 
+        public bool AllowEmpty { get; set; }
+
         public IEnumerable<string> Names { get; private set; }
 
         public VerbAttribute(params string[] names)

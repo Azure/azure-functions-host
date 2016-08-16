@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Colors.Net;
+using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace NCli
 {
@@ -13,6 +15,7 @@ namespace NCli
         private readonly string[] _args;
         private readonly IEnumerable<TypePair<VerbAttribute>> _verbs;
         private readonly string _cliName;
+        private bool _isFaulted = false;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter")]
         public static async Task RunAsync<T>(string[] args, IDependencyResolver dependencyResolver = null)
@@ -46,7 +49,7 @@ namespace NCli
         {
             _args = args;
             _dependencyResolver = dependencyResolver;
-            _cliName = Process.GetCurrentProcess().ProcessName;
+            _cliName = Process.GetCurrentProcess().ProcessName.ToLowerInvariant();
             _verbs = assembly
                 .GetTypes()
                 .Where(t => typeof(IVerb).IsAssignableFrom(t) && !t.IsAbstract && t != typeof(DefaultHelp))
@@ -85,6 +88,10 @@ namespace NCli
                     {
                         orderedOption.SetValue(verb, value);
                     }
+                    else
+                    {
+                        throw new ParseException($"Unable to parse option {orderedOption.Name}");
+                    }
                 }
 
                 while (stack.Any())
@@ -103,25 +110,30 @@ namespace NCli
 
                     if (option == null)
                     {
-                        //throw new ParseException($"Unable to find option {arg} on {_args[0]}");
+                        throw new ParseException($"Unable to find option {arg} on {_args[0]}");
                     }
 
                     if (TryParseOption(option, stack, out value))
                     {
                         option.SetValue(verb, value);
                     }
+                    else
+                    {
+                        throw new ParseException($"Unable to parse option {option.Name}");
+                    }
                 }
                 return verb;
             }
             catch (Exception e)
             {
+                _isFaulted = true;
                 // There was an error. Maybe report it if user allowed reports, and display friendly error code for lookup.
                 // Maybe something like: search for ##### on github issues for updates.
-                var verb = InstantiateType(typeof(DefaultHelp));
-                verb.OriginalVerb = _args[0];
-                verb.DependencyResolver = _dependencyResolver;
-                Console.Write(e);
-                return verb;
+                ColoredConsole
+                    .Error
+                    .WriteLine(ErrorColor(e.Message))
+                    .WriteLine();
+                return InstantiateType(GetVerbType().Type);
             }
         }
 
@@ -131,11 +143,13 @@ namespace NCli
 
             if (scopesNotEnums.Any())
             {
-                Console.Error.WriteLine("Scope attribute can only be an Enum");
-                Console.Error.WriteLine("Found:");
+                ColoredConsole.Error.WriteLine(ErrorColor("Scope attribute can only be an Enum"));
+                ColoredConsole.Error.WriteLine(ErrorColor("Found:"));
                 foreach (var scope in scopesNotEnums)
                 {
-                    Console.Error.WriteLine($"Scope on verb '{scope.Type.Name}' is set to '{scope.Attribute.Scope}' of type '{scope.Attribute.Scope.GetType().Name}'");
+                    ColoredConsole
+                        .Error
+                        .WriteLine(ErrorColor($"Scope on verb '{scope.Type.Name}' is set to '{scope.Attribute.Scope}' of type '{scope.Attribute.Scope.GetType().Name}'"));
                 }
                 throw new ParseException("Scope attribute can only be an Enum.");
             }
@@ -147,11 +161,11 @@ namespace NCli
                 var verbsShareName = _verbs.Where(v => v.Attribute.Names.Intersect(verb.Attribute.Names).Any() && v.Type != verb.Type);
                 if (verbsShareName.Any())
                 {
-                    Console.Error.WriteLine($"Verb '{verb.Type.Name}' shares the same name with other verb(s), but doesn't have Scope defined");
-                    Console.Error.WriteLine("Verbs:");
+                    ColoredConsole.Error.WriteLine(ErrorColor($"Verb '{verb.Type.Name}' shares the same name with other verb(s), but doesn't have Scope defined"));
+                    ColoredConsole.Error.WriteLine(ErrorColor("Verbs:"));
                     foreach(var v in verbsShareName)
                     {
-                        Console.Error.WriteLine($"\t{v.Type.Name}");
+                        ColoredConsole.Error.WriteLine(ErrorColor($"\t{v.Type.Name}"));
                     }
 
                     throw new ParseException("Scope attribute can only be an Enum.");
@@ -283,7 +297,6 @@ namespace NCli
             }
             catch
             {
-                Console.WriteLine($"Unable to parse ({arg}) as {type.Name}");
                 return false;
             }
         }
@@ -342,19 +355,51 @@ namespace NCli
         {
             if (_args.Length > 1)
             {
-                var verb = GetVerbType(_args.Skip(1));
-                if (verb != null)
+                var userVerbString = (_isFaulted ? _args : _args.Skip(1)).First();
+                var verbs = _verbs.Where(p => p.Attribute.Names.Any(n => n.Equals(userVerbString, StringComparison.OrdinalIgnoreCase)) && p.Attribute.ShowInHelp);
+
+                foreach (var verb in verbs)
                 {
-                    yield return new Helpline { Value = $"Usage: {_cliName} {verb.Attribute.Usage} [Options]", Level = TraceLevel.Info };
+                    if (verbs.Count() > 1)
+                    {
+                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {_cliName} {userVerbString} {AdditionalInfoColor(verb.Attribute.Scope.ToString())} {verb.Attribute.Usage ?? "\b"} [Options]", Level = TraceLevel.Info };
+                    }
+                    else
+                    {
+                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {_cliName} {userVerbString} {verb.Attribute.Usage ?? "\b"} {AdditionalInfoColor("[Options]")}", Level = TraceLevel.Info };
+                    }
+
                     yield return new Helpline { Value = "\t", Level = TraceLevel.Info };
 
-                    var longestOption = verb.Options.Select(s => s.Attribute.GetUsage(s.PropertyInfo.Name)).Select(s => s.Length).Max();
-                    foreach (var option in verb.Options)
+                    var options = verb.Options.Where(o => o.Attribute.ShowInHelp).ToList();
+                    var longestOption = options.Select(s => s.Attribute.GetUsage(s.PropertyInfo.Name)).Select(s => s.Length).Concat(new[] { 0 }).Max();
+                    longestOption += 3;
+                    foreach (var option in options)
                     {
-                        yield return new Helpline { Value = string.Format($"   {{0, {-longestOption}}} {{1}}", option.Attribute.GetUsage(option.PropertyInfo.Name), option.Attribute.HelpText), Level = TraceLevel.Info };
+                        var helpText = option.Attribute.HelpText;
+                        if (helpText == null && option.PropertyInfo.PropertyType.IsEnum)
+                        {
+                            var type = option.PropertyInfo.PropertyType;
+                            helpText = $"[{Enum.GetNames(type).Where(n => !n.Equals("none", StringComparison.OrdinalIgnoreCase)).Aggregate((a, b) => $"{a}/{b}")}]";
+                        }
+                        else if (helpText == null && option.Attribute._order != -1)
+                        {
+                            helpText = "(Required)";
+                        }
+                        else if (helpText == null)
+                        {
+                            helpText = string.Empty;
+                        }
+
+                        yield return new Helpline { Value = string.Format($"   {{0, {-longestOption}}} {{1}}", option.Attribute.GetUsage(option.PropertyInfo.Name), helpText), Level = TraceLevel.Info };
                     }
-                    yield break;
+
+                    if (options.Any())
+                    {
+                        yield return new Helpline { Value = string.Empty, Level = TraceLevel.Info };
+                    }
                 }
+                yield break;
             }
 
             foreach (var help in GeneralHelp())
@@ -368,12 +413,17 @@ namespace NCli
             yield return new Helpline { Value = $"Usage: {_cliName} [verb] [Options]", Level = TraceLevel.Info };
             yield return new Helpline { Value = "\t", Level = TraceLevel.Info };
 
+            var hashSet = new HashSet<string>();
             var longestName = _verbs.Select(p => p.Attribute).Max(v => v.Names.Max(n => n.Length));
             foreach (var verb in _verbs.Where(v => v.Attribute.ShowInHelp))
             {
                 foreach (var name in verb.Attribute.Names)
                 {
-                    yield return new Helpline { Value = string.Format($"   {{0, {-longestName}}}  {{1}}", name, verb.Attribute.HelpText), Level = TraceLevel.Info };
+                    if (!hashSet.Contains(name))
+                    {
+                        hashSet.Add(name);
+                        yield return new Helpline { Value = string.Format($"   {{0, {-longestName}}}  {{1}}", name, verb.Attribute.HelpText), Level = TraceLevel.Info };
+                    }
                 }
             }
         }

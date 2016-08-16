@@ -53,7 +53,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Colors.Net, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Colors.Net.1.0.2\lib\net45\Colors.Net.dll</HintPath>
+      <HintPath>..\..\packages\Colors.Net.1.0.5\lib\net45\Colors.Net.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Humanizer, Version=1.33.7.0, Culture=neutral, PublicKeyToken=979442b78dfc278e, processorArchitecture=MSIL">
