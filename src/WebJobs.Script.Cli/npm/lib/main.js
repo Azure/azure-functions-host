@@ -20,7 +20,9 @@ function main() {
     } else {
         var isWin = /^win/.test(process.platform);
         if (!isWin) {
-            console.log('Currently only Windows is supported.\nFollow https://github.com/Azure/azure-webjobs-sdk-script/issues/509 for updates.');
+            console.log('Currently all the features are only supported in Windows.\n');
+            console.log('"azurefunctions new" is the only feature working across platforms.\n');
+            console.log('Follow https://github.com/Azure/azure-webjobs-sdk-script/issues/509 for updates.');
             process.exit(1);
         }
         var bin = path.join(path.dirname(fs.realpathSync(__filename)), '../bin');
