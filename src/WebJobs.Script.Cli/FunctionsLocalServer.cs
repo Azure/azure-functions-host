@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Colors.Net;
@@ -18,11 +20,13 @@ namespace WebJobs.Script.Cli
     internal class FunctionsLocalServer : IFunctionsLocalServer
     {
         private const int Port = 7071;
+        private readonly IProcessManager _processManager;
         private readonly ISettings _settings;
 
-        public FunctionsLocalServer(ISettings settings)
+        public FunctionsLocalServer(IProcessManager processManager, ISettings settings)
         {
             _settings = settings;
+            _processManager = processManager;
         }
 
         public async Task<HttpClient> ConnectAsync(TimeSpan timeout)
@@ -40,8 +44,10 @@ namespace WebJobs.Script.Cli
         private async Task<Uri> DiscoverServer(int iteration = 0)
         {
             var server = new Uri($"http://localhost:{Port + iteration}");
-
-            if (!await server.IsServerRunningAsync())
+            var allCliProcesses = _processManager.GetProcessesByName(Path.GetFileNameWithoutExtension(_processManager.GetCurrentProcess().FileName))
+                .Where(p => p.Id != _processManager.GetCurrentProcess().Id)
+                .ToList();
+            if (!allCliProcesses.Any() || !await server.IsServerRunningAsync())
             {
                 // create the server
                 if (_settings.DisplayLaunchingRunServerWarning)
