@@ -11,10 +11,10 @@ namespace WebJobs.Script.Cli.Verbs
 {
     internal abstract class BaseVerb : IVerb, IVerbError, IVerbPostRun
     {
-        [Option("quiet", DefaultValue = false, HelpText = "Disable all logging")]
+        [Option("quiet", DefaultValue = false, HelpText = "Disable all logging", ShowInHelp = false)]
         public bool Quiet { get; set; }
 
-        [Option("cli-dev", DefaultValue = false, HelpText = "Display exceptions for reporting issues")]
+        [Option("cli-dev", DefaultValue = false, HelpText = "Display exceptions for reporting issues", ShowInHelp = false)]
         public bool CliDev { get; set; }
 
         public string OriginalVerb { get; set; }

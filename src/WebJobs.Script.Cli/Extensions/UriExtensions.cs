@@ -14,7 +14,6 @@ namespace WebJobs.Script.Cli.Extensions
             {
                 using (var client = new HttpClient())
                 {
-                    //client.Timeout = TimeSpan.FromMilliseconds(700);
                     var rootResponse = await client.GetAsync(server);
                     var statusResponse = await client.GetAsync(new Uri(server, "admin/host/status"));
                     statusResponse.EnsureSuccessStatusCode();
