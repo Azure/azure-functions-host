@@ -11,6 +11,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
 {
+    [Verb(HelpText = "Helps manage publishing username", Usage = "<userName>")]
     internal class UserVerb : BaseVerb
     {
         private readonly IArmManager _armManager;
@@ -26,19 +27,27 @@ namespace WebJobs.Script.Cli.Verbs
 
         public override async Task RunAsync()
         {
-            ColoredConsole.WriteLine($"Enter password for {AdditionalInfoColor($"\"{UserName}\":")}");
-            var password = SecurityHelpers.ReadPassword();
-            ColoredConsole.Write($"Confirm your password:");
-            var confirmPassword = SecurityHelpers.ReadPassword();
-            if (confirmPassword != password)
+            if (string.IsNullOrEmpty(UserName))
             {
-                ColoredConsole.Error.WriteLine(ErrorColor("passwords do not match"));
+                var verb = new GitConfigVerb(_armManager, _tipsManager);
+                await verb.RunAsync();
             }
             else
             {
-                await _armManager.UpdateUserAsync(UserName, password);
-                ColoredConsole
-                    .WriteLine($"Password for {AdditionalInfoColor($"\"{UserName}\"")} has been updated!");
+                ColoredConsole.WriteLine($"Enter password for {AdditionalInfoColor($"\"{UserName}\":")}");
+                var password = SecurityHelpers.ReadPassword();
+                ColoredConsole.Write($"Confirm your password:");
+                var confirmPassword = SecurityHelpers.ReadPassword();
+                if (confirmPassword != password)
+                {
+                    ColoredConsole.Error.WriteLine(ErrorColor("passwords do not match"));
+                }
+                else
+                {
+                    await _armManager.UpdateUserAsync(UserName, password);
+                    ColoredConsole
+                        .WriteLine($"Password for {AdditionalInfoColor($"\"{UserName}\"")} has been updated!");
+                }
             }
         }
     }

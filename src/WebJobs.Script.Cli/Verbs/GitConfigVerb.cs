@@ -26,20 +26,17 @@ namespace WebJobs.Script.Cli.Verbs
             var user = await _armManager.GetUserAsync();
             if (string.IsNullOrEmpty(user.PublishingUserName))
             {
-                ColoredConsole
-                    .Write("Publishing user is not configured. Run")
-                    .Write(ExampleColor("\"func user <userName>\""))
-                    .WriteLine("to configure your publishing user");
+                ColoredConsole.WriteLine($"Publishing user is not configured. Run {ExampleColor("func user <userName>")} to configure your publishing user");
             }
             else
             {
                 ColoredConsole
-                    .Write(TitleColor("Publishing Username:"))
+                    .Write(TitleColor("Publishing Username: "))
                     .Write(user.PublishingUserName)
                     .WriteLine()
                     .WriteLine()
-                    .Write("run")
-                    .Write(ExampleColor($"\"func user {user.PublishingUserName}\""))
+                    .Write("run ")
+                    .Write(ExampleColor($"\"func user {user.PublishingUserName}\" "))
                     .WriteLine("to update the password");
             }
         }
