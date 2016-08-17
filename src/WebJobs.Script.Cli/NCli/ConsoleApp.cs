@@ -27,7 +27,7 @@ namespace NCli
                 await verb.RunAsync();
                 if (verb is IVerbPostRun)
                 {
-                    await (verb as IVerbPostRun).PostRunVerbAsync();
+                    await (verb as IVerbPostRun).PostRunVerbAsync(failed: false);
                 }
             }
             catch (Exception exception)
@@ -35,6 +35,11 @@ namespace NCli
                 if (verb is IVerbError)
                 {
                     await (verb as IVerbError).OnErrorAsync(exception);
+                }
+
+                if (verb is IVerbPostRun)
+                {
+                    await (verb as IVerbPostRun).PostRunVerbAsync(failed: true);
                 }
             }
         }
@@ -64,6 +69,8 @@ namespace NCli
             {
                 var verbType = GetVerbType(_args);
                 var verb = InstantiateType(verbType.Type);
+                _dependencyResolver.RegisterService<IVerb>(verb);
+
                 if (_args == null || _args.Length == 1)
                 {
                     return verb;

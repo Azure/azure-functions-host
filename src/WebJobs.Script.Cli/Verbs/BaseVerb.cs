@@ -2,15 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
+using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
 {
     internal abstract class BaseVerb : IVerb, IVerbError, IVerbPostRun
     {
+        protected readonly ITipsManager _tipsManager;
+
         [Option("quiet", DefaultValue = false, HelpText = "Disable all logging", ShowInHelp = false)]
         public bool Quiet { get; set; }
 
@@ -20,6 +25,11 @@ namespace WebJobs.Script.Cli.Verbs
         public string OriginalVerb { get; set; }
 
         public IDependencyResolver DependencyResolver { get; set; }
+
+        public BaseVerb(ITipsManager tipsManager)
+        {
+            _tipsManager = tipsManager;
+        }
 
         public abstract Task RunAsync();
 
@@ -42,10 +52,14 @@ namespace WebJobs.Script.Cli.Verbs
             }
             return Task.CompletedTask;
         }
-
-        public Task PostRunVerbAsync()
+        public Task PostRunVerbAsync(bool failed)
         {
-            // TipsManager.GetTipsFor(this.GetType());
+            try
+            {
+                _tipsManager.Record(failed);
+            }
+            catch { }
+
             return Task.CompletedTask;
         }
     }

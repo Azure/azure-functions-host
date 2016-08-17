@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs.List
 {
     internal abstract class BaseListVerb : BaseVerb
     {
+        public BaseListVerb(ITipsManager tipsManager) : base(tipsManager)
+        {
+        }
     }
 }

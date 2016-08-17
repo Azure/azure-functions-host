@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using NCli;
 using WebJobs.Script.Cli.Arm;
+using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs
 {
@@ -16,7 +17,8 @@ namespace WebJobs.Script.Cli.Verbs
 
         private readonly IArmManager _armManager;
 
-        public OpenVerb(IArmManager armManager)
+        public OpenVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

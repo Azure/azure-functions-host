@@ -6,5 +6,6 @@ namespace NCli
     {
         T GetService<T>();
         object GetService(Type type);
+        void RegisterService<T>(object obj);
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -14,7 +15,8 @@ namespace WebJobs.Script.Cli.Verbs
     {
         private readonly IArmManager _armManager;
 
-        public GitConfigVerb(IArmManager armManager)
+        public GitConfigVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

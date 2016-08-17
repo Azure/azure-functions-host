@@ -4,6 +4,7 @@ using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs.List
@@ -13,7 +14,8 @@ namespace WebJobs.Script.Cli.Verbs.List
     {
         private readonly IArmManager _armManager;
 
-        public ListFunctionApps(IArmManager armManager)
+        public ListFunctionApps(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }
@@ -44,9 +46,7 @@ namespace WebJobs.Script.Cli.Verbs.List
                 ColoredConsole.Error.WriteLine(ErrorColor("   -> No function apps found"));
             }
 
-            ColoredConsole
-                .WriteLine()
-                .WriteLine($"{TitleColor("Tip:")} to switch tenants run {ExampleColor("func switch-tenants")}");
+            _tipsManager.DisplayTip($"{TitleColor("Tip:")} to switch tenants run {ExampleColor("func switch-tenants")}");
         }
     }
 }
