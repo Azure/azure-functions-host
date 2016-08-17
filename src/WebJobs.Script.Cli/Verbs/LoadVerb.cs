@@ -12,7 +12,7 @@ namespace WebJobs.Script.Cli.Verbs
     {
 
         [Option(0)]
-        public Loadable? ToLoad { get; set; }
+        public Loadable ToLoad { get; set; }
 
         [Option(1)]
         public string FunctionAppName { get; set; }
@@ -29,7 +29,7 @@ namespace WebJobs.Script.Cli.Verbs
 
         public override async Task RunAsync()
         {
-            if (ToLoad == null)
+            if (ToLoad == Loadable.None)
             {
                 ColoredConsole
                     .Error

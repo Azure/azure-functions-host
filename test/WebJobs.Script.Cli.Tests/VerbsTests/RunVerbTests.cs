@@ -7,9 +7,13 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Colors.Net;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Newtonsoft.Json;
 using NSubstitute;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Interfaces;
@@ -22,19 +26,16 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
     {
         public class TestHttpResponseMessageHandler : HttpMessageHandler
         {
-            private readonly HttpResponseMessage _response;
-            private Func<HttpRequestMessage, Task> _verify;
+            private Func<HttpRequestMessage, Task<HttpResponseMessage>> _response;
 
-            public TestHttpResponseMessageHandler(HttpResponseMessage response, Func<HttpRequestMessage, Task> verify)
+            public TestHttpResponseMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> response)
             {
                 _response = response;
-                _verify = verify;
             }
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                await _verify(request);
-                return _response;
+                return await _response(request);
             }
         }
 
@@ -51,12 +52,15 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
             var server = Substitute.For<IFunctionsLocalServer>();
             var tipsManager = Substitute.For<ITipsManager>();
             var fileSystem = Substitute.For<IFileSystem>();
-            FileSystemHelpers.Instance = fileSystem;
-
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            var hostStatus = new HostStatus();
+            var functionStatus = new FunctionStatus
             {
-                Content = new StringContent(responseContent)
+                Metadata = new FunctionMetadata()
             };
+
+            functionStatus.Metadata.Bindings.Add(new BindingMetadata { Direction = BindingDirection.In, Type = "httpTrigger" });
+
+            FileSystemHelpers.Instance = fileSystem;
 
             var requestFileName = Path.GetRandomFileName();
             fileSystem.File
@@ -67,16 +71,39 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
                 .Open(Arg.Is<string>(s => s != requestFileName), Arg.Any<FileMode>(), Arg.Any<FileAccess>(), Arg.Any<FileShare>())
                 .Returns("{'bindings':[{'type': 'httpTrigger'}]}".ToStream());
 
-            var handler = new TestHttpResponseMessageHandler(response, async r =>
+            var handler = new TestHttpResponseMessageHandler(async r =>
             {
-                var str = await r.Content.ReadAsStringAsync();
-
-                if (!string.IsNullOrEmpty(requestContent))
+            if (r.RequestUri.AbsolutePath == "/admin/host/status")
                 {
-                    Assert.Equal(requestContent, str);
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(JsonConvert.SerializeObject(hostStatus), Encoding.UTF8, "application/json")
+                    };
                 }
+                else if (r.RequestUri.AbsolutePath.StartsWith("/admin/functions/") && r.RequestUri.AbsolutePath.EndsWith("/status"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(JsonConvert.SerializeObject(functionStatus), Encoding.UTF8, "application/json")
+                    };
+                }
+                else
+                {
+                    var str = await r.Content.ReadAsStringAsync();
 
-                Assert.Equal(contentType, r.Content.Headers.ContentType.MediaType);
+                    if (!string.IsNullOrEmpty(requestContent))
+                    {
+                        Assert.Equal(requestContent, str);
+                    }
+
+                    Assert.Equal(contentType, r.Content.Headers.ContentType.MediaType);
+
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(responseContent)
+                    };
+                }
+            
             });
 
             var client = new HttpClient(handler)

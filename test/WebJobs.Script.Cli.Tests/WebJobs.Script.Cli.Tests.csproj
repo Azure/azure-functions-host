@@ -188,6 +188,10 @@
       <Project>{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}</Project>
       <Name>WebJobs.Script.WebHost</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj">
+      <Project>{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}</Project>
+      <Name>WebJobs.Script</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />

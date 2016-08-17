@@ -8,6 +8,7 @@ namespace WebJobs.Script.Cli.Common
 {
     internal enum Loadable
     {
+        None,
         Secrets
     }
 }
