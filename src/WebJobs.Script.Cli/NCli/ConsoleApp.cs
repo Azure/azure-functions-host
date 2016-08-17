@@ -87,6 +87,13 @@ namespace NCli
                 }
 
                 var orderedOptions = new Stack<PropertyInfo>(verbType.Options.Where(o => o.Attribute._order != -1).OrderBy(o => o.Attribute._order).Select(o => o.PropertyInfo).Reverse().ToArray());
+
+                
+                if (verbType.Attribute.Scope != null)
+                {
+                    stack.Pop();
+                }
+
                 object value;
                 while (stack.Any() && orderedOptions.Any())
                 {
