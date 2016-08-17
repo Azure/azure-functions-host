@@ -12,6 +12,7 @@ using Ignite.SharpNetSH;
 using NCli;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Helpers;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -19,10 +20,15 @@ namespace WebJobs.Script.Cli.Verbs
     [Verb(HelpText = "Automate netsh http to setup SSL and UrlAcls", ShowInHelp = false)]
     internal class CertVerb : BaseVerb
     {
+        public CertVerb(ITipsManager tipsManager)
+            : base(tipsManager)
+        {
+        }
+
         [Option('p', "port", DefaultValue = 6061, HelpText = "Local port to listen on")]
         public int Port { get; set; }
 
-        [Option('c', "cert", HelpText = "Path for the cert to use. If not supecified, will auto-generate a cert")]
+        [Option('c', "cert", HelpText = "Path for the cert to use. If not specified, will auto-generate a cert")]
         public string CertPath { get; set; }
 
         [Option('k', "skipCert", DefaultValue = false, HelpText = "Skip cert/https setup, configures urlacl for http://+:{Port}")]

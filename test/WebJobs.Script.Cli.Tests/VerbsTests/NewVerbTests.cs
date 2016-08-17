@@ -10,6 +10,7 @@ using NSubstitute;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Arm.Models;
 using WebJobs.Script.Cli.Extensions;
+using WebJobs.Script.Cli.Interfaces;
 using WebJobs.Script.Cli.Verbs;
 using Xunit;
 
@@ -38,6 +39,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
         {
             // Setup
             var armManager = Substitute.For<IArmManager>();
+            var tipsManager = Substitute.For<ITipsManager>();
             var stderr = Substitute.For<IConsoleWriter>();
             ColoredConsole.Error = stderr;
 
@@ -48,7 +50,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
                 .Returns(new Site(subscriptions.Select(s => s.SubscriptionId).FirstOrDefault(), string.Empty, functionApp.SiteName));
 
             // Test
-            var newVerb = new NewVerb(armManager)
+            var newVerb = new NewVerb(armManager, tipsManager)
             {
                 NewOption = Common.Newable.FunctionApp,
                 FunctionAppName = functionApp.SiteName,
@@ -61,7 +63,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
             {
                 stderr
                     .Received()
-                    .WriteLine(Arg.Is<TraceEvent>(t => t.Message == "Can't determin subscription Id, please add -s/--subscription <SubId>"));
+                    .WriteLine(Arg.Is<TraceEvent>(t => t.Message == "Can't determine subscription Id, please add -s/--subscription <SubId>"));
             }
             else
             {

@@ -8,6 +8,7 @@ using Colors.Net;
 using Microsoft.Azure.WebJobs.Script;
 using NCli;
 using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -48,6 +49,11 @@ Publish
             { SecretsManager.SecretsFilePath, string.Empty }
         };
 
+        public InitVerb(ITipsManager tipsManager)
+            : base(tipsManager)
+        {
+        }
+
         public override async Task RunAsync()
         {
             if (SourceControl != SourceControl.Git)
@@ -64,7 +70,7 @@ Publish
             var exe = new Executable("git", "init");
             await exe.RunAsync(l => ColoredConsole.WriteLine(l), l => ColoredConsole.Error.WriteLine(l));
 
-            ColoredConsole.WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func new")} to create your fSirst function.");
+            _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func new")} to create your fSirst function.");
         }
     }
 }

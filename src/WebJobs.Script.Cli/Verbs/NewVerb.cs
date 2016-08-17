@@ -9,6 +9,7 @@ using NCli;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Arm.Models;
 using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -30,7 +31,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option('l', "location", DefaultValue = "WestUS", HelpText = "Geographical location for your function app")]
         public string Location { get; set; }
 
-        public NewVerb(IArmManager armManager)
+        public NewVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

@@ -40,7 +40,8 @@ namespace WebJobs.Script.Cli.Verbs
 
         private readonly IFunctionsLocalServer _scriptServer;
 
-        public RunVerb(IFunctionsLocalServer scriptServer)
+        public RunVerb(IFunctionsLocalServer scriptServer, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _scriptServer = scriptServer;
         }
@@ -158,12 +159,10 @@ namespace WebJobs.Script.Cli.Verbs
                     ColoredConsole.WriteLine(await contentTask);
                 }
 
-                ColoredConsole
-                    .WriteLine()
-                    .WriteLine()
-                    .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func list functionapps")} to list function apps in your azure subscription.")
-                    .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func list storageaccounts")} to list storage accounts in your azure subscription.")
-                    .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func list secrets")} to list secrets locally on your machine.");
+                _tipsManager
+                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list functionapps")} to list function apps in your azure subscription.")
+                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list storageaccounts")} to list storage accounts in your azure subscription.")
+                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list secrets")} to list secrets locally on your machine.");
             }
         }
     }

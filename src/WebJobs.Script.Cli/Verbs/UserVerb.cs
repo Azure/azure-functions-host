@@ -6,6 +6,7 @@ using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Helpers;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -17,7 +18,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option(0)]
         public string UserName { get; set; }
 
-        public UserVerb(IArmManager armManager)
+        public UserVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

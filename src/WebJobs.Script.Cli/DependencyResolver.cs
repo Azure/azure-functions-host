@@ -1,21 +1,18 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Autofac;
-using Microsoft.Azure.WebJobs.Host;
 using NCli;
-using WebJobs.Script.Cli.Common;
 
 namespace WebJobs.Script.Cli
 {
     internal class DependencyResolver : IDependencyResolver
     {
-        private readonly IContainer _container;
+        private IContainer _container;
 
         public DependencyResolver(IContainer container)
         {
             _container = container;
+            RegisterService<IDependencyResolver>(this);
         }
 
         public DependencyResolver(IDictionary<object, Type> instances)
@@ -38,6 +35,13 @@ namespace WebJobs.Script.Cli
         public T GetService<T>()
         {
             return _container.Resolve<T>();
+        }
+
+        public void RegisterService<T>(object obj)
+        {
+            var builder = new ContainerBuilder();
+            builder.Register(_ => obj).As<T>();
+            builder.Update(_container);
         }
     }
 }

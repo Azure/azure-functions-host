@@ -18,7 +18,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option(1)]
         public string Value { get; set; }
 
-        public ConfigVerb(ISettings settings)
+        public ConfigVerb(ISettings settings, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _settings = settings;
         }

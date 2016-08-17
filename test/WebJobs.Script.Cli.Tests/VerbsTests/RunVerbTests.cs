@@ -49,6 +49,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
         {
             // Setup
             var server = Substitute.For<IFunctionsLocalServer>();
+            var tipsManager = Substitute.For<ITipsManager>();
             var fileSystem = Substitute.For<IFileSystem>();
             FileSystemHelpers.Instance = fileSystem;
 
@@ -96,8 +97,8 @@ namespace WebJobs.Script.Cli.Tests.VerbsTests
 
             // Test
             var runCommand = fromFile
-                ? new RunVerb(server) { FileName = requestFileName, FunctionName = string.Empty }
-                : new RunVerb(server) { Content = requestContent, FunctionName = string.Empty };
+                ? new RunVerb(server, tipsManager) { FileName = requestFileName, FunctionName = string.Empty }
+                : new RunVerb(server, tipsManager) { Content = requestContent, FunctionName = string.Empty };
 
             runCommand.DependencyResolver = new DependencyResolver(new Dictionary<object, Type>() { { server, typeof(IFunctionsLocalServer) } });
 

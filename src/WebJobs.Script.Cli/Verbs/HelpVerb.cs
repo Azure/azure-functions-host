@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -17,7 +18,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option(0)]
         public string Verb { get; set; }
 
-        public HelpVerb(HelpTextCollection help)
+        public HelpVerb(HelpTextCollection help, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _help = help;
         }
@@ -27,10 +29,7 @@ namespace WebJobs.Script.Cli.Verbs
             ColoredConsole.WriteLine("Azure Functions CLI 0.1");
             _help.ForEach(l => ColoredConsole.WriteLine(l.ToString()));
 
-            ColoredConsole
-                .WriteLine()
-                .WriteLine()
-                .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func init")} to get started.");
+            _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func init")} to get started.");
 
             return Task.CompletedTask;
         }

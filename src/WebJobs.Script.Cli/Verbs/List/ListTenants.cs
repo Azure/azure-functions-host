@@ -7,6 +7,7 @@ using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs.List
 {
@@ -15,7 +16,8 @@ namespace WebJobs.Script.Cli.Verbs.List
     {
         private readonly IArmManager _armManager;
 
-        public ListTenants(IArmManager armManager)
+        public ListTenants(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }
