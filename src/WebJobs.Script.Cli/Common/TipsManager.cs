@@ -91,7 +91,7 @@ namespace WebJobs.Script.Cli.Common
             invocations = invocations.Where(i => i.Timestamp > DateTime.Now.AddMinutes(-5));
             if (invocations.Count() < 5)
             {
-                ColoredConsole.WriteLine().WriteLine(tip);
+                ColoredConsole.WriteLine(tip);
             }
             return this;
         }

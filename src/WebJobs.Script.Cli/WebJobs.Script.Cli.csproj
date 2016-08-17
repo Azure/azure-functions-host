@@ -242,7 +242,7 @@
     <Compile Include="Verbs\List\ListSecrets.cs" />
     <Compile Include="Verbs\List\ListStorageAccounts.cs" />
     <Compile Include="Verbs\List\ListTenants.cs" />
-    <Compile Include="Verbs\LoadVerb.cs" />
+    <Compile Include="Verbs\FetchVerb.cs" />
     <Compile Include="Verbs\LoginVerb.cs" />
     <Compile Include="Verbs\LogoutVerb.cs" />
     <Compile Include="Verbs\OpenVerb.cs" />

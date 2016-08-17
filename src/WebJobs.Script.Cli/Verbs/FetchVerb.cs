@@ -8,7 +8,8 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
 {
-    internal class LoadVerb : BaseVerb
+    [Verb(HelpText = "fetches function app secrets", Usage = "secrets")]
+    internal class FetchVerb : BaseVerb
     {
 
         [Option(0)]
@@ -20,7 +21,7 @@ namespace WebJobs.Script.Cli.Verbs
         private readonly IArmManager _armManager;
         private readonly ISecretsManager _secretsManager;
 
-        public LoadVerb(IArmManager armManager, ISecretsManager secretsManager, ITipsManager tipsManager)
+        public FetchVerb(IArmManager armManager, ISecretsManager secretsManager, ITipsManager tipsManager)
             : base(tipsManager)
         {
             _armManager = armManager;
@@ -34,7 +35,7 @@ namespace WebJobs.Script.Cli.Verbs
                 ColoredConsole
                     .Error
                     .WriteLine("Must specify what to load.")
-                    .WriteLine($"Currently only {ExampleColor("func load")} secrets works");
+                    .WriteLine($"Currently only {ExampleColor("func fetch")} secrets works");
             }
             else if (ToLoad == Loadable.Secrets)
             {
