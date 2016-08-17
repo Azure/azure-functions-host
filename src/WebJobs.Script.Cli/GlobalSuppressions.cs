@@ -31,4 +31,6 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "Pid", Scope = "member", Target = "WebJobs.Script.Cli.Verbs.KillVerb.#Run()")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "WebJobs.Script.Cli.Common.FileTracer.#.ctor(System.Diagnostics.TraceLevel,System.String)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "WebJobs.Script.Cli.DependencyResolver.#ResolveTraceWriter(System.Diagnostics.TraceLevel,System.String)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1720:IdentifiersShouldNotContainTypeNames", MessageId = "obj", Scope = "member", Target = "NCli.IDependencyResolver.#RegisterService`1(System.Object)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Scope = "member", Target = "NCli.IDependencyResolver.#RegisterService`1(System.Object)")]
 

@@ -18,6 +18,8 @@ namespace WebJobs.Script.Cli
 {
     internal class Program
     {
+        internal readonly static IDependencyResolver DependencyResolver = InitializeDependencyResolve();
+
         static void Main(string[] args)
         {
             FirstTimeCliExperience();
@@ -85,6 +87,9 @@ namespace WebJobs.Script.Cli
                 .As<ISettings>()
                 .SingleInstance()
                 .ExternallyOwned();
+
+            builder.RegisterType<TipsManager>()
+                .As<ITipsManager>();
 
             return new DependencyResolver(builder.Build());
         }

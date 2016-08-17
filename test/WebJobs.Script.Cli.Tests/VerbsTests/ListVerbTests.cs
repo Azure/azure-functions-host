@@ -8,6 +8,7 @@ using WebJobs.Script.Cli.Arm.Models;
 using WebJobs.Script.Cli.Extensions;
 using WebJobs.Script.Cli.Interfaces;
 using WebJobs.Script.Cli.Verbs;
+using WebJobs.Script.Cli.Verbs.List;
 using Xunit;
 
 namespace WebJobs.Script.Cli.Tests.VerbsTest
@@ -23,6 +24,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTest
             var armManager = Substitute.For<IArmManager>();
             var stdout = Substitute.For<IConsoleWriter>();
             var secretsManager = Substitute.For<ISecretsManager>();
+            var tipsManager = Substitute.For<ITipsManager>();
 
             ColoredConsole.Out = stdout;
 
@@ -36,7 +38,7 @@ namespace WebJobs.Script.Cli.Tests.VerbsTest
             armManager.GetUserAsync().Returns(new ArmWebsitePublishingCredentials { PublishingUserName = "test" });
 
             // Test
-            var listVerb = new Verbs.List.ListFunctionApps(armManager);
+            var listVerb = new ListFunctionApps(armManager, tipsManager);
 
             await listVerb.RunAsync();
 

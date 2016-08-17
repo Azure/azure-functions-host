@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
+using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs
 {
@@ -17,7 +18,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option(0)]
         public string TenantId { get; set; }
 
-        public SwitchTenantsVerb(IArmManager armManager)
+        public SwitchTenantsVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
@@ -23,7 +20,8 @@ namespace WebJobs.Script.Cli.Verbs.List
         [Option('a', "show", DefaultValue = false, HelpText = "Display the secret value")]
         public bool ShowSecrets { get; set; }
 
-        public ListSecrets(ISecretsManager secretsManager)
+        public ListSecrets(ISecretsManager secretsManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _secretsManager = secretsManager;
         }
@@ -48,9 +46,11 @@ namespace WebJobs.Script.Cli.Verbs.List
                 {
                     ColoredConsole
                         .WriteLine("No secrets currently configured locally.")
-                        .WriteLine()
-                        .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.")
-                        .WriteLine($"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
+                        .WriteLine();
+
+                    _tipsManager
+                        .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.")
+                        .DisplayTip($"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
                 }
             }
             catch (FileNotFoundException)

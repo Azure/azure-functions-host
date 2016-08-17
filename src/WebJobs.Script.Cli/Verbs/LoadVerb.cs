@@ -20,7 +20,8 @@ namespace WebJobs.Script.Cli.Verbs
         private readonly IArmManager _armManager;
         private readonly ISecretsManager _secretsManager;
 
-        public LoadVerb(IArmManager armManager, ISecretsManager secretsManager)
+        public LoadVerb(IArmManager armManager, ISecretsManager secretsManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
             _secretsManager = secretsManager;

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
+using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs
 {
@@ -13,7 +14,8 @@ namespace WebJobs.Script.Cli.Verbs
     {
         private readonly IArmManager _armManager;
 
-        public LogoutVerb(IArmManager armManager)
+        public LogoutVerb(IArmManager armManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
         }

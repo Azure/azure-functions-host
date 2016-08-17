@@ -12,11 +12,12 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using NCli;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Helpers;
+using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Verbs
 {
     [Verb(HelpText = "Launches a Functions server endpoint locally")]
-    internal class WebVerb : BaseVerb, IDisposable
+    internal sealed class WebVerb : BaseVerb, IDisposable
     {
         private FileSystemWatcher fsWatcher;
 
@@ -32,7 +33,8 @@ namespace WebJobs.Script.Cli.Verbs
         [Option('n', "nossl", DefaultValue = false, HelpText = "Don't use https")]
         public bool NoSsl { get; set; }
 
-        public WebVerb()
+        public WebVerb(ITipsManager tipsManager)
+            : base(tipsManager)
         {
             ConfigureDefaultEnvironmentVariables();
             ReadSecrets();
@@ -128,6 +130,7 @@ namespace WebJobs.Script.Cli.Verbs
             return $"{protocol}://localhost:{Port}";
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
         public void Dispose()
         {
             Dispose(true);

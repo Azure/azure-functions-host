@@ -40,7 +40,8 @@ namespace WebJobs.Script.Cli.Verbs
             { "Microsoft.Storage/storageAccounts", Listable.StorageAccounts }
         };
 
-        public SetVerb(IArmManager armManager, ISecretsManager secretsManager)
+        public SetVerb(IArmManager armManager, ISecretsManager secretsManager, ITipsManager tipsManager)
+            : base(tipsManager)
         {
             _armManager = armManager;
             _secretsManager = secretsManager;
@@ -67,10 +68,7 @@ namespace WebJobs.Script.Cli.Verbs
             if (string.IsNullOrEmpty(ResourceName) && string.IsNullOrEmpty(Name))
             {
                 ColoredConsole.Error.WriteLine("Please specify a resource name");
-                ColoredConsole
-                    .WriteLine()
-                    .WriteLine()
-                    .WriteLine($"{TitleColor("Tip:")} run {ExampleColor("func help setsecrets")} for helps.");
+                _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func help setsecrets")} for helps.");
                 return;
             }
             else if (!string.IsNullOrEmpty(Name))
@@ -108,7 +106,7 @@ namespace WebJobs.Script.Cli.Verbs
                 ColoredConsole
                     .WriteLine($"Found {resources.Count()} resources with the same name.")
                     .Write("Please specify the resource type using")
-                    .WriteLine(ExampleColor($"func setsecret {ResourceName} -type <storageAccount\\eventHub\\functionApp>"));
+                    .WriteLine(ExampleColor($"func set secret {ResourceName} -type <storageAccount\\eventHub\\functionApp>"));
             }
             else if (resources.Count() == 1 || resources.Count() > 1 && Type != null)
             {
@@ -124,10 +122,7 @@ namespace WebJobs.Script.Cli.Verbs
                                 .WriteLine($"Secret saved locally in {ExampleColor($"{storageAccount.StorageAccountName}_STORAGE")}")
                                 .WriteLine();
 
-                            ColoredConsole
-                                .Write($"{TitleColor("Tip:")} You can use that identifier ")
-                                .Write(ExampleColor($"{storageAccount.StorageAccountName}_STORAGE "))
-                                .WriteLine("in the connection property in your function.json");
+                            _tipsManager.DisplayTip($"{TitleColor("Tip:")} You can use that identifier {ExampleColor($"{storageAccount.StorageAccountName}_STORAGE ")} in the connection property in your function.json");
                         }
                         else
                         {
