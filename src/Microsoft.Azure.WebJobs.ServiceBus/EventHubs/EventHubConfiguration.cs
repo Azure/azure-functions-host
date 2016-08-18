@@ -21,8 +21,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         // Event Hub Names are case-insensitive
         private readonly Dictionary<string, EventHubClient> _senders = new Dictionary<string, EventHubClient>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, EventProcessorHost> _listeners  = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
-
+        private readonly EventProcessorOptions _options;
         private readonly List<Action<JobHostConfiguration>> _deferredWork = new List<Action<JobHostConfiguration>>();
+
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="options">The optional <see cref="EventProcessorOptions"/> to use when receiving events.</param>
+        public EventHubConfiguration(EventProcessorOptions options = null)
+        {
+            if (options == null)
+            {
+                options = EventProcessorOptions.DefaultOptions;
+                options.MaxBatchSize = 1000;
+            }
+
+            _options = options;
+        }
 
         /// <summary>
         /// Add an existing client for sending messages to an event hub.  Infer the eventHub name from client.path
@@ -180,11 +195,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         EventProcessorOptions IEventHubProvider.GetOptions()
         {
-            EventProcessorOptions options = new EventProcessorOptions
-            {
-                MaxBatchSize = 1000
-            };
-            return options;
+            return _options;
         }
 
         void IExtensionConfigProvider.Initialize(ExtensionConfigContext context)
