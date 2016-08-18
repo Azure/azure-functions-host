@@ -16,12 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script
     [CLSCompliant(false)]
     public class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
-        private readonly EventHubConfiguration _eventHubConfiguration;
+        private EventHubConfiguration _eventHubConfiguration;
 
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
-            _eventHubConfiguration = new EventHubConfiguration();
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -60,6 +59,23 @@ namespace Microsoft.Azure.WebJobs.Script
                     serviceBusConfig.PrefetchCount = (int)value;
                 }
             }
+
+            EventProcessorOptions eventProcessorOptions = EventProcessorOptions.DefaultOptions;
+            eventProcessorOptions.MaxBatchSize = 1000;
+            configSection = (JObject)Metadata.GetValue("eventHub", StringComparison.OrdinalIgnoreCase);
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("maxBatchSize", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    eventProcessorOptions.MaxBatchSize = (int)value;
+                }
+
+                if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    eventProcessorOptions.PrefetchCount = (int)value;
+                }
+            }
+            _eventHubConfiguration = new EventHubConfiguration(eventProcessorOptions);
 
             Config.UseServiceBus(serviceBusConfig);
             Config.UseEventHub(_eventHubConfiguration);
