@@ -41,8 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         protected TraceWriter TraceWriter { get; private set; }
 
         /// <summary>
-        /// Called after all bindings have been created to allow the provider
-        /// to perform final host level initialization, extension registration, etc.
+        /// Called early in the host initialization pipeline, before bindings have been created
+        /// to allow the provider to perform host level initialization, extension registration, etc.
         /// </summary>
         public virtual void Initialize()
         {

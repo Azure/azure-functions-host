@@ -250,18 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
             };
 
-            // read all script functions and apply to JobHostConfiguration
-            Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
-            string defaultNamespace = "Host";
-            string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
-            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
-            List<Type> types = new List<Type>();
-            types.Add(type);
-
-            ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
-
-            // Allow BindingProviders to complete their initialization
+            // Allow BindingProviders to initialize
             foreach (var bindingProvider in ScriptConfig.BindingProviders)
             {
                 try
@@ -275,6 +264,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
                 }
             }
+
+            // read all script functions and apply to JobHostConfiguration
+            Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
+            string defaultNamespace = "Host";
+            string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
+            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
+            List<Type> types = new List<Type>();
+            types.Add(type);
+
+            ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
 
             Functions = functions;
 
