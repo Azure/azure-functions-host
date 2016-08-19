@@ -3,15 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Colors.Net;
 using NCli;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Common;
-using WebJobs.Script.Cli.Interfaces;
 using WebJobs.Script.Cli.Helpers;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Verbs
@@ -48,22 +47,6 @@ namespace WebJobs.Script.Cli.Verbs
         }
 
         public override async Task RunAsync()
-        {
-            try
-            {
-                await SetSecrets();
-            }
-            catch (FileNotFoundException)
-            {
-                ColoredConsole
-                        .Error
-                        .WriteLine($"Can not find file {SecretsManager.SecretsFilePath}.")
-                        .WriteLine($"Make sure you are in the root of your functions repo, and have ran")
-                        .WriteLine($"{ExampleColor("func init")} in there.");
-            }
-        }
-
-        private async Task SetSecrets()
         {
             if (string.IsNullOrEmpty(ResourceName) && string.IsNullOrEmpty(Name))
             {

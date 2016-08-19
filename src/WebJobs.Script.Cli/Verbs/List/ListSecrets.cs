@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Linq;
 using System.Threading.Tasks;
 using Colors.Net;
@@ -25,39 +27,27 @@ namespace WebJobs.Script.Cli.Verbs.List
 
         public override Task RunAsync()
         {
-            try
+            var secrets = _secretsManager.GetSecrets();
+            if (secrets.Any())
             {
-                var secrets = _secretsManager.GetSecrets();
-                if (secrets.Any())
-                {
-                    ColoredConsole.WriteLine(TitleColor("Locally configured secrets:"));
-                    foreach (var pair in secrets)
-                    {
-                        ColoredConsole
-                            .WriteLine($"   -> {TitleColor("Name")}: {pair.Key}")
-                            .WriteLine($"      {TitleColor("Value")}: {(ShowSecrets ? pair.Value : "*****")}")
-                            .WriteLine();
-                    }
-                }
-                else
+                ColoredConsole.WriteLine(TitleColor("Locally configured secrets:"));
+                foreach (var pair in secrets)
                 {
                     ColoredConsole
-                        .WriteLine("No secrets currently configured locally.")
+                        .WriteLine($"   -> {TitleColor("Name")}: {pair.Key}")
+                        .WriteLine($"      {TitleColor("Value")}: {(ShowSecrets ? pair.Value : "*****")}")
                         .WriteLine();
-
-                    _tipsManager
-                        .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.")
-                        .DisplayTip($"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
                 }
             }
-            catch (FileNotFoundException)
+            else
             {
                 ColoredConsole
-                    .Error
-                    .WriteLine($"Can not find file {SecretsManager.SecretsFilePath}.")
-                    .Write($"Make sure you are in the root of your functions repo, and have ran")
-                    .Write($" {ExampleColor("func init")} in there.")
+                    .WriteLine("No secrets currently configured locally.")
                     .WriteLine();
+
+                _tipsManager
+                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.")
+                    .DisplayTip($"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
             }
             return Task.CompletedTask;
         }

@@ -168,6 +168,8 @@
     <Compile Include="ExtensionsTests\GenericExtensionsTests.cs" />
     <Compile Include="ExtensionsTests\ProcessExtensionsTests.cs" />
     <Compile Include="ExtensionsTests\TaskExtensionsTests.cs" />
+    <Compile Include="VerbsTests\BaseVerbTests.cs" />
+    <Compile Include="VerbsTests\ConfigVerbTests.cs" />
     <Compile Include="VerbsTests\ListVerbTests.cs" />
     <Compile Include="VerbsTests\NewVerbTests.cs" />
     <Compile Include="VerbsTests\RunVerbTests.cs" />
