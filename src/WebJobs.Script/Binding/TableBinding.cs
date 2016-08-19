@@ -234,17 +234,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             // any key values specified on the entity override any values
             // specified in the binding
-            JToken keyValue = null;
-            if (entity.TryGetValue("partitionKey", StringComparison.OrdinalIgnoreCase, out keyValue))
+            JProperty keyProperty = entity.Properties().SingleOrDefault(p => string.Compare(p.Name, "partitionKey", StringComparison.OrdinalIgnoreCase) == 0);
+            if (keyProperty != null)
             {
-                partitionKey = Resolve((string)keyValue);
-                entity.Remove("partitionKey");
+                partitionKey = Resolve((string)keyProperty.Value);
+                entity.Remove(keyProperty.Name);
             }
 
-            if (entity.TryGetValue("rowKey", StringComparison.OrdinalIgnoreCase, out keyValue))
+            keyProperty = entity.Properties().SingleOrDefault(p => string.Compare(p.Name, "rowKey", StringComparison.OrdinalIgnoreCase) == 0);
+            if (keyProperty != null)
             {
-                rowKey = Resolve((string)keyValue);
-                entity.Remove("rowKey");
+                rowKey = Resolve((string)keyProperty.Value);
+                entity.Remove(keyProperty.Name);
             }
 
             DynamicTableEntity tableEntity = new DynamicTableEntity(partitionKey, rowKey);
