@@ -51,7 +51,7 @@ namespace WebJobs.Script.Cli.Verbs
                 }
                 else
                 {
-                    ColoredConsole.Error.WriteLine(ErrorColor("Can't find function app by name {}"));
+                    ColoredConsole.Error.WriteLine(ErrorColor($"Can't find function app by name {FunctionAppName}"));
                 }
             }
         }
