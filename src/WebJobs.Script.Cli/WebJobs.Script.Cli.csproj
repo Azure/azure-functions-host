@@ -181,6 +181,7 @@
     <Compile Include="Arm\ArmManagerPartials\StorageAccountArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\SubscriptionArmManager.cs" />
     <Compile Include="Arm\ArmUriTemplates.cs" />
+    <Compile Include="Common\CliException.cs" />
     <Compile Include="Common\DiskBacked.cs" />
     <Compile Include="Common\Listable.cs" />
     <Compile Include="Common\Models\Invocation.cs" />

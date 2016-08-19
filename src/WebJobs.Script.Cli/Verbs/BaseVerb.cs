@@ -35,6 +35,15 @@ namespace WebJobs.Script.Cli.Verbs
 
         public Task OnErrorAsync(Exception e)
         {
+            if (e is CliException)
+            {
+                var cliException = e as CliException;
+                if (cliException.Handled)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
             if (CliDev)
             {
                 ColoredConsole
