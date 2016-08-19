@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // read the entities and verify schema
             TableQuery tableQuery = new TableQuery();
             var entities = table.ExecuteQuery(tableQuery).ToArray();
-            Assert.Equal(2, entities.Length);
+            Assert.Equal(3, entities.Length);
 
             foreach (var entity in entities)
             {
