@@ -6,5 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
     public class FunctionInvocation
     {
         public string Input { get; set; }
+
+        public bool WaitForCompletion { get; set; }
     }
 }
