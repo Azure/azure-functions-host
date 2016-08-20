@@ -24,6 +24,14 @@ namespace NCli
             var verb = app.Parse();
             try
             {
+                if (verb is IVerbPreRun)
+                {
+                    var @continue = await (verb as IVerbPreRun).PreRunVerbAsync();
+                    if (!@continue)
+                    {
+                        return;
+                    }
+                }
                 await verb.RunAsync();
                 if (verb is IVerbPostRun)
                 {

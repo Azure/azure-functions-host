@@ -22,6 +22,9 @@ namespace WebJobs.Script.Cli.Verbs
         [Option("cli-dev", DefaultValue = false, HelpText = "Display exceptions for reporting issues", ShowInHelp = false)]
         public bool CliDev { get; set; }
 
+        [Option("help", DefaultValue = false, HelpText = "Show this help")]
+        public bool Help { get; set; }
+
         public string OriginalVerb { get; set; }
 
         public IDependencyResolver DependencyResolver { get; set; }

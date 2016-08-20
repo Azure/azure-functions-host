@@ -231,6 +231,7 @@
     <Compile Include="NCli\IVerb.cs" />
     <Compile Include="NCli\IVerbError.cs" />
     <Compile Include="NCli\IVerbPostRun.cs" />
+    <Compile Include="NCli\IVerbPreRun.cs" />
     <Compile Include="NCli\OptionAttribute.cs" />
     <Compile Include="NCli\ParseException.cs" />
     <Compile Include="NCli\PropertyInfoAttributePair.cs" />
