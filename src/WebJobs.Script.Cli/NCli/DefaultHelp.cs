@@ -22,7 +22,7 @@ namespace NCli
 
         public Task RunAsync()
         {
-            Console.WriteLine("Azure Functions CLI 0.1");
+            Console.WriteLine("Azure Functions Cli 0.1");
             _help.ForEach(l => Console.WriteLine(l.ToString()));
             return Task.CompletedTask;
         }
