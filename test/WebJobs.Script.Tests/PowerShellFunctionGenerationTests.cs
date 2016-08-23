@@ -15,7 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.TestScripts
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class PowerShellFunctionGenerationTests
     {

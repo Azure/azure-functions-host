@@ -187,24 +187,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ManualTrigger()
-        {
-            string testData = Guid.NewGuid().ToString();
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input", testData }
-            };
-            await Fixture.Host.CallAsync("ManualTrigger", arguments);
-
-            // verify use of context.log to log complex objects
-            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
-            Assert.Equal(TraceLevel.Info, scriptTrace.Level);
-            JObject logEntry = JObject.Parse(scriptTrace.Message);
-            Assert.Equal("Node.js manually triggered function called!", logEntry["message"]);
-            Assert.Equal(testData, logEntry["input"]);
-        }
-
-        [Fact]
         public async Task Scenario_DoneCalledMultipleTimes_ErrorIsLogged()
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
@@ -230,6 +212,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the function completed successfully
             Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
+        }
+
+        [Fact]
+        public async Task Scenario_Logging()
+        {
+            TestHelpers.ClearFunctionLogs("Scenarios");
+
+            string testData = Guid.NewGuid().ToString(); 
+            JObject input = new JObject
+            {
+                { "scenario", "logging" },
+                { "input", testData },
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+            await Fixture.Host.CallAsync("Scenarios", arguments);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
+
+            // verify use of context.log to log complex objects
+            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
+            Assert.Equal(TraceLevel.Info, scriptTrace.Level);
+            JObject logEntry = JObject.Parse(scriptTrace.Message);
+            Assert.Equal("This is a test", logEntry["message"]);
+            Assert.Equal(testData, logEntry["input"]);
         }
 
         [Fact]

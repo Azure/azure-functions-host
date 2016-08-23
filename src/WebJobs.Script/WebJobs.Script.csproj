@@ -303,6 +303,7 @@
     <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
+    <Compile Include="Binding\ManualBinding.cs" />
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />

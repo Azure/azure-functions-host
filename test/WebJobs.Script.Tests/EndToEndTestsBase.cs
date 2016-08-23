@@ -112,6 +112,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ManualTrigger_Invoke_Succeeds()
+        {
+            TestHelpers.ClearFunctionLogs("ManualTrigger");
+
+            string testData = Guid.NewGuid().ToString();
+            string inputName = "input";
+            if (Fixture.FixtureId == "powershell")
+            {
+                inputName = "triggerInput";
+            }
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { inputName, testData }
+            };
+            await Fixture.Host.CallAsync("ManualTrigger", arguments);
+
+            // make sure the input string made it all the way through
+            var logs = await TestHelpers.GetFunctionLogsAsync("ManualTrigger");
+            Assert.True(logs.Any(p => p.Contains(testData)));
+        }
+
+        [Fact]
         public async Task QueueTriggerToBlobTest()
         {
             TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");
