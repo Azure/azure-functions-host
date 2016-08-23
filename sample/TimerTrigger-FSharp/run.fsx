@@ -14,5 +14,5 @@ open System
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Host
 
-let Run(input: TimerInfo, log: TraceWriter ) =
-    log.Verbose("C# Timer trigger function executed.");
+let Run(timerInfo: TimerInfo, log: TraceWriter ) =
+    log.Verbose("F# Timer trigger function executed.");

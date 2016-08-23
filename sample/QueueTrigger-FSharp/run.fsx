@@ -1,7 +1,16 @@
-open System
-open System.IO
+//----------------------------------------------------------------------------------------
+// This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
 
-let inputPath = Environment.GetEnvironmentVariable("input")
-let input = File.ReadAllText(inputPath)
-let message = sprintf "F# script processed queue message '%s'" input
-Console.Out.WriteLine(message)
+#if !COMPILED
+#I "../../bin/Binaries/WebJobs.Script.Host"
+#r "Microsoft.Azure.WebJobs.Host.dll"
+#endif
+
+//----------------------------------------------------------------------------------------
+// This is the implementation of the function 
+
+open System
+open Microsoft.Azure.WebJobs.Host
+
+let Run (input: string, log: TraceWriter) =  
+    log.Info(sprintf "F# script processed queue message '%s'" input)
