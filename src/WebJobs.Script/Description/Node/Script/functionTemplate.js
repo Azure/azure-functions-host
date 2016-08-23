@@ -37,20 +37,20 @@ return function (context, callback) {{
         }}
     }};
 
-    var inputs = context.inputs;
+    var inputs = context._inputs;
     inputs.unshift(context);
-    delete context.inputs;
+    delete context._inputs;
 
     f.apply(null, inputs);
 }};
 
 function getEntryPoint(f, context) {{
     if (util.isObject(f)) {{
-        if (context.entryPoint) {{
+        if (context._entryPoint) {{
             // the module exports multiple functions
             // and an explicit entry point was named
-            f = f[context.entryPoint];
-            delete context.entryPoint;
+            f = f[context._entryPoint];
+            delete context._entryPoint;
         }}
         else if (Object.keys(f).length == 1) {{
             // a single named function was exported

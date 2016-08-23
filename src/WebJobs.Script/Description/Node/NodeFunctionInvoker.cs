@@ -128,7 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 DataType dataType = _trigger.DataType ?? DataType.String;
                 var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, binder, traceWriter, TraceWriter, functionExecutionContext);
                 var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
-                bindingData["InvocationId"] = invocationId;
 
                 await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
 
@@ -184,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 inputs.Add(value);
             }
 
-            executionContext["inputs"] = inputs;
+            executionContext["_inputs"] = inputs;
         }
 
         private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder, 
@@ -290,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!string.IsNullOrEmpty(_entryPoint))
             {
-                context["entryPoint"] = _entryPoint;
+                context["_entryPoint"] = _entryPoint;
             }
 
             if (input is HttpRequestMessage)
@@ -339,21 +338,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             Utility.ApplyBindingData(input, binder.BindingData);
-
-            // normalize the bindingData object passed into Node
-            // we must convert values to types supported by Edge
-            // marshalling as needed
-            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
-            foreach (var pair in binder.BindingData)
-            {
-                var value = pair.Value;
-                if (value != null && !IsEdgeSupportedType(value.GetType()))
-                {
-                    value = value.ToString();
-                }
-                normalizedBindingData[pair.Key] = value;
-            }
-            context["bindingData"] = normalizedBindingData;
+            var bindingData = NormalizeBindingData(binder.BindingData);
+            bindingData["invocationId"] = functionExecutionContext.InvocationId.ToString();
+            context["bindingData"] = bindingData;
 
             // if the input is json, try converting to an object or array
             object converted;
@@ -365,6 +352,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindings.Add(_trigger.Name, input);
 
             return context;
+        }
+
+        private static Dictionary<string, object> NormalizeBindingData(Dictionary<string, object> bindingData)
+        {
+            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
+
+            foreach (var pair in bindingData)
+            {
+                var name = pair.Key;
+                var value = pair.Value;
+                if (value != null && !IsEdgeSupportedType(value.GetType()))
+                {
+                    // we must convert values to types supported by Edge
+                    // marshalling as needed
+                    value = value.ToString();
+                }
+
+                // "camel case" the normally Pascal cased properties by
+                // converting the first letter to lower if needed
+                // While for binding purposes case doesn't matter,
+                // we want to normalize the case to something Node
+                // users would expect to reference in code (e.g. "dequeueCount" not "DequeueCount")
+                name = Utility.ToLowerFirstCharacter(name);
+
+                normalizedBindingData[name] = value;
+            }
+
+            return normalizedBindingData;
         }
 
         private static bool IsEdgeSupportedType(Type type)

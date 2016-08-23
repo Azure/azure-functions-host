@@ -61,6 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(inputBytes, resultBytes);
             Assert.True((bool)testResult["isBuffer"]);
             Assert.Equal(5, (int)testResult["length"]);
+            Assert.Equal($"test-input-node/{name}", (string)testResult["path"]);
+
+            string invocationId = (string)testResult["invocationId"];
+            Guid.Parse(invocationId);
         }
 
         [Fact]
@@ -184,6 +188,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var payload = JsonConvert.DeserializeObject<Payload>(result);
             Assert.Equal(testData, payload.Id);
+        }
+
+        [Fact]
+        public async Task Scenario_BindingData()
+        {
+            JObject input = new JObject
+            {
+                { "scenario", "bindingData" }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+
+            // assertions are done in the script itself, so if this function succeeds
+            // we're good
+            await Fixture.Host.CallAsync("Scenarios", arguments);
         }
 
         [Fact]
