@@ -222,6 +222,7 @@
     <Compile Include="Interfaces\ITipsManager.cs" />
     <Compile Include="NativeMethods\ProcessNativeMethods.cs" />
     <Compile Include="NCli\ConsoleApp.cs" />
+    <Compile Include="NCli\ConsoleAppUtilities.cs" />
     <Compile Include="NCli\Constants.cs" />
     <Compile Include="NCli\DefaultHelp.cs" />
     <Compile Include="NCli\Extensions.cs" />
