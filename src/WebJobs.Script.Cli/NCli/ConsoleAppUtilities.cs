@@ -10,21 +10,21 @@ namespace NCli
 {
     internal static class ConsoleAppUtilities
     {
-        public static IEnumerable<Helpline> BuildHelp(string[] args, IEnumerable<TypePair<VerbAttribute>> verbs, string cliName, bool faulted)
+        public static IEnumerable<Helpline> BuildHelp(string[] args, IEnumerable<VerbType> verbTypes, string cliName, bool faulted)
         {
             if (args.Length > 1)
             {
                 var userVerbString = (faulted ? args : args.Skip(1)).First();
-                var verbsToShowInHelp = verbs.Where(p => p.Attribute.Names.Any(n => n.Equals(userVerbString, StringComparison.OrdinalIgnoreCase)) && p.Attribute.ShowInHelp);
+                var verbsToShowInHelp = verbTypes.Where(p => p.Metadata.Names.Any(n => n.Equals(userVerbString, StringComparison.OrdinalIgnoreCase)) && p.Metadata.ShowInHelp);
                 foreach (var verb in verbsToShowInHelp)
                 {
-                    if (verbs.Count() > 1)
+                    if (verbTypes.Count() > 1)
                     {
-                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {AdditionalInfoColor(verb.Attribute.Scope.ToString())} {verb.Attribute.Usage ?? "\b"} [Options]", Level = TraceLevel.Info };
+                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {AdditionalInfoColor(verb.Metadata.Scope.ToString())} {verb.Metadata.Usage ?? "\b"} [Options]", Level = TraceLevel.Info };
                     }
                     else
                     {
-                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {verb.Attribute.Usage ?? "\b"} {AdditionalInfoColor("[Options]")}", Level = TraceLevel.Info };
+                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {verb.Metadata.Usage ?? "\b"} {AdditionalInfoColor("[Options]")}", Level = TraceLevel.Info };
                     }
 
                     yield return new Helpline { Value = "\t", Level = TraceLevel.Info };
@@ -60,27 +60,27 @@ namespace NCli
                 yield break;
             }
 
-            foreach (var help in GeneralHelp(verbs, cliName))
+            foreach (var help in GeneralHelp(verbTypes, cliName))
             {
                 yield return help;
             }
         }
 
-        public static IEnumerable<Helpline> GeneralHelp(IEnumerable<TypePair<VerbAttribute>> verbs, string cliName)
+        public static IEnumerable<Helpline> GeneralHelp(IEnumerable<VerbType> verbTypes, string cliName)
         {
             yield return new Helpline { Value = $"Usage: {cliName} [verb] [Options]", Level = TraceLevel.Info };
             yield return new Helpline { Value = "\t", Level = TraceLevel.Info };
 
             var hashSet = new HashSet<string>();
-            var longestName = verbs.Select(p => p.Attribute).Max(v => v.Names.Max(n => n.Length));
-            foreach (var verb in verbs.Where(v => v.Attribute.ShowInHelp))
+            var longestName = verbTypes.Select(p => p.Metadata).Max(v => v.Names.Max(n => n.Length));
+            foreach (var verb in verbTypes.Where(v => v.Metadata.ShowInHelp))
             {
-                foreach (var name in verb.Attribute.Names)
+                foreach (var name in verb.Metadata.Names)
                 {
                     if (!hashSet.Contains(name))
                     {
                         hashSet.Add(name);
-                        yield return new Helpline { Value = string.Format($"   {{0, {-longestName}}}  {{1}}", name, verb.Attribute.HelpText), Level = TraceLevel.Info };
+                        yield return new Helpline { Value = string.Format($"   {{0, {-longestName}}}  {{1}}", name, verb.Metadata.HelpText), Level = TraceLevel.Info };
                     }
                 }
             }
@@ -101,9 +101,9 @@ namespace NCli
         }
 
 
-        public static void ValidateVerbs(IEnumerable<TypePair<VerbAttribute>> verbs)
+        public static void ValidateVerbs(IEnumerable<VerbType> verbTypes)
         {
-            var scopesNotEnums = verbs.Where(v => v.Attribute?.Scope?.GetType()?.IsEnum == false);
+            var scopesNotEnums = verbTypes.Where(v => v.Metadata?.Scope?.GetType()?.IsEnum == false);
 
             if (scopesNotEnums.Any())
             {
@@ -113,16 +113,16 @@ namespace NCli
                 {
                     ColoredConsole
                         .Error
-                        .WriteLine(ErrorColor($"Scope on verb '{scope.Type.Name}' is set to '{scope.Attribute.Scope}' of type '{scope.Attribute.Scope.GetType().Name}'"));
+                        .WriteLine(ErrorColor($"Scope on verb '{scope.Type.Name}' is set to '{scope.Metadata.Scope}' of type '{scope.Metadata.Scope.GetType().Name}'"));
                 }
                 throw new ParseException("Scope attribute can only be an Enum.");
             }
 
-            foreach (var verb in verbs)
+            foreach (var verb in verbTypes)
             {
-                if (verb.Attribute.Scope != null) continue;
+                if (verb.Metadata.Scope != null) continue;
 
-                var verbsShareName = verbs.Where(v => v.Attribute.Names.Intersect(verb.Attribute.Names).Any() && v.Type != verb.Type);
+                var verbsShareName = verbTypes.Where(v => v.Metadata.Names.Intersect(verb.Metadata.Names).Any() && v.Type != verb.Type);
                 if (verbsShareName.Any())
                 {
                     ColoredConsole.Error.WriteLine(ErrorColor($"Verb '{verb.Type.Name}' shares the same name with other verb(s), but doesn't have Scope defined"));
@@ -132,16 +132,16 @@ namespace NCli
                         ColoredConsole.Error.WriteLine(ErrorColor($"\t{v.Type.Name}"));
                     }
 
-                    throw new ParseException("Scope attribute can only be an Enum.");
+                    throw new ParseException($"Verb '{verb.Type.Name}' shares the same name with other verb(s), but doesn't have Scope defined");
                 }
             }
         }
 
-        public static TypePair<VerbAttribute> GetVerbType(string[] args, IEnumerable<TypePair<VerbAttribute>> verbs)
+        public static VerbType GetVerbType(string[] args, IEnumerable<VerbType> verbTypes)
         {
-            var helpVerb = verbs
-                    .FirstOrDefault(p => p.Attribute.Names.Any(n => n.Equals("help", StringComparison.OrdinalIgnoreCase)))
-                    ?? new TypePair<VerbAttribute> { Type = typeof(DefaultHelp) };
+            var helpVerb = verbTypes
+                    .FirstOrDefault(p => p.Metadata.Names.Any(n => n.Equals("help", StringComparison.OrdinalIgnoreCase)))
+                    ?? new VerbType { Type = typeof(DefaultHelp) };
 
             if (args == null || !args.Any())
             {
@@ -150,26 +150,26 @@ namespace NCli
 
             var userVerb = args.First();
 
-            verbs = verbs.Where(p => p.Attribute.Names.Any(n => n.Equals(userVerb, StringComparison.OrdinalIgnoreCase)));
+            verbTypes = verbTypes.Where(p => p.Metadata.Names.Any(n => n.Equals(userVerb, StringComparison.OrdinalIgnoreCase)));
 
-            if (!verbs.Any())
+            if (!verbTypes.Any())
             {
                 return helpVerb;
             }
-            else if (verbs.Count() == 1 || args.Count() == 1)
+            else if (verbTypes.Count() == 1 || args.Count() == 1)
             {
-                return verbs.First();
+                return verbTypes.First();
             }
             else
             {
                 var scopeString = args.Skip(1).First();
-                foreach (var verb in verbs)
+                foreach (var verb in verbTypes)
                 {
-                    var scopeType = verb.Attribute.Scope.GetType();
+                    var scopeType = verb.Metadata.Scope.GetType();
                     object scopeEnum;
                     if (TryParseEnum(scopeType, scopeString, out scopeEnum))
                     {
-                        return verbs.FirstOrDefault(v => v.Attribute.Scope.ToString() == scopeEnum.ToString()) ?? helpVerb;
+                        return verbTypes.FirstOrDefault(v => v.Metadata.Scope.ToString() == scopeEnum.ToString()) ?? helpVerb;
                     }
                 }
             }
@@ -290,6 +290,15 @@ namespace NCli
             {
                 return attribute;
             }
+        }
+
+        public static VerbType TypeToVerbType(Type type)
+        {
+            return new VerbType
+            {
+                Type = type,
+                Metadata = TypeToAttribute(type)
+            };
         }
 
     }

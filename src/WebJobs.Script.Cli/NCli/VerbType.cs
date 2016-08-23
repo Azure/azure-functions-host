@@ -5,14 +5,14 @@ using System.Reflection;
 
 namespace NCli
 {
-    internal class TypePair<T> where T: Attribute
+    internal class VerbType
     {
         public Type Type { get; set; }
 
-        public T Attribute { get; set; }
+        public VerbAttribute Metadata { get; set; }
 
-        private IEnumerable<PropertyInfoPair<OptionAttribute>> _options;
-        public IEnumerable<PropertyInfoPair<OptionAttribute>> Options
+        private IEnumerable<OptionInfo> _options;
+        public IEnumerable<OptionInfo> Options
         {
             get
             {
@@ -20,7 +20,7 @@ namespace NCli
                 {
                     _options = Type
                         .GetProperties()
-                        .Select(p => new PropertyInfoPair<OptionAttribute> { PropertyInfo = p, Attribute = p.GetCustomAttribute<OptionAttribute>() })
+                        .Select(p => new OptionInfo { PropertyInfo = p, Attribute = p.GetCustomAttribute<OptionAttribute>() })
                         .Where(a => a.Attribute != null);
                 }
 
