@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Applies any additional binding data from the input value to the specified binding data.
+        /// This binding data then becomes available to the binding process (in the case of late bound bindings)
         /// </summary>
         internal static void ApplyBindingData(object value, Dictionary<string, object> bindingData)
         {
@@ -123,6 +124,20 @@ namespace Microsoft.Azure.WebJobs.Script
             input = input.Trim();
             return (input.StartsWith("{", StringComparison.OrdinalIgnoreCase) && input.EndsWith("}", StringComparison.OrdinalIgnoreCase))
                 || (input.StartsWith("[", StringComparison.OrdinalIgnoreCase) && input.EndsWith("]", StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Converts the first letter of the specified string to lower case if it
+        /// isn't already.
+        /// </summary>
+        public static string ToLowerFirstCharacter(string input)
+        {
+            if (!string.IsNullOrEmpty(input) && char.IsUpper(input[0]))
+            {
+                input = char.ToLowerInvariant(input[0]) + input.Substring(1);
+            }
+
+            return input;
         }
     }
 }

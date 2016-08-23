@@ -9,6 +9,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class UtilityTests
     {
+        [Theory]
+        [InlineData("FooBar", "fooBar")]
+        [InlineData("FOOBAR", "fOOBAR")]
+        [InlineData("fooBar", "fooBar")]
+        [InlineData("foo", "foo")]
+        [InlineData("Foo", "foo")]
+        [InlineData("FOO", "fOO")]
+        [InlineData("f", "f")]
+        [InlineData("F", "f")]
+        [InlineData(null, null)]
+        [InlineData("", "")]
+        public void ToLowerFirstCharacter_ReturnsExpectedResult(string input, string expected)
+        {
+            Assert.Equal(Utility.ToLowerFirstCharacter(input), expected);
+        }
+
         [Fact]
         public void ApplyBindingData_HandlesNestedJsonPayloads()
         {
