@@ -3,9 +3,9 @@ using System.Reflection;
 
 namespace NCli
 {
-    internal class PropertyInfoPair<T> where T: Attribute
+    internal class OptionInfo
     {
         public PropertyInfo PropertyInfo { get; set; }
-        public T Attribute { get; set; }
+        public OptionAttribute Attribute { get; set; }
     }
 }

@@ -235,8 +235,8 @@
     <Compile Include="NCli\IVerbPreRun.cs" />
     <Compile Include="NCli\OptionAttribute.cs" />
     <Compile Include="NCli\ParseException.cs" />
-    <Compile Include="NCli\PropertyInfoAttributePair.cs" />
-    <Compile Include="NCli\TypePair.cs" />
+    <Compile Include="NCli\OptionInfo.cs" />
+    <Compile Include="NCli\VerbType.cs" />
     <Compile Include="NCli\VerbAttribute.cs" />
     <Compile Include="Verbs\ConfigVerb.cs" />
     <Compile Include="Verbs\HelpVerb.cs" />
