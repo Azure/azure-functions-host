@@ -18,7 +18,19 @@ namespace WebJobs.Script.Cli.Tests.NCliTests
             Houses
         }
 
-        
+        public class TestClass
+        {
+            public int Number { get; set; }
+            public TestEnum Enum { get; set; }
+            public string String { get; set; }
+            public DateTime Time { get; set; }
+            public long LongNumber { get; set; }
+            public bool Bool { get; set; }
+            public IEnumerable<string> IEnumerableOfStrings { get; set; }
+            public string[] ArrayOfStrings { get; set; }
+            public List<TestEnum> ListOfEnums { get; set; }
+            public ICollection<string> CollectionOfStrings { get; set; }
+        }
 
         [Verb]
         public class TestClass2 { }
@@ -28,6 +40,28 @@ namespace WebJobs.Script.Cli.Tests.NCliTests
 
         [Verb("name", HelpText = "help", Usage = "usage")]
         public class TestClass4Verb { }
+
+        [Verb("help", HelpText = "help", Usage = "usage")]
+        public class TestClass5 { }
+
+        public enum Scopes
+        {
+            Scope1,
+            Scope2,
+            Scope3
+        }
+
+        [Verb("scoped", Scope = Scopes.Scope1)]
+        public class ScopedClass1 { }
+
+        [Verb("scoped", Scope = Scopes.Scope2)]
+        public class ScopedClass2 { }
+
+        [Verb("scoped", Scope = Scopes.Scope3)]
+        public class ScopedClass3 { }
+
+        [Verb("scoped")]
+        public class ScopedClass4 { }
 
         [Theory]
         [InlineData(typeof(TestEnum), "value", false)]
@@ -96,20 +130,6 @@ namespace WebJobs.Script.Cli.Tests.NCliTests
             actualObject.Should().Be(expectedObject);
         }
 
-        public class TestClass
-        {
-            public int Number { get; set; }
-            public TestEnum Enum { get; set; }
-            public string String { get; set; }
-            public DateTime Time { get; set; }
-            public long LongNumber { get; set; }
-            public bool Bool { get; set; }
-            public IEnumerable<string> IEnumerableOfStrings { get; set; }
-            public string[] ArrayOfStrings { get; set; }
-            public List<TestEnum> ListOfEnums { get; set; }
-            public ICollection<string> CollectionOfStrings { get; set; }
-        }
-
         public static IEnumerable<object[]> TryParseOptionTestData
         {
             get
@@ -148,6 +168,127 @@ namespace WebJobs.Script.Cli.Tests.NCliTests
             if (remainingArgs != -1)
             {
                 stack.Count.Should().Be(remainingArgs);
+            }
+        }
+
+        public static IEnumerable<object[]> GeneralHelpTestData
+        {
+            get
+            {
+                yield return new object[] { new [] { typeof(TestClass) }, 3 };
+                yield return new object[] { new [] { typeof(TestClass), typeof(TestClass) }, 3 };
+                yield return new object[] { new [] { typeof(TestClass), typeof(TestClass2) }, 4 };
+                yield return new object[] { new [] { typeof(TestClass), typeof(TestClass2), typeof(TestClass4Verb) }, 5 };
+                yield return new object[] { new [] { typeof(TestClass), typeof(TestClass2), typeof(TestClass3Verb), typeof(TestClass4Verb) }, 5 };
+
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(GeneralHelpTestData))]
+        public void GeneralHelpTest(IEnumerable<Type> types, int expectedLineCount)
+        {
+            // Setup
+            const string cliName = "testCli";
+            var verbTypes = types.Select(ConsoleAppUtilities.TypeToVerbType);
+
+            // Test
+            var result = ConsoleAppUtilities.GeneralHelp(verbTypes, cliName);
+
+            // Assert
+            result.Should().Contain(l => l.ToString().Contains(cliName));
+
+            result.Count().Should().Be(expectedLineCount);
+
+            foreach (var verbType in verbTypes.Where(t => t.Metadata.ShowInHelp))
+            {
+                result.Should().Contain(l => l.ToString().Contains(verbType.Metadata.Names.First()));
+            }
+
+            foreach (var verbType in verbTypes.Where(t => !t.Metadata.ShowInHelp))
+            {
+                result.Should().NotContain(l => l.ToString().Contains(verbType.Metadata.Names.First()));
+            }
+        }
+
+        public static IEnumerable<object[]> GetVerbTypeTestData
+        {
+            get
+            {
+                var allVerbs = new[] 
+                {
+                    typeof(TestClass),
+                    typeof(TestClass2),
+                    typeof(TestClass3Verb),
+                    typeof(TestClass4Verb),
+                    typeof(ScopedClass1),
+                    typeof(ScopedClass2),
+                    typeof(ScopedClass3)
+                };
+
+                var allWithHelp = allVerbs.Concat(new[] { typeof(TestClass5) });
+
+                yield return new object[] { "testclass".Split(' '), allVerbs, typeof(TestClass) };
+                yield return new object[] { "name".Split(' '), allVerbs, typeof(TestClass4Verb) };
+                yield return new object[] { "notfound".Split(' '), allVerbs, typeof(DefaultHelp) };
+                yield return new object[] { "notfound".Split(' '), allWithHelp, typeof(TestClass5) };
+                yield return new object[] { "help file".Split(' '), allVerbs, typeof(DefaultHelp) };
+                yield return new object[] { "help file".Split(' '), allWithHelp, typeof(TestClass5) };
+                yield return new object[] { "help name".Split(' '), allWithHelp, typeof(TestClass5) };
+                yield return new object[] { null, allWithHelp, typeof(TestClass5) };
+                yield return new object[] { Array.Empty<string>(), allWithHelp, typeof(TestClass5) };
+
+                yield return new object[] { "scoped".Split(' '), allWithHelp, typeof(ScopedClass1) };
+                yield return new object[] { "scoped scope1".Split(' '), allWithHelp, typeof(ScopedClass1) };
+                yield return new object[] { "scoped scope2".Split(' '), allWithHelp, typeof(ScopedClass2) };
+                yield return new object[] { "scoped scope3".Split(' '), allWithHelp, typeof(ScopedClass3) };
+                yield return new object[] { "scoped notscope".Split(' '), allWithHelp, typeof(TestClass5) };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(GetVerbTypeTestData))]
+        public void GetVerbTypeTest(string[] args, IEnumerable<Type> types, Type expectedType)
+        {
+            // Setup
+            var verbTypes = types.Select(ConsoleAppUtilities.TypeToVerbType);
+
+            // Test
+            var actualType = ConsoleAppUtilities.GetVerbType(args, verbTypes);
+
+            // Assert
+            actualType.Type.Should().Be(expectedType);
+        }
+
+        public static IEnumerable<object[]> ValidateVerbsTestData
+        {
+            get
+            {
+                yield return new object[] { new[] { typeof(TestClass), typeof(TestClass2) }, false, null };
+                yield return new object[] { new[] { typeof(TestClass), typeof(TestClass2), typeof(TestClass4Verb), typeof(TestClass5), typeof(ScopedClass1), typeof(ScopedClass2), typeof(ScopedClass3) }, false, null };
+                yield return new object[] { new[] { typeof(ScopedClass1), typeof(ScopedClass2), typeof(ScopedClass3) }, false, null };
+
+                yield return new object[] { new[] { typeof(TestClass), typeof(TestClass3Verb) }, true, "Scope attribute can only be an Enum." };
+                yield return new object[] { new[] { typeof(ScopedClass1), typeof(ScopedClass4) }, true, $"Verb 'ScopedClass4' shares the same name with other verb(s), but doesn't have Scope defined" };
+                yield return new object[] { new[] { typeof(ScopedClass1), typeof(ScopedClass2), typeof(ScopedClass3) }, false, null };
+                yield return new object[] { new[] { typeof(ScopedClass1), typeof(ScopedClass2), typeof(ScopedClass3) }, false, null };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ValidateVerbsTestData))]
+        public void ValidateVerbsTest(IEnumerable<Type> types, bool error, string message)
+        {
+            // Setup
+            var verbTypes = types.Select(ConsoleAppUtilities.TypeToVerbType);
+            Action action = () => ConsoleAppUtilities.ValidateVerbs(verbTypes);
+
+            // Test and Assert
+            if (error)
+            {
+                action
+                    .ShouldThrow<ParseException>()
+                    .WithMessage(message);
             }
         }
     }

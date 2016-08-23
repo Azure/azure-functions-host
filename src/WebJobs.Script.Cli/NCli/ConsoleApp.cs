@@ -13,7 +13,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
     {
         private readonly IDependencyResolver _dependencyResolver;
         private readonly string[] _args;
-        private readonly IEnumerable<TypePair<VerbAttribute>> _verbs;
+        private readonly IEnumerable<VerbType> _verbTypes;
         private readonly string _cliName;
         private bool _isFaulted = false;
 
@@ -63,19 +63,19 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
             _args = args;
             _dependencyResolver = dependencyResolver;
             _cliName = Process.GetCurrentProcess().ProcessName.ToLowerInvariant();
-            _verbs = assembly
+            _verbTypes = assembly
                 .GetTypes()
                 .Where(t => typeof(IVerb).IsAssignableFrom(t) && !t.IsAbstract && t != typeof(DefaultHelp))
-                .Select(t => new TypePair<VerbAttribute> { Type = t, Attribute = ConsoleAppUtilities.TypeToAttribute(t) });
+                .Select(ConsoleAppUtilities.TypeToVerbType);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         internal IVerb Parse()
         {
-            ConsoleAppUtilities.ValidateVerbs(_verbs);
+            ConsoleAppUtilities.ValidateVerbs(_verbTypes);
             try
             {
-                var verbType = ConsoleAppUtilities.GetVerbType(_args, _verbs);
+                var verbType = ConsoleAppUtilities.GetVerbType(_args, _verbTypes);
                 var verb = InstantiateType(verbType.Type);
                 _dependencyResolver.RegisterService<IVerb>(verb);
 
@@ -97,7 +97,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
                 var orderedOptions = new Stack<PropertyInfo>(verbType.Options.Where(o => o.Attribute._order != -1).OrderBy(o => o.Attribute._order).Select(o => o.PropertyInfo).Reverse().ToArray());
 
                 
-                if (verbType.Attribute.Scope != null)
+                if (verbType.Metadata.Scope != null)
                 {
                     stack.Pop();
                 }
@@ -155,7 +155,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
                     .Error
                     .WriteLine(ErrorColor(e.Message))
                     .WriteLine();
-                return InstantiateType(ConsoleAppUtilities.GetVerbType(Array.Empty<string>(), _verbs).Type);
+                return InstantiateType(ConsoleAppUtilities.GetVerbType(Array.Empty<string>(), _verbTypes).Type);
             }
         }
 
@@ -175,7 +175,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
         {
             if (type == typeof(HelpTextCollection))
             {
-                return new HelpTextCollection(ConsoleAppUtilities.BuildHelp(_args, _verbs, _cliName, _isFaulted));
+                return new HelpTextCollection(ConsoleAppUtilities.BuildHelp(_args, _verbTypes, _cliName, _isFaulted));
             }
             else
             {
