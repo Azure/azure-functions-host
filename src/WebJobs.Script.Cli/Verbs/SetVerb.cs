@@ -51,7 +51,7 @@ namespace WebJobs.Script.Cli.Verbs
             if (string.IsNullOrEmpty(ResourceName) && string.IsNullOrEmpty(Name))
             {
                 ColoredConsole.Error.WriteLine("Please specify a resource name");
-                _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func help setsecrets")} for helps.");
+                _tipsManager.DisplayTips($"{TitleColor("Tip:")} run {ExampleColor("func help setsecrets")} for helps.");
                 return;
             }
             else if (!string.IsNullOrEmpty(Name))
@@ -105,7 +105,7 @@ namespace WebJobs.Script.Cli.Verbs
                                 .WriteLine($"Secret saved locally in {ExampleColor($"{storageAccount.StorageAccountName}_STORAGE")}")
                                 .WriteLine();
 
-                            _tipsManager.DisplayTip($"{TitleColor("Tip:")} You can use that identifier {ExampleColor($"{storageAccount.StorageAccountName}_STORAGE ")} in the connection property in your function.json");
+                            _tipsManager.DisplayTips($"{TitleColor("Tip:")} You can use that identifier {ExampleColor($"{storageAccount.StorageAccountName}_STORAGE ")} in the connection property in your function.json");
                         }
                         else
                         {

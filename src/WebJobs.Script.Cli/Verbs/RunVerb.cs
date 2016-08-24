@@ -160,9 +160,11 @@ namespace WebJobs.Script.Cli.Verbs
                 }
 
                 _tipsManager
-                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list functionapps")} to list function apps in your azure subscription.")
-                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list storageaccounts")} to list storage accounts in your azure subscription.")
-                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list secrets")} to list secrets locally on your machine.");
+                    .DisplayTips(
+                        $"{TitleColor("Tip:")} run {ExampleColor("func list functionapps")} to list function apps in your azure subscription.",
+                        $"{TitleColor("Tip:")} run {ExampleColor("func list storageaccounts")} to list storage accounts in your azure subscription.",
+                        $"{TitleColor("Tip:")} run {ExampleColor("func list secrets")} to list secrets locally on your machine."
+                    );
             }
         }
     }
