@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _entryPoint;
 
         private Func<object, Task<object>> _scriptFunc;
-        private Func<object, Task<object>> _clearRequireCache;
+        private static Func<object, Task<object>> _clearRequireCache;
         private static Func<object, Task<object>> _globalInitializationFunc;
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Func<object, Task<object>> ClearRequireCacheFunc
+        private static Func<object, Task<object>> ClearRequireCacheFunc
         {
             get
             {
@@ -238,6 +238,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
+            // clear the node module cache
+            // This is done for any files to ensure that, if a file change triggers 
+            // a host restart, we leave the cache clean.
+            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
+
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
             if (string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
@@ -245,9 +250,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // one of the script files for this function changed
                 // force a reload on next execution
                 _scriptFunc = null;
-
-                // clear the node module cache
-                ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
                 TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
             }
