@@ -29,7 +29,7 @@ namespace WebJobs.Script.Cli.Verbs
             ColoredConsole.WriteLine("Azure Functions CLI 0.1");
             _help.ForEach(l => ColoredConsole.WriteLine(l.ToString()));
 
-            _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func init")} to get started.");
+            _tipsManager.DisplayTips($"{TitleColor("Tip:")} run {ExampleColor("func init")} to get started.");
 
             return Task.CompletedTask;
         }

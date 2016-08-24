@@ -85,15 +85,18 @@ namespace WebJobs.Script.Cli.Common
             }
         }
 
-        public ITipsManager DisplayTip(string tip)
+        public void DisplayTips(params string[] tips)
         {
             var invocations = GetInvocations(10);
             invocations = invocations.Where(i => i.Timestamp > DateTime.Now.AddMinutes(-5));
-            if (invocations.Count() < 5)
+            ColoredConsole.WriteLine();
+            foreach (var tip in tips)
             {
-                ColoredConsole.WriteLine(tip);
+                if (invocations.Count() < 5)
+                {
+                    ColoredConsole.WriteLine(tip);
+                }
             }
-            return this;
         }
 
         private static SQLiteConnection GetConnection()
