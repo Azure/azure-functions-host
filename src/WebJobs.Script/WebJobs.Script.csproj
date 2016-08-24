@@ -346,7 +346,6 @@
     <Compile Include="Description\DotNet\PackageAssemblyResolver.cs" />
     <Compile Include="Description\DotNet\PackageManager.cs" />
     <Compile Include="Description\DotNet\PackageReference.cs" />
-    <Compile Include="Description\Binding\HttpBindingMetadata.cs" />
     <Compile Include="Description\Binding\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Description\Binding\TableBindingMetadata.cs" />

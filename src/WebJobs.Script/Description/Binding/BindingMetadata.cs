@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
                     break;
                 case "http":
-                    bindingMetadata = raw.ToObject<HttpBindingMetadata>();
+                    bindingMetadata = raw.ToObject<BindingMetadata>();
                     break;
                 case "table":
                     bindingMetadata = raw.ToObject<TableBindingMetadata>();
