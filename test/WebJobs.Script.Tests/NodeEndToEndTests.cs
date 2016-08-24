@@ -220,19 +220,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "input", input.ToString() }
             };
-            await Fixture.Host.CallAsync("Scenarios", arguments);
+
+            // call a few times since this is a timing related error
+            for (int i = 0; i < 3; i++)
+            {
+                await Fixture.Host.CallAsync("Scenarios", arguments);
+            }
 
             var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
 
-            Assert.Equal(4, logs.Count);
-            Assert.True(logs.Any(p => p.Contains("Function started")));
-            Assert.True(logs.Any(p => p.Contains("Running scenario 'doubleDone'")));
-
-            // verify an error was written
+            // verify an error was written at least once
             Assert.True(logs.Any(p => p.Contains("Error: 'done' has already been called. Please check your script for extraneous calls to 'done'.")));
 
-            // verify the function completed successfully
-            Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
+            // verify the function completed successfully each time
+            Assert.Equal(3, logs.Count(p => p.Contains("Function completed (Success")));
         }
 
         [Fact]

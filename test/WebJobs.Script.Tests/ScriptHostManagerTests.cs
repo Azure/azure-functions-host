@@ -96,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock.Protected().Verify("Dispose", Times.Once(), true);
         }
 
-/*
         [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
@@ -141,7 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Null(mockHostManager.Object.LastError);
         }
-*/
 
         [Fact]
         public async Task EmptyHost_StartsSuccessfully()
@@ -172,6 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             hostManager.Stop();
             Assert.False(hostManager.IsRunning);
+
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);

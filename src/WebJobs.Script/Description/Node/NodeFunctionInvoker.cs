@@ -261,8 +261,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 string text = p as string;
                 if (text != null)
                 {
-                    traceWriter.Info(text);
-                    fileTraceWriter.Info(text);
+                    try
+                    {
+                        fileTraceWriter.Info(text);
+                        traceWriter.Info(text);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // if a function attempts to write to a disposed
+                        // TraceWriter. Might happen if a function tries to
+                        // log after calling done()
+                    }
                 } 
 
                 return Task.FromResult<object>(null);
