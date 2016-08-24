@@ -70,7 +70,7 @@ Publish
             var exe = new Executable("git", "init");
             await exe.RunAsync(l => ColoredConsole.WriteLine(l), l => ColoredConsole.Error.WriteLine(l));
 
-            _tipsManager.DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func new")} to create your fSirst function.");
+            _tipsManager.DisplayTips($"{TitleColor("Tip:")} run {ExampleColor("func new")} to create your fSirst function.");
         }
     }
 }

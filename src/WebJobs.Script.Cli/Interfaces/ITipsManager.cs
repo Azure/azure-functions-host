@@ -12,6 +12,6 @@ namespace WebJobs.Script.Cli.Interfaces
         void Record(bool failed);
         IEnumerable<Invocation> GetInvocations(int count);
         IEnumerable<Invocation> GetAll();
-        ITipsManager DisplayTip(string tip);
+        void DisplayTips(params string[] tips);
     }
 }

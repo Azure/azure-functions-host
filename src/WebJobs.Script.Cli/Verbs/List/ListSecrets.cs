@@ -46,8 +46,9 @@ namespace WebJobs.Script.Cli.Verbs.List
                     .WriteLine();
 
                 _tipsManager
-                    .DisplayTip($"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.")
-                    .DisplayTip($"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
+                    .DisplayTips(
+                        $"{TitleColor("Tip:")} run {ExampleColor("func list <azureResource>")} to see a list of available resources from a given type.",
+                        $"     then run {ExampleColor("func set secret <resourceName>")} to set the secret locally");
             }
             return Task.CompletedTask;
         }

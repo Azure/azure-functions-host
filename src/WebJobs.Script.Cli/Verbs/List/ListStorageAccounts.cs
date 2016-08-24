@@ -47,7 +47,7 @@ namespace WebJobs.Script.Cli.Verbs.List
                 ColoredConsole.Error.WriteLine(ErrorColor("   -> No storage accounts found"));
             }
 
-            _tipsManager.DisplayTip($"{TitleColor("Tip:")} to switch tenants run {ExampleColor("func switch-tenants")}");
+            _tipsManager.DisplayTips($"{TitleColor("Tip:")} to switch tenants run {ExampleColor("func switch-tenants")}");
         }
     }
 }
