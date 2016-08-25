@@ -18,9 +18,9 @@ namespace NCli
                 var verbsToShowInHelp = verbTypes.Where(p => p.Metadata.Names.Any(n => n.Equals(userVerbString, StringComparison.OrdinalIgnoreCase)) && p.Metadata.ShowInHelp);
                 foreach (var verb in verbsToShowInHelp)
                 {
-                    if (verbTypes.Count() > 1)
+                    if (verbsToShowInHelp.Count() > 1)
                     {
-                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {AdditionalInfoColor(verb.Metadata.Scope.ToString())} {verb.Metadata.Usage ?? "\b"} [Options]", Level = TraceLevel.Info };
+                        yield return new Helpline { Value = $"{TitleColor("Usage")}: {cliName} {userVerbString} {AdditionalInfoColor(verb.Metadata.Scope.ToString() ?? "")} {verb.Metadata.Usage ?? "\b"} [Options]", Level = TraceLevel.Info };
                     }
                     else
                     {

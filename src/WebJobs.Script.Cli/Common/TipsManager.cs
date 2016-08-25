@@ -88,11 +88,11 @@ namespace WebJobs.Script.Cli.Common
         public void DisplayTips(params string[] tips)
         {
             var invocations = GetInvocations(10);
-            invocations = invocations.Where(i => i.Timestamp > DateTime.Now.AddMinutes(-5));
+            invocations = invocations.Where(i => i.Timestamp > DateTime.Now.AddMinutes(-60));
             ColoredConsole.WriteLine();
             foreach (var tip in tips)
             {
-                if (invocations.Count() < 5)
+                if (invocations.Count() < 2)
                 {
                     ColoredConsole.WriteLine(tip);
                 }
