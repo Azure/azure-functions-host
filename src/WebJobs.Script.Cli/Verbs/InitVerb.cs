@@ -44,6 +44,7 @@ Publish
 /App_Data
 /secrets
 /data
+.secrets
 "},
             { ScriptConstants.HostMetadataFileName, $"{{\"id\":\"{ Guid.NewGuid().ToString("N") }\"}}" },
             { SecretsManager.SecretsFilePath, string.Empty }

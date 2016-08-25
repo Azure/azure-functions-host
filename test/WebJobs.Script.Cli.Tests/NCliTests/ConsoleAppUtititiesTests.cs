@@ -288,6 +288,63 @@ namespace WebJobs.Script.Cli.Tests.NCliTests
                     .ShouldThrow<ParseException>()
                     .WithMessage(message);
             }
+            else
+            {
+                action.ShouldNotThrow();
+            }
+        }
+
+        [Fact]
+        public void ValidateCliVerbsTest()
+        {
+            // Setup
+            var verbTypes = typeof(Program)
+                .Assembly
+                .GetTypes()
+                .Where(t => typeof(IVerb).IsAssignableFrom(t) && !t.IsAbstract && t != typeof(DefaultHelp))
+                .Select(ConsoleAppUtilities.TypeToVerbType);
+
+            // Test
+            Action action = () => ConsoleAppUtilities.ValidateVerbs(verbTypes);
+
+            // Assert
+            action.ShouldNotThrow();
+        }
+
+        public static IEnumerable<object[]> BuildHelpTestData
+        {
+            get
+            {
+                yield return new object[] { "".Split(' '), false, 14 };
+                yield return new object[] { "help".Split(' '), false, 14 };
+                yield return new object[] { "notFound".Split(' '), false, 14 };
+                yield return new object[] { "help run".Split(' '), false, 5 };
+                yield return new object[] { "help new".Split(' '), false, 5 };
+                yield return new object[] { "help list".Split(' '), false, 10 };
+                yield return new object[] { "help fetch".Split(' '), false, 5 };
+                yield return new object[] { "help config".Split(' '), false, 5 };
+                yield return new object[] { "run --help".Split(' '), true, 5 };
+                yield return new object[] { "list --help".Split(' '), true, 10 };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(BuildHelpTestData))]
+        public void BuildHelpTest(string[] args, bool faulted, int minCount)
+        {
+            // Setup
+            var verbTypes = typeof(Program)
+                .Assembly
+                .GetTypes()
+                .Where(t => typeof(IVerb).IsAssignableFrom(t) && !t.IsAbstract && t != typeof(DefaultHelp))
+                .Select(ConsoleAppUtilities.TypeToVerbType);
+
+            // Test
+            var help = ConsoleAppUtilities.BuildHelp(args, verbTypes, "cli", faulted);
+
+            // Assert
+            help.Should().NotBeEmpty();
+            help.Should().HaveCount(i => i > minCount);
         }
     }
 }
