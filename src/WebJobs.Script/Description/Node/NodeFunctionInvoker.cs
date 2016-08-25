@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _script;
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
+        private static readonly ExpandoObjectJsonConverter _expandoObjectJsonConverter = new ExpandoObjectJsonConverter();
         private readonly BindingMetadata _trigger;
         private readonly IMetricsLogger _metrics;
         private readonly string _entryPoint;
@@ -186,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             executionContext["_inputs"] = inputs;
         }
 
-        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder, 
+        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder,
             Dictionary<string, object> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
         {
             if (outputBindings == null)
@@ -212,11 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 object value = null;
                 if (bindings.TryGetValue(binding.Metadata.Name, out value) && value != null)
                 {
-                    if (value.GetType() == typeof(ExpandoObject) ||
-                        (value is Array && value.GetType() != typeof(byte[])))
-                    {
-                        value = JsonConvert.SerializeObject(value);
-                    }
+                    value = ConvertBindingValue(value);
 
                     BindingContext bindingContext = new BindingContext
                     {
@@ -228,6 +225,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     await binding.BindAsync(bindingContext);
                 }
             }
+        }
+
+        /// <summary>
+        /// Perform any necessary conversions on the binding value received
+        /// from the script.
+        /// </summary>
+        internal static object ConvertBindingValue(object value)
+        {
+            if (value.GetType() == typeof(ExpandoObject) ||
+               (value is Array && value.GetType() != typeof(byte[])))
+            {
+                // objects and arrays we serialize to string before
+                // passing to the binding layer
+                value = JsonConvert.SerializeObject(value, _expandoObjectJsonConverter);
+            }
+
+            return value;
         }
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
@@ -274,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         // TraceWriter. Might happen if a function tries to
                         // log after calling done()
                     }
-                } 
+                }
 
                 return Task.FromResult<object>(null);
             });
@@ -393,12 +407,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return normalizedBindingData;
         }
 
-        private static bool IsEdgeSupportedType(Type type)
+        internal static bool IsEdgeSupportedType(Type type)
         {
-            if (type == typeof(int) || 
-                type == typeof(double) || 
-                type == typeof(string) || 
-                type == typeof(bool) || 
+            if (type == typeof(int) ||
+                type == typeof(double) ||
+                type == typeof(string) ||
+                type == typeof(bool) ||
                 type == typeof(byte[]) ||
                 type == typeof(object[]))
             {
