@@ -76,27 +76,31 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-beta1-10357\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.Twilio, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.0.0-beta1-10359\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -173,6 +177,10 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="RestSharp, Version=105.2.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\RestSharp.105.2.2\lib\net46\RestSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SendGrid, Version=6.3.4.0, Culture=neutral, PublicKeyToken=4f047e93159395ca, processorArchitecture=MSIL">
@@ -291,6 +299,10 @@
     </Reference>
     <Reference Include="System.Xml.XPath.XDocument, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Xml.XPath.XDocument.4.0.1\lib\net46\System.Xml.XPath.XDocument.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Twilio.Api, Version=3.4.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Twilio.4.7.2\lib\3.5\Twilio.Api.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="xunit.abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">

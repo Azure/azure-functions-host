@@ -455,7 +455,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 typeof(DocumentDBScriptBindingProvider),
                 typeof(MobileAppsScriptBindingProvider),
                 typeof(NotificationHubScriptBindingProvider),
-                typeof(SendGridScriptBindingProvider)
+                typeof(SendGridScriptBindingProvider),
+                typeof(TwilioScriptBindingProvider)
             };
 
             // Create the binding providers
