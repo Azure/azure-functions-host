@@ -72,7 +72,9 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         internal IVerb Parse()
         {
+#if DEBUG
             ConsoleAppUtilities.ValidateVerbs(_verbTypes);
+#endif
             try
             {
                 var verbType = ConsoleAppUtilities.GetVerbType(_args, _verbTypes);
@@ -96,7 +98,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
                 var orderedOptions = new Stack<PropertyInfo>(verbType.Options.Where(o => o.Attribute._order != -1).OrderBy(o => o.Attribute._order).Select(o => o.PropertyInfo).Reverse().ToArray());
 
-                
+
                 if (verbType.Metadata.Scope != null)
                 {
                     stack.Pop();
