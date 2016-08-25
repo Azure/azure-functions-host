@@ -22,6 +22,7 @@ var assert = require('assert');
     else if (scenario == 'logging') {
         var logEntry = {
             message: 'This is a test',
+            version: process.version,
             input: input.input
         };
         context.log(logEntry);

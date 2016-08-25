@@ -260,6 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TraceLevel.Info, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.Message);
             Assert.Equal("This is a test", logEntry["message"]);
+            Assert.Equal("v6.4.0", (string)logEntry["version"]);
             Assert.Equal(testData, logEntry["input"]);
         }
 
