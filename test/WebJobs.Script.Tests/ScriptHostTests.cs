@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public ScriptHostTests(TestFixture fixture)
         {
             _fixture = fixture;
+        }
+
+        [Theory]
+        [InlineData(@"C:\Functions\Scripts\Shared\Test.csx", "Shared")]
+        [InlineData(@"C:\Functions\Scripts\Shared\Sub1\Sub2\Test.csx", "Shared")]
+        [InlineData(@"C:\Functions\Scripts\Shared", "Shared")]
+        public static void GetRelativeDirectory_ReturnsExpectedDirectoryName(string path, string expected)
+        {
+            Assert.Equal(expected, ScriptHost.GetRelativeDirectory(path, @"C:\Functions\Scripts"));
         }
 
         [Fact]
@@ -381,6 +391,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_FileWatching()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.True(scriptConfig.FileWatchingEnabled);
+
+            scriptConfig = new ScriptHostConfiguration();
+            config["fileWatchingEnabled"] = new JValue(true);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.FileWatchingEnabled);
+            Assert.Equal(1, scriptConfig.WatchDirectories.Count);
+            Assert.Equal("node_modules", scriptConfig.WatchDirectories.ElementAt(0));
+
+            scriptConfig = new ScriptHostConfiguration();
+            config["fileWatchingEnabled"] = new JValue(false);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.False(scriptConfig.FileWatchingEnabled);
+
+            scriptConfig = new ScriptHostConfiguration();
+            config["fileWatchingEnabled"] = new JValue(true);
+            config["watchDirectories"] = new JArray("Shared", "Tools");
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.FileWatchingEnabled);
+            Assert.Equal(3, scriptConfig.WatchDirectories.Count);
+            Assert.Equal("node_modules", scriptConfig.WatchDirectories.ElementAt(0));
+            Assert.Equal("Shared", scriptConfig.WatchDirectories.ElementAt(1));
+            Assert.Equal("Tools", scriptConfig.WatchDirectories.ElementAt(2));
+        }
+
+        [Fact]
         public void ApplyFunctionsFilter()
         {
             JObject config = new JObject();
@@ -393,8 +435,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(2, scriptConfig.Functions.Count);
-            Assert.Equal("Function1", scriptConfig.Functions[0]);
-            Assert.Equal("Function2", scriptConfig.Functions[1]);
+            Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
+            Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
         }
 
         [Fact]

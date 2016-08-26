@@ -1,4 +1,5 @@
 #r "SendGridMail"
+#load "..\Shared\Message.csx"
 
 using System;
 using SendGrid;
@@ -14,11 +15,4 @@ public static void Run(Order order, out SendGridMessage message, TraceWriter log
         Text = string.Format("{0}, your order ({1}) is being processed!", order.CustomerName, order.OrderId)
     };
     message.AddTo(order.CustomerEmail);
-}
-
-public class Order
-{
-    public string OrderId { get; set; }
-    public string CustomerName { get; set; }
-    public string CustomerEmail { get; set; }
 }

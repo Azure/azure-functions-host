@@ -732,10 +732,26 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
             }
 
-            JToken watchFiles = (JToken)config["watchFiles"];
-            if (watchFiles != null && watchFiles.Type == JTokenType.Boolean)
+            JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
+            if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
             {
-                scriptConfig.FileWatchingEnabled = (bool)watchFiles;
+                scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
+            }
+
+            // Configure the set of watched directories, adding the standard built in
+            // set to any the user may have specified
+            if (scriptConfig.WatchDirectories == null)
+            {
+                scriptConfig.WatchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+            scriptConfig.WatchDirectories.Add("node_modules");
+            JToken watchDirectories = config["watchDirectories"];
+            if (watchDirectories != null && watchDirectories.Type == JTokenType.Array)
+            {
+                foreach (JToken directory in watchDirectories.Where(p => p.Type == JTokenType.String))
+                {
+                    scriptConfig.WatchDirectories.Add((string)directory);
+                }
             }
 
             // Apply Singleton configuration
@@ -891,9 +907,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
-            string fileName = Path.GetFileName(e.Name);
+            string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
+            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory);
 
-            if (((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+            // We will perform a host restart in the following cases:
+            // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
+            // - the host.json file was changed
+            // - a function.json file was changed
+            // - a function directory was added/removed
+            string fileName = Path.GetFileName(e.Name);
+            if (isWatchedDirectory ||
+                ((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 (Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot))
             {
@@ -901,6 +925,23 @@ namespace Microsoft.Azure.WebJobs.Script
                 // host restart
                 _restart(e);
             }
+        }
+
+        internal static string GetRelativeDirectory(string path, string scriptRoot)
+        {
+            if (path.StartsWith(scriptRoot))
+            {
+                string directory = path.Substring(scriptRoot.Length).TrimStart(Path.DirectorySeparatorChar);
+                int idx = directory.IndexOf(Path.DirectorySeparatorChar);
+                if (idx != -1)
+                {
+                    directory = directory.Substring(0, idx);
+                }
+
+                return directory;
+            }
+
+            return string.Empty;
         }
 
         private static bool IsDisabled(JToken isDisabledValue)

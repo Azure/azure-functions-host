@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.Azure.WebJobs.Host"
             };
 
-        public FunctionMetadataResolver(FunctionMetadata metadata, Collection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
+        public FunctionMetadataResolver(FunctionMetadata metadata, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
         {
             _functionMetadata = metadata;
             _traceWriter = traceWriter;

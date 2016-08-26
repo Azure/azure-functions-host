@@ -349,6 +349,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Azure-FSharp", "Web
 		sample\WebHook-Azure-FSharp\run.fsx = sample\WebHook-Azure-FSharp\run.fsx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Shared\Message.csx = sample\Shared\Message.csx
+		sample\Shared\Order.csx = sample\Shared\Order.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -443,5 +449,6 @@ Global
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
@@ -49,6 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool FileWatchingEnabled { get; set; }
 
         /// <summary>
+        /// Gets the or sets the collection of directories (relative to RootScriptPath) that
+        /// should be monitored for changes. If FileWatchingEnabled is true, these directories
+        /// will be monitored. When a file is added/modified/deleted in any of these
+        /// directories, the host will restart.
+        /// </summary>
+        public ICollection<string> WatchDirectories { get; set; }
+
+        /// <summary>
         /// Gets or sets a value governing when logs should be written to disk.
         /// When enabled, logs will be written to the directory specified by 
         /// <see cref="RootLogPath"/>.
@@ -61,12 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// function directories. When left null (the default) all discovered functions will
         /// be run.
         /// </summary>
-        public Collection<string> Functions { get; set; }
+        public ICollection<string> Functions { get; set; }
 
         /// <summary>
         /// Gets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
         /// </summary>
         [CLSCompliant(false)]
-        public Collection<ScriptBindingProvider> BindingProviders { get; internal set; }
+        public ICollection<ScriptBindingProvider> BindingProviders { get; internal set; }
     }
 }
