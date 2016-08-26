@@ -335,8 +335,9 @@
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
-    <Compile Include="Description\DotNet\CSharp\FunctionAssemblyLoaderTests.cs" />
+    <Compile Include="Description\DotNet\FunctionAssemblyLoaderTests.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionInvokerTests.cs" />
+    <Compile Include="Description\DotNet\PackageManagerTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
@@ -347,7 +348,7 @@
     <Compile Include="FunctionDescriptorProviderTests.cs" />
     <Compile Include="FunctionEntryPointResolverTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
-    <Compile Include="Description\DotNet\CSharp\PackageAssemblyResolverTests.cs" />
+    <Compile Include="Description\DotNet\PackageAssemblyResolverTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="NodeFunctionInvokerTests.cs" />
     <Compile Include="PowerShellInvokerTests.cs" />
@@ -378,6 +379,36 @@
     <Compile Include="WindowsBatchEndToEndTests.cs" />
     <None Include="app.config">
       <SubType>Designer</SubType>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\FunctionWithNoProject\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\project.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\project.lock.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedGroupFrameworkDependencies\project.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedGroupFrameworkDependencies\project.lock.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedPackageVersions\project.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedPackageVersions\project.lock.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.lock.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithoutLock\project.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config">
       <SubType>Designer</SubType>

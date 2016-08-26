@@ -14,7 +14,7 @@ using Microsoft.CodeAnalysis;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
+namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 {
     public class FunctionAssemblyLoaderTests
     {

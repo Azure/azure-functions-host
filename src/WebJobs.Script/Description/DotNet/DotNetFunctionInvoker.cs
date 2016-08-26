@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
+            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader,
             ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Reset cached function
             ResetFunctionValue();
             TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
-            
+
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
             FunctionSignature signature = null;
 
@@ -170,21 +170,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private void RestorePackages()
         {
+            // Kick off the package restore and return.
+            // Any errors will be logged in RestorePackagesAsync
+            RestorePackagesAsync(true)
+                .ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
+        {
             TraceOnPrimaryHost("Restoring packages.", TraceLevel.Info);
 
-            _metadataResolver.RestorePackagesAsync()
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        TraceOnPrimaryHost("Package restore failed:", TraceLevel.Info);
-                        TraceOnPrimaryHost(t.Exception.ToString(), TraceLevel.Info);
-                        return;
-                    }
+            try
+            {
+                await _metadataResolver.RestorePackagesAsync();
 
-                    TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
+                TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
+
+                if (reloadScriptOnSuccess)
+                {
                     _reloadScript();
-                });
+                }
+            }
+            catch (Exception exc)
+            {
+                TraceOnPrimaryHost("Package restore failed:", TraceLevel.Error);
+                TraceOnPrimaryHost(exc.ToString(), TraceLevel.Error);
+            }
         }
 
         public override async Task Invoke(object[] parameters)
@@ -298,10 +309,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return await GetFunctionTargetAsync(++attemptCount);
         }
 
-        private MethodInfo CreateFunctionTarget(CancellationToken cancellationToken)
+        private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)
         {
             try
             {
+                await VerifyPackageReferencesAsync();
+              
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
                 FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
@@ -323,6 +336,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
                 TraceCompilationDiagnostics(ex.Diagnostics);
                 throw;
+            }
+        }
+
+        private async Task VerifyPackageReferencesAsync()
+        {
+            try
+            {
+                if (_metadataResolver.RequiresPackageRestore(Metadata))
+                {
+                    TraceOnPrimaryHost("Package references have been updated.", TraceLevel.Info);
+                    await RestorePackagesAsync(false);
+                }
+            }
+            catch (Exception exc)
+            {
+                // There was an issue processing the package references,
+                // wrap the exception in a CompilationErrorException and retrow
+                TraceOnPrimaryHost("Error processing package references.", TraceLevel.Error);
+                TraceOnPrimaryHost(exc.Message, TraceLevel.Error);
+
+                throw new CompilationErrorException("Unable to restore packages", ImmutableArray<Diagnostic>.Empty);
             }
         }
 

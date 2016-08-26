@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         Task RestorePackagesAsync();
 
+        bool RequiresPackageRestore(FunctionMetadata metadata);
+
         bool TryGetPackageReference(string referenceName, out PackageReference package);
     }
 }

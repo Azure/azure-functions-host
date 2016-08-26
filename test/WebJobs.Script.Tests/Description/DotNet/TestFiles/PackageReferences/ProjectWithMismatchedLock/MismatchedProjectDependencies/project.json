@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+  },
+  "frameworks": {
+    "net46":{
+      "dependencies": {
+        "Microsoft.ProjectOxford.Face": "1.1.0",
+        "Microsoft.AspNet.Identity.Owin" : {
+          "version" : "2.0.0" 
+        }
+      }
+    }
+   }
+}

@@ -258,5 +258,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Reload the resolver
             _packageAssemblyResolver = new PackageAssemblyResolver(_functionMetadata);
         }
+
+        public bool RequiresPackageRestore(FunctionMetadata metadata)
+        {
+            return PackageManager.RequiresPackageRestore(Path.GetDirectoryName(metadata.ScriptFile));
+        }
     }
 }

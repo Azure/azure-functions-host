@@ -19,14 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly CancellationTokenSource _cts;
         private bool _disposed = false;
 
-        private FunctionValueLoader(Func<CancellationToken, MethodInfo> valueFactory, CancellationTokenSource cts)
-            : base(() => Task.Factory.StartNew(() => valueFactory(cts.Token)), LazyThreadSafetyMode.ExecutionAndPublication)
+        private FunctionValueLoader(Func<CancellationToken, Task<MethodInfo>> valueFactory, CancellationTokenSource cts)
+            : base(() => valueFactory(cts.Token), LazyThreadSafetyMode.ExecutionAndPublication)
         {
             _cts = cts;
             _cts.Token.Register(CancellationRequested, false);
         }
 
-        public static FunctionValueLoader Create(Func<CancellationToken, MethodInfo> valueFactory)
+        public static FunctionValueLoader Create(Func<CancellationToken, Task<MethodInfo>> valueFactory)
         {
             return new FunctionValueLoader(valueFactory, new CancellationTokenSource());
         }
