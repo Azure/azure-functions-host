@@ -211,7 +211,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // get the output value from the script
                 object value = null;
-                if (bindings.TryGetValue(binding.Metadata.Name, out value) && value != null)
+                bool haveValue = bindings.TryGetValue(binding.Metadata.Name, out value);
+                if (!haveValue && binding.Metadata.Type == "http")
+                {
+                    // http bindings support a special context.req/context.res programming
+                    // model, so we must map that back to the actual binding name if a value
+                    // wasn't provided using the binding name itself
+                    haveValue = bindings.TryGetValue("res", out value);
+                }
+
+                // apply the value to the binding
+                if (haveValue && value != null)
                 {
                     value = ConvertBindingValue(value);
 

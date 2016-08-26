@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Get the response
             HttpResponseMessage response = null;
-            if (!request.Properties.TryGetValue<HttpResponseMessage>("MS_AzureFunctionsHttpResponse", out response))
+            if (!request.Properties.TryGetValue<HttpResponseMessage>(ScriptConstants.AzureFunctionsHttpResponseKey, out response))
             {
                 // the function was successful but did not write an explicit response
                 response = new HttpResponseMessage(HttpStatusCode.OK);

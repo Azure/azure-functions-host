@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -97,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new ByteArrayContent(inputBytes)
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -105,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("HttpTriggerByteArray", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             JObject testResult = await GetFunctionTestResult("HttpTriggerByteArray");
@@ -345,15 +347,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
                 Method = HttpMethod.Get,
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Headers.Add("test-header", "Test Request Header");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "request", request }
             };
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
@@ -375,6 +378,71 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_Scenarios_ScalarReturn_InBody()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            JObject value = new JObject()
+            {
+                { "status", "200" },
+                { "body", 123 }
+            };
+            JObject input = new JObject()
+            {
+                { "scenario", "echo" },
+                { "value", value }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal(123, await response.Content.ReadAsAsync<int>());
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Scenarios_ScalarReturn()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            JObject input = new JObject()
+            {
+                { "scenario", "echo" },
+                { "value", 123 }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal(123, await response.Content.ReadAsAsync<int>());
+        }
+
+        [Fact]
         public async Task HttpTrigger_Post_PlainText()
         {
             string testData = Guid.NewGuid().ToString();
@@ -384,14 +452,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testData)
             };
+            request.SetConfiguration(new HttpConfiguration());
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "request", request }
             };
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();
@@ -417,15 +486,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(rawBody)
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "request", request }
             };
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();
@@ -487,15 +557,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(rawBody)
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
-                { "req", request }
+                { "request", request }
             };
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();
@@ -528,6 +599,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testObject.ToString())
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -536,7 +608,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("WebHookTrigger", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string body = await response.Content.ReadAsStringAsync();

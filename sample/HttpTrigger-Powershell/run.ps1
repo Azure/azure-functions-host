@@ -7,4 +7,4 @@ else
 	$message = "Please pass a name on the query string"
 }
 
-Out-File -Encoding Ascii $res -inputObject $message;
+[io.file]::WriteAllText($res, $message)
