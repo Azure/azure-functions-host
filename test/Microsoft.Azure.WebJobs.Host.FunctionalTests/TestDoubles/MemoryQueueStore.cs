@@ -59,12 +59,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             public void AddMessage(MutableStorageQueueMessage message)
             {
+                // need to create a new instance so other queues handling this message aren't updated
                 DateTimeOffset now = DateTimeOffset.Now;
-                message.Id = Guid.NewGuid().ToString();
-                message.InsertionTime = now;
-                message.ExpirationTime = now.AddDays(7);
-                message.NextVisibleTime = now;
-                _visibleMessages.Enqueue(message);
+                var newMessage = new FakeStorageQueueMessage(new CloudQueueMessage(message.AsBytes))
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    InsertionTime = now,
+                    ExpirationTime = now.AddDays(7),
+                    NextVisibleTime = now
+                };
+
+                _visibleMessages.Enqueue(newMessage);
             }
 
             public void DeleteMessage(MutableStorageQueueMessage message)

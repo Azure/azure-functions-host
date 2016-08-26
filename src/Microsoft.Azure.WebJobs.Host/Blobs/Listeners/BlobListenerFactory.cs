@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private const string SingletonBlobListenerScopeId = "WebJobs.Internal.Blobs";
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public BlobListenerFactory(IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
@@ -58,9 +58,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("queueConfiguration");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (blobWrittenWatcherSetter == null)
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
             SharedBlobListener sharedBlobListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobListener>(
-                new SharedBlobListenerFactory(_hostAccount, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter));
+                new SharedBlobListenerFactory(_hostAccount, _exceptionHandler, _blobWrittenWatcherSetter));
 
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
@@ -147,14 +147,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
             // Register the blob container we wish to monitor with the shared blob listener.
-            await RegisterWithSharedBlobListenerAsync(hostId, sharedBlobListener, blobClient, 
+            await RegisterWithSharedBlobListenerAsync(hostId, sharedBlobListener, blobClient,
                 hostBlobTriggerQueue, sharedQueueWatcher, cancellationToken);
 
             // Create a "bridge" listener that will monitor the blob
             // notification queue and dispatch to the target job function.
             SharedBlobQueueListener sharedBlobQueueListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
-                    _queueConfiguration, _backgroundExceptionDispatcher, _trace, sharedBlobListener.BlobWritterWatcher));
+                    _queueConfiguration, _exceptionHandler, _trace, sharedBlobListener.BlobWritterWatcher));
             var queueListener = new BlobListener(sharedBlobQueueListener);
 
             // Important: We're using the "data account" here, which is the account that the

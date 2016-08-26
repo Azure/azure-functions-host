@@ -49,9 +49,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             var fastLogger = _config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>();
+            IWebJobsExceptionHandler exceptionHandler = _config.GetService<IWebJobsExceptionHandler>();
 
             return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
-                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider, fastLogger: fastLogger);
+                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, exceptionHandler, hostIdProvider, fastLogger: fastLogger);
         }
 
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
@@ -65,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             JobHostConfiguration config,
             CancellationToken shutdownToken,
             CancellationToken cancellationToken,
+            IWebJobsExceptionHandler exceptionHandler,
             IHostIdProvider hostIdProvider = null,
             FunctionExecutor functionExecutor = null,
             IFunctionIndexProvider functionIndexProvider = null,
@@ -72,7 +74,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IHostInstanceLoggerProvider hostInstanceLoggerProvider = null,
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = null,
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null,
             SingletonManager singletonManager = null,
             IAsyncCollector<FunctionInstanceLogEntry> fastLogger = null)
         {
@@ -82,10 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(typeLocator);
-            if (backgroundExceptionDispatcher == null)
-            {
-                backgroundExceptionDispatcher = BackgroundExceptionDispatcher.Instance;
-            }
+
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor = new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor = new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
@@ -97,6 +95,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Register system services with the service container
             config.AddService<INameResolver>(nameResolver);
 
+            if (exceptionHandler != null)
+            {
+                exceptionHandler.Initialize(host);
+            }
+
             ExtensionConfigContext context = new ExtensionConfigContext
             {
                 Config = config,
@@ -107,19 +110,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (singletonManager == null)
             {
-                singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, config.Singleton, trace, hostIdProvider, config.NameResolver);
+                singletonManager = new SingletonManager(storageAccountProvider, exceptionHandler, config.Singleton, trace, hostIdProvider, config.NameResolver);
             }
 
             IExtensionRegistry extensions = config.GetExtensions();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
+                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, exceptionHandler,
                 messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, trace);
 
             if (bindingProvider == null)
             {
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
-                        
+
             bool hasFastTableHook = config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>() != null;
             bool noDashboardStorage = config.DashboardConnectionString == null;
             if (hasFastTableHook && noDashboardStorage)
@@ -145,13 +148,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(combinedCancellationToken);
 
-                IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
-                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
+                IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(combinedCancellationToken);
+                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);
                 IFunctionOutputLogger functionOutputLogger = await functionOutputLoggerProvider.GetAsync(combinedCancellationToken);
-                
+
                 if (functionExecutor == null)
                 {
-                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace, config.FunctionTimeout, fastLogger);
+                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, exceptionHandler, trace, fastLogger);
                 }
 
                 if (functionIndexProvider == null)
@@ -180,14 +183,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
-                        queueConfiguration, backgroundExceptionDispatcher, trace, functions,
+                        queueConfiguration, exceptionHandler, trace, functions,
                         functionInstanceLogger, functionExecutor);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        queueConfiguration, backgroundExceptionDispatcher, trace, functions,
+                        queueConfiguration, exceptionHandler, trace, functions,
                         functionInstanceLogger, functionExecutor);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
@@ -218,10 +221,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     };
 
                     hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, heartbeatCommand,
-                        backgroundExceptionDispatcher, shutdownToken, functionExecutor);
+                        exceptionHandler, shutdownToken, functionExecutor);
                     IListenerFactory hostListenerFactory = new CompositeListenerFactory(functionsListenerFactory,
                         sharedQueueListenerFactory, instanceQueueListenerFactory);
-                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, backgroundExceptionDispatcher, shutdownToken);
+                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, exceptionHandler, shutdownToken);
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, combinedCancellationToken);
@@ -249,14 +252,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (descriptorsCount == 0)
                 {
-                    trace.Warning(string.Format("No job functions found. Try making your job classes and methods public. {0}", 
+                    trace.Warning(string.Format("No job functions found. Try making your job classes and methods public. {0}",
                         Constants.ExtensionInitializationMessage), TraceSource.Indexing);
                 }
                 else
                 {
                     StringBuilder functionsTrace = new StringBuilder();
                     functionsTrace.AppendLine("Found the following functions:");
-                    
+
                     foreach (FunctionDescriptor descriptor in descriptors)
                     {
                         functionsTrace.AppendLine(descriptor.FullName);
@@ -281,11 +284,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
-            IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IRecurrentCommand heartbeatCommand, IWebJobsExceptionHandler exceptionHandler,
             CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
-                backgroundExceptionDispatcher, innerExecutor);
+                exceptionHandler, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken, abortListenerExecutor);
             return shutdownFunctionExecutor;
@@ -293,11 +296,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
-            IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IRecurrentCommand heartbeatCommand, IWebJobsExceptionHandler exceptionHandler,
             CancellationToken shutdownToken)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory);
-            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, backgroundExceptionDispatcher, factoryListener);
+            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, exceptionHandler, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;
         }

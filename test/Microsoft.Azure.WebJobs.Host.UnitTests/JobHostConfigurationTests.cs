@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.NotNull(config.Tracing);
             Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
             Assert.Equal(0, config.Tracing.Tracers.Count);
-            Assert.Null(config.FunctionTimeout);
 
             StorageClientFactory clientFactory = config.GetService<StorageClientFactory>();
             Assert.NotNull(clientFactory);
@@ -149,21 +148,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             JobHostConfiguration configuration = new JobHostConfiguration();
 
             ExceptionAssert.ThrowsArgumentNull(() => configuration.JobActivator = null, "value");
-        }
-
-        [Fact]
-        public void FunctionTimeout_GetterSetter()
-        {
-            JobHostConfiguration configuration = new JobHostConfiguration();
-            Assert.Null(configuration.FunctionTimeout);
-
-            TimeSpan timeout = TimeSpan.FromHours(1);
-            configuration.FunctionTimeout = timeout;
-            Assert.Equal(timeout, configuration.FunctionTimeout);
-
-            configuration.FunctionTimeout = null;
-            Assert.Null(configuration.FunctionTimeout);
-        }
+        }      
 
         [Fact]
         public void GetService_IExtensionRegistry_ReturnsDefaultRegistry()

@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
             _mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
             Mock<IDelayStrategy> mockDelayStrategy = new Mock<IDelayStrategy>(MockBehavior.Strict);
-            Mock<IBackgroundExceptionDispatcher> mockExceptionDispatcher = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+            Mock<IWebJobsExceptionHandler> mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
             TestTraceWriter log = new TestTraceWriter(TraceLevel.Verbose);
             Mock<IQueueProcessorFactory> mockQueueProcessorFactory = new Mock<IQueueProcessorFactory>(MockBehavior.Strict);
             JobHostQueuesConfiguration queuesConfig = new JobHostQueuesConfiguration();

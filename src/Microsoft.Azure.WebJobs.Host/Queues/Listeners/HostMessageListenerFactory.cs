@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         private readonly IStorageQueue _queue;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly TraceWriter _trace;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         public HostMessageListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
             IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger,
@@ -44,9 +44,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("queueConfiguration");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (trace == null)
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             _queue = queue;
             _queueConfiguration = queueConfiguration;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _trace = trace;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 poisonQueue: null,
                 triggerExecutor: triggerExecutor,
                 delayStrategy: delayStrategy,
-                backgroundExceptionDispatcher: _backgroundExceptionDispatcher,
+                exceptionHandler: _exceptionHandler,
                 trace: _trace,
                 sharedWatcher: null,
                 queueConfiguration: _queueConfiguration);

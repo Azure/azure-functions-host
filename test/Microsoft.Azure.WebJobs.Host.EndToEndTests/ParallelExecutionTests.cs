@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static readonly object _lock = new object();
 
         private static int _numberOfQueueMessages;
-        private static int _receivedMessages;
+        private static int _processedMessages;
 
         private static int _currentSimultaneouslyRunningFunctions;
         private static int _maxSimultaneouslyRunningFunctions;
@@ -28,9 +28,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public static void ParallelQueueTrigger([QueueTrigger(TestQueueName)] int sleepTimeInSeconds)
         {
-            lock(_lock)
+            lock (_lock)
             {
-                _receivedMessages++;
                 _currentSimultaneouslyRunningFunctions++;
                 if (_currentSimultaneouslyRunningFunctions > _maxSimultaneouslyRunningFunctions)
                 {
@@ -40,10 +39,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             Thread.Sleep(sleepTimeInSeconds * 1000);
 
-            lock(_lock)
+            lock (_lock)
             {
                 _currentSimultaneouslyRunningFunctions--;
-                if (_receivedMessages == _numberOfQueueMessages)
+                _processedMessages++;
+                if (_processedMessages == _numberOfQueueMessages)
                 {
                     _allMessagesProcessed.Set();
                 }
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [InlineData(3, 3)]
         public void MaxDegreeOfParallelism_Queues(int batchSize, int maxExpectedParallelism)
         {
-            _receivedMessages = 0;
+            _processedMessages = 0;
             _currentSimultaneouslyRunningFunctions = 0;
             _maxSimultaneouslyRunningFunctions = 0;
             _numberOfQueueMessages = batchSize * 3;
@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 NameResolver = nameResolver,
                 TypeLocator = new FakeTypeLocator(typeof(ParallelExecutionTests)),
             };
+
             hostConfiguration.Queues.BatchSize = batchSize;
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
@@ -91,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 host.Stop();
             }
 
-            Assert.Equal(_numberOfQueueMessages, _receivedMessages);
+            Assert.Equal(_numberOfQueueMessages, _processedMessages);
             Assert.Equal(0, _currentSimultaneouslyRunningFunctions);
 
             // the actual value will vary sometimes based on the speed of the machine

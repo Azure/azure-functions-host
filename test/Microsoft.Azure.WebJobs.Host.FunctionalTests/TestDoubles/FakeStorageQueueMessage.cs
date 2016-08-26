@@ -28,22 +28,22 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public override byte[] AsBytes
         {
-            get 
-            { 
-                return _message.AsBytes; 
+            get
+            {
+                return _message.AsBytes;
             }
         }
 
         public override string AsString
         {
-            get 
-            { 
-                return _message.AsString; 
+            get
+            {
+                return _message.AsString;
             }
         }
 
-        public override int DequeueCount 
-        { 
+        public override int DequeueCount
+        {
             get
             {
                 return _message.DequeueCount;
@@ -102,8 +102,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             }
         }
 
-        public override string PopReceipt 
-        { 
+        public override string PopReceipt
+        {
             get
             {
                 return _message.PopReceipt;
@@ -114,12 +114,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             }
         }
 
-        public override CloudQueueMessage SdkObject 
-        { 
-            get 
-            { 
-                return _message; 
-            } 
+        public override CloudQueueMessage SdkObject
+        {
+            get
+            {
+                return _message;
+            }
         }
 
         private void SetMessageProperty(string propertyName, object value)

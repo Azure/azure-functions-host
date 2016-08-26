@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void Queue_IfBoundToICollectorCloudQueueMessage_AddEnqueuesMessage()
         {
             // Arrange
-            const string expectedContent = "message";
+            string expectedContent = Guid.NewGuid().ToString();
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueueClient client = account.CreateQueueClient();
             IStorageQueue triggerQueue = CreateQueue(client, TriggerQueueName);
@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(messages);
             Assert.Equal(1, messages.Count());
             IStorageQueueMessage message = messages.Single();
-            Assert.Same(expectedContent, message.AsString);
+            Assert.Equal(expectedContent, message.AsString);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
     internal sealed class TaskSeriesTimer : ITaskSeriesTimer
     {
         private readonly ITaskSeriesCommand _command;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly Task _initialWait;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
         private Task _run;
         private bool _disposed;
 
-        public TaskSeriesTimer(ITaskSeriesCommand command, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+        public TaskSeriesTimer(ITaskSeriesCommand command, IWebJobsExceptionHandler exceptionHandler,
             Task initialWait)
         {
             if (command == null)
@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
                 throw new ArgumentNullException("command");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (initialWait == null)
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
             }
 
             _command = command;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _initialWait = initialWait;
             _cancellationTokenSource = new CancellationTokenSource();
         }
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
                 // Immediately report any unhandled exception from this background task.
                 // (Don't capture the exception as a fault of this Task; that would delay any exception reporting until
                 // Stop is called, which might never happen.)
-                _backgroundExceptionDispatcher.Throw(ExceptionDispatchInfo.Capture(exception));
+                await _exceptionHandler.OnUnhandledExceptionAsync(ExceptionDispatchInfo.Capture(exception));
             }
         }
 

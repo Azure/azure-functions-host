@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -13,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -42,10 +40,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
             TestTraceWriter logger = new TestTraceWriter(TraceLevel.Verbose);
             SingletonManager singletonManager = new SingletonManager();
+            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
-                BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
+                exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
                 sharedContextProvider, new DefaultExtensionRegistry(), singletonManager, logger);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
@@ -54,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, trace, null);
+
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, trace);
 
             if (extensionRegistry == null)
             {

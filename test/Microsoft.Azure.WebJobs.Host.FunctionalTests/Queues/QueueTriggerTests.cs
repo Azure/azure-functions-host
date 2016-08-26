@@ -24,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void QueueTrigger_IfBoundToCloudQueueMessage_Binds()
         {
             // Arrange
-            CloudQueueMessage expectedMessage = new CloudQueueMessage("ignore");
+            string expectedGuid = Guid.NewGuid().ToString();
+            CloudQueueMessage expectedMessage = new CloudQueueMessage(expectedGuid);
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue queue = CreateQueue(account, QueueName);
             queue.AddMessage(new FakeStorageQueueMessage(expectedMessage));
@@ -34,13 +35,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => BindToCloudQueueMessageProgram.TaskSource = s);
 
             // Assert
-            Assert.Same(expectedMessage, result);
+            Assert.Equal(expectedMessage.AsString, result.AsString);
         }
 
         [Fact]
         public void QueueTrigger_IfBoundToString_Binds()
         {
-            const string expectedContent = "abc";
+            string expectedContent = Guid.NewGuid().ToString();
             TestBindToString(expectedContent);
         }
 
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => BindToStringProgram.TaskSource = s);
 
             // Assert
-            Assert.Same(expectedContent, result);
+            Assert.Equal(expectedContent, result);
         }
 
         [Fact]
@@ -247,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void QueueTrigger_IfMessageIsString_ProvidesQueueTriggerBindingData()
         {
             // Arrange
-            const string expectedQueueTrigger = "abc";
+            string expectedQueueTrigger = Guid.NewGuid().ToString();
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue queue = CreateQueue(account, QueueName);
             IStorageQueueMessage message = queue.CreateMessage(expectedQueueTrigger);
@@ -258,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => BindToQueueTriggerBindingDataProgram.TaskSource = s);
 
             // Assert
-            Assert.Same(expectedQueueTrigger, result);
+            Assert.Equal(expectedQueueTrigger, result);
         }
 
         [Fact]

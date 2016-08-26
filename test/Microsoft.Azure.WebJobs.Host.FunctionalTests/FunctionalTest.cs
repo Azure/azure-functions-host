@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +19,6 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -83,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     Task callTask = host.CallAsync(method, arguments);
 
                     // Act
-                    bool completed = Task.WhenAny(task, callTask).WaitUntilCompleted(3 * 1000);
+                    bool completed = Task.WhenAll(task, callTask).WaitUntilCompleted(3 * 1000);
 
                     // Assert
                     Assert.True(completed);
@@ -217,8 +215,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration(storageAccountProvider);
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
-                new TaskBackgroundExceptionDispatcher<TResult>(taskSource);
+            IWebJobsExceptionHandler exceptionHandler =
+                new TaskBackgroundExceptionHandler<TResult>(taskSource);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
@@ -227,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             SingletonConfiguration singletonConfig = new SingletonConfiguration();
             TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, backgroundExceptionDispatcher, singletonConfig, trace, hostIdProvider);
+            SingletonManager singletonManager = new SingletonManager(storageAccountProvider, exceptionHandler, singletonConfig, trace, hostIdProvider);
 
             if (extensions == null)
             {
@@ -236,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
+                queueConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
@@ -245,7 +243,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = new NullFunctionInstanceLoggerProvider();
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger functionOutputLogger = functionOutputLoggerProvider.GetAsync(CancellationToken.None).Result;
-            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, new TestTraceWriter(TraceLevel.Verbose), null);
+
+            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, exceptionHandler, new TestTraceWriter(TraceLevel.Verbose));
 
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(
@@ -257,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 TypeLocator = typeLocator,
                 FunctionIndexProvider = functionIndexProvider,
                 StorageAccountProvider = storageAccountProvider,
-                BackgroundExceptionDispatcher = backgroundExceptionDispatcher,
+                BackgroundExceptionDispatcher = exceptionHandler,
                 BindingProvider = bindingProvider,
                 ConsoleProvider = new NullConsoleProvider(),
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),

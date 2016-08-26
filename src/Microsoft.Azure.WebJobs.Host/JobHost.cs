@@ -1,5 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.﻿
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs
         private JobHostContext _context;
         private IListener _listener;
         private object _contextLock = new object();
-        
+
         private int _state;
         private Task _stopTask;
         private object _stopTaskLock = new object();
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 throw new ArgumentNullException("serviceProvider");
             }
-                        
+
             _contextFactory = serviceProvider.GetJobHostContextFactory();
             if (_contextFactory == null)
             {

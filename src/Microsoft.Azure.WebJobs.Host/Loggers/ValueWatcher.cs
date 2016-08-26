@@ -22,11 +22,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         // Begin watchers.
         public ValueWatcher(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob blobResults,
-            TextWriter consoleOutput, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            TextWriter consoleOutput, IWebJobsExceptionHandler exceptionHandler)
         {
             ValueWatcherCommand command = new ValueWatcherCommand(watches, blobResults, consoleOutput);
             _command = command;
-            _timer = ValueWatcherCommand.CreateTimer(command, backgroundExceptionDispatcher);
+            _timer = ValueWatcherCommand.CreateTimer(command, exceptionHandler);
             _timer.Start();
         }
 
@@ -125,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             public static ITaskSeriesTimer CreateTimer(ValueWatcherCommand command,
-                IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+                IWebJobsExceptionHandler exceptionHandler)
             {
-                return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(IntialDelay));
+                return new TaskSeriesTimer(command, exceptionHandler, Task.Delay(IntialDelay));
             }
         }
     }

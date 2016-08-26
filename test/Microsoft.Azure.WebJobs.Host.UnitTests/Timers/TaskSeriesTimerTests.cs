@@ -20,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = null;
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
-                new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict).Object;
+            IWebJobsExceptionHandler exceptionHandler =
+                new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict).Object;
             Task initialWait = Task.FromResult(0);
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait), "command");
+                () => CreateProductUnderTest(command, exceptionHandler, initialWait), "command");
         }
 
         [Fact]
@@ -34,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = CreateDummyCommand();
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
-                new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict).Object;
+            IWebJobsExceptionHandler exceptionHandler =
+                new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict).Object;
             Task initialWait = null;
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait), "initialWait");
+                () => CreateProductUnderTest(command, exceptionHandler, initialWait), "initialWait");
         }
 
         [Fact]
@@ -48,13 +48,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = CreateDummyCommand();
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null;
+            IWebJobsExceptionHandler exceptionHandler = null;
             Task initialWait = Task.FromResult(0);
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait),
-                "backgroundExceptionDispatcher");
+                () => CreateProductUnderTest(command, exceptionHandler, initialWait),
+                "exceptionHandler");
         }
 
         [Fact]
@@ -151,19 +151,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                 Func<Task<TaskSeriesCommandResult>> execute = () => { throw expectedException; };
                 ITaskSeriesCommand command = CreateCommand(execute);
 
-                Mock<IBackgroundExceptionDispatcher> backgroundExceptionDispatcherMock =
-                    new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+                Mock<IWebJobsExceptionHandler> exceptionHandlerMock =
+                    new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
                 ExceptionDispatchInfo exceptionInfo = null;
-                backgroundExceptionDispatcherMock
-                    .Setup(d => d.Throw(It.IsAny<ExceptionDispatchInfo>()))
+                exceptionHandlerMock
+                    .Setup(d => d.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()))
                     .Callback<ExceptionDispatchInfo>((i) =>
                     {
                         exceptionInfo = i;
                         Assert.True(exceptionDispatchedWaitHandle.Set()); // Guard
                     });
-                IBackgroundExceptionDispatcher backgroundExceptionDispatcher = backgroundExceptionDispatcherMock.Object;
+                IWebJobsExceptionHandler exceptionHandler = exceptionHandlerMock.Object;
 
-                using (ITaskSeriesTimer product = CreateProductUnderTest(command, backgroundExceptionDispatcher))
+                using (ITaskSeriesTimer product = CreateProductUnderTest(command, exceptionHandler))
                 {
                     // Act
                     product.Start();
@@ -193,19 +193,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 
             using (EventWaitHandle exceptionDispatchedWaitHandle = new ManualResetEvent(initialState: false))
             {
-                Mock<IBackgroundExceptionDispatcher> backgroundExceptionDispatcherMock =
-                new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+                Mock<IWebJobsExceptionHandler> exceptionHandlerMock =
+                new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
                 ExceptionDispatchInfo exceptionInfo = null;
-                backgroundExceptionDispatcherMock
-                    .Setup(d => d.Throw(It.IsAny<ExceptionDispatchInfo>()))
+                exceptionHandlerMock
+                    .Setup(d => d.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()))
                     .Callback<ExceptionDispatchInfo>((i) =>
                     {
                         exceptionInfo = i;
                         Assert.True(exceptionDispatchedWaitHandle.Set()); // Guard
                     });
-                IBackgroundExceptionDispatcher backgroundExceptionDispatcher = backgroundExceptionDispatcherMock.Object;
+                IWebJobsExceptionHandler exceptionHandler = exceptionHandlerMock.Object;
 
-                using (ITaskSeriesTimer product = CreateProductUnderTest(command, backgroundExceptionDispatcher))
+                using (ITaskSeriesTimer product = CreateProductUnderTest(command, exceptionHandler))
                 {
                     // Act
                     product.Start();
@@ -241,15 +241,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                     return taskSource.Task;
                 });
 
-                Mock<IBackgroundExceptionDispatcher> backgroundExceptionDispatcherMock =
-                    new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+                Mock<IWebJobsExceptionHandler> exceptionHandlerMock =
+                    new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
                 int backgroundExceptionCalls = 0;
-                backgroundExceptionDispatcherMock
-                    .Setup(d => d.Throw(It.IsAny<ExceptionDispatchInfo>()))
+                exceptionHandlerMock
+                    .Setup(d => d.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()))
                     .Callback(() => backgroundExceptionCalls++);
-                IBackgroundExceptionDispatcher backgroundExceptionDispatcher = backgroundExceptionDispatcherMock.Object;
+                IWebJobsExceptionHandler exceptionHandler = exceptionHandlerMock.Object;
 
-                using (ITaskSeriesTimer product = CreateProductUnderTest(command, backgroundExceptionDispatcher))
+                using (ITaskSeriesTimer product = CreateProductUnderTest(command, exceptionHandler))
                 {
                     // Act
                     product.Start();
@@ -561,7 +561,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                     return taskSource.Task;
                 });
 
-                IBackgroundExceptionDispatcher ignoreDispatcher = CreateIgnoreBackgroundExceptionDispatcher();
+                IWebJobsExceptionHandler ignoreDispatcher = CreateIgnoreBackgroundExceptionDispatcher();
 
                 using (ITaskSeriesTimer product = CreateProductUnderTest(command, ignoreDispatcher))
                 {
@@ -604,7 +604,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                     return taskSource.Task;
                 });
 
-                IBackgroundExceptionDispatcher ignoreDispatcher = CreateIgnoreBackgroundExceptionDispatcher();
+                IWebJobsExceptionHandler ignoreDispatcher = CreateIgnoreBackgroundExceptionDispatcher();
 
                 using (ITaskSeriesTimer product = CreateProductUnderTest(command, ignoreDispatcher))
                 {
@@ -871,19 +871,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
             return new Mock<ITaskSeriesCommand>(MockBehavior.Strict).Object;
         }
 
-        private static IBackgroundExceptionDispatcher CreateStackExceptionDispatcher()
+        private static IWebJobsExceptionHandler CreateStackExceptionDispatcher()
         {
-            Mock<IBackgroundExceptionDispatcher> mock = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+            Mock<IWebJobsExceptionHandler> mock = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
             mock
-                .Setup(d => d.Throw(It.IsAny<ExceptionDispatchInfo>()))
+                .Setup(d => d.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()))
                 .Callback<ExceptionDispatchInfo>(i => i.Throw());
             return mock.Object;
         }
 
-        private static IBackgroundExceptionDispatcher CreateIgnoreBackgroundExceptionDispatcher()
+        private static IWebJobsExceptionHandler CreateIgnoreBackgroundExceptionDispatcher()
         {
-            Mock<IBackgroundExceptionDispatcher> mock = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
-            mock.Setup(d => d.Throw(It.IsAny<ExceptionDispatchInfo>()));
+            Mock<IWebJobsExceptionHandler> mock = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
+            mock.Setup(d => d.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()));
             return mock.Object;
         }
 
@@ -898,15 +898,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         }
 
         private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IWebJobsExceptionHandler exceptionHandler)
         {
-            return CreateProductUnderTest(command, backgroundExceptionDispatcher, Task.Delay(0));
+            return CreateProductUnderTest(command, exceptionHandler, Task.Delay(0));
         }
 
         private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, Task initialWait)
+            IWebJobsExceptionHandler exceptionHandler, Task initialWait)
         {
-            return new TaskSeriesTimer(command, backgroundExceptionDispatcher, initialWait);
+            return new TaskSeriesTimer(command, exceptionHandler, initialWait);
         }
 
         private static ITaskSeriesCommand CreateStubCommand(TimeSpan separationInterval)

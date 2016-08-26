@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     {
         public ITypeLocator TypeLocator { get; set; }
 
-        public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher { get; set; }
+        public IWebJobsExceptionHandler BackgroundExceptionDispatcher { get; set; }
 
         public IBindingProvider BindingProvider { get; set; }
 
@@ -49,10 +49,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                host, StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver, 
-                ConsoleProvider, new JobHostConfiguration(), shutdownToken, cancellationToken, HostIdProvider, FunctionExecutor,
+                host, StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver,
+                ConsoleProvider, new JobHostConfiguration(), shutdownToken, cancellationToken, BackgroundExceptionDispatcher, HostIdProvider, FunctionExecutor,
                 FunctionIndexProvider, BindingProvider, HostInstanceLoggerProvider, FunctionInstanceLoggerProvider,
-                FunctionOutputLoggerProvider, BackgroundExceptionDispatcher);
+                FunctionOutputLoggerProvider);
         }
     }
 }

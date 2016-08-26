@@ -1,8 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.IO;
+using System.Diagnostics;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -10,12 +9,8 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -33,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount)
         {
-            return Create<TProgram>(storageAccount, maxDequeueCount : 5);
+            return Create<TProgram>(storageAccount, maxDequeueCount: 5);
         }
 
         public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount, int maxDequeueCount)
@@ -61,13 +56,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             SingletonManager singletonManager = new SingletonManager();
 
             TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, trace, null);
+
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, trace);
 
             var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
                     nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
-                    BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
+                    exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
                     sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
 
             var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,

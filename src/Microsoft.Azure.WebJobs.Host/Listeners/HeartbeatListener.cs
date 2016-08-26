@@ -17,11 +17,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private bool _disposed;
 
         public HeartbeatListener(IRecurrentCommand heartbeatCommand,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, IListener innerListener)
+            IWebJobsExceptionHandler exceptionHandler, IListener innerListener)
         {
             _heartbeatCommand = heartbeatCommand;
             _innerListener = innerListener;
-            _timer = CreateTimer(backgroundExceptionDispatcher);
+            _timer = CreateTimer(exceptionHandler);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -55,10 +55,10 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             }
         }
 
-        private ITaskSeriesTimer CreateTimer(IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        private ITaskSeriesTimer CreateTimer(IWebJobsExceptionHandler exceptionHandler)
         {
             return LinearSpeedupStrategy.CreateTimer(_heartbeatCommand, HeartbeatIntervals.NormalSignalInterval,
-                HeartbeatIntervals.MinimumSignalInterval, backgroundExceptionDispatcher);
+                HeartbeatIntervals.MinimumSignalInterval, exceptionHandler);
         }
     }
 }

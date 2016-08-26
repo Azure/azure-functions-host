@@ -11,11 +11,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class SharedBlobListenerFactory : IFactory<SharedBlobListener>
     {
         private readonly IStorageAccount _account;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
 
         public SharedBlobListenerFactory(IStorageAccount account,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter)
         {
             if (account == null)
@@ -23,9 +23,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("account");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (blobWrittenWatcherSetter == null)
@@ -34,14 +34,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             _account = account;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
         }
 
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public SharedBlobListener Create()
         {
-            SharedBlobListener listener = new SharedBlobListener(_account, _backgroundExceptionDispatcher);
+            SharedBlobListener listener = new SharedBlobListener(_account, _exceptionHandler);
             _blobWrittenWatcherSetter.SetValue(listener.BlobWritterWatcher);
             return listener;
         }

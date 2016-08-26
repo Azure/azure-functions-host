@@ -144,7 +144,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "TraceEvent",
                 "BindingTemplateExtensions",
                 "FunctionIndexingException",
-                "Binder"
+                "Binder",
+                "IWebJobsExceptionHandler",
+                "WebJobsExceptionHandler",
+                "FunctionTimeoutException"
             };
 
             AssertPublicTypes(expected, assembly);

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IStorageQueue _poisonQueue;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         public QueueListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             TraceWriter trace,
@@ -43,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("queueConfiguration");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (messageEnqueuedWatcherSetter == null)
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queue = queue;
             _poisonQueue = CreatePoisonQueueReference(queue.ServiceClient, queue.Name);
             _queueConfiguration = queueConfiguration;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                _backgroundExceptionDispatcher, _trace, sharedWatcher, _queueConfiguration);
+                _exceptionHandler, _trace, sharedWatcher, _queueConfiguration);
 
             return Task.FromResult(listener);
         }

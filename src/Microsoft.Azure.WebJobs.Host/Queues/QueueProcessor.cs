@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use</param>
         /// <returns></returns>
         public virtual async Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
-        {
+        {            
             if (result.Succeeded)
             {
                 await DeleteMessageAsync(message, cancellationToken);

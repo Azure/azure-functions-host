@@ -20,7 +20,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void Trigger_CanBeInstanceMethod()
         {
             // Arrange
-            CloudQueueMessage expectedMessage = new CloudQueueMessage("ignore");
+            string expectedGuid = Guid.NewGuid().ToString();
+            CloudQueueMessage expectedMessage = new CloudQueueMessage(expectedGuid);
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue queue = CreateQueue(account, QueueName);
             queue.AddMessage(new FakeStorageQueueMessage(expectedMessage));
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => InstanceProgram.TaskSource = s);
 
             // Assert
-            Assert.Same(expectedMessage, result);
+            Assert.Equal(expectedGuid, result.AsString);
         }
 
         private class InstanceProgram
@@ -47,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void Trigger_CanBeAsyncInstanceMethod()
         {
             // Arrange
-            CloudQueueMessage expectedMessage = new CloudQueueMessage("ignore");
+            string expectedGuid = Guid.NewGuid().ToString();
+            CloudQueueMessage expectedMessage = new CloudQueueMessage(expectedGuid);
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue queue = CreateQueue(account, QueueName);
             queue.AddMessage(new FakeStorageQueueMessage(expectedMessage));
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => InstanceAsyncProgram.TaskSource = s);
 
             // Assert
-            Assert.Same(expectedMessage, result);
+            Assert.Equal(expectedGuid, result.AsString);
         }
 
         private class InstanceAsyncProgram

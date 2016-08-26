@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageQueueClient _queueClient;
         private readonly IStorageQueue _hostBlobTriggerQueue;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly TraceWriter _trace;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
@@ -49,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("queueConfiguration");
             }
 
-            if (backgroundExceptionDispatcher == null)
+            if (exceptionHandler == null)
             {
-                throw new ArgumentNullException("backgroundExceptionDispatcher");
+                throw new ArgumentNullException("exceptionHandler");
             }
 
             if (trace == null)
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _queueClient = queueClient;
             _hostBlobTriggerQueue = hostBlobTriggerQueue;
             _queueConfiguration = queueConfiguration;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _trace = trace;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
-                delayStrategy, _backgroundExceptionDispatcher, _trace, _sharedQueueWatcher, _queueConfiguration);
+                delayStrategy, _exceptionHandler, _trace, _sharedQueueWatcher, _queueConfiguration);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }
     }

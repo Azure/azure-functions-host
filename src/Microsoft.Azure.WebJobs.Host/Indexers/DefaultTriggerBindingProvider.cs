@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IExtensionTypeLocator extensionTypeLocator,
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             ISharedContextProvider sharedContextProvider,
@@ -30,10 +30,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherSetter,
+                queueConfiguration, exceptionHandler, messageEnqueuedWatcherSetter,
                 sharedContextProvider, trace));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
+                extensionTypeLocator, hostIdProvider, queueConfiguration, exceptionHandler,
                 blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, singletonManager, trace));
 
             // add any registered extension binding providers

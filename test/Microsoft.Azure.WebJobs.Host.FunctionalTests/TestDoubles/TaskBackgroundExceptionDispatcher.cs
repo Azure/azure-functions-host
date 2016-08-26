@@ -8,19 +8,29 @@ using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
-    internal class TaskBackgroundExceptionDispatcher<TResult> : IBackgroundExceptionDispatcher
+    internal class TaskBackgroundExceptionHandler<TResult> : IWebJobsExceptionHandler
     {
         private readonly TaskCompletionSource<TResult> _taskSource;
 
-        public TaskBackgroundExceptionDispatcher(TaskCompletionSource<TResult> taskSource)
+        public TaskBackgroundExceptionHandler(TaskCompletionSource<TResult> taskSource)
         {
             _taskSource = taskSource;
         }
 
-        public void Throw(ExceptionDispatchInfo exceptionInfo)
+        public void Initialize(JobHost host)
+        {
+        }
+
+        public Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
+        {
+            return Task.FromResult(0);
+        }
+
+        public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
         {
             Exception exception = exceptionInfo.SourceException;
             _taskSource.SetException(exception);
+            return Task.FromResult(0);
         }
     }
 }

@@ -378,6 +378,8 @@
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="DefaultNameResolver.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
+    <Compile Include="FunctionTimeoutException.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
@@ -707,8 +709,8 @@
     <Compile Include="Tables\TToEntityPropertyConverterFactory.cs" />
     <Compile Include="Timers\FixedDelayStrategy.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategy.cs" />
-    <Compile Include="Timers\BackgroundExceptionDispatcher.cs" />
-    <Compile Include="Timers\IBackgroundExceptionDispatcher.cs" />
+    <Compile Include="Timers\WebJobsExceptionHandler.cs" />
+    <Compile Include="Timers\IWebJobsExceptionHandler.cs" />
     <Compile Include="Timers\IDelayStrategy.cs" />
     <Compile Include="Timers\IRecurrentCommand.cs" />
     <Compile Include="Timers\ITaskSeriesCommand.cs" />

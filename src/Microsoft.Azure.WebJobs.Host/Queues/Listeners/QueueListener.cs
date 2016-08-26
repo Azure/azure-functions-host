@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IStorageQueue _poisonQueue;
         private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly TraceWriter _trace;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly List<Task> _processing = new List<Task>();
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IStorageQueue poisonQueue,
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IDelayStrategy delayStrategy,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
             SharedQueueWatcher sharedWatcher,
             IQueueConfiguration queueConfiguration)
@@ -64,12 +64,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentException("MaxDequeueCount must be greater than zero.");
             }
 
-            _timer = new TaskSeriesTimer(this, backgroundExceptionDispatcher, Task.Delay(0));
+            _timer = new TaskSeriesTimer(this, exceptionHandler, Task.Delay(0));
             _queue = queue;
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
             _delayStrategy = delayStrategy;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _exceptionHandler = exceptionHandler;
             _trace = trace;
             _queueConfiguration = queueConfiguration;
 
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 }
 
                 FunctionResult result = null;
-                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout, _backgroundExceptionDispatcher))
+                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout, _exceptionHandler))
                 {
                     timer.Start();
 
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 // Immediately report any unhandled exception from this background task.
                 // (Don't capture the exception as a fault of this Task; that would delay any exception reporting until
                 // Stop is called, which might never happen.)
-                _backgroundExceptionDispatcher.Throw(ExceptionDispatchInfo.Capture(exception));
+                await _exceptionHandler.OnUnhandledExceptionAsync(ExceptionDispatchInfo.Capture(exception));
             }
         }
 
@@ -278,14 +278,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
             IStorageQueueMessage message, TimeSpan visibilityTimeout,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IWebJobsExceptionHandler exceptionHandler)
         {
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
 
             IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, TimeSpan.FromMinutes(1));
             ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout, speedupStrategy);
-            return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(normalUpdateInterval));
+            return new TaskSeriesTimer(command, exceptionHandler, Task.Delay(normalUpdateInterval));
         }
 
         private void ThrowIfDisposed()
@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, queueConfig, poisonQueue);
 
             QueueProcessor queueProcessor = null;
-            if (HostQueueNames.IsHostQueue(queue.Name) && 
+            if (HostQueueNames.IsHostQueue(queue.Name) &&
                 string.Compare(queue.Uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) != 0)
             {
                 // We only delegate to the processor factory for application queues,

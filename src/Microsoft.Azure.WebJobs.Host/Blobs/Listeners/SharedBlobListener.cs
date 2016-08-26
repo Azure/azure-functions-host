@@ -22,11 +22,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private bool _disposed;
 
         public SharedBlobListener(IStorageAccount storageAccount,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IWebJobsExceptionHandler exceptionHandler)
         {
             _strategy = CreateStrategy(storageAccount);
             // Start the first iteration immediately.
-            _timer = new TaskSeriesTimer(_strategy, backgroundExceptionDispatcher, initialWait: Task.Delay(0));
+            _timer = new TaskSeriesTimer(_strategy, exceptionHandler, initialWait: Task.Delay(0));
         }
 
         public IBlobWrittenWatcher BlobWritterWatcher

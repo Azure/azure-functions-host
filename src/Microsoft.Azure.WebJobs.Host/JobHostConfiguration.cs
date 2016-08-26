@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs
             IExtensionRegistry extensions = new DefaultExtensionRegistry();
             ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             IConverterManager converterManager = new ConverterManager();
+            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
 
             AddService<IExtensionRegistry>(extensions);
             AddService<StorageClientFactory>(new StorageClientFactory());
@@ -64,6 +66,7 @@ namespace Microsoft.Azure.WebJobs
             AddService<IJobActivator>(DefaultJobActivator.Instance);
             AddService<ITypeLocator>(typeLocator);
             AddService<IConverterManager>(converterManager);
+            AddService<IWebJobsExceptionHandler>(exceptionHandler);
 
             string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
             IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
@@ -155,14 +158,6 @@ namespace Microsoft.Azure.WebJobs
             get { return _storageAccountProvider.StorageConnectionString; }
             set { _storageAccountProvider.StorageConnectionString = value; }
         }
-
-        /// <summary>
-        /// Gets or sets the timeout that function invocations will be constrained to.
-        /// <see cref="TimeoutAttribute"/> for details. If <see cref="TimeoutAttribute"/>
-        /// is applied to a function or its containing class, that timeout value will override
-        /// this global value.
-        /// </summary>
-        public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>Gets or sets the type locator.</summary>
         public ITypeLocator TypeLocator

@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private Mock<IStorageBlobDirectory> _mockSecondaryBlobDirectory;
         private Mock<IStorageAccount> _mockStorageAccount;
         private Mock<IStorageAccount> _mockSecondaryStorageAccount;
-        private Mock<IBackgroundExceptionDispatcher> _mockExceptionDispatcher;
+        private Mock<IWebJobsExceptionHandler> _mockExceptionDispatcher;
         private Mock<IStorageBlockBlob> _mockStorageBlob;
         private TestTraceWriter _trace = new TestTraceWriter(TraceLevel.Verbose);
         private Dictionary<string, string> _mockBlobMetadata;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
                 .ReturnsAsync(_mockStorageAccount.Object);
             _mockAccountProvider.Setup(p => p.GetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_mockSecondaryStorageAccount.Object);
-            _mockExceptionDispatcher = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
+            _mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
 
             _mockStorageBlob = new Mock<IStorageBlockBlob>(MockBehavior.Strict);
             _mockBlobMetadata = new Dictionary<string, string>();
