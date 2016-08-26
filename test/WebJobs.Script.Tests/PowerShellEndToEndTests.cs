@@ -8,6 +8,7 @@ using System.Management.Automation;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json.Linq;
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri("http://localhost/api/httptrigger-powershell?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
                 Method = HttpMethod.Get
             };
+            request.SetConfiguration(new HttpConfiguration());
             request.Headers.Add(testHeader, testHeaderValue);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("HttpTrigger-PowerShell", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string result = await response.Content.ReadAsStringAsync();
@@ -78,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         "http://localhost/api/httptrigger-powershellwitherror?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
                 Method = HttpMethod.Get
             };
+            request.SetConfiguration(new HttpConfiguration());
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -112,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testData)
             };
+            request.SetConfiguration(new HttpConfiguration());
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -119,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("HttpTrigger-PowerShell", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties["MS_AzureFunctionsHttpResponse"];
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string result = await response.Content.ReadAsStringAsync();

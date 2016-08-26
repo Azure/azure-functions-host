@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello testuser", body.Trim());
+            Assert.Equal("Hello testuser", body);
         }
 
         [Fact]

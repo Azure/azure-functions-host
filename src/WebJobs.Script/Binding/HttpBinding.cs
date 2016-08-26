@@ -34,77 +34,77 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             HttpRequestMessage request = (HttpRequestMessage)context.TriggerValue;
 
-            // TODO: Find a better place for this code
-            string content = string.Empty;
-            if (context.Value is Stream)
+            object content = context.Value;
+            if (content is Stream)
             {
-                using (StreamReader streamReader = new StreamReader((Stream)context.Value))
+                using (StreamReader streamReader = new StreamReader((Stream)content))
                 {
                     content = await streamReader.ReadToEndAsync();
                 }
             }
-            else if (context.Value is string)
-            {
-                content = (string)context.Value;
-            }
-            
-            HttpResponseMessage response = null;
-            try
-            {
-                // attempt to read the content as a JObject
-                JObject jsonObject = JObject.Parse(content);
 
-                // TODO: This logic needs to be made more robust
-                // E.g. we might decide to use a Regex to determine if
-                // the json is a response body or not
-                if (jsonObject["body"] != null)
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            JObject headers = null;
+            if (content is string)
+            {
+                try
                 {
-                    HttpStatusCode statusCode = HttpStatusCode.OK;
-                    if (jsonObject["status"] != null)
+                    // attempt to read the content as a JObject
+                    JObject jo = JObject.Parse((string)content);
+
+                    // if the content is json we capture that so it will be
+                    // serialized as json by WebApi below
+                    content = jo;
+
+                    // Sniff the object to see if it looks like a response object
+                    // by convention
+                    JToken value = null;
+                    if (jo.TryGetValue("body", out value))
                     {
-                        statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
-                    }
+                        content = value;
+                        headers = jo["headers"] as JObject;
 
-                    string body = jsonObject["body"].ToString();
-
-                    response = new HttpResponseMessage(statusCode);
-                    response.Content = new StringContent(body);
-
-                    // we default the Content-Type here, but we override below with any
-                    // Content-Type header the user might have set themselves
-                    // TODO: rather than newing up an HttpResponseMessage investigate using
-                    // request.CreateResponse, which should allow WebApi Content negotiation to
-                    // take place.
-                    if (Utility.IsJson(body))
-                    {
-                        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                    }
-
-                    // apply any user specified headers
-                    JObject headers = (JObject)jsonObject["headers"];
-                    if (headers != null)
-                    {
-                        foreach (var header in headers)
+                        if (value is JValue && ((JValue)value).Type == JTokenType.String)
                         {
-                            AddResponseHeader(response, header);
+                            // convert raw strings so they get serialized properly below
+                            content = (string)value;
                         }
+
+                        if (jo.TryGetValue("status", out value) && value is JValue)
+                        {
+                            statusCode = (HttpStatusCode)(int)value;
+                        } 
                     }
                 }
-            }
-            catch (JsonException)
-            {
-                // not a json response
+                catch (JsonException)
+                {
+                    // not a json response
+                }
             }
 
-            if (response == null)
+            HttpResponseMessage response = null;
+            if (content is string)
             {
-                // if unable to parse a json response just send
-                // the raw content
-                response = new HttpResponseMessage
+                // for raw strings, we compose the content ourselves, otherwise WebApi
+                // will serialize it as JSON and add quotes/double quotes to the string
+                response = new HttpResponseMessage(statusCode)
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(content)
+                    Content = new StringContent((string)content)
                 };
+            }
+            else
+            {
+                // let WebApi do its default serialization and content negotiation
+                response = request.CreateResponse(statusCode, content);
+            }
+
+            if (headers != null)
+            {
+                // apply any user specified headers
+                foreach (var header in headers)
+                {
+                    AddResponseHeader(response, header);
+                }
             }
 
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;

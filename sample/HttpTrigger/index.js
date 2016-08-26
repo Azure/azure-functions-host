@@ -9,16 +9,19 @@
     if (typeof req.query.name == 'undefined') {
         context.res = {
             status: 400,
-            body: "Please pass a name on the query string"
+            body: "Please pass a name on the query string",
+            headers: {
+                'Content-Type': 'text/plain'
+            }
         };
     }
     else {
         context.res = {
             status: 200,
-            body: "Hello " + req.query.name
-        };
-        context.res.headers = {
-            'Content-Type': 'text/plain'
+            body: "Hello " + req.query.name,
+            headers: {
+                'Content-Type': 'text/plain'
+            }
         };
     }
 
