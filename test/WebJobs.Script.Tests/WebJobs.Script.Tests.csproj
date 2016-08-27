@@ -331,6 +331,7 @@
     <Compile Include="Binding\ScriptBindingContextTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
+    <Compile Include="ConsoleTraceWriterTests.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
