@@ -163,16 +163,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 Directory.CreateDirectory(rootPath);
 
-                string content = ReadResourceString("Test.host.json");
+                string content = ReadResourceString("Functions.host.json");
                 File.WriteAllText(Path.Combine(rootPath, "host.json"), content);
 
-                string functionPath = Path.Combine(rootPath, "Test");
+                // read in the C# function
+                string functionPath = Path.Combine(rootPath, "Test-CSharp");
                 Directory.CreateDirectory(functionPath);
-                content = ReadResourceString("Test.function.json");
+                content = ReadResourceString("Functions.Test_CSharp.function.json");
                 File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-
-                content = ReadResourceString("Test.run.csx");
+                content = ReadResourceString("Functions.Test_CSharp.run.csx");
                 File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
+
+                // read in the F# function
+                functionPath = Path.Combine(rootPath, "Test-FSharp");
+                Directory.CreateDirectory(functionPath);
+                content = ReadResourceString("Functions.Test_FSharp.function.json");
+                File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
+                content = ReadResourceString("Functions.Test_FSharp.run.fsx");
+                File.WriteAllText(Path.Combine(functionPath, "run.fsx"), content);
 
                 traceWriter.Info("Warm up functions deployed");
 
@@ -196,7 +204,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     { "input", "{}" }
                 };
-                host.CallAsync("Test", arguments).Wait();
+                host.CallAsync("Test-CSharp", arguments).Wait();
+                host.CallAsync("Test-FSharp", arguments).Wait();
                 host.Stop();
 
                 traceWriter.Info("Warm up succeeded");

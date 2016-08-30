@@ -307,6 +307,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Global.asax" />
+    <EmbeddedResource Include="Resources\Functions\Test-FSharp\run.fsx" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -357,9 +358,10 @@
     <None Include="App_Data\secrets\WebHook-Generic-CSharp.json" />
     <None Include="App_Data\secrets\WebHook-Generic.json" />
     <None Include="Properties\PublishProfiles\FileSystem.pubxml" />
-    <EmbeddedResource Include="Resources\Test\function.json" />
-    <EmbeddedResource Include="Resources\Test\host.json" />
-    <EmbeddedResource Include="Resources\Test\run.csx" />
+    <EmbeddedResource Include="Resources\Functions\host.json" />
+    <EmbeddedResource Include="Resources\Functions\Test-CSharp\function.json" />
+    <EmbeddedResource Include="Resources\Functions\Test-CSharp\run.csx" />
+    <EmbeddedResource Include="Resources\Functions\Test-FSharp\function.json" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
