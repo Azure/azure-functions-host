@@ -95,14 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private class EventHubScriptBinding : ScriptBinding
         {
-            private readonly string _storageConnectionString;
             private readonly EventHubConfiguration _eventHubConfiguration;
             private readonly INameResolver _nameResolver;
 
             public EventHubScriptBinding(JobHostConfiguration hostConfig, EventHubConfiguration eventHubConfig, ScriptBindingContext context) : base(context)
             {
                 _eventHubConfiguration = eventHubConfig;
-                _storageConnectionString = hostConfig.StorageConnectionString;
                 _nameResolver = hostConfig.NameResolver;
             }
 
@@ -140,32 +138,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (Context.IsTrigger)
                 {
-                    attributes.Add(new EventHubTriggerAttribute(eventHubName));
-
-                    string eventProcessorHostName = Guid.NewGuid().ToString();
-                    string storageConnectionString = _storageConnectionString;
-
+                    var attribute = new EventHubTriggerAttribute(eventHubName);
                     string consumerGroup = Context.GetMetadataValue<string>("consumerGroup");
-                    if (consumerGroup == null)
+                    if (consumerGroup != null)
                     {
-                        consumerGroup = Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName;
+                        consumerGroup = _nameResolver.ResolveWholeString(consumerGroup);
+                        attribute.ConsumerGroup = consumerGroup;
                     }
-
-                    var eventProcessorHost = new Microsoft.ServiceBus.Messaging.EventProcessorHost(
-                         eventProcessorHostName,
-                         eventHubName,
-                         consumerGroup,
-                         connectionString,
-                         storageConnectionString);
-
-                    _eventHubConfiguration.AddEventProcessorHost(eventHubName, eventProcessorHost);
+                    attributes.Add(attribute);
+                    _eventHubConfiguration.AddReceiver(eventHubName, connectionString);
                 }
                 else
                 {
                     attributes.Add(new EventHubAttribute(eventHubName));
 
-                    var client = Microsoft.ServiceBus.Messaging.EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
-                    _eventHubConfiguration.AddEventHubClient(eventHubName, client);
+                    _eventHubConfiguration.AddSender(eventHubName, connectionString);
                 }
 
                 return attributes;
