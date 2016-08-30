@@ -140,16 +140,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (Context.IsTrigger)
                 {
-                    attributes.Add(new EventHubTriggerAttribute(eventHubName));
-
-                    string eventProcessorHostName = Guid.NewGuid().ToString();
-                    string storageConnectionString = _storageConnectionString;
-
                     string consumerGroup = Context.GetMetadataValue<string>("consumerGroup");
                     if (consumerGroup == null)
                     {
                         consumerGroup = Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName;
                     }
+
+                    string keyName = eventHubName + "-" + consumerGroup;
+
+                    attributes.Add(new EventHubTriggerAttribute(keyName));
+
+                    string eventProcessorHostName = Guid.NewGuid().ToString();
+                    string storageConnectionString = _storageConnectionString;                 
 
                     var eventProcessorHost = new Microsoft.ServiceBus.Messaging.EventProcessorHost(
                          eventProcessorHostName,
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
                          connectionString,
                          storageConnectionString);
 
-                    _eventHubConfiguration.AddEventProcessorHost(eventHubName, eventProcessorHost);
+                    _eventHubConfiguration.AddEventProcessorHost(keyName, eventProcessorHost);
                 }
                 else
                 {
