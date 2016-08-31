@@ -59,10 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // Sniff the object to see if it looks like a response object
                     // by convention
                     JToken value = null;
-                    if (jo.TryGetValue("body", out value))
+                    if (jo.TryGetValue("body", StringComparison.OrdinalIgnoreCase, out value))
                     {
                         content = value;
-                        headers = jo["headers"] as JObject;
 
                         if (value is JValue && ((JValue)value).Type == JTokenType.String)
                         {
@@ -70,7 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             content = (string)value;
                         }
 
-                        if (jo.TryGetValue("status", out value) && value is JValue)
+                        if (jo.TryGetValue("headers", StringComparison.OrdinalIgnoreCase, out value) && value is JObject)
+                        {
+                            headers = (JObject)value;
+                        }
+
+                        if (jo.TryGetValue("status", StringComparison.OrdinalIgnoreCase, out value) && value is JValue)
                         {
                             statusCode = (HttpStatusCode)(int)value;
                         } 

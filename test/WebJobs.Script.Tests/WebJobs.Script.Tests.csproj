@@ -815,6 +815,12 @@
     <None Include="TestScripts\PowerShell\Common\test.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell-Response\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell-Response\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

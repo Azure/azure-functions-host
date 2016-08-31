@@ -131,6 +131,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(testData, (string)resultObject["reqBody"]["value"]);
         }
 
+        [Fact]
+        public async Task HttpTrigger_Get_ExplicitResponse()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri("http://localhost/api/httptrigger-powershell-response?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                Method = HttpMethod.Get
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-PowerShell-Response", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string result = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/html", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("<HEAD><TITLE>Azure Functions!!!</TITLE></HEAD>", result);
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\PowerShell", "powershell")
