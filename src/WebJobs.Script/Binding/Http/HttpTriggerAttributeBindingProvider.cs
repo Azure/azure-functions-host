@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
 
                 IValueProvider valueProvider = null;
                 IReadOnlyDictionary<string, object> bindingData = null;
-                string invokeString = request.ToString();
+                string invokeString = ToInvokeString(request);
                 if (_isUserTypeBinding)
                 {
                     valueProvider = await CreateUserTypeValueProvider(request, invokeString);
@@ -125,6 +125,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                 }
 
                 return new TriggerData(valueProvider, bindingData);
+            }
+
+            public static string ToInvokeString(HttpRequestMessage request)
+            {
+                string uri = request.RequestUri.AbsoluteUri;
+                int idx = uri.IndexOf('?');
+                if (idx != -1)
+                {
+                    uri = uri.Substring(0, idx);
+                }
+
+                return $"Method: {request.Method}, Uri: {uri}";
             }
 
             public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
