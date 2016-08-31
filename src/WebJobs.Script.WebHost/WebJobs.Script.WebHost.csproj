@@ -318,7 +318,9 @@
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Diagnostics\EventGenerator.cs" />
     <Compile Include="Diagnostics\FastLogger.cs" />
+    <Compile Include="Diagnostics\IEventGenerator.cs" />
     <Compile Include="Diagnostics\IMetricsEventGenerator.cs" />
     <Compile Include="Diagnostics\MetricsEventGenerator.cs" />
     <Compile Include="Diagnostics\MetricsEventManager.cs" />
