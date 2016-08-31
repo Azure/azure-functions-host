@@ -45,8 +45,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             }
 
             string eventHubName = attribute.EventHubName;
-            string resolvedName = _nameResolver.ResolveWholeString(eventHubName);
-            var eventHostListener = _eventHubConfig.GetEventProcessorHost(resolvedName);
+            string resolvedEventHubName = _nameResolver.ResolveWholeString(eventHubName);
+
+            string consumerGroup = attribute.ConsumerGroup;
+            if (consumerGroup == null)
+            {
+                consumerGroup = Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName;
+            }
+            string resolvedConsumerGroup = _nameResolver.ResolveWholeString(consumerGroup);
+
+            var eventHostListener = _eventHubConfig.GetEventProcessorHost(resolvedEventHubName, resolvedConsumerGroup);
                         
             var options = _eventHubConfig.GetOptions();
             var hooks = new EventHubTriggerBindingStrategy();

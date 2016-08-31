@@ -50,6 +50,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             if (batch.Length > 0)
             {
                 await _client.SendBatchAsync(batch);
+
+                // Dispose all messages to help with memory pressure. If this is missed, the finalizer thread will still get them. 
+                foreach (var msg in batch)
+                {
+                    msg.Dispose();
+                }
             }
         }
     }

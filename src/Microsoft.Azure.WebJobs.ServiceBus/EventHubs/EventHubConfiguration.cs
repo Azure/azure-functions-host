@@ -20,21 +20,37 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     {
         // Event Hub Names are case-insensitive
         private readonly Dictionary<string, EventHubClient> _senders = new Dictionary<string, EventHubClient>(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<string, EventProcessorHost> _listeners  = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
-        private readonly EventProcessorOptions _options;
-        private readonly List<Action<JobHostConfiguration>> _deferredWork = new List<Action<JobHostConfiguration>>();
+        
+        private readonly EventProcessorOptions _options; 
+        private readonly PartitionManagerOptions _partitionOptions; // optional, used to create EventProcessorHost
+        private readonly Dictionary<string, ReceiverCreds> _receiverCreds = new Dictionary<string, ReceiverCreds>();
+        private readonly Dictionary<string, EventProcessorHost> _explicitlyProvidedHosts = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
+
+        private string _defaultStorageString; // set to JobHostConfig.StorageConnectionString
+
+        /// <summary>
+        /// default constructor. Callers can reference this without having any assembly references to service bus assemblies. 
+        /// </summary>
+        public EventHubConfiguration()
+            : this(null, null)
+        {
+        }
 
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
         /// <param name="options">The optional <see cref="EventProcessorOptions"/> to use when receiving events.</param>
-        public EventHubConfiguration(EventProcessorOptions options = null)
+        /// <param name="partitionOptions">Optional <see cref="PartitionManagerOptions"/> to use to configure any EventProcessorHosts. </param>
+        public EventHubConfiguration(
+            EventProcessorOptions options, 
+            PartitionManagerOptions partitionOptions = null)
         {
             if (options == null)
             {
                 options = EventProcessorOptions.DefaultOptions;
                 options.MaxBatchSize = 1000;
             }
+            _partitionOptions = partitionOptions;
 
             _options = options;
         }
@@ -112,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("listener");
             }
 
-            _listeners[eventHubName] = listener;
+            _explicitlyProvidedHosts[eventHubName] = listener;
         }
 
         /// <summary>
@@ -131,13 +147,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("receiverConnectionString");
             }
 
-            // We can't get the storage string until we get a JobHostConfig. 
-            // So verify the parameter upfront, but defer the creation. 
-            _deferredWork.Add((jobHostConfig) =>
-           {
-               string storageConnectionString = jobHostConfig.StorageConnectionString;
-               this.AddReceiver(eventHubName, receiverConnectionString, storageConnectionString);
-           });
+            this._receiverCreds[eventHubName] = new ReceiverCreds
+            {
+                 EventHubConnectionString = receiverConnectionString
+            };
         }
 
         /// <summary>
@@ -161,16 +174,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("storageConnectionString");
             }
 
-            string eventProcessorHostName = Guid.NewGuid().ToString();
-
-            EventProcessorHost eventProcessorHost = new EventProcessorHost(
-                eventProcessorHostName, 
-                eventHubName, 
-                EventHubConsumerGroup.DefaultGroupName,
-                receiverConnectionString, 
-                storageConnectionString);
-
-            this.AddEventProcessorHost(eventHubName, eventProcessorHost);
+            this._receiverCreds[eventHubName] = new ReceiverCreds
+            {
+                EventHubConnectionString = receiverConnectionString,
+                StorageConnectionString = storageConnectionString
+            };
         }
         
         private EventHubClient GetEventHubClient(string eventHubName)
@@ -183,12 +191,46 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             throw new InvalidOperationException("No event hub sender named " + eventHubName);
         }
 
-        EventProcessorHost IEventHubProvider.GetEventProcessorHost(string eventHubName)
+        EventProcessorHost IEventHubProvider.GetEventProcessorHost(string eventHubName, string consumerGroup)
         {
-            EventProcessorHost host;
-            if (_listeners.TryGetValue(eventHubName, out host))
+            ReceiverCreds creds;
+            if (this._receiverCreds.TryGetValue(eventHubName, out creds))
             {
+                // Common case. Create a new EventProcessorHost instance to listen. 
+                string eventProcessorHostName = Guid.NewGuid().ToString();
+
+                if (consumerGroup == null)
+                {
+                    consumerGroup = EventHubConsumerGroup.DefaultGroupName;
+                }
+                var storageConnectionString = creds.StorageConnectionString;
+                if (storageConnectionString == null)
+                {
+                    storageConnectionString = _defaultStorageString;
+                }
+
+                EventProcessorHost host = new EventProcessorHost(
+                   eventProcessorHostName,
+                   eventHubName,
+                   consumerGroup,
+                   creds.EventHubConnectionString,
+                   storageConnectionString);
+
+                if (_partitionOptions != null)
+                {
+                    host.PartitionManagerOptions = _partitionOptions;
+                }
+
                 return host;
+            }
+            else
+            {
+                // Rare case: a power-user caller specifically provided an event processor host to use. 
+                EventProcessorHost host;
+                if (_explicitlyProvidedHosts.TryGetValue(eventHubName, out host))
+                {
+                    return host;
+                }
             }
             throw new InvalidOperationException("No event hub receiver named " + eventHubName);
         }
@@ -205,12 +247,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("context");
             }
 
-            // Deferred list 
-            foreach (var action in _deferredWork)
-            {
-                action(context.Config);
-            }
-            _deferredWork.Clear();
+            _defaultStorageString = context.Config.StorageConnectionString;
 
             // get the services we need to construct our binding providers
             INameResolver nameResolver = context.Config.NameResolver;
@@ -254,6 +291,17 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             var eventData = new EventData(Encoding.UTF8.GetBytes(input));
             return eventData;
+        }
+
+        // Hold credentials for a given eventHub name. 
+        // Multiple consumer groups (and multiple listeners) on the same hub can share the same credentials. 
+        private class ReceiverCreds
+        {
+            // Required.  
+            public string EventHubConnectionString { get; set; }
+
+            // Optional. If not found, use the stroage from JobHostConfiguration
+            public string StorageConnectionString { get; set; }
         }
     }
 }

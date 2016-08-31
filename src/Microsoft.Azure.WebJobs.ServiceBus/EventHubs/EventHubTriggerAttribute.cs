@@ -24,5 +24,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Name of the event hub. 
         /// </summary>
         public string EventHubName { get; private set; }
+
+        /// <summary>
+        /// Optional Name of the consumer group. If missing, then use the default name, "$Default"
+        /// </summary>
+        public string ConsumerGroup { get; set; }
     }
 }

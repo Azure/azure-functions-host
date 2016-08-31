@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     internal interface IEventHubProvider
     {
         // Lookup a listener for receiving events given the name provided in the [EventHubTrigger] attribute. 
-        EventProcessorHost GetEventProcessorHost(string eventHubName);
+        EventProcessorHost GetEventProcessorHost(string eventHubName, string consumerGroup);
 
         // Get the eventhub options, used by the EventHub SDK for listening on event. 
         EventProcessorOptions GetOptions();

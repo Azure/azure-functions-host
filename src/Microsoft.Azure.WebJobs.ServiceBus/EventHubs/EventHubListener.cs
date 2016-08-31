@@ -13,7 +13,7 @@ using Microsoft.ServiceBus.Messaging;
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // Created from the EventHubTrigger attribute to listen on the EventHub. 
-    internal sealed class EventHubListener : IListener, IEventProcessor, IEventProcessorFactory
+    internal sealed class EventHubListener : IListener, IEventProcessorFactory
     {
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly EventProcessorHost _eventListener;
@@ -38,8 +38,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             // nothing to do. 
         }
 
+        // This will get called once when starting the JobHost. 
         public Task StartAsync(CancellationToken cancellationToken)
-        {            
+        {
             return _eventListener.RegisterEventProcessorFactoryAsync(this, _options);
         }
 
@@ -47,68 +48,106 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             return _eventListener.UnregisterEventProcessorAsync();
         }
-
-        Task IEventProcessor.OpenAsync(PartitionContext context)
+        
+        // This will get called per-partition. 
+        IEventProcessor IEventProcessorFactory.CreateEventProcessor(PartitionContext context)
         {
-            // Begin listener 
-            return Task.FromResult(0);
+            return new Listener(this);
         }
 
-        async Task IEventProcessor.ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+        // We get a new instance each time Start() is called. 
+        // We'll get a listener per partition - so they can potentialy run in parallel even on a single machine.
+        private class Listener : IEventProcessor
         {
-            EventHubTriggerInput value = new EventHubTriggerInput
-            {
-                Events = messages.ToArray(),
-                Context = context
-            };
+            private readonly EventHubListener _parent;
+            private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
-            // Single dispatch 
-            if (_singleDispatch)
+            public Listener(EventHubListener parent)
             {
-                int len = value.Events.Length;
+                this._parent = parent;
+            }
 
-                Task[] dispatches = new Task[len];
-                for (int i = 0; i < len; i++)
+            public async Task CloseAsync(PartitionContext context, CloseReason reason)
+            {
+                this._cts.Cancel(); // Signal interuption to ProcessEventsAsync()
+
+                // Finish listener
+                if (reason == CloseReason.Shutdown)
                 {
+                    await context.CheckpointAsync();
+                }
+            }
+
+            public Task OpenAsync(PartitionContext context)
+            {
+                return Task.FromResult(0);
+            }
+
+            public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+            {
+                EventHubTriggerInput value = new EventHubTriggerInput
+                {
+                    Events = messages.ToArray(),
+                    Context = context
+                };
+
+                // Single dispatch 
+                if (_parent._singleDispatch)
+                {
+                    int len = value.Events.Length;
+
+                    List<Task> dispatches = new List<Task>();
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (_cts.IsCancellationRequested)
+                        {
+                            // If we stopped the listener, then we may lose the lease and be unable to checkpoint. 
+                            // So skip running the rest of the batch. The new listener will pick it up. 
+                            continue;
+                        }
+                        else
+                        {
+                            TriggeredFunctionData input = new TriggeredFunctionData
+                            {
+                                ParentId = null,
+                                TriggerValue = value.GetSingleEventTriggerInput(i)
+                            };
+                            Task task = this._parent._executor.TryExecuteAsync(input, _cts.Token);
+                            dispatches.Add(task);
+                        }
+                    }
+
+                    // Drain the whole batch before taking more work
+                    if (dispatches.Count > 0)
+                    {
+                        await Task.WhenAll(dispatches);
+                    }
+                }
+                else
+                {
+                    // Batch dispatch
+
                     TriggeredFunctionData input = new TriggeredFunctionData
                     {
                         ParentId = null,
-                        TriggerValue = value.GetSingleEventTriggerInput(i)
+                        TriggerValue = value
                     };
-                    dispatches[i] = _executor.TryExecuteAsync(input, CancellationToken.None);
+
+                    FunctionResult result = await this._parent._executor.TryExecuteAsync(input, CancellationToken.None);
                 }
 
-                // Drain the whole batch before taking more work
-                await Task.WhenAll(dispatches);
-            }
-            else
-            {
-                // Batch dispatch
-
-                TriggeredFunctionData input = new TriggeredFunctionData
+                // Dispose all messages to help with memory pressure. If this is missed, the finalizer thread will still get them. 
+                foreach (var message in messages)
                 {
-                    ParentId = null,
-                    TriggerValue = value
-                };
+                    message.Dispose();
+                }
 
-                FunctionResult result = await _executor.TryExecuteAsync(input, CancellationToken.None);
-            }
-                        
-            await context.CheckpointAsync();        
-        }
-
-        async Task IEventProcessor.CloseAsync(PartitionContext context, CloseReason reason)
-        {
-            // Finish listener
-            if (reason == CloseReason.Shutdown)
-            {
+                // There are lots of reasons this could fail. That just means that events will get double-processed, which is inevitable
+                // with event hubs anyways. 
+                // For example, it could fail if we lost the lease. That could happen if we failed to renew it due to CPU starvation or an inability 
+                // to make the outbound network calls to renew. 
                 await context.CheckpointAsync();
             }
-        }
-
-        IEventProcessor IEventProcessorFactory.CreateEventProcessor(PartitionContext context)
-        {
-            return this;
-        }
+        } // end class Listener 
     }
 }
