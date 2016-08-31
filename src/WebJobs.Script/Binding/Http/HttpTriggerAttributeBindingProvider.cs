@@ -129,12 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
 
             public static string ToInvokeString(HttpRequestMessage request)
             {
-                string uri = request.RequestUri.AbsoluteUri;
-                int idx = uri.IndexOf('?');
-                if (idx != -1)
-                {
-                    uri = uri.Substring(0, idx);
-                }
+                // For display in the Dashboard, we want to be sure we don't log
+                // any sensitive portions of the URI (e.g. query params, headers, etc.)
+                string uri = request.RequestUri?.GetLeftPart(UriPartial.Path);
 
                 return $"Method: {request.Method}, Uri: {uri}";
             }
