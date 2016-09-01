@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
             finally
             {
-                await host.StopAsync();
+                host.Stop();
             }
 
             // We expect 3 error messages total
@@ -714,11 +714,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private class TestExceptionHandler : IWebJobsExceptionHandler
         {
-            public ICollection<ExceptionDispatchInfo> UnhandledExceptionInfos { get; } = new List<ExceptionDispatchInfo>();
-            public ICollection<ExceptionDispatchInfo> TimeoutExceptionInfos { get; } = new List<ExceptionDispatchInfo>();
+            public ICollection<ExceptionDispatchInfo> UnhandledExceptionInfos { get; private set; }
+            public ICollection<ExceptionDispatchInfo> TimeoutExceptionInfos { get; private set; }
 
             public void Initialize(JobHost host)
             {
+                UnhandledExceptionInfos = new List<ExceptionDispatchInfo>();
+                TimeoutExceptionInfos = new List<ExceptionDispatchInfo>();
             }
 
             public Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
