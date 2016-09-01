@@ -355,6 +355,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C9FCBC
 		sample\Shared\Order.csx = sample\Shared\Order.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManualTrigger-CSharp", "ManualTrigger-CSharp", "{EB3A602B-4B32-4742-B4A2-39445BD2FBE3}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ManualTrigger-CSharp\function.json = sample\ManualTrigger-CSharp\function.json
+		sample\ManualTrigger-CSharp\run.csx = sample\ManualTrigger-CSharp\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -450,5 +456,6 @@ Global
 		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EB3A602B-4B32-4742-B4A2-39445BD2FBE3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

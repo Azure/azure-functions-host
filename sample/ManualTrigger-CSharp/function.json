@@ -9,13 +9,13 @@
             "type": "blob",
             "name": "blobIn",
             "direction": "in",
-            "path": "samples-output/{inId}"
+            "path": "samples-output/{InId}"
         },
         {
             "type": "blob",
             "name": "blobOut",
             "direction": "out",
-            "path": "samples-output/{outId}"
+            "path": "samples-output/{OutId}"
         }
     ]
 }

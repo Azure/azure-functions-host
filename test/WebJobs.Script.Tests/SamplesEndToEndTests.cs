@@ -57,29 +57,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(lastModified < File.GetLastWriteTime(debugFilePath));
         }
 
-        [Fact]
-        public async Task ManualTrigger_Invoke_Succeeds()
+        [Fact(Skip = "Waiting on fix to #628")]
+        public async Task ManualTrigger_CSharp_Invoke_Succeeds()
         {
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference("result");
-            outputBlob.DeleteIfExists();
+            string inId = Guid.NewGuid().ToString();
+            string outId = Guid.NewGuid().ToString();
+            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
+            statusBlob.UploadText("Hello C#!");
 
-            CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-input");
-            CloudBlockBlob statusBlob = inputContainer.GetBlockBlobReference("status");
-            statusBlob.UploadText("{ \"level\": 4, \"detail\": \"All systems are normal :)\" }");
-
-            string uri = "admin/functions/manualtrigger";
+            string uri = "admin/functions/manualtrigger-csharp";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
-            request.Content = new StringContent("{ 'input': 'Hello Manual Trigger!' }");
+            JObject input = new JObject()
+            {
+                { "input", new JObject()
+                    {
+                        { "InId", inId },
+                        { "OutId", outId }
+                    }.ToString()
+                }
+            };
+            string json = input.ToString();
+            request.Content = new StringContent(json);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
             // wait for completion
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("All systems are normal :)", result);
+            Assert.Equal("Hello C#!", result);
+        }
+
+        [Fact]
+        public async Task ManualTrigger_Invoke_Succeeds()
+        {
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            string inId = Guid.NewGuid().ToString();
+            string outId = Guid.NewGuid().ToString();
+            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
+            JObject testData = new JObject()
+            {
+                { "first", "Mathew" },
+                { "last", "Charles" }
+            };
+            statusBlob.UploadText(testData.ToString(Formatting.None));
+
+            string uri = "admin/functions/manualtrigger";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+            JObject input = new JObject()
+            {
+                { "input", new JObject()
+                    {
+                        { "inId", inId },
+                        { "outId", outId }
+                    }.ToString()
+                }
+            };
+            string json = input.ToString();
+            request.Content = new StringContent(json);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+            // wait for completion
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            Assert.Equal("Mathew Charles", result);
         }
 
         [Fact]
