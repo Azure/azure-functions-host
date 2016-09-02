@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// create and start the timer.
         /// </summary>
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        internal static System.Timers.Timer StartFunctionTimeout(IFunctionInstance instance, TimeoutAttribute attribute, CancellationTokenSource cancellationTokenSource, TraceWriter trace, Action onElapsedCallback)
+        internal static System.Timers.Timer StartFunctionTimeout(IFunctionInstance instance, TimeoutAttribute attribute, CancellationTokenSource cancellationTokenSource, TraceWriter trace)
         {
             if (attribute == null)
             {
@@ -362,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 timer.Elapsed += (o, e) =>
                 {
                     OnFunctionTimeout(timer, method, instance.Id, timeout.Value, attribute.TimeoutWhileDebugging, trace, cancellationTokenSource,
-                        () => Debugger.IsAttached, onElapsedCallback);
+                        () => Debugger.IsAttached);
                 };
 
                 timer.Start();
@@ -374,22 +374,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         internal static void OnFunctionTimeout(System.Timers.Timer timer, MethodInfo method, Guid instanceId, TimeSpan timeout, bool timeoutWhileDebugging,
-            TraceWriter trace, CancellationTokenSource cancellationTokenSource, Func<bool> isDebuggerAttached, Action onElapsedCallback)
+            TraceWriter trace, CancellationTokenSource cancellationTokenSource, Func<bool> isDebuggerAttached)
         {
             timer.Stop();
-
-            // the timer may fire after a cancellation has already occurred
-            if (cancellationTokenSource.IsCancellationRequested)
-            {
-                return;
-            }
-
-            // We can't guarantee event delegate ordering, so we call the additional 
-            // delegate from within here to make sure it's called before we cancel the token.
-            if (onElapsedCallback != null)
-            {
-                onElapsedCallback();
-            }
 
             bool shouldTimeout = timeoutWhileDebugging || !isDebuggerAttached();
             string message = string.Format(CultureInfo.InvariantCulture,
@@ -544,54 +531,35 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 await singleton.AcquireAsync(functionCancellationTokenSource.Token);
             }
 
-            bool hasTimerElapsed = false;
-            MethodInfo method = instance.FunctionDescriptor.Method;
-            TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
-            var timer = StartFunctionTimeout(instance, timeoutAttribute, functionCancellationTokenSource, traceWriter, () => hasTimerElapsed = true);
-            try
+            // Create a source specifically for timeouts
+            using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
             {
-                // This prevents infinite functions if the token is canceled, even if the
-                // function doesn't ask for a CancellationToken.
-                Task invokeTask = invoker.InvokeAsync(invokeParameters);
-                Task delayTask = Task.Delay(-1, functionCancellationTokenSource.Token);
-
-                await Task.WhenAny(invokeTask, delayTask);
-
-                // give the invoke task a chance to clean up before throwing
-                if (!invokeTask.IsCompleted)
+                MethodInfo method = instance.FunctionDescriptor.Method;
+                TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
+                bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
+                var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter);
+                try
                 {
-                    await Task.WhenAny(invokeTask, Task.Delay(500));
+                    await InvokeAsync(invoker, invokeParameters, timeoutTokenSource, functionCancellationTokenSource, throwOnTimeout);
                 }
+                catch (OperationCanceledException)
+                {
+                    if (timeoutAttribute != null && timeoutAttribute.ThrowOnTimeout && timeoutTokenSource.IsCancellationRequested)
+                    {
+                        TimeSpan interval = TimeSpan.FromMilliseconds(timer.Interval);
+                        string errorMessage = string.Format("Timeout value of {0} while exceeded by function: {1}", interval, instance.FunctionDescriptor.ShortName);
+                        throw new FunctionTimeoutException(errorMessage, instance.Id, instance.FunctionDescriptor.ShortName, interval, null);
+                    }
 
-                // Both invokeTask and delayTask may have completed simultaneously. If that's the case,
-                // we want to favor the invokeTask -- unless it is a timer cancellation. In that case, 
-                // we want to always treat it as a timeout.
-                if (invokeTask.IsCompleted && !hasTimerElapsed)
-                {
-                    await invokeTask;
+                    throw;
                 }
-                else
+                finally
                 {
-                    await delayTask;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                if (timeoutAttribute != null && timeoutAttribute.ThrowOnTimeout && hasTimerElapsed)
-                {
-                    TimeSpan interval = TimeSpan.FromMilliseconds(timer.Interval);
-                    string errorMessage = string.Format("Timeout value of {0} while exceeded by function: {1}", interval, instance.FunctionDescriptor.ShortName);
-                    throw new FunctionTimeoutException(errorMessage, instance.Id, instance.FunctionDescriptor.ShortName, interval, null);
-                }
-
-                throw;
-            }
-            finally
-            {
-                if (timer != null)
-                {
-                    timer.Stop();
-                    timer.Dispose();
+                    if (timer != null)
+                    {
+                        timer.Stop();
+                        timer.Dispose();
+                    }
                 }
             }
 
@@ -631,6 +599,57 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 await singleton.ReleaseAsync(functionCancellationTokenSource.Token);
             }
+        }
+
+        internal static async Task InvokeAsync(IFunctionInvoker invoker, object[] invokeParameters, CancellationTokenSource timeoutTokenSource,
+            CancellationTokenSource functionCancellationTokenSource, bool throwOnTimeout)
+        {
+            Task invokeTask = invoker.InvokeAsync(invokeParameters);
+            Task shutdownTask = Task.Delay(-1, functionCancellationTokenSource.Token);
+
+            Task<Task> completedTask = Task.WhenAny(invokeTask, shutdownTask);
+
+            bool isTimeout = await TryHandleTimeoutAsync(completedTask, throwOnTimeout, timeoutTokenSource.Token, () => functionCancellationTokenSource.Cancel());
+
+            // If we got a shutdown notification first, we need to wait for another timeout.
+            if (!isTimeout && completedTask.Result == shutdownTask)
+            {
+                await TryHandleTimeoutAsync(invokeTask, throwOnTimeout, timeoutTokenSource.Token, null);
+            }
+
+            await invokeTask;
+        }
+
+        /// <summary>
+        /// Executes a timeout pattern. Throws an exception if the timeoutToken is canceled before taskToTimeout completes and throwOnTimeout is true.
+        /// </summary>
+        /// <param name="taskToTimeout">The task to run.</param>
+        /// <param name="throwOnTimeout">True if the method should throw an OperationCanceledException if it times out.</param>
+        /// <param name="timeoutToken">The token to watch. If it is canceled, taskToTimeout has timed out.</param>
+        /// <param name="onTimeout">A callback to be executed if a timeout occurs.</param>
+        /// <returns>True if a timeout occurred. Otherwise, false.</returns>
+        private static async Task<bool> TryHandleTimeoutAsync(Task taskToTimeout, bool throwOnTimeout, CancellationToken timeoutToken, Action onTimeout)
+        {
+            Task timeoutTask = Task.Delay(-1, timeoutToken);
+            Task completedTask = await Task.WhenAny(taskToTimeout, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                if (onTimeout != null)
+                {
+                    onTimeout();
+                }
+
+                if (throwOnTimeout)
+                {
+                    // If we need to throw, await the task to throw now. This will bubble up and eventually
+                    // bring down the host after a short grace period for the function to handle the cancellation.
+                    await timeoutTask;
+                }
+
+                return true;
+            }
+            return false;
         }
 
         private static bool TryGetSingletonLock(IReadOnlyDictionary<string, IValueProvider> parameters, out SingletonLock singleton)

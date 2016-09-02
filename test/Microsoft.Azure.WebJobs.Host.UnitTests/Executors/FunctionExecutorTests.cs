@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = typeof(Functions).GetMethod("MethodLevel", BindingFlags.Static | BindingFlags.Public);
             _descriptor.Method = method;
             TimeoutAttribute attribute = method.GetCustomAttribute<TimeoutAttribute>();
-           
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
+
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = typeof(Functions).GetMethod("ClassLevel", BindingFlags.Static | BindingFlags.Public);
             _descriptor.Method = method;
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
-          
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
+
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void StartFunctionTimeout_NoTimeout_ReturnsNull()
         {
             TimeoutAttribute timeoutAttribute = null;
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(null, timeoutAttribute, _cancellationTokenSource, _traceWriter, null);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(null, timeoutAttribute, _cancellationTokenSource, _traceWriter);
 
             Assert.Null(timer);
         }
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
             attribute.ThrowOnTimeout = false;
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
 
             Assert.Null(timer);
 
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             _descriptor.Method = method;
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -103,24 +103,154 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public async Task StartFunctionTimeout_RegistersCallback()
+        public async Task InvokeAsync_NoCancellation()
         {
-            MethodInfo method = GetType().GetMethod("GlobalLevel", BindingFlags.Static | BindingFlags.Public);
-            _descriptor.Method = method;
+            bool called = false;
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns(() =>
+                {
+                    called = true;
+                    return Task.FromResult(0);
+                });
 
-            bool hasTimerElapsed = false;
-            var timeoutAttribute = new TimeoutAttribute("00:00:00.01")
-            {
-                ThrowOnTimeout = false,
-                TimeoutWhileDebugging = true
-            };
-            _mockFunctionInstance.SetupGet(p => p.Id).Returns(Guid.Empty);
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, timeoutAttribute, _cancellationTokenSource,
-                _traceWriter, () => hasTimerElapsed = true);
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            bool throwOnTimeout = false;
 
-            await TestHelpers.Await(() => hasTimerElapsed);
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, new object[0], timeoutSource, shutdownSource, throwOnTimeout);
 
-            _mockFunctionInstance.VerifyAll();
+            Assert.True(called);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Timeout_NoThrow()
+        {
+            bool called = false;
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns<object[]>(async (invokeParameters) =>
+                {
+                    await Task.Yield();
+                    var token = (CancellationToken)invokeParameters[0];
+                    while (!token.IsCancellationRequested)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    called = true;
+                });
+
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            object[] parameters = new object[] { shutdownSource.Token };
+            bool throwOnTimeout = false;
+
+            timeoutSource.CancelAfter(500);
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource, throwOnTimeout);
+
+            Assert.True(called);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Timeout_Throw()
+        {
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns(async () =>
+                {
+                    await Task.Yield();
+                    while (true)
+                    {
+                    }
+                });
+
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            object[] parameters = new object[] { shutdownSource.Token };
+            bool throwOnTimeout = true;
+
+            timeoutSource.CancelAfter(500);
+            await Assert.ThrowsAsync<TaskCanceledException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource, throwOnTimeout));
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Stop_NoTimeout()
+        {
+            bool called = false;
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns<object[]>(async (invokeParameters) =>
+                {
+                    await Task.Yield();
+                    var token = (CancellationToken)invokeParameters[0];
+                    while (!token.IsCancellationRequested)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    called = true;
+                });
+
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            object[] parameters = new object[] { shutdownSource.Token };
+            bool throwOnTimeout = false;
+
+            shutdownSource.CancelAfter(500);
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource, throwOnTimeout);
+
+            Assert.True(called);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Stop_Timeout_NoThrow()
+        {
+            bool called = false;
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns<object[]>(async (invokeParameters) =>
+                {
+                    await Task.Yield();
+                    var token = (CancellationToken)invokeParameters[0];
+                    while (!token.IsCancellationRequested)
+                    {
+                        Thread.Sleep(1500);
+                    }
+                    called = true;
+                });
+
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            object[] parameters = new object[] { shutdownSource.Token };
+            bool throwOnTimeout = false;
+
+            shutdownSource.CancelAfter(500);
+            timeoutSource.CancelAfter(1000);
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource, throwOnTimeout);
+
+            Assert.True(called);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Stop_Timeout_Throw()
+        {
+            Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+                .Returns(async () =>
+                {
+                    await Task.Yield();
+                    while (true)
+                    {
+                    }
+                });
+
+            var timeoutSource = new CancellationTokenSource();
+            var shutdownSource = new CancellationTokenSource();
+            object[] parameters = new object[] { shutdownSource.Token };
+            bool throwOnTimeout = true;
+
+            shutdownSource.CancelAfter(500);
+            timeoutSource.CancelAfter(1000);
+            await Assert.ThrowsAsync<TaskCanceledException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource, throwOnTimeout));
         }
 
         [Fact]
@@ -147,10 +277,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             TimeoutAttribute attribute = method.GetCustomAttribute<TimeoutAttribute>();
             Guid instanceId = Guid.Parse("B2D1DD72-80E2-412B-A22E-3B4558F378B4");
             bool timeoutWhileDebugging = false;
-            bool callbackCalled = false;
-            FunctionExecutor.OnFunctionTimeout(timer, method, instanceId, attribute.Timeout, timeoutWhileDebugging, _traceWriter, _cancellationTokenSource, () => isDebugging, () => callbackCalled = true);
+            FunctionExecutor.OnFunctionTimeout(timer, method, instanceId, attribute.Timeout, timeoutWhileDebugging, _traceWriter, _cancellationTokenSource, () => isDebugging);
 
-            Assert.True(callbackCalled);
             Assert.False(timer.Enabled);
             Assert.NotEqual(isDebugging, _cancellationTokenSource.IsCancellationRequested);
 
