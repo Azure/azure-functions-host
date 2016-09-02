@@ -147,11 +147,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
                 .Returns<object[]>(async (invokeParameters) =>
                 {
-                    await Task.Yield();
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
                     {
-                        Thread.Sleep(1000);
+                        await Task.Delay(1000);
                     }
                     called = true;
                 });
@@ -175,9 +174,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
                 .Returns(async () =>
                 {
-                    await Task.Yield();
-                    while (true)
+                    bool exit = false;
+                    Task ignore = Task.Delay(5000).ContinueWith((ct) => exit = true);
+                    while (!exit)
                     {
+                        await Task.Delay(500);
                     }
                 });
 
@@ -208,11 +209,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
                 .Returns<object[]>(async (invokeParameters) =>
                 {
-                    await Task.Yield();
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
                     {
-                        Thread.Sleep(1000);
+                        await Task.Delay(1000);
                     }
                     called = true;
                 });
@@ -237,11 +237,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
                 .Returns<object[]>(async (invokeParameters) =>
                 {
-                    await Task.Yield();
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
                     {
-                        Thread.Sleep(1500);
+                        await Task.Delay(1500);
                     }
                     called = true;
                 });
@@ -266,9 +265,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
                 .Returns(async () =>
                 {
-                    await Task.Yield();
-                    while (true)
+                    bool exit = false;
+                    Task ignore = Task.Delay(5000).ContinueWith((ct) => exit = true);
+                    while (!exit)
                     {
+                        await Task.Delay(500);
                     }
                 });
 
