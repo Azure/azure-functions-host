@@ -6,7 +6,7 @@ using System;
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     [AttributeUsage(AttributeTargets.Parameter)]
-    public sealed class HttpTriggerAttribute : Attribute
+    public sealed class ManualTriggerAttribute : Attribute
     {
     }
 }

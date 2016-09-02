@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -18,22 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpTriggerBindingTests
     {
-        public interface ITestInterface
-        {
-        }
-
-        [Theory]
-        [InlineData(typeof(TestPoco), true)]
-        [InlineData(typeof(TestStruct), true)]
-        [InlineData(typeof(ITestInterface), false)]
-        [InlineData(typeof(Guid), false)]
-        [InlineData(typeof(int), false)]
-        [InlineData(typeof(string), false)]
-        public void IsValidUserType_ReturnsExpectedValue(Type type, bool expected)
-        {
-            Assert.Equal(expected, HttpTriggerAttributeBindingProvider.IsValidUserType(type));
-        }
-
         [Fact]
         public async Task GetRequestBindingDataAsync_ReadsFromBody()
         {
@@ -219,18 +203,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void TestStringFunction(string body)
         {
-        }
-
-        public struct TestStruct
-        {
-            public string Name { get; set; }
-            public string Location { get; set; }
-        }
-
-        public class TestPoco
-        {
-            public string Name { get; set; }
-            public string Location { get; set; }
         }
     }
 }

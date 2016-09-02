@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(lastModified < File.GetLastWriteTime(debugFilePath));
         }
 
-        [Fact(Skip = "Waiting on fix to #628")]
+        [Fact]
         public async Task ManualTrigger_CSharp_Invoke_Succeeds()
         {
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // wait for completion
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("Hello C#!", result);
+            Assert.Equal("Hello C#!", TestHelpers.RemoveByteOrderMark(result));
         }
 
         [Fact]

@@ -6,19 +6,19 @@ using Microsoft.Azure.WebJobs.Host.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding.Http
 {
-    public static class HttpJobHostConfigurationExtensions
+    public static class ScriptJobHostConfigurationExtensions
     {
-        public static void UseHttp(this JobHostConfiguration config)
+        public static void UseScriptExtensions(this JobHostConfiguration config)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
-            config.RegisterExtensionConfigProvider(new HttpExtensionConfig());
+            config.RegisterExtensionConfigProvider(new ScriptExtensionConfig());
         }
 
-        private class HttpExtensionConfig : IExtensionConfigProvider
+        private class ScriptExtensionConfig : IExtensionConfigProvider
         {
             public void Initialize(ExtensionConfigContext context)
             {
@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                 }
 
                 context.Config.RegisterBindingExtension(new HttpTriggerAttributeBindingProvider());
+                context.Config.RegisterBindingExtension(new ManualTriggerAttributeBindingProvider());
             }
         }
     }

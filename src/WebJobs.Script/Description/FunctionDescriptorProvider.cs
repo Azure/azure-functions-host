@@ -110,17 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected virtual ParameterDescriptor CreateTriggerParameter(BindingMetadata triggerMetadata, Type parameterType = null)
         {
             ParameterDescriptor triggerParameter = null;
-            string type = triggerMetadata.Type.ToLowerInvariant();
-            switch (type)
-            {
-                case "manualtrigger":
-                    triggerParameter = ParseManualTrigger(triggerMetadata, parameterType ?? typeof(string));
-                    break;
-                default:
-                    TryParseTriggerParameter(triggerMetadata.Raw, out triggerParameter, parameterType);
-                    break;
-            }
-
+            TryParseTriggerParameter(triggerMetadata.Raw, out triggerParameter, parameterType);
             triggerParameter.IsTrigger = true;
 
             return triggerParameter;

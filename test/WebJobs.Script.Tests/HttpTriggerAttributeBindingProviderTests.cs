@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

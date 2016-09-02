@@ -11,6 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        public static bool IsValidUserType(Type type)
+        {
+            return !type.IsInterface && !type.IsPrimitive && !(type.Namespace == "System");
+        }
+
         public static IReadOnlyDictionary<string, string> ToStringValues(this IReadOnlyDictionary<string, object> data)
         {
             return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);

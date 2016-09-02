@@ -7,8 +7,36 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    public interface ITestInterface
+    {
+    }
+
+    public struct TestStruct
+    {
+        public string Name { get; set; }
+        public string Location { get; set; }
+    }
+
+    public class TestPoco
+    {
+        public string Name { get; set; }
+        public string Location { get; set; }
+    }
+
     public class UtilityTests
     {
+        [Theory]
+        [InlineData(typeof(TestPoco), true)]
+        [InlineData(typeof(TestStruct), true)]
+        [InlineData(typeof(ITestInterface), false)]
+        [InlineData(typeof(Guid), false)]
+        [InlineData(typeof(int), false)]
+        [InlineData(typeof(string), false)]
+        public void IsValidUserType_ReturnsExpectedValue(Type type, bool expected)
+        {
+            Assert.Equal(expected, Utility.IsValidUserType(type));
+        }
+
         [Theory]
         [InlineData("FooBar", "fooBar")]
         [InlineData("FOOBAR", "fOOBAR")]

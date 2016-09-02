@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            Config.UseHttp();
+            Config.UseScriptExtensions();
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -68,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new HttpScriptBinding(context);
+            }
+            else if (string.Compare(context.Type, "manualTrigger", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                binding = new ManualScriptBinding(context);
             }
 
             return binding != null;
@@ -92,6 +97,30 @@ namespace Microsoft.Azure.WebJobs.Script
                 Collection<Attribute> attributes = new Collection<Attribute>();
 
                 attributes.Add(new HttpTriggerAttribute());
+
+                return attributes;
+            }
+        }
+
+        private class ManualScriptBinding : ScriptBinding
+        {
+            public ManualScriptBinding(ScriptBindingContext context) : base(context)
+            {
+            }
+
+            public override Type DefaultType
+            {
+                get
+                {
+                    return typeof(string);
+                }
+            }
+
+            public override Collection<Attribute> GetAttributes()
+            {
+                Collection<Attribute> attributes = new Collection<Attribute>();
+
+                attributes.Add(new ManualTriggerAttribute());
 
                 return attributes;
             }

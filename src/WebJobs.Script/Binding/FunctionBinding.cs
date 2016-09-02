@@ -57,9 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             }
                             bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
-                        case "manualtrigger":
-                            bindings.Add(new ManualBinding(config, bindingMetadata, FileAccess.Read));
-                            break;
                         default:
                             FunctionBinding binding = null;
                             if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))

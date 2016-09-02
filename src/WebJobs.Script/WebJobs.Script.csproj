@@ -323,14 +323,17 @@
     <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
-    <Compile Include="Binding\Http\HttpJobHostConfigurationExtensions.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
-    <Compile Include="Binding\ManualBinding.cs" />
+    <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
+    <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
+    <Compile Include="Binding\NullListener.cs" />
+    <Compile Include="Binding\ScriptJobHostConfigurationExtensions.cs" />
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
+    <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
@@ -471,6 +474,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" /> -->
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

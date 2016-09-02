@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -18,7 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Binding.Http
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class HttpTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
             IEnumerable<Type> supportedTypes = StreamValueBinder.GetSupportedTypes(FileAccess.Read)
                 .Union(new Type[] { typeof(HttpRequestMessage) });
             bool isSupportedTypeBinding = ValueBinder.MatchParameterType(parameter, supportedTypes);
-            bool isUserTypeBinding = !isSupportedTypeBinding && IsValidUserType(parameter.ParameterType);
+            bool isUserTypeBinding = !isSupportedTypeBinding && Utility.IsValidUserType(parameter.ParameterType);
             if (!isSupportedTypeBinding && !isUserTypeBinding)
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture,
@@ -53,11 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
             }
 
             return Task.FromResult<ITriggerBinding>(new HttpTriggerBinding(context.Parameter, isUserTypeBinding));
-        }
-
-        public static bool IsValidUserType(Type type)
-        {
-            return !type.IsInterface && !type.IsPrimitive && !(type.Namespace == "System");
         }
 
         internal class HttpTriggerBinding : ITriggerBinding
@@ -87,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                 {
                     // if we're binding to a user Type, we'll have a contract,
                     // otherwise none
-                    return _bindingDataProvider != null ? _bindingDataProvider.Contract : null;
+                    return _bindingDataProvider?.Contract;
                 }
             }
 
@@ -207,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                     }
                 }
 
-                return new HttpUserTypeValueBinder(_parameter.ParameterType, value, invokeString);
+                return new SimpleValueProvider(_parameter.ParameterType, value, invokeString);
             }
 
             /// <summary>
@@ -257,62 +251,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                 public override string ToInvokeString()
                 {
                     return _invokeString;
-                }
-            }
-
-            /// <summary>
-            /// ValueBinder for custom user Types
-            /// </summary>
-            private class HttpUserTypeValueBinder : IValueProvider
-            {
-                private readonly Type _type;
-                private readonly object _value;
-                private readonly string _invokeString;
-
-                public HttpUserTypeValueBinder(Type type, object value, string invokeString)
-                {
-                    _type = type;
-                    _value = value;
-                    _invokeString = invokeString;
-                }
-
-                public Type Type
-                {
-                    get
-                    {
-                        return _type;
-                    }
-                }
-
-                public object GetValue()
-                {
-                    return _value;
-                }
-
-                public string ToInvokeString()
-                {
-                    return _invokeString;
-                }
-            }
-
-            private class NullListener : IListener
-            {
-                public void Cancel()
-                {
-                }
-
-                public void Dispose()
-                {
-                }
-
-                public Task StartAsync(CancellationToken cancellationToken)
-                {
-                    return Task.CompletedTask;
-                }
-
-                public Task StopAsync(CancellationToken cancellationToken)
-                {
-                    return Task.CompletedTask;
                 }
             }
         }
