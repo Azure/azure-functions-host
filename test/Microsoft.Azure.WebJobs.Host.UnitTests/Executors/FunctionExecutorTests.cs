@@ -37,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             MethodInfo method = typeof(Functions).GetMethod("MethodLevel", BindingFlags.Static | BindingFlags.Public);
             _descriptor.Method = method;
+
+            // we need to set up the Id so that when the timer fires it doesn't throw, but since this is Strict, we need to access it first.
+            _mockFunctionInstance.SetupGet(p => p.Id).Returns(Guid.Empty);
+            Assert.NotNull(_mockFunctionInstance.Object.Id);
+
             TimeoutAttribute attribute = method.GetCustomAttribute<TimeoutAttribute>();
 
             System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
@@ -52,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             MethodInfo method = typeof(Functions).GetMethod("ClassLevel", BindingFlags.Static | BindingFlags.Public);
             _descriptor.Method = method;
+
+            // we need to set up the Id so that when the timer fires it doesn't throw, but since this is Strict, we need to access it first.
+            _mockFunctionInstance.SetupGet(p => p.Id).Returns(Guid.Empty);
+            Assert.NotNull(_mockFunctionInstance.Object.Id);
+
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
 
             System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
@@ -92,6 +102,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             MethodInfo method = typeof(Functions).GetMethod("NoCancellationTokenParameter", BindingFlags.Static | BindingFlags.Public);
             _descriptor.Method = method;
+
+            // we need to set up the Id so that when the timer fires it doesn't throw, but since this is Strict, we need to access it first.
+            _mockFunctionInstance.SetupGet(p => p.Id).Returns(Guid.Empty);
+            Assert.NotNull(_mockFunctionInstance.Object.Id);
+
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
 
             System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
