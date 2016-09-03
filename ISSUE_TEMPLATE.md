@@ -25,6 +25,6 @@ Provide a description of any known workarounds.
 
 Provide any related information 
 
-* Programming language used 
+* Package version
 * Links to source
 
