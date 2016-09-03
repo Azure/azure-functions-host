@@ -1,5 +1,4 @@
 
-
 Please provide a succinct description of the issue.
 
 #### Repro steps
@@ -12,11 +11,11 @@ Provide the steps required to reproduce the problem
 
 #### Expected behavior
 
-Provide a description of the expected behaviour.
+Provide a description of the expected behavior.
 
 #### Actual behavior
 
-Provide a description of the actual behaviour observed. 
+Provide a description of the actual behavior observed. 
 
 #### Known workarounds
 
