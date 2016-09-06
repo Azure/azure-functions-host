@@ -10,9 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -24,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string ProgramFiles64bitKey = "ProgramW6432";
         private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash };
         private readonly string _scriptFilePath;
-        private readonly IMetricsLogger _metrics;
 
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -36,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptFilePath = scriptFilePath;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
         }
 
         public static bool IsSupportedScriptType(ScriptType scriptType)
@@ -44,92 +40,78 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _supportedScriptTypes.Contains(scriptType);
         }
 
-        public override async Task Invoke(object[] parameters)
+        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             string scriptHostArguments;
             switch (Metadata.ScriptType)
             {
                 case ScriptType.WindowsBatch:
                     scriptHostArguments = string.Format("/c \"{0}\"", _scriptFilePath);
-                    await ExecuteScriptAsync("cmd", scriptHostArguments, parameters);
+                    await ExecuteScriptAsync("cmd", scriptHostArguments, parameters, context);
                     break;
                 case ScriptType.Python:
-                    scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
-                    await ExecuteScriptAsync("python.exe", scriptHostArguments, parameters);
+                    // Passing -u forces stdout to be unbuffered so we can log messages as they happen.
+                    scriptHostArguments = string.Format("-u \"{0}\"", _scriptFilePath);
+                    await ExecuteScriptAsync("python.exe", scriptHostArguments, parameters, context);
                     break;
                 case ScriptType.PHP:
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
-                    await ExecuteScriptAsync("php.exe", scriptHostArguments, parameters);
+                    await ExecuteScriptAsync("php.exe", scriptHostArguments, parameters, context);
                     break;
                 case ScriptType.Bash:
                     scriptHostArguments = string.Format("\"{0}\"", _scriptFilePath);
                     string bashPath = ResolveBashPath();
-                    await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters);
+                    await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters, context);
                     break;
             }
         }
 
-        internal async Task ExecuteScriptAsync(string path, string arguments, object[] invocationParameters)
+        internal async Task ExecuteScriptAsync(string path, string arguments, object[] invocationParameters, FunctionInvocationContext context)
         {
             object input = invocationParameters[0];
-            TraceWriter traceWriter = (TraceWriter)invocationParameters[1];
-            Binder binder = (Binder)invocationParameters[2];
-            ExecutionContext functionExecutionContext = (ExecutionContext)invocationParameters[3];
-            string invocationId = functionExecutionContext.InvocationId.ToString();
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-            _metrics.BeginEvent(startedEvent);
+            string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
+            string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
 
-            try
+            Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
+            InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
+
+            object convertedInput = ConvertInput(input);
+            Utility.ApplyBindingData(convertedInput, context.Binder.BindingData);
+            Dictionary<string, object> bindingData = context.Binder.BindingData;
+            bindingData["InvocationId"] = invocationId;
+
+            await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, context.Binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
+
+            Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
+            process.OutputDataReceived += (s, e) =>
             {
-                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
-
-                string workingDirectory = Path.GetDirectoryName(_scriptFilePath);
-                string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
-
-                Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
-                InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, functionExecutionContext);
-
-                object convertedInput = ConvertInput(input);
-                Utility.ApplyBindingData(convertedInput, binder.BindingData);
-                Dictionary<string, object> bindingData = binder.BindingData;
-                bindingData["InvocationId"] = invocationId;
-
-                await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
-
-                // TODO
-                // - put a timeout on how long we wait?
-                // - need to periodically flush the standard out to the TraceWriter
-                Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
-                process.Start();
-                process.WaitForExit();
-
-                string output = process.StandardOutput.ReadToEnd();
-                TraceWriter.Info(output);
-                traceWriter.Info(output);
-
-                startedEvent.Success = process.ExitCode == 0;
-
-                if (!startedEvent.Success)
+                if (e.Data != null)
                 {
-                    string error = process.StandardError.ReadToEnd();
-                    throw new ApplicationException(error);
+                    TraceWriter.Info(e.Data);
+                    context.TraceWriter.Info(e.Data);
                 }
+            };
 
-                await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, binder, bindingData);
+            var tcs = new TaskCompletionSource<object>();
+            process.Exited += (sender, args) =>
+            {
+                tcs.TrySetResult(null);
+            };
 
-                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
-            }
-            catch
+            process.Start();
+            process.BeginOutputReadLine();
+
+            await tcs.Task;
+
+            if (process.ExitCode != 0)
             {
-                startedEvent.Success = false;
-                TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-                throw;
+                string error = process.StandardError.ReadToEnd();
+                throw new ApplicationException(error);
             }
-            finally
-            {
-                _metrics.EndEvent(startedEvent);
-            }
+
+            await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, context.Binder, bindingData);
         }
 
         internal static Process CreateProcess(string path, string workingDirectory, string arguments, IDictionary<string, string> environmentVariables = null)
@@ -159,7 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return new Process()
             {
-                StartInfo = psi
+                StartInfo = psi,
+                EnableRaisingEvents = true
             };
         }
 

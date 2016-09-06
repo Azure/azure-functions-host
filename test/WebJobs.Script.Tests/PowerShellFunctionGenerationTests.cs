@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             MethodInfo method = GenerateMethod(trigger);
-           
+
             VerifyCommonProperties(method);
 
             // verify trigger parameter
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var functionDescriptors = scriptHostInfo.Host.ReadFunctions(metadatas, descriptorProviders);
-            Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
+            Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
             return method;

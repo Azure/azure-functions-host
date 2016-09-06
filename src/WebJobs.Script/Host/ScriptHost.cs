@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
@@ -302,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
                 _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
             }
-                      
+
             List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
             {
                 new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -328,10 +329,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // read all script functions and apply to JobHostConfiguration
             Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
+            Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
             string defaultNamespace = "Host";
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
             TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
-            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, functions);
+            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
             List<Type> types = new List<Type>();
             types.Add(type);
 
@@ -343,6 +345,39 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 PurgeOldLogDirectories();
             }
+        }
+
+        internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
+        {
+            Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
+
+            // apply the timeout settings to our type
+            Type timeoutType = typeof(TimeoutAttribute);
+            ConstructorInfo ctorInfo = timeoutType.GetConstructor(new[] { typeof(string) });
+
+            PropertyInfo[] propertyInfos = new[]
+            {
+                timeoutType.GetProperty("ThrowOnTimeout"),
+                timeoutType.GetProperty("TimeoutWhileDebugging"),
+            };
+
+            // Hard-code these for now. Eventually elevate to config
+            object[] propertyValues = new object[]
+            {
+                true,
+                true
+            };
+
+            CustomAttributeBuilder timeoutBuilder = new CustomAttributeBuilder(
+                ctorInfo,
+                new object[] { scriptConfig.FunctionTimeout.ToString() },
+                propertyInfos,
+                propertyValues
+            );
+
+            customAttributes.Add(timeoutBuilder);
+
+            return customAttributes;
         }
 
         /// <summary>
@@ -581,7 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
                     if (string.IsNullOrEmpty(scriptFile))
                     {
-                        AddFunctionError(functionName, 
+                        AddFunctionError(functionName,
                             "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
                             "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
                         continue;
@@ -638,7 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // if there is a "run" file, that file is primary,
                     // for Node, any index.js file is primary
-                    functionPrimary = functionFiles.FirstOrDefault(p => 
+                    functionPrimary = functionFiles.FirstOrDefault(p =>
                         Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
                         Path.GetFileName(p).ToLowerInvariant() == "index.js");
                 }
@@ -802,6 +837,11 @@ namespace Microsoft.Azure.WebJobs.Script
                         scriptConfig.FileLoggingMode = fileLoggingMode;
                     }
                 }
+            }
+
+            if (config.TryGetValue("timeout", out value))
+            {
+                scriptConfig.FunctionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
             }
         }
 

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
 
             // Test table client binding.
-            await Fixture.Host.CallAsync("ApiHubTableClient", 
+            await Fixture.Host.CallAsync("ApiHubTableClient",
                 new Dictionary<string, object>()
                 {
                     { ApiHubTestHelper.TextArg, textArgValue }
@@ -210,6 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
         }
+
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\CSharp";
@@ -271,7 +273,7 @@ namespace SecondaryDependency
                 Compilation primaryCompilation = CSharpCompilation.Create("PrimaryDependency", new[] { primarySyntaxTree })
                     .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
                     .WithReferences(MetadataReference.CreateFromFile(secondaryDependencyPath), MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-                
+
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
             }
         }

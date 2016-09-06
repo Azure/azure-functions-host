@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
 
-            string testData = Guid.NewGuid().ToString(); 
+            string testData = Guid.NewGuid().ToString();
             JObject input = new JObject
             {
                 { "scenario", "logging" },

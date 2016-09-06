@@ -94,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
             TestOutputContainer.CreateIfNotExists();
+            TestHelpers.ClearContainer(TestOutputContainer);
 
             TestTable = TableClient.GetTableReference("test");
             TestTable.CreateIfNotExists();

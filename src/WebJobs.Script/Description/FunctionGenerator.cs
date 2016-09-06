@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _invokerMap[method];
         }
 
-        public static Type Generate(string functionAssemblyName, string typeName, Collection<FunctionDescriptor> functions)
+        public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, Collection<FunctionDescriptor> functions)
         {
             if (functions == null)
             {
@@ -40,6 +40,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
 
             TypeBuilder tb = mb.DefineType(typeName, TypeAttributes.Public);
+
+            if (typeAttributes != null)
+            {
+                foreach (CustomAttributeBuilder attributeBuilder in typeAttributes)
+                {
+                    tb.SetCustomAttribute(attributeBuilder);
+                }
+            }
 
             foreach (FunctionDescriptor function in functions)
             {
@@ -119,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 il.Emit(OpCodes.Ldloc, invokerLocal);
                 il.Emit(OpCodes.Ldloc, argsLocal);
                 il.Emit(OpCodes.Callvirt, invokeMethod);
-                
+
                 if (function.Parameters.Any(p => p.Type.IsByRef))
                 {
                     LocalBuilder taskLocal = il.DeclareLocal(typeof(Task));
@@ -132,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // and load it onto the evaluation stack
                     il.Emit(OpCodes.Stloc, taskLocal);
                     il.Emit(OpCodes.Ldloc, taskLocal);
-                   
+
                     // Call "GetAwaiter" on the Task
                     il.Emit(OpCodes.Callvirt, typeof(Task).GetMethod("GetAwaiter", Type.EmptyTypes));
 

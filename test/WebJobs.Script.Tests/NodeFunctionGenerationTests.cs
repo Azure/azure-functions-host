@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 functionDescriptors = host.ReadFunctions(metadatas, descriptorProviders);
             }
 
-            Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", functionDescriptors);
+            Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
             return method;

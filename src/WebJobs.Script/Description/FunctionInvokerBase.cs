@@ -6,12 +6,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
+    [CLSCompliant(false)]
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private const string PrimaryHostTracePropertyName = "PrimaryHost";
@@ -19,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private FileSystemWatcher _fileWatcher;
         private bool _disposed = false;
+        private IMetricsLogger _metrics;
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
@@ -30,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Function file logging is only done conditionally
             TraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(PrimaryHostTracePropertyName) ?? false) || Host.IsPrimary));
+            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties => _primaryHostTraceProperties;
@@ -81,7 +86,80 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        public abstract Task Invoke(object[] parameters);
+        public async Task Invoke(object[] parameters)
+        {
+            FunctionStartedEvent startedEvent = null;
+
+            // We require the ExecutionContext, so this will throw if one is not found.
+            ExecutionContext functionExecutionContext = parameters.OfType<ExecutionContext>().First();
+
+            // These may not be present, so null is okay.
+            TraceWriter functionTraceWriter = parameters.OfType<TraceWriter>().FirstOrDefault();
+            Binder binder = parameters.OfType<Binder>().FirstOrDefault();
+
+            string invocationId = functionExecutionContext.InvocationId.ToString();
+
+            startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
+            _metrics.BeginEvent(startedEvent);
+
+            try
+            {
+                TraceWriter.Info($"Function started (Id={invocationId})");
+
+                FunctionInvocationContext context = new FunctionInvocationContext
+                {
+                    ExecutionContext = functionExecutionContext,
+                    Binder = binder,
+                    TraceWriter = functionTraceWriter
+                };
+
+                await InvokeCore(parameters, context);
+
+                TraceWriter.Info($"Function completed (Success, Id={invocationId})");
+            }
+            catch (AggregateException ex)
+            {
+                ExceptionDispatchInfo exInfo = null;
+
+                // If there's only a single exception, rethrow it by itself
+                Exception singleEx = ex.Flatten().InnerExceptions.SingleOrDefault();
+                if (singleEx != null)
+                {
+                    exInfo = ExceptionDispatchInfo.Capture(singleEx);
+                }
+                else
+                {
+                    exInfo = ExceptionDispatchInfo.Capture(ex);
+                }
+
+                LogFunctionFailed(startedEvent, "Failure", invocationId);
+                exInfo.Throw();
+            }
+            catch
+            {
+                LogFunctionFailed(startedEvent, "Failure", invocationId);
+                throw;
+            }
+            finally
+            {
+                if (startedEvent != null)
+                {
+                    _metrics.EndEvent(startedEvent);
+                }
+            }
+        }
+
+        private void LogFunctionFailed(FunctionStartedEvent startedEvent, string resultString, string invocationId)
+        {
+            if (startedEvent != null)
+            {
+                startedEvent.Success = false;
+            }
+
+            TraceWriter.Error($"Function completed ({resultString}, Id={invocationId ?? "0"})");
+        }
+
+        protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);
 
         protected virtual void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {

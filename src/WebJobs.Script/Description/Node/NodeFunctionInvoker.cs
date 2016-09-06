@@ -15,7 +15,6 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -24,6 +23,7 @@ using Binder = Microsoft.Azure.WebJobs.Host.Bindings.Runtime.Binder;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
+    [CLSCompliant(false)]
     public class NodeFunctionInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private static readonly ExpandoObjectJsonConverter _expandoObjectJsonConverter = new ExpandoObjectJsonConverter();
         private readonly BindingMetadata _trigger;
-        private readonly IMetricsLogger _metrics;
         private readonly string _entryPoint;
 
         private Func<object, Task<object>> _scriptFunc;
@@ -60,7 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _entryPoint = functionMetadata.EntryPoint;
 
             InitializeFileWatcherIfEnabled();
@@ -111,43 +109,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public override async Task Invoke(object[] parameters)
+        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             object input = parameters[0];
-            TraceWriter traceWriter = (TraceWriter)parameters[1];
-            Binder binder = (Binder)parameters[2];
-            ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
-            string invocationId = functionExecutionContext.InvocationId.ToString();
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-            _metrics.BeginEvent(startedEvent);
+            DataType dataType = _trigger.DataType ?? DataType.String;
+            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, TraceWriter, context);
+            var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
 
-            try
-            {
-                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
+            await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
 
-                DataType dataType = _trigger.DataType ?? DataType.String;
-                var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, binder, traceWriter, TraceWriter, functionExecutionContext);
-                var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
+            object functionResult = await ScriptFunc(scriptExecutionContext);
 
-                await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
-
-                object functionResult = await ScriptFunc(scriptExecutionContext);
-
-                await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, scriptExecutionContext, functionResult);
-
-                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
-            }
-            catch
-            {
-                startedEvent.Success = false;
-                TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-                throw;
-            }
-            finally
-            {
-                _metrics.EndEvent(startedEvent);
-            }
+            await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
         }
 
         private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)
@@ -279,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, Binder binder, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter fileTraceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -290,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     try
                     {
                         fileTraceWriter.Info(text);
-                        traceWriter.Info(text);
+                        invocationContext.TraceWriter.Info(text);
                     }
                     catch (ObjectDisposedException)
                     {
@@ -316,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var context = new Dictionary<string, object>()
             {
-                { "invocationId", functionExecutionContext.InvocationId },
+                { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "log", log },
                 { "bindings", bindings },
                 { "bind", bind }
@@ -372,9 +347,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 FunctionBinding.ConvertStreamToValue((Stream)input, dataType, ref input);
             }
 
-            Utility.ApplyBindingData(input, binder.BindingData);
-            var bindingData = NormalizeBindingData(binder.BindingData);
-            bindingData["invocationId"] = functionExecutionContext.InvocationId.ToString();
+            Utility.ApplyBindingData(input, invocationContext.Binder.BindingData);
+            var bindingData = NormalizeBindingData(invocationContext.Binder.BindingData);
+            bindingData["invocationId"] = invocationContext.ExecutionContext.InvocationId.ToString();
             context["bindingData"] = bindingData;
 
             // if the input is json, try converting to an object or array

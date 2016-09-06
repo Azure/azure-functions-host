@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, 
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
             ICompilationServiceFactory compilationServiceFactory)
             : base(host, config)
         {

@@ -83,11 +83,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                     OnInitializeConfig(_config.HostConfig);
                     newInstance = _scriptHostFactory.Create(_config);
+
                     _traceWriter = newInstance.TraceWriter;
 
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1}, Debug={2})", 
+                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1}, Debug={2})",
                             newInstance.ScriptConfig.HostConfig.HostId, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString()));
                     }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
@@ -111,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // signaled. That is fine - the restart will be processed immediately
                     // once we get to this line again. The important thing is that these
                     // restarts are only happening on a single thread.
-                    WaitHandle.WaitAny(new WaitHandle[] 
+                    WaitHandle.WaitAny(new WaitHandle[]
                     {
                         cancellationToken.WaitHandle,
                         newInstance.RestartEvent,
@@ -206,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public void Stop()
+        public async Task StopAsync()
         {
             _stopped = true;
 
@@ -216,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptHost[] instances = GetLiveInstancesAndClear();
 
                 Task[] tasksStop = Array.ConvertAll(instances, instance => instance.StopAsync());
-                Task.WaitAll(tasksStop);
+                await Task.WhenAll(tasksStop);
 
                 foreach (var instance in instances)
                 {
@@ -229,6 +230,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // best effort
             }
+        }
+
+        public void Stop()
+        {
+            StopAsync().GetAwaiter().GetResult();
         }
 
         private ScriptHost[] GetLiveInstancesAndClear()

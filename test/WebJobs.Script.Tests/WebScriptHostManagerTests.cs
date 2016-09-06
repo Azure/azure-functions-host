@@ -87,10 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
 
-            Assert.True(hostLogs.Contains("Generating 0 job function(s)"));
-            Assert.True(hostLogs.Contains("No job functions found."));
-            Assert.True(hostLogs.Contains("Job host started"));
-            Assert.True(hostLogs.Contains("Job host stopped"));
+            Assert.Contains("Generating 0 job function(s)", hostLogs);
+            Assert.Contains("No job functions found.", hostLogs);
+            Assert.Contains("Job host started", hostLogs);
+            Assert.Contains("Job host stopped", hostLogs);
         }
 
         [Fact]

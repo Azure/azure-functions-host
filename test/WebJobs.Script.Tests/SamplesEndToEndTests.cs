@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string id = Guid.NewGuid().ToString();
             request.Content = new StringContent(string.Format("<RequestData xmlns=\"http://functions\"><Id>{0}</Id><Value>Testing</Value></RequestData>", id));
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml");
-            
+
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -424,6 +424,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the function output
             var logs = await TestHelpers.GetFunctionLogsAsync("QueueTrigger-Python");
+            // strip off the timestamps from the beginning of each line
+            logs = logs.Select(l => l.Split(new[] { ' ' }, 2)[1]).ToList();
             int idx = logs.IndexOf("Read 5 Table entities");
             for (int i = idx + 1; i < 5; i++)
             {
@@ -543,9 +545,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : IDisposable
         {
+            private HttpConfiguration _config;
+
             public TestFixture()
             {
-                HttpConfiguration config = new HttpConfiguration();
+                _config = new HttpConfiguration();
 
                 HostSettings = new WebHostSettings
                 {
@@ -554,9 +558,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                     SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
                 };
-                WebApiConfig.Register(config, HostSettings);
+                WebApiConfig.Register(_config, HostSettings);
 
-                HttpServer = new HttpServer(config);
+                HttpServer = new HttpServer(_config);
                 this.HttpClient = new HttpClient(HttpServer);
                 this.HttpClient.BaseAddress = new Uri("https://localhost/");
 
@@ -617,6 +621,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
+                var manager = _config.DependencyResolver.GetService<WebScriptHostManager>();
+
+                if (manager != null)
+                {
+                    manager.Stop();
+                    manager.Dispose();
+                }
+
                 if (HttpServer != null)
                 {
                     HttpServer.Dispose();

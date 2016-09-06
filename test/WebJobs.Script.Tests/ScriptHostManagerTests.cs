@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -23,26 +24,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task UpdateFileAndRestart()
         {
             CancellationTokenSource cts = new CancellationTokenSource();
-
             var fixture = new NodeEndToEndTests.TestFixture();
             var blob1 = UpdateOutputName("testblob", "first", fixture);
 
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
 
-            var success = true;
+            ExceptionDispatchInfo exception = null;
 
             using (var manager = new ScriptHostManager(config))
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock(). 
                 Thread t = new Thread(_ =>
                    {
+                       // don't start until the manager is running
+                       TestHelpers.Await(() => manager.IsRunning).Wait();
+
                        try
                        {
                            // Wait for initial execution.
                            TestHelpers.Await(() =>
                            {
-                               return blob1.Exists();
+                               bool exists = blob1.Exists();
+                               return exists;
                            }, timeout: 10 * 1000).Wait();
 
                            // This changes the bindings so that we now write to blob2
@@ -51,12 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                            // wait for newly executed
                            TestHelpers.Await(() =>
                            {
-                               return blob2.Exists();
+                               bool exists = blob2.Exists();
+                               return exists;
                            }, timeout: 30 * 1000).Wait();
                        }
-                       catch
+                       catch (Exception ex)
                        {
-                           success = false;
+                           exception = ExceptionDispatchInfo.Capture(ex);
                        }
 
                        cts.Cancel();
@@ -67,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 t.Join();
 
-                Assert.True(success);
+                Assert.True(exception == null, exception?.SourceException?.ToString());
             }
         }
 
@@ -176,10 +181,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
 
-            Assert.True(hostLogs.Contains("Generating 0 job function(s)"));
-            Assert.True(hostLogs.Contains("No job functions found."));
-            Assert.True(hostLogs.Contains("Job host started"));
-            Assert.True(hostLogs.Contains("Job host stopped"));
+            Assert.Contains("Generating 0 job function(s)", hostLogs);
+            Assert.Contains("No job functions found.", hostLogs);
+            Assert.Contains("Job host started", hostLogs);
+            Assert.Contains("Job host stopped", hostLogs);
         }
 
         // Update the manifest for the timer function

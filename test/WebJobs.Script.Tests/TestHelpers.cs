@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<Collection<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
+        public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
         {
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 throw new InvalidOperationException("No logs written!");
             }
 
-            return null;
+            return new Collection<string>();
         }
 
         // Deleting and recreating a container can result in a 409 as the container name is not

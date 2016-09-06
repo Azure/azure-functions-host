@@ -17,6 +17,7 @@ using System.Web.Hosting;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IMetricsLogger _metricsLogger;
         private readonly SecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly object _syncLock = new object();
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
@@ -37,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) : base(config)
         {
             _metricsLogger = new WebHostMetricsLogger();
+            _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _secretManager = secretManager;
             _webHostSettings = webHostSettings;
         }
@@ -332,9 +335,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected override void OnInitializeConfig(JobHostConfiguration config)
         {
             base.OnInitializeConfig(config);
-            
+
             // Add our WebHost specific services
             config.AddService<IMetricsLogger>(_metricsLogger);
+
+            // Add our exception handler
+            config.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
 
             // Register the new "FastLogger" for Dashboard support
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
@@ -343,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var fastLogger = new FastLogger(dashboardString);
                 config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
             }
-            config.DashboardConnectionString = null; // disable slow logging 
+            config.DashboardConnectionString = null; // disable slow logging
         }
 
         protected override void OnHostStarted()

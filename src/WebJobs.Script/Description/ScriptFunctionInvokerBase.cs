@@ -17,14 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public class ScriptFunctionInvokerBase : FunctionInvokerBase
     {
-        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory) 
+        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory)
             : base(host, functionMetadata, traceWriterFactory)
         {
         }
 
-        public override Task Invoke(object[] parameters)
+        protected override Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         protected virtual async Task ProcessInputBindingsAsync(object input, string functionInstanceOutputPath, Binder binder,
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             Binder = binder,
                             BindingData = bindingData,
-                            DataType = DataType.Stream, 
+                            DataType = DataType.Stream,
                             Value = stream
                         };
                         await inputBinding.BindAsync(bindingContext);

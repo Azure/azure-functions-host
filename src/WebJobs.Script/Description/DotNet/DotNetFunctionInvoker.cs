@@ -15,12 +15,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
+    [CLSCompliant(false)]
     public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private readonly IMetricsLogger _metrics;
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly ICompilationService _compilationService;
 
@@ -55,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcher();
 
@@ -198,70 +196,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public override async Task Invoke(object[] parameters)
+        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            FunctionStartedEvent startedEvent = null;
-            string invocationId = null;
+            // Separate system parameters from the actual method parameters
+            object[] originalParameters = parameters;
+            MethodInfo function = await GetFunctionTargetAsync();
+            int actualParameterCount = function.GetParameters().Length;
+            object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
+            parameters = parameters.Take(actualParameterCount).ToArray();
 
-            try
+            parameters = ProcessInputParameters(parameters);
+
+            object functionResult = function.Invoke(null, parameters);
+
+            // after the function executes, we have to copy values back into the original
+            // array to ensure object references are maintained (since we took a copy above)
+            for (int i = 0; i < parameters.Length; i++)
             {
-                ExecutionContext functionExecutionContext = (ExecutionContext)parameters.First(p => p is ExecutionContext);
-                invocationId = functionExecutionContext.InvocationId.ToString();
-
-                // Separate any system parameters we might have added from the actual method parameters
-                object[] originalParameters = parameters;
-                MethodInfo function = await GetFunctionTargetAsync();
-                int actualParameterCount = function.GetParameters().Length;
-                object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
-                parameters = parameters.Take(actualParameterCount).ToArray();
-
-                startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-                _metrics.BeginEvent(startedEvent);
-
-                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
-
-                parameters = ProcessInputParameters(parameters);
-
-                object functionResult = function.Invoke(null, parameters);
-
-                // after the function executes, we have to copy values back into the original
-                // array to ensure object references are maintained (since we took a copy above)
-                for (int i = 0; i < parameters.Length; i++)
-                {
-                    originalParameters[i] = parameters[i];
-                }
-
-                if (functionResult is Task)
-                {
-                    functionResult = await((Task)functionResult).ContinueWith(t => GetTaskResult(t));
-                }
-
-                if (functionResult != null)
-                {
-                    _resultProcessor(function, parameters, systemParameters, functionResult);
-                }
-
-                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
+                originalParameters[i] = parameters[i];
             }
-            catch
+
+            if (functionResult is Task)
             {
-                if (startedEvent != null)
-                {
-                    startedEvent.Success = false;
-                    TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-                }
-                else
-                {
-                    TraceWriter.Error("Function completed (Failure)");
-                }
-                throw;
+                functionResult = await ((Task)functionResult).ContinueWith(t => GetTaskResult(t));
             }
-            finally
+
+            if (functionResult != null)
             {
-                if (startedEvent != null)
-                {
-                    _metrics.EndEvent(startedEvent);
-                }
+                _resultProcessor(function, parameters, systemParameters, functionResult);
             }
         }
 
@@ -314,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             try
             {
                 await VerifyPackageReferencesAsync();
-              
+
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
                 FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
@@ -428,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Metadata.Name, StringComparison.Ordinal) == 0))
                 {
-                    string message = string.Format(CultureInfo.InvariantCulture, 
+                    string message = string.Format(CultureInfo.InvariantCulture,
                         "Missing binding argument named '{0}'. Mismatched binding argument names may lead to function indexing errors.", binding.Metadata.Name);
 
                     var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,

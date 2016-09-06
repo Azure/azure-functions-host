@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(File.Exists(debugModeFilePath));
             Assert.True(host.LastDebugNotify > lastDebugNotify);
 
-            Thread.Sleep(100);
+            Thread.Sleep(500);
 
             DateTime lastModified = File.GetLastWriteTime(debugModeFilePath);
             lastDebugNotify = host.LastDebugNotify;
@@ -423,11 +423,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ApplyFunctionsFilter()
+        public void ApplyConfiguration_AppliesFunctionsFilter()
         {
             JObject config = new JObject();
             config["id"] = ID;
-            
+
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             Assert.Null(scriptConfig.Functions);
 
@@ -437,6 +437,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, scriptConfig.Functions.Count);
             Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
             Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
+        }
+
+        [Fact]
+        public void ApplyConfiguration_AppliesTimeout()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
+
+            config["timeout"] = "00:00:30";
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.FunctionTimeout);
+
+            // value must be between 1 second and 5 minutes, inclusive
+            config["timeout"] = "00:00:00.9";
+            var ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+
+            config["timeout"] = "00:05:01";
+            ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
         }
 
         [Fact]

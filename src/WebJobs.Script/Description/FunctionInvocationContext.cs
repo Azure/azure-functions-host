@@ -1,0 +1,17 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
+
+namespace Microsoft.Azure.WebJobs.Script.Description
+{
+    [CLSCompliant(false)]
+    public class FunctionInvocationContext
+    {
+        public ExecutionContext ExecutionContext { get; set; }
+        public Binder Binder { get; set; }
+        public TraceWriter TraceWriter { get; set; }
+    }
+}
