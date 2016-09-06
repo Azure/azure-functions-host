@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter writer = parameters[i] as TraceWriter;
                 if (writer != null)
                 {
-                    parameters[i] = new CompositeTraceWriter(new[] { writer, TraceWriter });
+                    parameters[i] = CreateUserTraceWriter(writer);
                 }
             }
 

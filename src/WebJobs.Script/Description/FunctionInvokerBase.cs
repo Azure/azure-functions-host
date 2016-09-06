@@ -17,9 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
-        private const string PrimaryHostTracePropertyName = "PrimaryHost";
-        private readonly static IDictionary<string, object> _primaryHostTraceProperties = new Dictionary<string, object> { { PrimaryHostTracePropertyName, null } };
-
         private FileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
@@ -28,20 +25,39 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Host = host;
             Metadata = functionMetadata;
-
-            traceWriterFactory = traceWriterFactory ?? new FunctionTraceWriterFactory(functionMetadata.Name, Host.ScriptConfig);
-            TraceWriter traceWriter = traceWriterFactory.Create();
+            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             // Function file logging is only done conditionally
-            TraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(PrimaryHostTracePropertyName) ?? false) || Host.IsPrimary));
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            traceWriterFactory = traceWriterFactory ?? new FunctionTraceWriterFactory(functionMetadata.Name, Host.ScriptConfig);
+            TraceWriter traceWriter = traceWriterFactory.Create();
+            FileTraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || Host.IsPrimary));
+
+            // The global trace writer used by the invoker will write all traces to both
+            // the host trace writer as well as our file trace writer
+            TraceWriter = host.TraceWriter != null ? 
+                new CompositeTraceWriter(new TraceWriter[] { FileTraceWriter, host.TraceWriter }) : 
+                FileTraceWriter;
+
+            // Apply the function name as an event property to all traces
+            var functionTraceProperties = new Dictionary<string, object>
+            {
+                { ScriptConstants.TracePropertyFunctionNameKey, Metadata.Name }
+            };
+            TraceWriter = TraceWriter.Apply(functionTraceProperties);
+
+            PrimaryHostTraceProperties = new Dictionary<string, object>
+            {
+                { ScriptConstants.TracePropertyPrimaryHostKey, Metadata.Name }
+            };
         }
 
-        protected static IDictionary<string, object> PrimaryHostTraceProperties => _primaryHostTraceProperties;
+        protected IDictionary<string, object> PrimaryHostTraceProperties { get; private set; }
 
         public ScriptHost Host { get; private set; }
 
         public FunctionMetadata Metadata { get; private set; }
+
+        private TraceWriter FileTraceWriter { get; set; }
 
         public TraceWriter TraceWriter { get; }
 
@@ -88,8 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task Invoke(object[] parameters)
         {
-            FunctionStartedEvent startedEvent = null;
-
             // We require the ExecutionContext, so this will throw if one is not found.
             ExecutionContext functionExecutionContext = parameters.OfType<ExecutionContext>().First();
 
@@ -99,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
-            startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
+            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
             try
@@ -157,6 +171,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             TraceWriter.Error($"Function completed ({resultString}, Id={invocationId ?? "0"})");
+        }
+
+        protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)
+        {
+            // We create a composite writer to ensure that all user traces get
+            // written to both the original trace writer as well as our file trace writer
+            // This is a "user" trace writer that will mark all traces going through
+            // it as a "user" trace so they are filtered from system logs.
+            var userTraceProperties = new Dictionary<string, object>
+            {
+                { ScriptConstants.TracePropertyIsUserTraceKey, true }
+            };
+            return new CompositeTraceWriter(new[] { traceWriter, FileTraceWriter }).Apply(userTraceProperties);
         }
 
         protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);

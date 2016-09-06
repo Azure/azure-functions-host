@@ -2,41 +2,45 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using Microsoft.Diagnostics.Tracing;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class EventGenerator : IEventGenerator
+    internal class SystemEventGenerator : ISystemEventGenerator
     {
-        public void LogFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+        public void LogEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
         {
-            FunctionsEvents.Log.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary);
+            switch (level)
+            {
+                case TraceLevel.Verbose:
+                    SystemEvents.Log.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    break;
+                case TraceLevel.Info:
+                    SystemEvents.Log.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    break;
+                case TraceLevel.Warning:
+                    SystemEvents.Log.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    break;
+                case TraceLevel.Error:
+                    if (string.IsNullOrEmpty(details) && exception != null)
+                    {
+                        details = exception.ToString();
+                    }
+                    SystemEvents.Log.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    break;
+            }
         }
 
-        public void LogFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+        public void LogMetric(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
         {
-            FunctionsEvents.Log.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary);
-        }
-
-        public void LogFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
-        {
-            FunctionsEvents.Log.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary);
-        }
-
-        public void LogFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
-        {
-            FunctionsEvents.Log.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary);
-        }
-
-        public void LogFunctionsMetrics(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
-        {
-            FunctionsEvents.Log.RaiseFunctionsMetrics(subscriptionId, appName, eventName, average, minimum, maximum, count);
+            SystemEvents.Log.RaiseFunctionsMetrics(subscriptionId, appName, eventName, average, minimum, maximum, count);
         }
 
         [EventSource(Guid = "08D0D743-5C24-43F9-9723-98277CEA5F9B")]
-        public sealed class FunctionsEvents : EventSource
+        public sealed class SystemEvents : EventSource
         {
-            internal static readonly FunctionsEvents Log = new FunctionsEvents();
+            internal static readonly SystemEvents Log = new SystemEvents();
 
             [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational)]
             public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)

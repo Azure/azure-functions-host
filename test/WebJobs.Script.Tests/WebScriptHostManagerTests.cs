@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -9,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -21,6 +23,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebScriptHostManagerTests(Fixture fixture)
         {
             _fixture = fixture;
+        }
+
+        [Fact]
+        public async Task FunctionInvoke_SystemTraceEventsAreEmitted()
+        {
+            _fixture.EventGenerator.Events.Clear();
+
+            var host = _fixture.HostManager.Instance;
+            var input = Guid.NewGuid().ToString();
+            var parameters = new Dictionary<string, object>
+            {
+                { "input", input }
+            };
+            await host.CallAsync("ManualTrigger", parameters);
+
+            Assert.Equal(4, _fixture.EventGenerator.Events.Count);
+            Assert.Equal("Info WebJobs.Execution Executing: 'Functions.ManualTrigger' - Reason: 'This function was programmatically called via the host APIs.'", _fixture.EventGenerator.Events[0]);
+            Assert.True(_fixture.EventGenerator.Events[1].StartsWith("Info ManualTrigger Function started (Id="));
+            Assert.True(_fixture.EventGenerator.Events[2].StartsWith("Info ManualTrigger Function completed (Success, Id="));
+            Assert.Equal("Info WebJobs.Execution Executed: 'Functions.ManualTrigger' (Succeeded)", _fixture.EventGenerator.Events[3]);
+
+            // make sure the user log wasn't traced
+            Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
         }
 
         [Fact]
@@ -127,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             public Fixture()
             {
+                EventGenerator = new TestSystemEventGenerator();
+
                 TestFunctionRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
                 TestLogsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs");
                 TestSecretsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Secrets");
@@ -141,12 +168,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 Directory.CreateDirectory(FunctionsLogDir);
 
                 // Add some secret files (both old and valid)
-                File.Create(Path.Combine(SecretsPath, ScriptConstants.HostMetadataFileName));
-                File.Create(Path.Combine(SecretsPath, "WebHookTrigger.json"));
-                File.Create(Path.Combine(SecretsPath, "QueueTriggerToBlob.json"));
-                File.Create(Path.Combine(SecretsPath, "Foo.json"));
-                File.Create(Path.Combine(SecretsPath, "Bar.json"));
-                File.Create(Path.Combine(SecretsPath, "Invalid.json"));
+                File.WriteAllText(Path.Combine(SecretsPath, ScriptConstants.HostMetadataFileName), string.Empty);
+                File.WriteAllText(Path.Combine(SecretsPath, "WebHookTrigger.json"), string.Empty);
+                File.WriteAllText(Path.Combine(SecretsPath, "QueueTriggerToBlob.json"), string.Empty);
+                File.WriteAllText(Path.Combine(SecretsPath, "Foo.json"), string.Empty);
+                File.WriteAllText(Path.Combine(SecretsPath, "Bar.json"), string.Empty);
+                File.WriteAllText(Path.Combine(SecretsPath, "Invalid.json"), string.Empty);
 
                 // Add some old file directories
                 CreateTestFunctionLogs(FunctionsLogDir, "Foo");
@@ -163,14 +190,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 SecretManager secretManager = new SecretManager(SecretsPath);
                 WebHostSettings webHostSettings = new WebHostSettings();
-                HostManager = new WebScriptHostManager(config, secretManager, webHostSettings);
+                var mockHostManager = new MockWebScriptHostManager(config, secretManager, webHostSettings);
+                mockHostManager.TestEventGenerator = EventGenerator;
+                HostManager = mockHostManager;
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 
                 TestHelpers.Await(() =>
                 {
                     return HostManager.IsRunning;
                 }).GetAwaiter().GetResult();
+
+                // verify startup system trace logs
+                string events = string.Join("\r\n", EventGenerator.Events);
+                string[] expectedLogs = new string[]
+                {
+                    "Info Reading host configuration file",
+                    "Info Host lock lease acquired by instance ID",
+                    "Info Function 'Excluded' is marked as excluded",
+                    "Info Generating",
+                    "Info Starting Host (HostId=function-tests-node, Version=1.0.0.0",
+                    "Info WebJobs.Indexing Found the following functions:",
+                    "Verbose The next 5 occurrences of the schedule will be:",
+                    "Info WebJobs.Host Job host started",
+                    "Error The following 1 functions are in error:"
+                };
+                foreach (string expectedLog in expectedLogs)
+                {
+                    Assert.True(EventGenerator.Events.Any(p => p.StartsWith(expectedLog)), $"Expected trace event {expectedLog} not found.");
+                }
             }
+
+            public TestSystemEventGenerator EventGenerator { get; private set; }
 
             public WebScriptHostManager HostManager { get; private set; }
 
@@ -211,6 +261,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileTraceWriter traceWriter = new FileTraceWriter(functionLogPath, TraceLevel.Verbose);
                 traceWriter.Verbose("Test log message");
                 traceWriter.Flush();
+            }
+
+            private class MockWebScriptHostManager : WebScriptHostManager
+            {
+                public MockWebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) 
+                    : base(config, secretManager, webHostSettings)
+                {
+                }
+
+                public TestSystemEventGenerator TestEventGenerator { get; set; }
+
+                protected override void OnInitializeConfig(ScriptHostConfiguration config)
+                {
+                    var hostConfig = config.HostConfig;
+                    hostConfig.AddService<ISystemEventGenerator>(TestEventGenerator);
+
+                    base.OnInitializeConfig(config);
+                }
+            }
+
+            public class TestSystemEventGenerator : ISystemEventGenerator
+            {
+                private readonly object _syncLock = new object();
+
+                public TestSystemEventGenerator()
+                {
+                    Events = new List<string>();
+                }
+
+                public List<string> Events { get; private set; }
+
+                public void LogEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
+                {
+                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
+                    string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
+                    lock (_syncLock)
+                    {
+                        Events.Add(evt);
+                    }
+                }
+
+                public void LogMetric(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+                {
+                    throw new NotImplementedException();
+                }
             }
         }
     }

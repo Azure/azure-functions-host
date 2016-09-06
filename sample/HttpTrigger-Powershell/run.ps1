@@ -1,3 +1,5 @@
+Write-Output "PowerShell HTTP function invoked"
+
 if ($req_query_name) 
 {
 	$message = "Hello $req_query_name"

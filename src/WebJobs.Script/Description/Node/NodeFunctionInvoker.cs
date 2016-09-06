@@ -114,9 +114,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             object input = parameters[0];
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-
             DataType dataType = _trigger.DataType ?? DataType.String;
-            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, TraceWriter, context);
+
+            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
+            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, userTraceWriter, context);
             var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
 
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
@@ -255,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter fileTraceWriter, FunctionInvocationContext invocationContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -265,8 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     try
                     {
-                        fileTraceWriter.Info(text);
-                        invocationContext.TraceWriter.Info(text);
+                        traceWriter.Info(text);
                     }
                     catch (ObjectDisposedException)
                     {

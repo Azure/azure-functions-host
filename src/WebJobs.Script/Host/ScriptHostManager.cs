@@ -81,15 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         HostId = _config.HostConfig.HostId
                     };
-                    OnInitializeConfig(_config.HostConfig);
+                    OnInitializeConfig(_config);
                     newInstance = _scriptHostFactory.Create(_config);
 
                     _traceWriter = newInstance.TraceWriter;
 
                     if (_traceWriter != null)
                     {
-                        _traceWriter.Info(string.Format("Starting Host (HostId={0}, ProcessId={1}, Debug={2})",
-                            newInstance.ScriptConfig.HostConfig.HostId, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString()));
+                        string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3})", 
+                            newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString());
+                        _traceWriter.Info(message);
                     }
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return instances;
         }
 
-        protected virtual void OnInitializeConfig(JobHostConfiguration config)
+        protected virtual void OnInitializeConfig(ScriptHostConfiguration config)
         {
         }
 

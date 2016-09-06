@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ApplyConfiguration(hostConfig, ScriptConfig);
 
-            // Set up a host level TraceMonitor that will receive notificaition
+            // Set up a host level TraceMonitor that will receive notification
             // of ALL errors that occur. This allows us to inspect/log errors.
             var traceMonitor = new TraceMonitor()
                 .Filter(p => { return true; })
@@ -230,16 +230,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
-            this.LastDebugNotify = File.GetLastWriteTime(debugModeFilePath);
-
-            _debugModeFileWatcher = new FileSystemWatcher(ScriptConfig.RootLogPath, "debug")
-            {
-                EnableRaisingEvents = true
-            };
-            _debugModeFileWatcher.Created += OnDebugModeFileChanged;
-            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-
             if (TraceWriter != null)
             {
                 ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
@@ -249,6 +239,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 // if no TraceWriter has been configured, default it to Console
                 TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
             }
+
+            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
+            this.LastDebugNotify = File.GetLastWriteTime(debugModeFilePath);
+
+            _debugModeFileWatcher = new FileSystemWatcher(ScriptConfig.RootLogPath, "debug")
+            {
+                EnableRaisingEvents = true
+            };
+            _debugModeFileWatcher.Created += OnDebugModeFileChanged;
+            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
             var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
             ScriptConfig.BindingProviders = bindingProviders;

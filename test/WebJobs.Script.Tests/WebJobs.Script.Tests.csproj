@@ -369,6 +369,7 @@
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SystemTraceWriterTests.cs" />
     <Compile Include="TestHelpers.cs" />
     <Compile Include="TestInvoker.cs" />
     <Compile Include="HttpTriggerBindingTests.cs" />

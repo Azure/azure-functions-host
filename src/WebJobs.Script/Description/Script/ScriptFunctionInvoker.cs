@@ -85,12 +85,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, context.Binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
 
             Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
+            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
             process.OutputDataReceived += (s, e) =>
             {
                 if (e.Data != null)
                 {
-                    TraceWriter.Info(e.Data);
-                    context.TraceWriter.Info(e.Data);
+                    userTraceWriter.Info(e.Data);
                 }
             };
 
