@@ -13,6 +13,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TraceWriterExtensionsTests
     {
         [Fact]
+        public void Apply_CreatesInterceptingTraceWriter()
+        {
+            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            traceWriter.Info("Test message");
+            var traceEvent = traceWriter.Traces.Single();
+            Assert.Equal(0, traceEvent.Properties.Count);
+
+            traceWriter.Traces.Clear();
+            var properties = new Dictionary<string, object>
+            {
+                { "Foo", 123 },
+                { "Bar", 456 }
+            };
+            var interceptingTraceWriter = traceWriter.Apply(properties);
+
+            interceptingTraceWriter.Info("Test message");
+            traceEvent = traceWriter.Traces.Single();
+            Assert.Equal(2, traceEvent.Properties.Count);
+            Assert.Equal(123, traceEvent.Properties["Foo"]);
+            Assert.Equal(456, traceEvent.Properties["Bar"]);
+        }
+
+        [Fact]
         public void Verbose_TracesMessageAndCorrectTraceLevel()
         {
             var expectedLevel = TraceLevel.Verbose;

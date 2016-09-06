@@ -7,11 +7,11 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public sealed class ConditionalTraceWriter : TraceWriter
+    public sealed class InterceptingTraceWriter : TraceWriter
     {
-        private readonly Func<TraceEvent, bool> _predicate;
+        private readonly Action<TraceEvent> _interceptor;
 
-        public ConditionalTraceWriter(TraceWriter innerWriter, Func<TraceEvent, bool> predicate) 
+        public InterceptingTraceWriter(TraceWriter innerWriter, Action<TraceEvent> interceptor)
             : base(innerWriter?.Level ?? TraceLevel.Off)
         {
             if (innerWriter == null)
@@ -19,13 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException(nameof(innerWriter));
             }
 
-            if (predicate == null)
+            if (interceptor == null)
             {
-                throw new ArgumentNullException(nameof(predicate));
+                throw new ArgumentNullException(nameof(interceptor));
             }
 
             InnerWriter = innerWriter;
-            _predicate = predicate;
+            _interceptor = interceptor;
         }
 
         public TraceWriter InnerWriter { get; }
@@ -37,10 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            if (_predicate(traceEvent))
-            {
-                InnerWriter.Trace(traceEvent);
-            }
+            _interceptor(traceEvent);
+            InnerWriter.Trace(traceEvent);
         }
     }
 }

@@ -188,10 +188,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             }
 
-            protected override void OnInitializeConfig(JobHostConfiguration config)
+            protected override void OnInitializeConfig(ScriptHostConfiguration config)
             {
                 base.OnInitializeConfig(config);
-                config.AddService<IWebJobsExceptionHandler>(new MockExceptionHandler());
+                config.HostConfig.AddService<IWebJobsExceptionHandler>(new MockExceptionHandler());
             }
         }
     }

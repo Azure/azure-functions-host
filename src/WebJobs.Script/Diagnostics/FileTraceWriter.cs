@@ -131,6 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("traceEvent");
             }
 
+            object value;
+            if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyIsSystemTraceKey, out value) 
+                && value is bool && (bool)value)
+            {
+                // we don't want to write system traces to the user trace files
+                return;
+            }
+
             if (Level < traceEvent.Level || _logBuffer.Count > MaxLogLinesPerFlushInterval)
             {
                 return;

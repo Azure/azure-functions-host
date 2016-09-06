@@ -1,4 +1,4 @@
 ﻿module.exports = function (context, input) {
-    context.log(input);
+    context.log("ManualTrigger function invoked!", input);
     context.done();
 }

@@ -3,5 +3,8 @@
     "watchDirectories": [ "Shared" ],
     "sendGrid": {
         "from": "Azure Functions <samples@functions.com>"
+    },
+    "tracing": {
+        "fileLoggingMode": "always"
     }
 }

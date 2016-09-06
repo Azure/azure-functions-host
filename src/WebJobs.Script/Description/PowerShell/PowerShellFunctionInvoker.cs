@@ -58,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
 
-            PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, context.TraceWriter);
+            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
+            PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, userTraceWriter);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, context.Binder, bindingData);
 
@@ -151,13 +152,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Event handler for the output stream.
         /// </summary>
-        private void OutputCollectionDataAdded(object sender, DataAddedEventArgs e, TraceWriter traceWriter)
+        private static void OutputCollectionDataAdded(object sender, DataAddedEventArgs e, TraceWriter traceWriter)
         {
-            // do something when an object is written to the output stream
+            // trace objects written to the output stream
             var source = (PSDataCollection<PSObject>)sender;
             var msg = source[e.Index].ToString();
+
             traceWriter.Info(msg);
-            TraceWriter.Info(msg);
         }
 
         /// <summary>
@@ -168,7 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var source = (PSDataCollection<ErrorRecord>)sender;
             var msg = GetErrorMessage(_functionName, _scriptFilePath, source[e.Index]);
             traceWriter.Error(msg);
-            TraceWriter.Error(msg);
         }
 
         internal static string GetErrorMessage(string functioName, string scriptFilePath, ErrorRecord errorRecord)
