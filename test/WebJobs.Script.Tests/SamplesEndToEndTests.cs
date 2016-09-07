@@ -545,18 +545,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public TestFixture()
             {
-                HttpConfiguration config = new HttpConfiguration();
-
-                HostSettings = new WebHostSettings
-                {
-                    IsSelfHost = true,
-                    ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample"),
-                    LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                    SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
-                };
-                WebApiConfig.Register(config, HostSettings);
-
-                HttpServer = new HttpServer(config);
+                string scriptRoot = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample");
+                HttpServer = TestHelpers.CreateTestServer(scriptRoot);
                 this.HttpClient = new HttpClient(HttpServer);
                 this.HttpClient.BaseAddress = new Uri("https://localhost/");
 
