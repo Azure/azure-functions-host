@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
 
-            var success = true;
+            ExceptionDispatchInfo exception = null;
+            string errorMessage = null;
 
             using (var manager = new ScriptHostManager(config))
             {
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    {
                        try
                        {
+                           errorMessage = "Waiting for blob1.";
                            // Wait for initial execution.
                            TestHelpers.Await(() =>
                            {
@@ -48,15 +51,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                            // This changes the bindings so that we now write to blob2
                            var blob2 = UpdateOutputName("first", "second", fixture);
 
+                           errorMessage = "Waiting for blob2.";
                            // wait for newly executed
                            TestHelpers.Await(() =>
                            {
                                return blob2.Exists();
                            }, timeout: 30 * 1000).Wait();
                        }
-                       catch
+                       catch (Exception ex)
                        {
-                           success = false;
+                           exception = ExceptionDispatchInfo.Capture(ex);
                        }
 
                        cts.Cancel();
@@ -67,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 t.Join();
 
-                Assert.True(success);
+                Assert.True(exception == null, $"{errorMessage} {exception?.SourceException?.ToString()}");
             }
         }
 

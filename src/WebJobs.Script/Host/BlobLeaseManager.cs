@@ -122,11 +122,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    LeaseId = await _lockBlob.AcquireLeaseAsync(_leaseTimeout, _instanceId);
+                    string leaseId = await _lockBlob.AcquireLeaseAsync(_leaseTimeout, _instanceId);
                     _traceWriter.Info($"Host lock lease acquired by instance ID '{_instanceId}'.");
 
                     // We've successfully acquired the lease, change the timer to use our renewal interval
                     SetTimerInterval(_renewalInterval);
+
+                    // Everything is now updated so we can update the property, which will fire the HasLeaseChanged event. 
+                    LeaseId = leaseId;
                 }
             }
             catch (StorageException exc)
@@ -156,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static string GetBlobName(string hostId) => $"locks/{hostId}/{LockBlobName}";
-        
+
         private void ProcessLeaseError(string reason)
         {
             if (HasLease)

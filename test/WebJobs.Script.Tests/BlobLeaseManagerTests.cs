@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await ClearLeaseBlob(hostId);
         }
-        
+
         [Fact]
         [Trait("Category", "E2E")]
         public async Task HasLeaseChanged_WhenLeaseIsAcquiredAndStateChanges_IsFired()
@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             resetEvent.Wait(TimeSpan.FromSeconds(15));
-
             manager.Dispose();
 
             Assert.True(resetEvent.IsSet);
@@ -83,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
-            
+
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var resetEvent = new ManualResetEventSlim();
 
@@ -130,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var results = new Queue<Task<string>>();
             results.Enqueue(Task.FromException<string>(new StorageException(new RequestResult { HttpStatusCode = 500 }, "test", null)));
             results.Enqueue(Task.FromResult(hostId));
-            
+
             var blobMock = new Mock<ICloudBlob>();
             blobMock.Setup(b => b.AcquireLeaseAsync(It.IsAny<TimeSpan>(), It.IsAny<string>()))
                 .Returns(() => results.Dequeue());
@@ -197,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            
+
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
 
             using (var manager = await BlobLeaseManager.CreateAsync(connectionString, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter))
