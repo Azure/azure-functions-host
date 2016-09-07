@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.Http;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -29,6 +31,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             DateTime start = DateTime.Now;
             while (!condition())
+            {
+                await Task.Delay(pollingInterval);
+
+                if ((DateTime.Now - start).TotalMilliseconds > timeout)
+                {
+                    throw new ApplicationException("Condition not reached within timeout.");
+                }
+            }
+        }
+
+        public static async Task Await(Func<Task<bool>> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
+        {
+            DateTime start = DateTime.Now;
+            while (!await condition())
             {
                 await Task.Delay(pollingInterval);
 
@@ -119,6 +135,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
             return new DirectoryInfo(functionLogsPath);
+        }
+
+        public static HttpServer CreateTestServer(string scriptRoot)
+        {
+            HttpConfiguration config = new HttpConfiguration();
+
+            var hostSettings = new WebHostSettings
+            {
+                IsSelfHost = true,
+                ScriptPath = scriptRoot,
+                LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
+                SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
+            };
+            WebApiConfig.Register(config, hostSettings);
+
+            return new HttpServer(config);
         }
     }
 }
