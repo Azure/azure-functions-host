@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static string GetBlobName(string hostId) => $"locks/{hostId}/{LockBlobName}";
-        
+
         private void ProcessLeaseError(string reason)
         {
             if (HasLease)
