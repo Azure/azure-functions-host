@@ -65,11 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             resetEvent.Wait(TimeSpan.FromSeconds(15));
+            bool hasLease = manager.HasLease;
+            string actualLeaseId = manager.LeaseId;
             manager.Dispose();
 
             Assert.True(resetEvent.IsSet);
-            Assert.True(manager.HasLease, $"{nameof(BlobLeaseManager.HasLease)} was not correctly set to 'true' when lease was acquired.");
-            Assert.Equal(instanceId, manager.LeaseId);
+            Assert.True(hasLease, $"{nameof(BlobLeaseManager.HasLease)} was not correctly set to 'true' when lease was acquired.");
+            Assert.Equal(instanceId, actualLeaseId);
 
             await ClearLeaseBlob(hostId);
         }

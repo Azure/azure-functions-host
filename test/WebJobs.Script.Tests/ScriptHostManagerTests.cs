@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task UpdateFileAndRestart()
         {
             CancellationTokenSource cts = new CancellationTokenSource();
-
             var fixture = new NodeEndToEndTests.TestFixture();
             var blob1 = UpdateOutputName("testblob", "first", fixture);
 
@@ -57,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                            {
                                return blob2.Exists();
                            }, timeout: 30 * 1000).Wait();
+
+                           errorMessage = null;
                        }
                        catch (Exception ex)
                        {
@@ -71,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 t.Join();
 
-                Assert.True(exception == null, $"{errorMessage} {exception?.SourceException?.ToString()}");
+                var logs = await TestHelpers.GetFunctionLogsAsync("TimerTrigger", throwOnNoLogs: false);
+                Assert.True(exception == null, $"{errorMessage}{Environment.NewLine}{string.Join(Environment.NewLine, logs)}{Environment.NewLine}{exception?.SourceException?.ToString()}");
             }
         }
 
