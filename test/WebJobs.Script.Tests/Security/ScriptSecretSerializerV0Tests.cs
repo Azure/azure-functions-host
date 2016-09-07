@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
             };
 
-            string serializedSecret = serializer.SerializeFunctionSecrets(secrets);
+            string serializedSecret = serializer.SerializeSecrets(secrets);
 
             Assert.NotNull(serializedSecret);
 
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
             };
 
-            FunctionSecrets actual = serializer.DeserializeFunctionSecrets(JObject.Parse(serializedSecret));
+            FunctionSecrets actual = serializer.DeserializeSecrets<FunctionSecrets>(JObject.Parse(serializedSecret));
             AssertKeyCollectionsEquality(expected, actual.Keys);
         }
 
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
             };
 
-            HostSecrets actual = serializer.DeserializeHostSecrets(JObject.Parse(serializedSecret));
+            HostSecrets actual = serializer.DeserializeSecrets<HostSecrets>(JObject.Parse(serializedSecret));
 
             Assert.NotNull(actual);
             Assert.Equal(expected.MasterKey, actual.MasterKey);
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
             };
 
-            string serializedSecret = serializer.SerializeHostSecrets(secrets);
+            string serializedSecret = serializer.SerializeSecrets(secrets);
 
             Assert.NotNull(serializedSecret);
 
@@ -126,11 +126,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Theory]
-        [InlineData(SecretsType.Host, true, "{'masterKey': 'masterKeySecretString','functionKey': 'functionKeySecretString'}")]
-        [InlineData(SecretsType.Function, true, "{'key':'functionKeySecretString'}")]
-        [InlineData(SecretsType.Host, false, "{'masterKey': {'name': 'master','value': '1234','encrypted': false},'functionKeys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
-        [InlineData(SecretsType.Function, false, "{'keys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
-        public void CanSerialize_WithValidHostPayload_ReturnsTrue(SecretsType type, bool expectedResult, string input)
+        [InlineData(typeof(HostSecrets), true, "{'masterKey': 'masterKeySecretString','functionKey': 'functionKeySecretString'}")]
+        [InlineData(typeof(FunctionSecrets), true, "{'key':'functionKeySecretString'}")]
+        [InlineData(typeof(HostSecrets), false, "{'masterKey': {'name': 'master','value': '1234','encrypted': false},'functionKeys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
+        [InlineData(typeof(FunctionSecrets), false, "{'keys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
+        public void CanSerialize_WithValidHostPayload_ReturnsTrue(Type type, bool expectedResult, string input)
         {
             var serializer = new ScriptSecretSerializerV0();
 

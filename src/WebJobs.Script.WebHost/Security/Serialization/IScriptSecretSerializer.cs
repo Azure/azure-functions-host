@@ -12,14 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface IScriptSecretSerializer
     {
-        FunctionSecrets DeserializeFunctionSecrets(JObject secrets);
+        string SerializeSecrets<T>(T secrets) where T : ScriptSecrets;
 
-        string SerializeFunctionSecrets(FunctionSecrets secrets);
+        T DeserializeSecrets<T>(JObject secrets) where T : ScriptSecrets;
 
-        HostSecrets DeserializeHostSecrets(JObject secrets);
-
-        string SerializeHostSecrets(HostSecrets secrets);
-
-        bool CanSerialize(JObject functionSecrets, SecretsType type);
+        bool CanSerialize(JObject functionSecrets, Type type);
     }
 }

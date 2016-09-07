@@ -73,34 +73,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (_hostSecrets == null)
             {
                 string secretFilePath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
-                var hostSecrets = new HostSecrets();
+                HostSecrets hostSecrets;
 
                 if (File.Exists(secretFilePath))
                 {
                     // load the secrets file
                     string secretsJson = File.ReadAllText(secretFilePath);
-                    hostSecrets = ScriptSecretSerializer.DeserializeHostSecrets(secretsJson);
+                    hostSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
                 }
                 else
                 {
-                    // initialize with new secrets and save it
-                    hostSecrets = new HostSecrets
-                    {
-                        MasterKey = GenerateSecret(DefaultMasterKeyName),
-                        FunctionKeys = new List<Key>
-                        {
-                            GenerateSecret(DefaultFunctionKeyName)
-                        }
-                    };
+                    hostSecrets = GenerateHostSecrets(secretFilePath);
+                }
 
-                    string secretContent = ScriptSecretSerializer.SerializeHostSecrets(hostSecrets);
-                    File.WriteAllText(secretFilePath, secretContent);
+                // Host secrets will be in the original persisted state at this point (e.g. encrypted),
+                // so we read the secrets running them through the appropriate readers
+                hostSecrets = ReadHostSecrets(hostSecrets);
+
+                // If the persistence state of any of our secrets is stale (e.g. the encryption key has been rotated), update
+                // the state and persist the secrets
+                if (hostSecrets.HasStaleKeys)
+                {
+                    RefreshSecrets(hostSecrets, secretFilePath);
                 }
 
                 _hostSecrets = new HostSecretsInfo
                 {
-                    MasterKey = ReadSecretValue(hostSecrets.MasterKey),
-                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => ReadSecretValue(s))
+                    MasterKey = hostSecrets.MasterKey.Value,
+                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value)
                 };
             }
 
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (string.IsNullOrEmpty(functionName))
             {
-                throw new ArgumentNullException("functionName");
+                throw new ArgumentNullException(nameof(functionName));
             }
 
             functionName = functionName.ToLowerInvariant();
@@ -120,12 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 FunctionSecrets secrets;
                 string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
-                string secretFilePath = Path.Combine(_secretsPath, secretFileName);
-                if (File.Exists(secretFilePath))
+                string secretsFilePath = Path.Combine(_secretsPath, secretFileName);
+                if (File.Exists(secretsFilePath))
                 {
                     // load the secrets file
-                    string secretsJson = File.ReadAllText(secretFilePath);
-                    secrets = ScriptSecretSerializer.DeserializeFunctionSecrets(secretsJson);
+                    string secretsJson = File.ReadAllText(secretsFilePath);
+                    secrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
                 }
                 else
                 {
@@ -138,12 +138,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                     };
 
-                    string secretsContent = ScriptSecretSerializer.SerializeFunctionSecrets(secrets);
-                    File.WriteAllText(secretFilePath, secretsContent);
+                    PersistSecrets(secrets, secretsFilePath);
                 }
 
-                return secrets.Keys.ToDictionary(s => s.Name, s => ReadSecretValue(s));
+                // Read all secrets, which will run the keys through the appropriate readers
+                secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
+
+                if (secrets.HasStaleKeys)
+                {
+                    RefreshSecrets(secrets, secretsFilePath);
+                }
+
+                return secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
             });
+        }
+
+        private HostSecrets GenerateHostSecrets(string secretsFilePath)
+        {
+            // initialize with new secrets and save it
+            var hostSecrets = new HostSecrets
+            {
+                MasterKey = GenerateSecret(DefaultMasterKeyName),
+                FunctionKeys = new List<Key>
+                {
+                    GenerateSecret(DefaultFunctionKeyName)
+                }
+            };
+
+            PersistSecrets(hostSecrets, secretsFilePath);
+
+            return hostSecrets;
+        }
+
+        private void RefreshSecrets<T>(T secrets, string secretsFilePath) where T : ScriptSecrets
+        {
+            var refreshedSecrets = secrets.Refresh(_keyValueConverterFactory);
+
+            PersistSecrets(refreshedSecrets, secretsFilePath);
+        }
+
+        private static void PersistSecrets<T>(T secrets, string secretsFilePath) where T : ScriptSecrets
+        {
+            string secretsContent = ScriptSecretSerializer.SerializeSecrets<T>(secrets);
+            File.WriteAllText(secretsFilePath, secretsContent);
+        }
+
+        private HostSecrets ReadHostSecrets(HostSecrets hostSecrets)
+        {
+            return new HostSecrets
+            {
+                MasterKey = _keyValueConverterFactory.ReadKey(hostSecrets.MasterKey),
+                FunctionKeys = hostSecrets.FunctionKeys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList()
+            };
         }
 
         public virtual Dictionary<string, string> GetMergedFunctionSecrets(string functionName)
@@ -153,18 +199,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             return functionSecrets.Union(hostFunctionSecrets.Where(s => !functionSecrets.ContainsKey(s.Key)))
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
-        }
-
-        private string ReadSecretValue(Key key)
-        {
-            IKeyValueReader reader = _keyValueConverterFactory.GetValueReader(key);
-            return reader.ReadValue(key);
-        }
-
-        private Key WriteSecretValue(Key key)
-        {
-            IKeyValueWriter writer = _keyValueConverterFactory.GetValueWriter(key);
-            return writer.WriteValue(key);
         }
 
         /// <summary>
@@ -238,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 var key = new Key(name, secret);
 
-                return WriteSecretValue(key);
+                return _keyValueConverterFactory.WriteKey(key);
             }
         }
 

@@ -15,24 +15,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     internal sealed class ScriptSecretSerializerV1 : IScriptSecretSerializer
     {
-        public FunctionSecrets DeserializeFunctionSecrets(JObject secrets) => secrets.ToObject<FunctionSecrets>();
+        public string SerializeSecrets<T>(T secrets) where T : ScriptSecrets => JsonConvert.SerializeObject(secrets, Formatting.Indented);
 
-        public HostSecrets DeserializeHostSecrets(JObject secrets) => secrets.ToObject<HostSecrets>();
+        public T DeserializeSecrets<T>(JObject secrets) where T : ScriptSecrets => secrets.ToObject<T>();
 
-        public string SerializeHostSecrets(HostSecrets secrets) => JsonConvert.SerializeObject(secrets, Formatting.Indented);
-
-        public string SerializeFunctionSecrets(FunctionSecrets secrets) => JsonConvert.SerializeObject(secrets, Formatting.Indented);
-
-        public bool CanSerialize(JObject functionSecrets, SecretsType type)
+        public bool CanSerialize(JObject functionSecrets, Type type)
         {
-            if (type == SecretsType.Host)
+            if (type == typeof(HostSecrets))
             {
                 return functionSecrets != null &&
                     functionSecrets.Type == JTokenType.Object &&
                     functionSecrets["masterKey"]?.Type == JTokenType.Object &&
                     functionSecrets["functionKeys"]?.Type == JTokenType.Array;
             }
-            else if (type == SecretsType.Function)
+            else if (type == typeof(FunctionSecrets))
             {
                 return functionSecrets != null &&
                     functionSecrets.Type == JTokenType.Object &&

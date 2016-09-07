@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
         public InvalidFileMetadataReferenceAnalyzer()
         {
             _supportedRule = new DiagnosticDescriptor(DotNetConstants.InvalidFileMetadataReferenceCode,
-                Title, MessageFormat, "Function", DiagnosticSeverity.Warning, true);               
+                Title, MessageFormat, "Function", DiagnosticSeverity.Warning, true);
         }
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics

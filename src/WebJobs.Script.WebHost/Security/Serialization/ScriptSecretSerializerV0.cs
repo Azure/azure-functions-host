@@ -19,14 +19,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string HostFunctionKeyPropertyName = "functionKey";
         private const string FunctionKeyPropertyName = "key";
 
-        public FunctionSecrets DeserializeFunctionSecrets(JObject secrets)
+        public string SerializeSecrets<T>(T secrets) where T : ScriptSecrets
+        {
+            if (secrets is FunctionSecrets)
+            {
+                return SerializeFunctionSecrets(secrets as FunctionSecrets);
+            }
+            else if (secrets is HostSecrets)
+            {
+                return SerializeHostSecrets(secrets as HostSecrets);
+            }
+
+            return null;
+        }
+
+        public T DeserializeSecrets<T>(JObject secrets) where T : ScriptSecrets
+        {
+            var secretsType = typeof(T);
+            if (typeof(FunctionSecrets).IsAssignableFrom(secretsType))
+            {
+                return DeserializeFunctionSecrets(secrets) as T;
+            }
+            else if (typeof(HostSecrets).IsAssignableFrom(secretsType))
+            {
+                return DeserializeHostSecrets(secrets) as T;
+            }
+
+            return default(T);
+        }
+
+        private static FunctionSecrets DeserializeFunctionSecrets(JObject secrets)
         {
             string key = secrets.Value<string>(FunctionKeyPropertyName);
-
             return new FunctionSecrets(new List<Key> { CreateKeyFromSecret(key, SecretManager.DefaultFunctionKeyName) });
         }
 
-        public HostSecrets DeserializeHostSecrets(JObject secrets)
+        private static HostSecrets DeserializeHostSecrets(JObject secrets)
         {
             string masterSecret = secrets.Value<string>(MasterKeyPropertyName);
             string functionSecret = secrets.Value<string>(HostFunctionKeyPropertyName);
@@ -38,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
         }
 
-        public string SerializeFunctionSecrets(FunctionSecrets secrets)
+        private static string SerializeFunctionSecrets(FunctionSecrets secrets)
         {
             // Output:
             //  { "key" : "keyvalue" }
@@ -51,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return functionSecrets.ToString();
         }
 
-        public string SerializeHostSecrets(HostSecrets secrets)
+        private static string SerializeHostSecrets(HostSecrets secrets)
         {
             // Output:
             //  { 
@@ -74,15 +102,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static Key CreateKeyFromSecret(string secret, string name = "") => new Key(name, secret);
 
-        public bool CanSerialize(JObject functionSecrets, SecretsType type)
+        public bool CanSerialize(JObject functionSecrets, Type type)
         {
-            if (type == SecretsType.Host)
+            if (type == typeof(HostSecrets))
             {
                 return functionSecrets != null &&
                     functionSecrets.Type == JTokenType.Object &&
                     functionSecrets["masterKey"]?.Type == JTokenType.String;
             }
-            else if (type == SecretsType.Function)
+            else if (type == typeof(FunctionSecrets))
             {
                 return functionSecrets != null &&
                     functionSecrets.Type == JTokenType.Object &&

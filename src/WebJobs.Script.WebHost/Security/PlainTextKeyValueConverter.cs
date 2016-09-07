@@ -1,26 +1,23 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public sealed class PlaintextKeyValueConverter : IKeyValueReader, IKeyValueWriter
+    public sealed class PlaintextKeyValueConverter : KeyValueConverter, IKeyValueReader, IKeyValueWriter
     {
-        private readonly FileAccess _access;
-
         public PlaintextKeyValueConverter(FileAccess access)
+            : base(access)
         {
-            _access = access;
         }
 
-        public string ReadValue(Key key)
+        public Key ReadValue(Key key)
         {
             ValidateAccess(FileAccess.Read);
 
-            return key.Value;
+            return new Key(key.Name, key.Value);
         }
 
         public Key WriteValue(Key key)
@@ -28,14 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ValidateAccess(FileAccess.Write);
 
             return new Key(key.Name, key.Value);
-        }
-
-        private void ValidateAccess(FileAccess access)
-        {
-            if (!_access.HasFlag(access))
-            {
-                throw new InvalidOperationException($"The current {nameof(PlaintextKeyValueConverter)} does not support {access.ToString("G")} access.");
-            }
         }
     }
 }

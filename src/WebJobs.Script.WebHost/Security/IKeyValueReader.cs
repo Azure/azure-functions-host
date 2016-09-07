@@ -11,6 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface IKeyValueReader
     {
-        string ReadValue(Key key);
+        Key ReadValue(Key key);
     }
 }

@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class FunctionSecrets
+    public class FunctionSecrets : ScriptSecrets
     {
         public FunctionSecrets()
         {
@@ -23,5 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         [JsonProperty(PropertyName = "keys")]
         public IList<Key> Keys { get; set; }
+
+        [JsonIgnore]
+        public override bool HasStaleKeys => Keys?.Any(k => k.IsStale) ?? false;
+
+        public override ScriptSecrets Refresh(IKeyValueConverterFactory factory)
+        {
+            var keys = Keys.Select(k => factory.GetValueWriter(k).WriteValue(k)).ToList();
+
+            return new FunctionSecrets(keys);
+        }
     }
 }

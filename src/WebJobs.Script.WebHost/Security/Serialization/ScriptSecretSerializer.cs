@@ -33,26 +33,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static string SerializeFunctionSecrets(FunctionSecrets secrets) => DefaultSerializer.SerializeFunctionSecrets(secrets);
+        public static string SerializeSecrets<T>(T secrets) where T : ScriptSecrets => DefaultSerializer.SerializeSecrets(secrets);
 
-        public static string SerializeHostSecrets(HostSecrets secrets) => DefaultSerializer.SerializeHostSecrets(secrets);
+        public static T DeserializeSecrets<T>(string secretsJson) where T : ScriptSecrets => ResolveSerializerAndRun(secretsJson, typeof(T), (s, o) => s.DeserializeSecrets<T>(o));
 
-        public static FunctionSecrets DeserializeFunctionSecrets(string secretsJson) => ResolveSerializerAndRun(secretsJson, SecretsType.Function, (s, o) => s.DeserializeFunctionSecrets(o));
-
-        public static HostSecrets DeserializeHostSecrets(string secretsJson) => ResolveSerializerAndRun(secretsJson, SecretsType.Host, (s, o) => s.DeserializeHostSecrets(o));
-
-        private static TResult ResolveSerializerAndRun<TResult>(string secretsJson, SecretsType type, Func<IScriptSecretSerializer, JObject, TResult> func)
+        private static TResult ResolveSerializerAndRun<TResult>(string secretsJson, Type secretsType, Func<IScriptSecretSerializer, JObject, TResult> func)
         {
             JObject secrets = JObject.Parse(secretsJson);
 
-            IScriptSecretSerializer serializer = GetSerializer(secrets, type);
+            IScriptSecretSerializer serializer = GetSerializer(secrets, secretsType);
 
             return func(serializer, secrets);
         }
 
-        private static IScriptSecretSerializer GetSerializer(JObject secrets, SecretsType type)
+        private static IScriptSecretSerializer GetSerializer(JObject secrets, Type secretType)
         {
-            IScriptSecretSerializer serializer = _secretFormatters.FirstOrDefault(s => s.CanSerialize(secrets, type));
+            IScriptSecretSerializer serializer = _secretFormatters.FirstOrDefault(s => s.CanSerialize(secrets, secretType));
 
             if (serializer == null)
             {

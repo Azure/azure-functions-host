@@ -6,12 +6,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public enum SecretsType
+    public abstract class ScriptSecrets
     {
-        Host,
-        Function
+        protected ScriptSecrets()
+        {
+        }
+
+        [JsonIgnore]
+        public abstract bool HasStaleKeys { get; }
+
+        public abstract ScriptSecrets Refresh(IKeyValueConverterFactory factory);
     }
 }
