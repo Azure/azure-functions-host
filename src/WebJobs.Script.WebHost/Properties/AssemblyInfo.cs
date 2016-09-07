@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Reflection;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -18,3 +19,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("63c9b2f4-f122-4acc-968f-9b8f0880a72f")]
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
+[assembly: NeutralResourcesLanguage("en-US")]

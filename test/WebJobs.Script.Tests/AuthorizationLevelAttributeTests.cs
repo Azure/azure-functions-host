@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
@@ -16,12 +17,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AuthorizationLevelAttributeTests
     {
+        private const string TestHostFunctionKeyValue1 = "jkl012";
+        private const string TestHostFunctionKeyValue2 = "mno345";
+        private const string TestFunctionKeyValue1 = "def456";
+        private const string TestFunctionKeyValue2 = "ghi789";
+
         private readonly string testMasterKeyValue = "abc123";
-        private readonly string testFunctionKeyValue = "def456";
-        private readonly string testHostFunctionKeyValue = "xyz789";
+
         private HttpActionContext _actionContext;
-        private HostSecrets _hostSecrets;
-        private FunctionSecrets _functionSecrets;
+        private HostSecretsInfo _hostSecrets;
+        private Dictionary<string, string> _functionSecrets;
         private Mock<SecretManager> _mockSecretManager;
 
         public AuthorizationLevelAttributeTests()
@@ -34,15 +39,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IDependencyResolver> mockDependencyResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             httpConfig.DependencyResolver = mockDependencyResolver.Object;
             _mockSecretManager = new Mock<SecretManager>(MockBehavior.Strict);
-            _hostSecrets = new HostSecrets
+            _hostSecrets = new HostSecretsInfo
             {
                 MasterKey = testMasterKeyValue,
-                FunctionKey = testHostFunctionKeyValue
+                FunctionKeys = new Dictionary<string, string>
+                {
+                    { "1", TestHostFunctionKeyValue1 },
+                    { "2", TestHostFunctionKeyValue2 }
+                }
             };
             _mockSecretManager.Setup(p => p.GetHostSecrets()).Returns(_hostSecrets);
-            _functionSecrets = new FunctionSecrets
+            _functionSecrets = new Dictionary<string, string>
             {
-                Key = testFunctionKeyValue
+                { "1",  TestFunctionKeyValue1 },
+                { "2",  TestFunctionKeyValue2 }
             };
             _mockSecretManager.Setup(p => p.GetFunctionSecrets(It.IsAny<string>())).Returns(_functionSecrets);
             mockDependencyResolver.Setup(p => p.GetService(typeof(SecretManager))).Returns(_mockSecretManager.Object);
@@ -122,18 +132,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
 
-        [Fact]
-        public void GetAuthorizationLevel_ValidKeyHeader_FunctionKey_ReturnsFunction()
+        [Theory]
+        [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
+        [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
+        public void GetAuthorizationLevel_ValidKeyHeader_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first verify the host level function key works
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testHostFunctionKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, hostFunctionKeyValue);
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
             Assert.Equal(AuthorizationLevel.Function, level);
 
             // test function specific key
             request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testFunctionKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, functionKeyValue);
             level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
@@ -160,16 +172,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
 
-        [Fact]
-        public void GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction()
+        [Theory]
+        [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
+        [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
+        public void GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first try host level function key
-            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", testHostFunctionKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", hostFunctionKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
 
-            uri = new Uri(string.Format("http://functions/api/foo?code={0}", testFunctionKeyValue));
+            uri = new Uri(string.Format("http://functions/api/foo?code={0}", functionKeyValue));
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);

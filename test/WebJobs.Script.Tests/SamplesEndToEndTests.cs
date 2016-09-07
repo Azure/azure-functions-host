@@ -343,6 +343,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GenericWebHook_Post_NamedKey_Succeeds()
+        {
+            // Authenticate using a named key (client id)
+            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a6&clientid=testclient";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent("{ 'value': 'Foobar' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
+        }
+
+        [Fact]
+        public async Task GenericWebHook_Post_NamedKeyInHeader_Succeeds()
+        {
+            // Authenticate using a named key (client id)
+            string uri = "api/webhook-generic?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a6";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add(WebHost.WebHooks.WebHookReceiverManager.FunctionsClientIdHeaderName, "testclient");
+            request.Content = new StringContent("{ 'value': 'Foobar' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
+        }
+
+        [Fact]
         public async Task QueueTriggerBatch_Succeeds()
         {
             // write the input message

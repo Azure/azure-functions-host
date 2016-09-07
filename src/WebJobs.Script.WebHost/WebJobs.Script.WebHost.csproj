@@ -303,6 +303,10 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Global.asax" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
     <EmbeddedResource Include="Resources\Functions\Test-FSharp\run.fsx" />
     <Content Include="Web.config" />
   </ItemGroup>
@@ -322,19 +326,36 @@
     <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
     <Compile Include="Extensions\DependencyResolverExtensions.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
-    <Compile Include="FunctionSecrets.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Handlers\WebScriptHostHandler.cs" />
-    <Compile Include="HostSecrets.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Security\FunctionSecrets.cs" />
+    <Compile Include="Security\HostSecretsInfo.cs" />
+    <Compile Include="Security\IKeyValueWriter.cs" />
+    <Compile Include="Security\IScriptSecretSerializer.cs" />
+    <Compile Include="Security\PlainTextKeyValueConverter.cs" />
+    <Compile Include="Security\HostSecrets.cs" />
+    <Compile Include="Security\IKeyValueConverterFactory.cs" />
+    <Compile Include="Security\IKeyValueReader.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
     <Compile Include="Models\FunctionMetrics.cs" />
     <Compile Include="Models\FunctionStatus.cs" />
     <Compile Include="Models\HostStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SecretManager.cs" />
+    <Compile Include="Security\Key.cs" />
+    <Compile Include="Security\DefaultKeyValueConverterFactory.cs" />
+    <Compile Include="Security\ScriptSecretSerializerV1.cs" />
+    <Compile Include="Security\ScriptSecretSerializer.cs" />
+    <Compile Include="Security\ScriptSecretSerializerV0.cs" />
+    <Compile Include="Security\SecretManager.cs" />
+    <Compile Include="Security\SecretsType.cs" />
     <Compile Include="SuspendedSynchronizationContextScope.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfig.cs" />
     <Compile Include="WebHooks\WebHookReceiverManager.cs" />

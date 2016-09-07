@@ -24,8 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
     /// </summary>
     public class WebHookReceiverManager : IDisposable
     {
+        public const string FunctionsClientIdHeaderName = "x-functions-clientid";
+        public const string FunctionsClientIdQueryStringName = "clientid";
         internal const string AzureFunctionsCallbackKey = "MS_AzureFunctionsCallback";
-        
+
         private readonly Dictionary<string, IWebHookReceiver> _receiverLookup;
         private HttpConfiguration _httpConfiguration;
         private SecretManager _secretManager;
@@ -80,7 +82,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             await request.Content.LoadIntoBufferAsync();
 
             string receiverId = function.Name.ToLowerInvariant();
-            return await receiver.ReceiveAsync(receiverId, context, request);
+
+            // Get an optional client ID. This information is passed as the receiver ID, allowing
+            // the receiver config to map configuration based on the client ID (primarily used for secret resolution).
+            string clientId = GetClientID(request);
+
+            string webhookId = $"{receiverId},{clientId}";
+
+            return await receiver.ReceiveAsync(webhookId, context, request);
+        }
+
+        private static string GetClientID(HttpRequestMessage request)
+        {
+            string keyValue = null;
+            IEnumerable<string> headerValues;
+            if (request.Headers.TryGetValues(FunctionsClientIdHeaderName, out headerValues))
+            {
+                keyValue = headerValues.FirstOrDefault();
+            }
+            else
+            {
+                keyValue = request.GetQueryNameValuePairs()
+                      .FirstOrDefault(q => string.Compare(q.Key, FunctionsClientIdQueryStringName, StringComparison.OrdinalIgnoreCase) == 0)
+                      .Value;
+            }
+
+            return keyValue;
         }
 
         protected virtual void Dispose(bool disposing)

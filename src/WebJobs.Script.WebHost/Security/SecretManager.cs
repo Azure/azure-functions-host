@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
 
@@ -14,10 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class SecretManager : IDisposable
     {
+        public const string DefaultMasterKeyName = "master";
+        public const string DefaultFunctionKeyName = "default";
+
         private readonly string _secretsPath;
-        private readonly ConcurrentDictionary<string, FunctionSecrets> _secretsMap = new ConcurrentDictionary<string, FunctionSecrets>();
+        private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>();
+        private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly FileSystemWatcher _fileWatcher;
-        private HostSecrets _hostSecrets;
+        private HostSecretsInfo _hostSecrets;
 
         // for testing
         public SecretManager()
@@ -25,8 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public SecretManager(string secretsPath)
+            : this(secretsPath, new DefaultKeyValueConverterFactory())
+        {
+        }
+
+        public SecretManager(string secretsPath, IKeyValueConverterFactory keyValueConverterFactory)
         {
             _secretsPath = secretsPath;
+            _keyValueConverterFactory = keyValueConverterFactory;
 
             Directory.CreateDirectory(_secretsPath);
 
@@ -56,33 +68,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public virtual HostSecrets GetHostSecrets()
+        public virtual HostSecretsInfo GetHostSecrets()
         {
             if (_hostSecrets == null)
             {
                 string secretFilePath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
+                var hostSecrets = new HostSecrets();
+
                 if (File.Exists(secretFilePath))
                 {
                     // load the secrets file
                     string secretsJson = File.ReadAllText(secretFilePath);
-                    _hostSecrets = JsonConvert.DeserializeObject<HostSecrets>(secretsJson);
+                    hostSecrets = ScriptSecretSerializer.DeserializeHostSecrets(secretsJson);
                 }
                 else
                 {
                     // initialize with new secrets and save it
-                    _hostSecrets = new HostSecrets
+                    hostSecrets = new HostSecrets
                     {
-                        MasterKey = GenerateSecretString(),
-                        FunctionKey = GenerateSecretString()
+                        MasterKey = GenerateSecret(DefaultMasterKeyName),
+                        FunctionKeys = new List<Key>
+                        {
+                            GenerateSecret(DefaultFunctionKeyName)
+                        }
                     };
 
-                    File.WriteAllText(secretFilePath, JsonConvert.SerializeObject(_hostSecrets, Formatting.Indented));
+                    string secretContent = ScriptSecretSerializer.SerializeHostSecrets(hostSecrets);
+                    File.WriteAllText(secretFilePath, secretContent);
                 }
+
+                _hostSecrets = new HostSecretsInfo
+                {
+                    MasterKey = ReadSecretValue(hostSecrets.MasterKey),
+                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => ReadSecretValue(s))
+                };
             }
+
             return _hostSecrets;
         }
 
-        public virtual FunctionSecrets GetFunctionSecrets(string functionName)
+        public virtual Dictionary<string, string> GetFunctionSecrets(string functionName)
         {
             if (string.IsNullOrEmpty(functionName))
             {
@@ -91,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             functionName = functionName.ToLowerInvariant();
 
-            return _secretsMap.GetOrAdd(functionName, (n) =>
+            return _secretsMap.GetOrAdd(functionName, n =>
             {
                 FunctionSecrets secrets;
                 string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
@@ -100,21 +125,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // load the secrets file
                     string secretsJson = File.ReadAllText(secretFilePath);
-                    secrets = JsonConvert.DeserializeObject<FunctionSecrets>(secretsJson);
+                    secrets = ScriptSecretSerializer.DeserializeFunctionSecrets(secretsJson);
                 }
                 else
                 {
-                    // initialize with new secrets and save it
+                    // initialize with new list with a default secret and save it
                     secrets = new FunctionSecrets
                     {
-                        Key = GenerateSecretString()
+                        Keys = new List<Key>
+                        {
+                            GenerateSecret(DefaultFunctionKeyName)
+                        }
                     };
 
-                    File.WriteAllText(secretFilePath, JsonConvert.SerializeObject(secrets, Formatting.Indented));
+                    string secretsContent = ScriptSecretSerializer.SerializeFunctionSecrets(secrets);
+                    File.WriteAllText(secretFilePath, secretsContent);
                 }
 
-                return secrets;
+                return secrets.Keys.ToDictionary(s => s.Name, s => ReadSecretValue(s));
             });
+        }
+
+        public virtual Dictionary<string, string> GetMergedFunctionSecrets(string functionName)
+        {
+            Dictionary<string, string> functionSecrets = GetFunctionSecrets(functionName);
+            Dictionary<string, string> hostFunctionSecrets = GetHostSecrets().FunctionKeys;
+
+            return functionSecrets.Union(hostFunctionSecrets.Where(s => !functionSecrets.ContainsKey(s.Key)))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+
+        private string ReadSecretValue(Key key)
+        {
+            IKeyValueReader reader = _keyValueConverterFactory.GetValueReader(key);
+            return reader.ReadValue(key);
+        }
+
+        private Key WriteSecretValue(Key key)
+        {
+            IKeyValueWriter writer = _keyValueConverterFactory.GetValueWriter(key);
+            return writer.WriteValue(key);
         }
 
         /// <summary>
@@ -175,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static string GenerateSecretString()
+        private Key GenerateSecret(string name = null)
         {
             using (var rng = RandomNumberGenerator.Create())
             {
@@ -184,7 +234,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string secret = Convert.ToBase64String(data);
 
                 // Replace pluses as they are problematic as URL values
-                return secret.Replace('+', 'a');
+                secret = secret.Replace('+', 'a');
+
+                var key = new Key(name, secret);
+
+                return WriteSecretValue(key);
             }
         }
 
@@ -198,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                FunctionSecrets secrets;
+                Dictionary<string, string> secrets;
                 string name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
                 _secretsMap.TryRemove(name, out secrets);
             }

@@ -184,13 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return scriptHostConfig;
         }
 
-        private static SecretManager GetSecretManager(string secretsPath)
-        {
-            var secretManager = new SecretManager(secretsPath);
-            secretManager.GetHostSecrets();
-
-            return secretManager;
-        }
+        private static SecretManager GetSecretManager(string secretsPath) => new SecretManager(secretsPath);
 
         public void Dispose()
         {

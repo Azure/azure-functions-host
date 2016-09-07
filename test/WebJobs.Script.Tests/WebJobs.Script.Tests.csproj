@@ -367,6 +367,10 @@
     <Compile Include="PythonEndToEndTests.cs" />
     <Compile Include="ScriptHostManagerTests.cs" />
     <Compile Include="ScriptHostTests.cs" />
+    <Compile Include="Security\ScriptSecretSerializerTests.cs" />
+    <Compile Include="Security\ScriptSecretSerializerV0Tests.cs" />
+    <Compile Include="Security\ScriptSecretSerializerV1Tests.cs" />
+    <Compile Include="Security\SecretManagerTests.cs" />
     <Compile Include="StandbyModeTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />
@@ -376,9 +380,11 @@
     <Compile Include="TestInvoker.cs" />
     <Compile Include="HttpTriggerBindingTests.cs" />
     <Compile Include="PowerShellFunctionGenerationTests.cs" />
+    <Compile Include="TestScopedEnvironmentVariables.cs" />
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />
+    <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="WebScriptHostHandlerTests.cs" />
     <Compile Include="WebScriptHostManagerTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
