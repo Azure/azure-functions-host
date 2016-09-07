@@ -391,7 +391,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AdminControllerTests.cs" />
+    <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="ApiHub\ApiHubTestHelper.cs" />
     <Compile Include="AuthorizationLevelAttributeTests.cs" />
     <Compile Include="BashEndToEndTests.cs" />
@@ -400,6 +400,16 @@
     <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="CompositeTraceWriterTests.cs" />
     <Compile Include="ConsoleTraceWriterTests.cs" />
+    <Compile Include="Controllers\ControllerScenarioTestFixture.cs" />
+    <Compile Include="Controllers\Keys\DeleteFunctionKeyScenario.cs" />
+    <Compile Include="Controllers\Keys\GetFunctionKeysScenario.cs" />
+    <Compile Include="Controllers\Keys\GetHostFunctionKeysScenario.cs" />
+    <Compile Include="Controllers\Keys\KeyManagementFixture.cs" />
+    <Compile Include="Controllers\Keys\PostFunctionKeyScenario.cs" />
+    <Compile Include="Controllers\Keys\DeleteHostFunctionKeysScenario.cs" />
+    <Compile Include="Controllers\Keys\PostHostFunctionKeyScenario.cs" />
+    <Compile Include="Controllers\Keys\PutFunctionKeyScenario.cs" />
+    <Compile Include="Controllers\Keys\PutHostFunctionKeyScenario.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
@@ -440,6 +450,7 @@
     <Compile Include="Security\ScriptSecretSerializerV0Tests.cs" />
     <Compile Include="Security\ScriptSecretSerializerV1Tests.cs" />
     <Compile Include="Security\SecretManagerTests.cs" />
+    <Compile Include="Security\TestSecretManager.cs" />
     <Compile Include="StandbyModeTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="NodeFunctionGenerationTests.cs" />

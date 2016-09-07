@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
@@ -19,6 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [JsonIgnore]
         public override bool HasStaleKeys => (MasterKey?.IsStale ?? false) || (FunctionKeys?.Any(k => k.IsStale) ?? false);
 
+        [JsonIgnore]
+        protected override ICollection<Key> InnerFunctionKeys => FunctionKeys;
+
         public override ScriptSecrets Refresh(IKeyValueConverterFactory factory)
         {
             var secrets = new HostSecrets
@@ -28,6 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
 
             return secrets;
+        }
+
+        public override IEnumerator<Key> GetEnumerator()
+        {
+            return FunctionKeys.GetEnumerator();
         }
     }
 }

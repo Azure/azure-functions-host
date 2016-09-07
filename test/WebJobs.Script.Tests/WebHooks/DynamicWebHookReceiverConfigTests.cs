@@ -23,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHooks
         [InlineData("testfunction,Key3", null)]
         public async Task GetReceiverConfigAsync_ResolvesExpectedSecret(string id, string expected)
         {
-            var secretManager = new Mock<SecretManager>(Path.GetTempPath());
-            secretManager.Setup(m => m.GetMergedFunctionSecrets("testfunction"))
+            var secretManager = new Mock<ISecretManager>();
+            secretManager.Setup(m => m.GetFunctionSecrets("testfunction", true))
                 .Returns(() => new Dictionary<string, string>
                 {
-                    { SecretManager.DefaultFunctionKeyName, "DefaultKey" },
+                    { ScriptConstants.DefaultFunctionKeyName, "DefaultKey" },
                     { "Key1", "Value1" },
                     { "Key2", "Value2" }
                 });

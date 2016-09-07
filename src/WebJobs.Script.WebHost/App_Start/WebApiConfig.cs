@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Register(config, GetDefaultSettings());
         }
 
-        public static void Register(HttpConfiguration config, WebHostSettings settings = null)
+        public static void Register(HttpConfiguration config, WebHostSettings settings = null, Action<ContainerBuilder, WebHostSettings> dependencyCallback = null)
         {
             if (config == null)
             {
@@ -44,6 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
             AutofacBootstrap.Initialize(builder, settings);
+
+            // Invoke registration callback
+            dependencyCallback?.Invoke(builder, settings);
+
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
 

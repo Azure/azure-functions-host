@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private HttpActionContext _actionContext;
         private HostSecretsInfo _hostSecrets;
         private Dictionary<string, string> _functionSecrets;
-        private Mock<SecretManager> _mockSecretManager;
+        private Mock<ISecretManager> _mockSecretManager;
 
         public AuthorizationLevelAttributeTests()
         {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             controllerContext.Configuration = httpConfig;
             Mock<IDependencyResolver> mockDependencyResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             httpConfig.DependencyResolver = mockDependencyResolver.Object;
-            _mockSecretManager = new Mock<SecretManager>(MockBehavior.Strict);
+            _mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
             _hostSecrets = new HostSecretsInfo
             {
                 MasterKey = testMasterKeyValue,
@@ -54,8 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "1",  TestFunctionKeyValue1 },
                 { "2",  TestFunctionKeyValue2 }
             };
-            _mockSecretManager.Setup(p => p.GetFunctionSecrets(It.IsAny<string>())).Returns(_functionSecrets);
-            mockDependencyResolver.Setup(p => p.GetService(typeof(SecretManager))).Returns(_mockSecretManager.Object);
+            _mockSecretManager.Setup(p => p.GetFunctionSecrets(It.IsAny<string>(), false)).Returns(_functionSecrets);
+            mockDependencyResolver.Setup(p => p.GetService(typeof(ISecretManager))).Returns(_mockSecretManager.Object);
         }
 
         [Fact]

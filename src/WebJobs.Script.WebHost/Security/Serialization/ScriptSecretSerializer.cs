@@ -33,6 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public static ScriptSecrets DeserializeSecrets(ScriptSecretsType secretsType, string secretsJson)
+        {
+            return secretsType == ScriptSecretsType.Function
+                ? DeserializeSecrets<FunctionSecrets>(secretsJson) as ScriptSecrets
+                : DeserializeSecrets<HostSecrets>(secretsJson) as ScriptSecrets;
+        }
+
         public static string SerializeSecrets<T>(T secrets) where T : ScriptSecrets => DefaultSerializer.SerializeSecrets(secrets);
 
         public static T DeserializeSecrets<T>(string secretsJson) where T : ScriptSecrets => ResolveSerializerAndRun(secretsJson, typeof(T), (s, o) => s.DeserializeSecrets<T>(o));

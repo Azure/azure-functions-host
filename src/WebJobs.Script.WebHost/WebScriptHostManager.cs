@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
         private static bool? _standbyMode;
         private readonly WebHostMetricsLogger _metricsLogger;
-        private readonly SecretManager _secretManager;
+        private readonly ISecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null) 
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
             : base(config, scriptHostFactory)
         {
             _config = config;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings)
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, WebHostSettings webHostSettings)
             : this(config, secretManager, webHostSettings, new ScriptHostFactory())
         {
         }
@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_secretManager != null)
                 {
-                    _secretManager.Dispose();
+                    (_secretManager as IDisposable).Dispose();
                 }
 
                 if (_metricsLogger != null)
@@ -361,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                     }
                 }
-                
+
                 request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
             }
 

@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 new Key
                 {
-                    Name = SecretManager.DefaultFunctionKeyName,
+                    Name = ScriptConstants.DefaultFunctionKeyName,
                     Value = "TestValue",
                     IsEncrypted = false
                 }
@@ -75,12 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var serializedSecret = "{'masterKey': 'master', 'functionKey': 'master'}";
             var expected = new HostSecrets
             {
-                MasterKey = new Key { Name = SecretManager.DefaultMasterKeyName, Value = "master" },
+                MasterKey = new Key { Name = ScriptConstants.DefaultMasterKeyName, Value = "master" },
                 FunctionKeys = new List<Key>
                 {
                     new Key
                     {
-                        Name = SecretManager.DefaultFunctionKeyName,
+                        Name = ScriptConstants.DefaultFunctionKeyName,
                         Value = "master",
                         IsEncrypted = false
                     }

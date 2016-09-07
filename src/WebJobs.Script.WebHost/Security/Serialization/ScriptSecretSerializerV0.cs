@@ -51,7 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static FunctionSecrets DeserializeFunctionSecrets(JObject secrets)
         {
             string key = secrets.Value<string>(FunctionKeyPropertyName);
-            return new FunctionSecrets(new List<Key> { CreateKeyFromSecret(key, SecretManager.DefaultFunctionKeyName) });
+            IList<Key> keys = CreateFunctionKeysCollection(key);
+
+            return new FunctionSecrets(keys);
         }
 
         private static HostSecrets DeserializeHostSecrets(JObject secrets)
@@ -61,8 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             return new HostSecrets
             {
-                MasterKey = CreateKeyFromSecret(masterSecret, SecretManager.DefaultMasterKeyName),
-                FunctionKeys = new List<Key> { CreateKeyFromSecret(functionSecret, SecretManager.DefaultFunctionKeyName) }
+                MasterKey = CreateKeyFromSecret(masterSecret, ScriptConstants.DefaultMasterKeyName),
+                FunctionKeys = CreateFunctionKeysCollection(functionSecret)
             };
         }
 
@@ -73,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var functionSecrets = new JObject
             {
-                [FunctionKeyPropertyName] = secrets?.Keys.FirstOrDefault(s => string.IsNullOrEmpty(s.Name))?.Value
+                [FunctionKeyPropertyName] = GetFunctionKeyFromCollection(secrets?.Keys)
             };
 
             return functionSecrets.ToString();
@@ -87,17 +89,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             //    "functionKey" : "functionkeyvalue"
             //  }
 
-            string functionKey = secrets.FunctionKeys
-                    ?.FirstOrDefault(k => string.IsNullOrEmpty(k.Name))
-                    ?.Value;
-
             var hostSecrets = new JObject
             {
                 [MasterKeyPropertyName] = secrets.MasterKey.Value,
-                [HostFunctionKeyPropertyName] = functionKey
+                [HostFunctionKeyPropertyName] = GetFunctionKeyFromCollection(secrets.FunctionKeys)
             };
 
             return hostSecrets.ToString();
+        }
+
+        private static IList<Key> CreateFunctionKeysCollection(string functionKey)
+        {
+            var keys = new List<Key>();
+
+            if (functionKey != null)
+            {
+                keys.Add(CreateKeyFromSecret(functionKey, ScriptConstants.DefaultFunctionKeyName));
+            }
+
+            return keys;
+        }
+
+        private static string GetFunctionKeyFromCollection(IList<Key> keys)
+        {
+            Key key = keys?.FirstOrDefault();
+
+            return keys?.FirstOrDefault(s => string.Equals(s.Name, ScriptConstants.DefaultFunctionKeyName))?.Value
+                ?? key?.Value;
         }
 
         private static Key CreateKeyFromSecret(string secret, string name = "") => new Key(name, secret);
@@ -114,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return functionSecrets != null &&
                     functionSecrets.Type == JTokenType.Object &&
-                    functionSecrets["key"]?.Type == JTokenType.String;
+                    (functionSecrets["key"]?.Type == JTokenType.String || functionSecrets["key"]?.Type == JTokenType.Null);
             }
 
             return false;

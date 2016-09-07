@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            SecretManager secretManager = new SecretManager(secretsDir);
+            ISecretManager secretManager = new SecretManager(secretsDir);
             WebHostSettings webHostSettings = new WebHostSettings();
             ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager, webHostSettings);
 
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     FileLoggingMode = FileLoggingMode.Always
                 };
 
-                SecretManager secretManager = new SecretManager(SecretsPath);
+                ISecretManager secretManager = new SecretManager(SecretsPath);
                 WebHostSettings webHostSettings = new WebHostSettings();
 
                 var hostConfig = config.HostConfig;

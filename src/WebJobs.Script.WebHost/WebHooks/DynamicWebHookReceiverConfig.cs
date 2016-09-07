@@ -11,9 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
 {
     public class DynamicWebHookReceiverConfig : IWebHookReceiverConfig
     {
-        private readonly SecretManager _secretManager;
+        private readonly ISecretManager _secretManager;
 
-        public DynamicWebHookReceiverConfig(SecretManager secretManager)
+        public DynamicWebHookReceiverConfig(ISecretManager secretManager)
         {
             _secretManager = secretManager;
         }
@@ -25,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             // we only allow a function to be mapped to a single receiver
             string[] webhookIdParts = id.Split(new[] { ',' }, 2, StringSplitOptions.RemoveEmptyEntries);
 
-            Dictionary<string, string> functionSecrets = _secretManager.GetMergedFunctionSecrets(webhookIdParts.FirstOrDefault());
+            IDictionary<string, string> functionSecrets = _secretManager.GetFunctionSecrets(webhookIdParts.FirstOrDefault(), true);
 
-            string clientId = webhookIdParts.Skip(1).FirstOrDefault() ?? SecretManager.DefaultFunctionKeyName;
+            string clientId = webhookIdParts.Skip(1).FirstOrDefault() ?? ScriptConstants.DefaultFunctionKeyName;
 
             string functionSecret = null;
             functionSecrets.TryGetValue(clientId, out functionSecret);

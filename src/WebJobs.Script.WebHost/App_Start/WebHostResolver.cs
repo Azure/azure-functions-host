@@ -15,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
-        private SecretManager _standbySecretManager;
+        private ISecretManager _standbySecretManager;
         private WebHookReceiverManager _standbyReceiverManager;
 
         private ScriptHostConfiguration _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
-        private SecretManager _activeSecretManager;
+        private ISecretManager _activeSecretManager;
         private WebHookReceiverManager _activeReceiverManager;
 
         public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public SecretManager GetSecretManager(WebHostSettings settings)
+        public ISecretManager GetSecretManager(WebHostSettings settings)
         {
             if (_activeSecretManager != null)
             {
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _activeReceiverManager = new WebHookReceiverManager(_activeSecretManager);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _activeSecretManager, settings);
 
-                    _standbySecretManager?.Dispose();
+                    (_standbySecretManager as IDisposable)?.Dispose();
                     _standbyHostManager?.Dispose();
                     _standbyReceiverManager?.Dispose();
 
@@ -184,15 +184,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return scriptHostConfig;
         }
 
-        private static SecretManager GetSecretManager(string secretsPath) => new SecretManager(secretsPath);
+        private static ISecretManager GetSecretManager(string secretsPath) => new SecretManager(secretsPath);
 
         public void Dispose()
         {
-            _standbySecretManager?.Dispose();
+            (_standbySecretManager as IDisposable)?.Dispose();
             _standbyHostManager?.Dispose();
             _standbyReceiverManager?.Dispose();
 
-            _activeSecretManager?.Dispose();
+            (_activeSecretManager as IDisposable)?.Dispose();
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
         }

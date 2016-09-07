@@ -30,5 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
         public const string DefaultHttpRoutePrefix = "api";
+        public const string DefaultMasterKeyName = "master";
+        public const string DefaultFunctionKeyName = "default";
     }
 }

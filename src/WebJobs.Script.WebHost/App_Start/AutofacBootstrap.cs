@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // these services are externally owned by the WebHostResolver, and will be disposed
             // when the resolver is disposed
-            builder.Register<SecretManager>(ct => webHostResolver.GetSecretManager(settings)).ExternallyOwned();
+            builder.Register<ISecretManager>(ct => webHostResolver.GetSecretManager(settings)).ExternallyOwned();
             builder.Register<WebScriptHostManager>(ct => webHostResolver.GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => webHostResolver.GetWebHookReceiverManager(settings)).ExternallyOwned();
         }

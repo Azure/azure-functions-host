@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            SecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
+            ISecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
 
             if (!IsAuthorized(actionContext.Request, Level, secretManager))
             {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             }
         }
 
-        public static bool IsAuthorized(HttpRequestMessage request, AuthorizationLevel level, SecretManager secretManager, string functionName = null)
+        public static bool IsAuthorized(HttpRequestMessage request, AuthorizationLevel level, ISecretManager secretManager, string functionName = null)
         {
             if (level == AuthorizationLevel.Anonymous)
             {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             return requestLevel >= level;
         }
 
-        internal static AuthorizationLevel GetAuthorizationLevel(HttpRequestMessage request, SecretManager secretManager, string functionName = null)
+        internal static AuthorizationLevel GetAuthorizationLevel(HttpRequestMessage request, ISecretManager secretManager, string functionName = null)
         {
             // TODO: Add support for validating "EasyAuth" headers
 
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 // if there is a function specific key specified try to match against that
                 if (functionName != null)
                 {
-                    Dictionary<string, string> functionSecrets = secretManager.GetFunctionSecrets(functionName);
+                    IDictionary<string, string> functionSecrets = secretManager.GetFunctionSecrets(functionName);
                     if (functionSecrets != null &&
                         functionSecrets.Values.Any(s => Key.SecretValueEquals(keyValue, s)))
                     {
