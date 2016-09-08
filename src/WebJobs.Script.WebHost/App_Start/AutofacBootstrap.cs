@@ -10,9 +10,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         internal static void Initialize(ContainerBuilder builder, WebHostSettings settings)
         {
-            builder.Register<SecretManager>(ct => WebHostResolver.GetSecretManager(settings)).ExternallyOwned();
-            builder.Register<WebScriptHostManager>(ct => WebHostResolver.GetWebScriptHostManager(settings)).ExternallyOwned();
-            builder.Register<WebHookReceiverManager>(ct => WebHostResolver.GetWebHookReceiverManager(settings)).ExternallyOwned();
+            // register the resolver so that it is disposed when the container
+            // is disposed
+            var webHostResolver = new WebHostResolver();
+            builder.RegisterInstance(webHostResolver);
+
+            // these services are externally owned by the WebHostResolver, and will be disposed
+            // when the resolver is disposed
+            builder.Register<SecretManager>(ct => webHostResolver.GetSecretManager(settings)).ExternallyOwned();
+            builder.Register<WebScriptHostManager>(ct => webHostResolver.GetWebScriptHostManager(settings)).ExternallyOwned();
+            builder.Register<WebHookReceiverManager>(ct => webHostResolver.GetWebHookReceiverManager(settings)).ExternallyOwned();
         }
     }
 }

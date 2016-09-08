@@ -9,21 +9,21 @@ using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public static class WebHostResolver
+    public sealed class WebHostResolver : IDisposable
     {
         private static object _syncLock = new object();
 
-        private static ScriptHostConfiguration _standbyScriptHostConfig;
-        private static WebScriptHostManager _standbyHostManager;
-        private static SecretManager _standbySecretManager;
-        private static WebHookReceiverManager _standbyReceiverManager;
+        private ScriptHostConfiguration _standbyScriptHostConfig;
+        private WebScriptHostManager _standbyHostManager;
+        private SecretManager _standbySecretManager;
+        private WebHookReceiverManager _standbyReceiverManager;
 
-        private static ScriptHostConfiguration _activeScriptHostConfig;
-        private static WebScriptHostManager _activeHostManager;
-        private static SecretManager _activeSecretManager;
-        private static WebHookReceiverManager _activeReceiverManager;
+        private ScriptHostConfiguration _activeScriptHostConfig;
+        private WebScriptHostManager _activeHostManager;
+        private SecretManager _activeSecretManager;
+        private WebHookReceiverManager _activeReceiverManager;
 
-        public static ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
+        public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
         {
             if (_activeScriptHostConfig != null)
             {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static SecretManager GetSecretManager(WebHostSettings settings)
+        public SecretManager GetSecretManager(WebHostSettings settings)
         {
             if (_activeSecretManager != null)
             {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
+        public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
         {
             if (_activeHostManager != null)
             {
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static WebHookReceiverManager GetWebHookReceiverManager(WebHostSettings settings)
+        public WebHookReceiverManager GetWebHookReceiverManager(WebHostSettings settings)
         {
             if (_activeReceiverManager != null)
             {
@@ -83,28 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static void Reset()
-        {
-            _standbySecretManager?.Dispose();
-            _standbyHostManager?.Dispose();
-            _standbyReceiverManager?.Dispose();
-
-            _standbyScriptHostConfig = null;
-            _standbySecretManager = null;
-            _standbyHostManager = null;
-            _standbyReceiverManager = null;
-
-            _activeSecretManager?.Dispose();
-            _activeHostManager?.Dispose();
-            _activeReceiverManager?.Dispose();
-
-            _activeScriptHostConfig = null;
-            _activeSecretManager = null;
-            _activeHostManager = null;
-            _activeReceiverManager = null;
-        }
-
-        private static void EnsureInitialized(WebHostSettings settings)
+        private void EnsureInitialized(WebHostSettings settings)
         {
             // standby mode can only change from true to false
             // When standby mode changes, we reset all instances
@@ -211,6 +190,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             secretManager.GetHostSecrets();
 
             return secretManager;
+        }
+
+        public void Dispose()
+        {
+            _standbySecretManager?.Dispose();
+            _standbyHostManager?.Dispose();
+            _standbyReceiverManager?.Dispose();
+
+            _activeSecretManager?.Dispose();
+            _activeHostManager?.Dispose();
+            _activeReceiverManager?.Dispose();
         }
     }
 }

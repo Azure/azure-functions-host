@@ -9,8 +9,15 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class StandbyModeTests
+    public class StandbyModeTests : IDisposable
     {
+        private readonly WebHostResolver _webHostResolver;
+
+        public StandbyModeTests()
+        {
+            _webHostResolver = new WebHostResolver();
+        }
+
         [Fact]
         public void InStandbyMode_ReturnsExpectedValue()
         {
@@ -37,25 +44,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetScriptHostConfiguration_ReturnsExpectedValue()
         {
-            TestGetter(WebHostResolver.GetScriptHostConfiguration);
+            TestGetter(_webHostResolver.GetScriptHostConfiguration);
         }
 
         [Fact]
         public void GetSecretManager_ReturnsExpectedValue()
         {
-            TestGetter(WebHostResolver.GetSecretManager);
+            TestGetter(_webHostResolver.GetSecretManager);
         }
 
         [Fact]
         public void GetWebHookReceiverManager_ReturnsExpectedValue()
         {
-            TestGetter(WebHostResolver.GetWebHookReceiverManager);
+            TestGetter(_webHostResolver.GetWebHookReceiverManager);
         }
 
         [Fact]
         public void GetWebScriptHostManager_ReturnsExpectedValue()
         {
-            TestGetter(WebHostResolver.GetWebScriptHostManager);
+            TestGetter(_webHostResolver.GetWebScriptHostManager);
         }
 
         private void TestGetter<T>(Func<WebHostSettings, T> func)
@@ -124,6 +131,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public void Dispose()
+        {
+            _webHostResolver?.Dispose();
+        }
+
         private class TestEnvironment : IDisposable
         {
             private string _home;
@@ -145,13 +157,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Reset();
 
                 Environment.SetEnvironmentVariable("HOME", _prevHome);
-                Directory.Delete(_home, recursive: true);
+                try
+                {
+                    Directory.Delete(_home, recursive: true);
+                }
+                catch
+                {
+                    // best effort
+                }
             }
 
             private void Reset()
             {
                 WebScriptHostManager.ResetStandbyMode();
-                WebHostResolver.Reset();
                 Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", null);
             }
         }

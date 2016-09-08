@@ -219,12 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                if (host != null)
-                {
-                    // dispose this last, since it will dispose TraceWriter
-                    host.Dispose();
-                }
-
+                host?.Dispose();
                 traceWriter.Dispose();
             }
         }

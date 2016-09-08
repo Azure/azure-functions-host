@@ -621,18 +621,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
-                var manager = _config.DependencyResolver.GetService<WebScriptHostManager>();
-
-                if (manager != null)
-                {
-                    manager.Stop();
-                    manager.Dispose();
-                }
-
-                if (HttpServer != null)
-                {
-                    HttpServer.Dispose();
-                }
+                HttpServer?.Dispose();
             }
 
             private class TestEntity : TableEntity
