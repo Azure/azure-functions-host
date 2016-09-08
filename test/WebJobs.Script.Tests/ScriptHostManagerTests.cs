@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var hostMock = new Mock<TestScriptHost>(config);
+            var hostMock = new Mock<ScriptHost>(config);
             var factoryMock = new Mock<IScriptHostFactory>();
             factoryMock.Setup(f => f.Create(It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
@@ -101,49 +102,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock.Protected().Verify("Dispose", Times.Once(), true);
         }
 
-        [Fact(Skip = "Test is flaky and needs to be fixed")]
+        [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory
+                RootScriptPath = @"TestScripts\Empty"
             };
 
-            var exception = new Exception("Kaboom!");
-            var hostMock = new Mock<TestScriptHost>(config);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<ScriptHostConfiguration>()))
-                .Returns(() =>
-                {
-                    if (exception != null)
-                    {
-                        throw exception;
-                    }
-                    return hostMock.Object;
-                });
-
-            var mockHostManager = new Mock<ScriptHostManager>(config, factoryMock.Object)
+            var scriptHostFactory = new TestScriptHostFactory()
             {
-                CallBase = true
+                Throw = true
             };
-            mockHostManager.Protected().Setup("OnHostStarted");
-            Task taskIgnore = Task.Run(() => mockHostManager.Object.RunAndBlock());
+            var hostManager = new ScriptHostManager(config, scriptHostFactory);
+            Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
 
             // we expect a host exception immediately
             await Task.Delay(2000);
 
-            Assert.False(mockHostManager.Object.IsRunning);
-            Assert.Same(exception, mockHostManager.Object.LastError);
+            Assert.False(hostManager.IsRunning);
+            Assert.NotNull(hostManager.LastError);
+            Assert.Equal("Kaboom!", hostManager.LastError.Message);
 
             // now verify that if no error is thrown on the next iteration
             // the cached error is cleared
-            exception = null;
+            scriptHostFactory.Throw = false;
             await TestHelpers.Await(() =>
             {
-                return mockHostManager.Object.IsRunning;
+                return hostManager.IsRunning;
             });
 
-            Assert.Null(mockHostManager.Object.LastError);
+            Assert.Null(hostManager.LastError);
         }
 
         [Fact]
@@ -204,10 +194,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return blob;
         }
 
-        public class TestScriptHost : ScriptHost
+        private class TestScriptHostFactory : IScriptHostFactory
         {
-            public TestScriptHost(ScriptHostConfiguration scriptConfig) : base(scriptConfig)
+            public bool Throw { get; set; }
+
+            public ScriptHost Create(ScriptHostConfiguration config)
             {
+                if (Throw)
+                {
+                    throw new Exception("Kaboom!");
+                }
+
+                var mockMetricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
+                config.HostConfig.AddService<IMetricsLogger>(mockMetricsLogger.Object);
+                mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
+
+                return ScriptHost.Create(config);
             }
         }
     }
