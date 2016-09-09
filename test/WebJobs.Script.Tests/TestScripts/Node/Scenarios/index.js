@@ -15,6 +15,9 @@ var assert = require('assert');
             context.done();
         });
     }
+    else if (scenario == 'promiseResolve') {
+        Promise.resolve().then(() => context.done());
+    }
     else if (scenario == 'randGuid') {
         context.bindings.blob = input.value;
         context.done();

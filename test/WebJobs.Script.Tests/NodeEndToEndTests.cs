@@ -703,13 +703,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { "input", input.ToString() }
                 });
 
-            await TestHelpers.Await(() =>
+            Task result = await Task.WhenAny(t, Task.Delay(5000));
+            Assert.Same(t, result);
+            if (t.IsFaulted)
             {
-                return t.IsCompleted;
-            }, timeout: 5000, pollingInterval: 1000);
+                throw t.Exception;
+            }
+        }
 
-            // Await the task to force any exception to be thrown
-            await t;
+        [Fact]
+        public async Task PromiseResolve()
+        {
+            JObject input = new JObject
+            {
+                { "scenario", "promiseResolve" }
+            };
+
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "input", input.ToString() }
+                });
+
+            Task result = await Task.WhenAny(t, Task.Delay(5000));
+            Assert.Same(t, result);
+            if (t.IsFaulted)
+            {
+                throw t.Exception;
+            }
         }
 
         public class TestFixture : EndToEndTestFixture

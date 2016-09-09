@@ -5,6 +5,9 @@ var f = require('{0}'),
     util = require('util');
 
 return function (context, callback) {{
+    // TEMP HACK: workaround for https://github.com/tjanczuk/edge/issues/325
+    setImmediate(() => {{}});
+
     f = getEntryPoint(f, context);
 
     var origLog = context.log;
