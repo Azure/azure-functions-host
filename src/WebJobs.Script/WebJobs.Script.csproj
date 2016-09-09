@@ -449,6 +449,7 @@
       <Link>edge\edge.js</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="Description\Node\Script\scriptRequire.js" />
     <EmbeddedResource Include="Description\Node\Script\globalInitialization.js" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

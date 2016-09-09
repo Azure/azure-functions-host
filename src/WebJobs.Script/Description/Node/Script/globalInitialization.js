@@ -3,14 +3,14 @@
 
 var process = require('process');
 
-return function (context, callback) {{
-    process.on('uncaughtException', function (err) {{
+return function (context, callback) {
+    process.on('uncaughtException', function (err) {
         context.handleUncaughtException(err.stack);
-    }});
+    });
 
     // TEMP HACK: workaround for https://github.com/tjanczuk/edge/issues/325
     process.nextTick = global.setImmediate;
 
     callback();
-}};
+};
 

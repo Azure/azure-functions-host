@@ -37,12 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Func<object, Task<object>> _scriptFunc;
         private static Func<object, Task<object>> _clearRequireCache;
         private static Func<object, Task<object>> _globalInitializationFunc;
+        private static string _scriptRequire;
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
 
         static NodeFunctionInvoker()
         {
+            _scriptRequire = ReadResourceString("scriptRequire.js");
             _functionTemplate = ReadResourceString("functionTemplate.js");
             _clearRequireCacheScript = ReadResourceString("clearRequireCache.js");
             _globalInitializationScript = ReadResourceString("globalInitialization.js");
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _trigger = trigger;
             string scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
-            _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
+            _script = string.Format(CultureInfo.InvariantCulture, _scriptRequire, scriptFilePath, _functionTemplate);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _entryPoint = functionMetadata.EntryPoint;
