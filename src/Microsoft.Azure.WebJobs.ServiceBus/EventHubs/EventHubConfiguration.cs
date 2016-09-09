@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
@@ -18,13 +19,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// </summary>
     public class EventHubConfiguration : IExtensionConfigProvider, IEventHubProvider
     {
-        // Event Hub Names are case-insensitive
+        // Event Hub Names are case-insensitive.
+        // The same path can have multiple connection strings with different permissions (sending and receiving), 
+        // so we track senders and receivers separately and infer which one to use based on the EventHub (sender) vs. EventHubTrigger (receiver) attribute. 
+        // Connection strings may also encapsulate different endpoints. 
         private readonly Dictionary<string, EventHubClient> _senders = new Dictionary<string, EventHubClient>(StringComparer.OrdinalIgnoreCase);
-        
-        private readonly EventProcessorOptions _options; 
-        private readonly PartitionManagerOptions _partitionOptions; // optional, used to create EventProcessorHost
-        private readonly Dictionary<string, ReceiverCreds> _receiverCreds = new Dictionary<string, ReceiverCreds>();
+        private readonly Dictionary<string, ReceiverCreds> _receiverCreds = new Dictionary<string, ReceiverCreds>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, EventProcessorHost> _explicitlyProvidedHosts = new Dictionary<string, EventProcessorHost>(StringComparer.OrdinalIgnoreCase);
+
+        private readonly EventProcessorOptions _options;
+        private readonly PartitionManagerOptions _partitionOptions; // optional, used to create EventProcessorHost
 
         private string _defaultStorageString; // set to JobHostConfig.StorageConnectionString
 
@@ -84,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("client");
             }
-            
+           
             _senders[eventHubName] = client;
         }
 
@@ -92,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Add a connection for sending messages to an event hub. Connect via the connection string. 
         /// </summary>
         /// <param name="eventHubName">name of the event hub. </param>
-        /// <param name="sendConnectionString">connection string for sending messages</param>
+        /// <param name="sendConnectionString">connection string for sending messages. If this includes an EntityPath, it takes precedence over the eventHubName parameter.</param>
         public void AddSender(string eventHubName, string sendConnectionString)
         {
             if (eventHubName == null)
@@ -103,7 +107,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             {
                 throw new ArgumentNullException("sendConnectionString");
             }
-            var client = EventHubClient.CreateFromConnectionString(sendConnectionString, eventHubName);
+
+            ServiceBusConnectionStringBuilder sb = new ServiceBusConnectionStringBuilder(sendConnectionString);
+            if (string.IsNullOrWhiteSpace(sb.EntityPath))
+            {
+                sb.EntityPath = eventHubName;
+            }            
+
+            var client = EventHubClient.CreateFromConnectionString(sb.ToString());
             AddEventHubClient(eventHubName, client);
         }
 
@@ -135,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Add a connection for listening on events from an event hub. Connect via the connection string and use the SDK's built-in storage account.
         /// </summary>
         /// <param name="eventHubName">name of the event hub</param>
-        /// <param name="receiverConnectionString">connection string for receiving messages</param>
+        /// <param name="receiverConnectionString">connection string for receiving messages. This can encapsulate other service bus properties like the namespace and endpoints.</param>
         public void AddReceiver(string eventHubName, string receiverConnectionString)
         {
             if (eventHubName == null)
@@ -181,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             };
         }
         
-        private EventHubClient GetEventHubClient(string eventHubName)
+        internal EventHubClient GetEventHubClient(string eventHubName)
         {
             EventHubClient client;
             if (_senders.TryGetValue(eventHubName, out client))             
@@ -209,11 +220,21 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                     storageConnectionString = _defaultStorageString;
                 }
 
+                // If the connection string provides a hub name, that takes precedence. 
+                // Note that connection strings *can't* specify a consumerGroup, so must always be passed in. 
+                string actualPath = eventHubName;
+                ServiceBusConnectionStringBuilder sb = new ServiceBusConnectionStringBuilder(creds.EventHubConnectionString);
+                if (sb.EntityPath != null)
+                {
+                    actualPath = sb.EntityPath;
+                    sb.EntityPath = null; // need to remove to use with EventProcessorHost
+                }
+
                 EventProcessorHost host = new EventProcessorHost(
                    eventProcessorHostName,
-                   eventHubName,
+                   actualPath,
                    consumerGroup,
-                   creds.EventHubConnectionString,
+                   sb.ToString(),
                    storageConnectionString);
 
                 if (_partitionOptions != null)
