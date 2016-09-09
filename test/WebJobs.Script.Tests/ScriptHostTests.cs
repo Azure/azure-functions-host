@@ -446,19 +446,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
+            Assert.Null(scriptConfig.FunctionTimeout);
 
             config["timeout"] = "00:00:30";
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.FunctionTimeout);
+        }
 
-            // value must be between 1 second and 5 minutes, inclusive
-            config["timeout"] = "00:00:00.9";
-            var ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+        [Fact]
+        public void ApplyConfiguration_TimeoutDefaultsNull_IfNotDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Null(scriptConfig.FunctionTimeout);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_TimeoutDefaults5Minutes_IfDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            try
+            {
+                Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
+                ScriptHost.ApplyConfiguration(config, scriptConfig);
+                Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("WEBSITE_SKU", null);
+            }
+        }
+
+        [Fact]
+        public void ApplyConfiguration_NoTimeoutLimits_IfNotDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
 
             config["timeout"] = "00:05:01";
-            ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(TimeSpan.FromSeconds(301), scriptConfig.FunctionTimeout);
+
+            config["timeout"] = "00:00:00.9";
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(TimeSpan.FromMilliseconds(900), scriptConfig.FunctionTimeout);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_AppliesTimeoutLimits_IfDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            try
+            {
+                Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
+
+                config["timeout"] = "00:05:01";
+                Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+
+                config["timeout"] = "00:00:00.9";
+                Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("WEBSITE_SKU", null);
+            }
         }
 
         [Fact]

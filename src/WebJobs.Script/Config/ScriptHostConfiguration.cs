@@ -11,11 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHostConfiguration
     {
-        private TimeSpan _functionTimeout;
-
-        internal static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
-        internal static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
-
         public ScriptHostConfiguration()
         {
             HostConfig = new JobHostConfiguration();
@@ -23,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
-            FunctionTimeout = TimeSpan.FromMinutes(5);
         }
 
         /// <summary>
@@ -84,24 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public ICollection<ScriptBindingProvider> BindingProviders { get; internal set; }
 
         /// <summary>
-        /// Gets or sets a value indicating the timeout duration for all functions.
+        /// Gets or sets a value indicating the timeout duration for all functions. If null, 
+        /// there is no timeout duration.
         /// </summary>
-        public TimeSpan FunctionTimeout
-        {
-            get
-            {
-                return _functionTimeout;
-            }
-            set
-            {
-                if (value < MinTimeout || value > MaxTimeout)
-                {
-                    string message = $"{nameof(FunctionTimeout)} must be between {MinTimeout} and {MaxTimeout}.";
-                    throw new ArgumentException(message);
-                }
-
-                _functionTimeout = value;
-            }
-        }
+        public TimeSpan? FunctionTimeout { get; set; }
     }
 }

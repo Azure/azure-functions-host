@@ -40,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileSystemWatcher _debugModeFileWatcher;
         private int _directoryCountSnapshot;
         private BlobLeaseManager _blobLeaseManager;
+        private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
@@ -352,30 +354,33 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
 
             // apply the timeout settings to our type
-            Type timeoutType = typeof(TimeoutAttribute);
-            ConstructorInfo ctorInfo = timeoutType.GetConstructor(new[] { typeof(string) });
-
-            PropertyInfo[] propertyInfos = new[]
+            if (scriptConfig.FunctionTimeout != null)
             {
-                timeoutType.GetProperty("ThrowOnTimeout"),
-                timeoutType.GetProperty("TimeoutWhileDebugging"),
-            };
+                Type timeoutType = typeof(TimeoutAttribute);
+                ConstructorInfo ctorInfo = timeoutType.GetConstructor(new[] { typeof(string) });
 
-            // Hard-code these for now. Eventually elevate to config
-            object[] propertyValues = new object[]
-            {
-                true,
-                true
-            };
+                PropertyInfo[] propertyInfos = new[]
+                {
+                    timeoutType.GetProperty("ThrowOnTimeout"),
+                    timeoutType.GetProperty("TimeoutWhileDebugging")
+                };
 
-            CustomAttributeBuilder timeoutBuilder = new CustomAttributeBuilder(
-                ctorInfo,
-                new object[] { scriptConfig.FunctionTimeout.ToString() },
-                propertyInfos,
-                propertyValues
-            );
+                // Hard-code these for now. Eventually elevate to config
+                object[] propertyValues = new object[]
+                {
+                    true,
+                    true
+                };
 
-            customAttributes.Add(timeoutBuilder);
+                CustomAttributeBuilder timeoutBuilder = new CustomAttributeBuilder(
+                    ctorInfo,
+                    new object[] { scriptConfig.FunctionTimeout.ToString() },
+                    propertyInfos,
+                    propertyValues
+                );
+
+                customAttributes.Add(timeoutBuilder);
+            }
 
             return customAttributes;
         }
@@ -841,7 +846,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (config.TryGetValue("timeout", out value))
             {
-                scriptConfig.FunctionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+                TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+
+                // Only apply limits if this is Dynamic.
+                if (IsDynamicSku() && (requestedTimeout < MinTimeout || requestedTimeout > MaxTimeout))
+                {
+                    string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinTimeout} and {MaxTimeout}.";
+                    throw new ArgumentException(message);
+                }
+
+                scriptConfig.FunctionTimeout = requestedTimeout;
+            }
+            else if (IsDynamicSku())
+            {
+                // Apply a default if this is running on Dynamic.
+                scriptConfig.FunctionTimeout = MaxTimeout;
             }
         }
 
@@ -1006,6 +1025,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
+        }
+
+        private static bool IsDynamicSku()
+        {
+            string hostingPlan = Environment.GetEnvironmentVariable("WEBSITE_SKU");
+            return hostingPlan != null && hostingPlan == "Dynamic";
         }
 
         internal static string GetAssemblyFileVersion(Assembly assembly)

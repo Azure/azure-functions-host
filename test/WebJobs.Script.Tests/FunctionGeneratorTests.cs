@@ -3,9 +3,11 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -44,11 +46,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 
+            // Get the Type Attributes (in this case, a TimeoutAttribute)
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.FunctionTimeout = TimeSpan.FromMinutes(5);
+            Collection<CustomAttributeBuilder> typeAttributes = ScriptHost.CreateTypeAttributes(scriptConfig);
+
             // generate the Type
-            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", null, functions);
+            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", typeAttributes, functions);
 
             // verify the generated function
             MethodInfo method = functionType.GetMethod("TimerFunction");
+            TimeoutAttribute timeoutAttribute = (TimeoutAttribute)functionType.GetCustomAttributes().Single();
+            Assert.Equal(TimeSpan.FromMinutes(5), timeoutAttribute.Timeout);
+            Assert.True(timeoutAttribute.ThrowOnTimeout);
+            Assert.True(timeoutAttribute.TimeoutWhileDebugging);
             ParameterInfo triggerParameter = method.GetParameters()[0];
             TimerTriggerAttribute triggerAttribute = triggerParameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.NotNull(triggerAttribute);
@@ -85,11 +96,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 
+            // Make sure we don't generate a TimeoutAttribute if FunctionTimeout is null.
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.FunctionTimeout = null;
+            Collection<CustomAttributeBuilder> typeAttributes = ScriptHost.CreateTypeAttributes(scriptConfig);
+
             // generate the Type
-            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", null, functions);
+            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", typeAttributes, functions);
 
             // verify the generated function
             MethodInfo method = functionType.GetMethod(functionName);
+            IEnumerable<Attribute> attributes = functionType.GetCustomAttributes();
+            Assert.Empty(attributes);
             ParameterInfo[] functionParams = method.GetParameters();
 
             // Verify that we have the correct number of parameters
