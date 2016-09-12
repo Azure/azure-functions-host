@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return new FakeStoragePageBlob(_store, blobName, this);
         }
 
-        public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
+        public virtual Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
             BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
             BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
         {

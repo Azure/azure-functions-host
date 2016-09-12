@@ -66,8 +66,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 containerScanInfo = new ContainerScanInfo()
                 {
                     Registrations = new List<ITriggerExecutor<IStorageBlob>>(),
-                    LastSweepCycleStartTime = DateTime.MinValue,
-                    CurrentSweepCycleStartTime = DateTime.MinValue,
+                    LastSweepCycleLatestModified = DateTime.MinValue,
+                    CurrentSweepCycleLatestModified = DateTime.MinValue,
                     ContinuationToken = null
                 };
                 _scanInfo.Add(container, containerScanInfo);
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 _blobsFoundFromScanOrNotification.Enqueue(failedNotification);
             }
-            
+
             await Task.WhenAll(pollingTasks);
 
             // Run subsequent iterations at "_pollingInterval" second intervals.
@@ -175,15 +175,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             int blobPollLimitPerContainer = _scanBlobLimitPerPoll / _scanInfo.Count;
             BlobContinuationToken continuationToken = containerScanInfo.ContinuationToken;
 
-            // if starting the cycle, keep the current time stamp to be used as curser
+            // if starting the cycle, reset the sweep time
             if (continuationToken == null)
             {
-                containerScanInfo.CurrentSweepCycleStartTime = DateTime.UtcNow;
+                containerScanInfo.CurrentSweepCycleLatestModified = DateTime.MinValue;
             }
             try
             {
-                blobSegment = await container.ListBlobsSegmentedAsync(prefix: null, useFlatBlobListing: true, 
-                    blobListingDetails: BlobListingDetails.None, maxResults: blobPollLimitPerContainer, currentToken: continuationToken, 
+                blobSegment = await container.ListBlobsSegmentedAsync(prefix: null, useFlatBlobListing: true,
+                    blobListingDetails: BlobListingDetails.None, maxResults: blobPollLimitPerContainer, currentToken: continuationToken,
                     options: null, operationContext: null, cancellationToken: cancellationToken);
                 currentBlobs = blobSegment.Results;
             }
@@ -209,7 +209,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 IStorageBlobProperties properties = currentBlob.Properties;
                 DateTime lastModifiedTimestamp = properties.LastModified.Value.UtcDateTime;
 
-                if (lastModifiedTimestamp > containerScanInfo.LastSweepCycleStartTime)
+                if (lastModifiedTimestamp > containerScanInfo.CurrentSweepCycleLatestModified)
+                {
+                    containerScanInfo.CurrentSweepCycleLatestModified = lastModifiedTimestamp;
+                }
+
+                if (lastModifiedTimestamp > containerScanInfo.LastSweepCycleLatestModified)
                 {
                     newBlobs.Add(currentBlob);
                 }
@@ -221,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // if ending a cycle then copy currentSweepCycleStartTime to lastSweepCycleStartTime
             if (blobSegment.ContinuationToken == null)
             {
-                containerScanInfo.LastSweepCycleStartTime = containerScanInfo.CurrentSweepCycleStartTime;
+                containerScanInfo.LastSweepCycleLatestModified = containerScanInfo.CurrentSweepCycleLatestModified;
             }
 
             return newBlobs;

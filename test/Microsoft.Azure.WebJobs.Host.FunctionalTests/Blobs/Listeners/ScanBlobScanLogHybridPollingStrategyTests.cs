@@ -14,6 +14,8 @@ using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
@@ -99,16 +101,60 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 
             RunExecuteWithMultiPollingInterval(firstContainerExpectedNames, product, executor, testScanBlobLimitPerPoll / containerCount);
 
+            Thread.Sleep(10);
+
             List<string> secondContainerExpectedNames = new List<string>();
             for (int i = 0; i < 2; i++)
             {
-                firstContainerExpectedNames.Add(CreateAblobAndUploadToContainer(secondContainer));
+                secondContainerExpectedNames.Add(CreateAblobAndUploadToContainer(secondContainer));
             }
 
             RunExecuteWithMultiPollingInterval(secondContainerExpectedNames, product, executor, testScanBlobLimitPerPoll / containerCount);
 
             // Now run again; shouldn't show up. 
             RunExecuterWithExpectedBlobs(new List<string>(), product, executor);
+        }
+
+        [Fact]
+        public void BlobPolling_IgnoresClockSkew()
+        {
+            int testScanBlobLimitPerPoll = 3;
+            string containerName = Path.GetRandomFileName();
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            var now = DateTimeOffset.UtcNow;
+            var timeMap = new Dictionary<string, DateTimeOffset>();
+            IStorageBlobContainer container = new SkewableFakeStorageBlobContainer(new MemoryBlobStore(), containerName, client,
+                (IStorageBlobResultSegment blobs) =>
+                {
+                    // Simulate some extreme clock skew -- the first one's LastUpdated
+                    // wll be 60 seconds ago and the second will be 59 seconds ago.
+                    foreach (IStorageBlob blob in blobs.Results)
+                    {
+                        ((FakeStorageBlobProperties)blob.Properties).LastModified = timeMap[blob.Name];
+                    }
+                });
+            IBlobListenerStrategy product = new ScanBlobScanLogHybridPollingStrategy();
+            LambdaBlobTriggerExecutor executor = new LambdaBlobTriggerExecutor();
+            typeof(ScanBlobScanLogHybridPollingStrategy)
+                   .GetField("_scanBlobLimitPerPoll", BindingFlags.Instance | BindingFlags.NonPublic)
+                   .SetValue(product, testScanBlobLimitPerPoll);
+
+            product.Register(container, executor);
+            product.Start();
+
+            List<string> expectedNames = new List<string>();
+            expectedNames.Add(CreateAblobAndUploadToContainer(container));
+            timeMap[expectedNames.Single()] = now.AddSeconds(-60);
+            RunExecuterWithExpectedBlobs(expectedNames, product, executor);
+
+            expectedNames.Clear();
+
+            expectedNames.Add(CreateAblobAndUploadToContainer(container));
+            timeMap[expectedNames.Single()] = now.AddSeconds(-59);
+
+            // We should see the new item.
+            RunExecuterWithExpectedBlobs(expectedNames, product, executor);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()
@@ -186,6 +232,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
                 bool succeeded = ExecuteLambda.Invoke(value);
                 FunctionResult result = new FunctionResult(succeeded);
                 return Task.FromResult(result);
+            }
+        }
+
+        private class SkewableFakeStorageBlobContainer : FakeStorageBlobContainer
+        {
+            private Action<IStorageBlobResultSegment> _onListBlobsSegmented;
+
+            public SkewableFakeStorageBlobContainer(MemoryBlobStore store, string containerName,
+                IStorageBlobClient parent, Action<IStorageBlobResultSegment> OnListBlobsSegmented)
+                : base(store, containerName, parent)
+            {
+                _onListBlobsSegmented = OnListBlobsSegmented;
+            }
+
+            public override async Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing, BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken, BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
+            {
+                var results = await base.ListBlobsSegmentedAsync(prefix, useFlatBlobListing, blobListingDetails, maxResults, currentToken, options, operationContext, cancellationToken);
+                _onListBlobsSegmented(results);
+                return results;
             }
         }
     }

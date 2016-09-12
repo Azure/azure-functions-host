@@ -13,9 +13,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         public ICollection<ITriggerExecutor<IStorageBlob>> Registrations { get; set; }
 
-        public DateTime LastSweepCycleStartTime { get; set; }
+        public DateTime LastSweepCycleLatestModified { get; set; }
 
-        public DateTime CurrentSweepCycleStartTime { get; set; }
+        public DateTime CurrentSweepCycleLatestModified { get; set; }
 
         public BlobContinuationToken ContinuationToken { get; set; }
     }
