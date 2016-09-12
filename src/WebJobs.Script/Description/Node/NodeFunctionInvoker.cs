@@ -43,9 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         static NodeFunctionInvoker()
         {
-            _functionTemplate = ReadResourceString("functionTemplate.js");
-            _clearRequireCacheScript = ReadResourceString("clearRequireCache.js");
-            _globalInitializationScript = ReadResourceString("globalInitialization.js");
+            // node cwd is edge nuget package (double_edge.js)
+            _functionTemplate = @"return require('../functions/functions.js').createFunction(require('{0}'));";
+            _clearRequireCacheScript = @"return require('../functions/functions.js').clearRequireCache;";
+            _globalInitializationScript = @"return require('../functions/functions.js').globalInitialization;";
 
             Initialize();
         }
@@ -540,16 +541,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             GlobalInitializationFunc(context).GetAwaiter().GetResult();
-        }
-
-        private static string ReadResourceString(string fileName)
-        {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.Description.Node.Script.{0}", fileName);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
-            {
-                return reader.ReadToEnd();
-            }
         }
     }
 }
