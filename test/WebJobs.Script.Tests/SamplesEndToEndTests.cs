@@ -613,15 +613,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private bool IsHostRunning()
             {
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
-
-                HttpResponseMessage response = this.HttpClient.SendAsync(request).Result;
-                return response.StatusCode == HttpStatusCode.NoContent;
+                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
+                {
+                    using (HttpResponseMessage response = this.HttpClient.SendAsync(request).Result)
+                    {
+                        return response.StatusCode == HttpStatusCode.NoContent;
+                    }
+                }
             }
 
             public void Dispose()
             {
                 HttpServer?.Dispose();
+                HttpClient?.Dispose();
             }
 
             private class TestEntity : TableEntity
