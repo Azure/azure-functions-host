@@ -39,7 +39,11 @@ function createFunction(f) {
 
         context.done = function (err, result) {
             if (context._done) {
-                context.log("Error: 'done' has already been called. Please check your script for extraneous calls to 'done'.");
+                if (context._promise) {
+                    context.log("Error: Choose either to return a promise or call 'done'.  Do not use both in your script.");
+                } else {
+                    context.log("Error: 'done' has already been called. Please check your script for extraneous calls to 'done'.");
+                }
                 return;
             }
             context._done = true;
@@ -65,7 +69,12 @@ function createFunction(f) {
         inputs.unshift(context);
         delete context._inputs;
 
-        f.apply(null, inputs);
+        var result = f.apply(null, inputs);
+        if (result && typeof result.then === 'function') {
+            context._promise = true;
+            result.then((result) => context.done(null, result))
+                .catch((err) => context.done(err));
+        }
     };
 }
 

@@ -742,6 +742,9 @@
     <None Include="TestScripts\Node\HttpTriggerByteArray\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\HttpTriggerPromise\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\MobileTableIn\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -794,6 +797,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\HttpTriggerByteArray\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\Node\HttpTriggerPromise\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\MultipleExports\index.js">

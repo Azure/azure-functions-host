@@ -379,6 +379,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTriggerPromise_TestBinding()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptriggerpromise")),
+                Method = HttpMethod.Get,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "request", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerPromise", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("returned from promise", body);
+        }
+
+        [Fact]
         public async Task HttpTrigger_Scenarios_ScalarReturn_InBody()
         {
             HttpRequestMessage request = new HttpRequestMessage
@@ -732,6 +754,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 throw t.Exception;
             }
+        }
+
+        [Fact]
+        public async Task PromiseApi_Resolves()
+        {
+            JObject input = new JObject
+            {
+                { "scenario", "promiseApiResolves" }
+            };
+
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "input", input.ToString() }
+                });
+
+            Task result = await Task.WhenAny(t, Task.Delay(5000));
+            Assert.Same(t, result);
+            if (t.IsFaulted)
+            {
+                throw t.Exception;
+            }
+        }
+
+        [Fact]
+        public async Task PromiseApi_Rejects()
+        {
+            JObject input = new JObject
+            {
+                { "scenario", "promiseApiRejects" }
+            };
+
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "input", input.ToString() }
+                });
+
+            Task result = await Task.WhenAny(t, Task.Delay(5000));
+            Assert.Same(t, result);
+            Assert.Equal(true, t.IsFaulted);
+            Assert.Equal("reject", t.Exception.InnerException.InnerException.Message);
+        }
+
+        [Fact]
+        public async Task PromiseApi_ResolveAfterDone()
+        {
+            TestHelpers.ClearFunctionLogs("Scenarios");
+
+            JObject input = new JObject
+            {
+                { "scenario", "promiseApiDone" }
+            };
+
+            var arguments = new Dictionary<string, object>()
+            {
+                { "input", input.ToString() }
+            };
+
+            // call multiple times to reduce flakiness (function can exit before Promise.resolve executes)
+            for (int i = 0; i < 3; i++)
+            {
+                await Task.WhenAny(Fixture.Host.CallAsync("Scenarios", arguments), Task.Delay(5000));
+            }
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
+
+            Assert.True(logs.Any(p => p.Contains("Error: Choose either to return a promise or call 'done'.  Do not use both in your script.")));
+            Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
         }
 
         public class TestFixture : EndToEndTestFixture
