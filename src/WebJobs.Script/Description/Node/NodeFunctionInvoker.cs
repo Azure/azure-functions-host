@@ -44,9 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         static NodeFunctionInvoker()
         {
             // node cwd is edge nuget package (double_edge.js)
-            _functionTemplate = @"return require('../functions/functions.js').createFunction(require('{0}'));";
-            _clearRequireCacheScript = @"return require('../functions/functions.js').clearRequireCache;";
-            _globalInitializationScript = @"return require('../functions/functions.js').globalInitialization;";
+            _functionTemplate = @"return require('../Content/Script/functions.js').createFunction(require('{0}'));";
+            _clearRequireCacheScript = @"return require('../Content/Script/functions.js').clearRequireCache;";
+            _globalInitializationScript = @"return require('../Content/Script/functions.js').globalInitialization;";
 
             Initialize();
         }

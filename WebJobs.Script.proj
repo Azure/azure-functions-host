@@ -110,9 +110,11 @@
     <ItemGroup>
       <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*;$(ScriptHostOutput)\*.optdata;$(ScriptHostOutput)\*.sigdata"/>
       <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
+      <StaticContent Include="$(ScriptHostOutput)\Content\**\*.*"/>
     </ItemGroup>
     <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
     <Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(StaticContent)" DestinationFiles="@(StaticContent->'$(PublishPath)\Binaries\WebJobs.Script.Host\Content\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Zip
       InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
       OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"

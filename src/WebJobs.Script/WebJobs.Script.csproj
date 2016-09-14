@@ -456,7 +456,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <AzureFunctions Include="Description\Node\functions\functions.js" />
+    <Content Include="Content\Script\functions.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">
@@ -493,11 +495,6 @@
     <Error Condition="!Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets'))" />
   </Target>
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.9.2\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.9.2\build\Microsoft.Azure.DocumentDB.targets')" />
-  <Target Name="CopyAzureFunctionsToNodeModules" AfterTargets="Build">
-    <Copy SourceFiles="@(AzureFunctions)" DestinationFolder="$(OutDir)/functions" />
-    <Copy SourceFiles="@(AzureFunctions)" DestinationFolder="$(ProjectDir)../WebJobs.Script.Host/bin/$(Configuration)/functions" />    
-    <Copy SourceFiles="@(AzureFunctions)" DestinationFolder="$(ProjectDir)../../test/WebJobs.Script.Tests/bin/$(Configuration)/functions" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
