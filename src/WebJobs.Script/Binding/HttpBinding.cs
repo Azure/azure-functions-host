@@ -150,7 +150,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // The following content headers must be added to the response
                     // content header collection
                     case "content-type":
-                        response.Content.Headers.ContentType = new MediaTypeHeaderValue(header.Value.ToString());
+                        MediaTypeHeaderValue mediaType = null;
+                        if (MediaTypeHeaderValue.TryParse(header.Value.ToString(), out mediaType))
+                        {
+                            response.Content.Headers.ContentType = mediaType;
+                        }
                         break;
                     case "content-length":
                         long contentLength;

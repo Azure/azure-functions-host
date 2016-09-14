@@ -15,7 +15,8 @@ module.exports = function (context, req) {
             bindingData: context.bindingData
         },
         headers: {
-            'test-header': 'Test Response Header'
+            'test-header': 'Test Response Header',
+            "Content-Type": "application/json; charset=utf-8"
         }
     };
 

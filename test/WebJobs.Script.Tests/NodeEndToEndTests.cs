@@ -360,6 +360,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
+            Assert.Equal(MediaTypeHeaderValue.Parse("application/json; charset=utf-8"), response.Content.Headers.ContentType);
 
             string body = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(body);
