@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
     public class LoggerTest
     {
         static string CommonFuncName1 = "gamma";
-       
+
         // End-2-end test that function instance counter can write to tables 
         [Fact]
         public async Task FunctionInstance()
@@ -26,11 +26,11 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 ILogReader reader = LogFactory.NewReader(table);
                 TimeSpan poll = TimeSpan.FromMilliseconds(50);
                 TimeSpan poll5 = TimeSpan.FromMilliseconds(poll.TotalMilliseconds * 5);
-                
+
                 var logger1 = new CloudTableInstanceCountLogger("c1", table, 100) { PollingInterval = poll };
-                
+
                 Guid g1 = Guid.NewGuid();
-                
+
                 DateTime startTime = DateTime.UtcNow;
                 logger1.Increment(g1);
                 await Task.Delay(poll5); // should get at least 1 poll entry in           
@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             finally
             {
                 table.DeleteIfExists();
-            }        
-}
+            }
+        }
 
         [Fact]
         public async Task TimeRange()
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     new DateTime(2010, 3, 7, 10, 11, 20),
                 };
                 DateTime tBefore0 = times[0].AddMinutes(-1);
-                DateTime tAfter0= times[0].AddMinutes(1);
+                DateTime tAfter0 = times[0].AddMinutes(1);
 
                 DateTime tBefore1 = times[1].AddMinutes(-1);
                 DateTime tAfter1 = times[1].AddMinutes(1);
@@ -122,6 +122,59 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             for (int i = 0; i < expected.Length; i++)
             {
                 Assert.Equal(expected[i].FunctionInstanceId, recent[i].FunctionInstanceId);
+            }
+        }
+
+        [Fact]
+        public async Task LogStart()
+        {
+            // Make some very precise writes and verify we read exactly what we'd expect.
+
+            var table = GetNewLoggingTable();
+            try
+            {
+                ILogWriter writer = LogFactory.NewWriter("c1", table);
+                ILogReader reader = LogFactory.NewReader(table);
+
+                string Func1 = "alpha";
+
+                var t1a = new DateTime(2010, 3, 6, 10, 11, 20, DateTimeKind.Utc);
+
+                FunctionInstanceLogItem l1 = new FunctionInstanceLogItem
+                {
+                    FunctionInstanceId = Guid.NewGuid(),
+                    FunctionName = Func1,
+                    StartTime = t1a,
+                    LogOutput = "one"
+                    // inferred as Running since no end time.
+                };
+                await writer.AddAsync(l1);
+
+                await writer.FlushAsync();
+                // Start event should exist. 
+
+                var entries = await GetRecentAsync(reader, Func1);
+                Assert.Equal(1, entries.Length);
+                Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
+                Assert.Equal(entries[0].EndTime, null);
+
+                l1.EndTime = l1.StartTime.Add(TimeSpan.FromSeconds(1));
+                l1.Status = FunctionInstanceStatus.CompletedSuccess;
+                await writer.AddAsync(l1);
+
+                await writer.FlushAsync();
+                
+                // Should overwrite the previous row. 
+
+                entries = await GetRecentAsync(reader, Func1);
+                Assert.Equal(1, entries.Length);
+                Assert.Equal(entries[0].Status, FunctionInstanceStatus.CompletedSuccess);
+                Assert.Equal(entries[0].EndTime.Value.DateTime, l1.EndTime);
+            }
+            finally
+            {
+                // Cleanup
+                table.DeleteIfExists();
             }
         }
 

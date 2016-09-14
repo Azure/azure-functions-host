@@ -15,17 +15,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         const string PartitionKeyFormat = TableScheme.RecentFuncIndexPK;
         const string RowKeyPrefix = "{0}-{1:D20}-";
         const string RowKeyFormat = "{0}-{1:D20}-{2}"; // functionName, timeBucket(descending), salt
-
-        // Have a salt value for writing to avoid collisions since timeBucket is not gauranteed to be unique
-        // when many functions are quickly run within a single time tick. 
-        static int _salt;
-
+        
         internal static RecentPerFuncEntity New(string containerName, FunctionInstanceLogItem item)
         {
             return new RecentPerFuncEntity
             {
                 PartitionKey = PartitionKeyFormat,
-                RowKey = RowKeyTimeStampDescending(item.FunctionName, item.StartTime),
+                RowKey = RowKeyTimeStampDescending(item.FunctionName, item.StartTime, item.FunctionInstanceId),
 
                 FunctionName = item.FunctionName,
                 DisplayName = item.GetDisplayTitle(),
@@ -70,13 +66,14 @@ namespace Microsoft.Azure.WebJobs.Logging
             return rowKey;
         }
 
-        internal static string RowKeyTimeStampDescending(string functionName, DateTime startTime)
+        // Salt must be deterministic. 
+        internal static string RowKeyTimeStampDescending(string functionName, DateTime startTime, Guid salt)
         {
             var x = (DateTime.MaxValue.Ticks - startTime.Ticks);
 
             // Need Salt since timestamp may not be unique
-            int salt = Interlocked.Increment(ref _salt);
-            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName), x, salt);
+            int salt2 = salt.GetHashCode();
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName), x, salt2);
             return rowKey;
         }
 

@@ -3,11 +3,13 @@
 
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage.Table;
+using System.Collections;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -35,11 +37,11 @@ namespace Microsoft.Azure.WebJobs.Logging
         object _lock = new object();
 
         // Track for batching. 
-        List<InstanceTableEntity> _instances = new List<InstanceTableEntity>();
-        List<RecentPerFuncEntity> _recents = new List<RecentPerFuncEntity>();
-        List<FunctionDefinitionEntity> _funcDefs = new List<FunctionDefinitionEntity>();
+        EntityCollection<InstanceTableEntity> _instances = new EntityCollection<InstanceTableEntity>();
+        EntityCollection<RecentPerFuncEntity> _recents = new EntityCollection<RecentPerFuncEntity>();
+        EntityCollection<FunctionDefinitionEntity> _funcDefs = new EntityCollection<FunctionDefinitionEntity>();
 
-        Dictionary<string, TimelineAggregateEntity> _timespan = new Dictionary<string, TimelineAggregateEntity>();
+        EntityCollection<TimelineAggregateEntity> _timespan = new EntityCollection<TimelineAggregateEntity>();
 
         // Container is common shared across all log writer instances 
         static ContainerActiveLogger _container;
@@ -161,34 +163,35 @@ namespace Microsoft.Azure.WebJobs.Logging
                     _funcDefs.Add(FunctionDefinitionEntity.New(item.FunctionName));
                 }
             }
-
-            if (!item.IsCompleted())
-            {
-                return;
-            }
-
+                   
+            // Both Start and Completed log here. Completed will overwrite a Start entry. 
             lock (_lock)
             {
                 _instances.Add(InstanceTableEntity.New(item));
                 _recents.Add(RecentPerFuncEntity.New(_containerName, item));
             }
 
-            // Time aggregate is flushed later. 
-            // Don't flush until we've moved onto the next interval. 
+            if (item.IsCompleted())
             {
-                var rowKey = TimelineAggregateEntity.RowKeyTimeInterval(item.FunctionName, item.StartTime, _uniqueId);
-
-                lock(_lock)
+                // For completed items, aggregate total passed and failed within a time bucket. 
+                // Time aggregate is flushed later. 
+                // Don't flush until we've moved onto the next interval. 
                 {
-                    TimelineAggregateEntity x;
-                    if (!_timespan.TryGetValue(rowKey, out x))
+                    var newEntity = TimelineAggregateEntity.New(_containerName, item.FunctionName, item.StartTime, _uniqueId);
+                    lock (_lock)
                     {
-                        // Can we flush the old counters?
-                        x = TimelineAggregateEntity.New(_containerName, item.FunctionName, item.StartTime, _uniqueId);
-                        _timespan[rowKey] = x;
+                        // If we already have an entity at this time slot (specified by rowkey), then use that so that 
+                        // we update the existing counters. 
+                        var existingEntity = _timespan.GetFromRowKey(newEntity.RowKey);
+                        if (existingEntity == null)
+                        {
+                            _timespan.Add(newEntity);
+                            existingEntity = newEntity;
+                        }
+
+                        Increment(item, existingEntity);
                     }
-                    Increment(item, x);
-                }
+                }           
             }
 
             // Flush every 100 items, maximize with tables. 
@@ -205,12 +208,12 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             lock (_lock)
             {
-                foreach (var kv in _timespan)
+                foreach (var entity in _timespan)
                 {
-                    long thisBucket = TimeBucket.ConvertToBucket(kv.Value.Timestamp.DateTime);
+                    long thisBucket = TimeBucket.ConvertToBucket(entity.Timestamp.DateTime);
                     if ((thisBucket < currentBucket) || always)
                     {
-                        flush.Add(kv.Value);
+                        flush.Add(entity);
                     }
                 }
 
@@ -329,6 +332,59 @@ namespace Microsoft.Azure.WebJobs.Logging
 
 
             await Task.WhenAll(t);
-        }    
+        }
+
+        // Collection where adding in the same RowKey replaces a previous entry with that key. 
+        // This is single-threaded. Caller must lock. 
+        // All entities in this collection must be within the same partition. 
+        private class EntityCollection<T>  : IEnumerable<T> where T : TableEntity 
+        {
+            // Ordering doesn't matter since azure tables will order them for us. 
+            private Dictionary<string, T> _map = new Dictionary<string, T>();
+
+            public void Add(T entry)
+            {                
+                string row = entry.RowKey;
+                _map[row] = entry;                
+            }
+
+            public int Count
+            {
+                get { return _map.Count; }
+            }
+
+            public T[] ToArray()
+            {
+                return _map.Values.ToArray();
+            }
+
+            public void Clear()
+            {
+                _map.Clear();
+            }
+
+            // Get existing entity at this rowkey, or return null.
+            public T GetFromRowKey(string rowKey)
+            {
+                T entity;
+                _map.TryGetValue(rowKey, out entity);
+                return entity;
+            }
+
+            internal void Remove(string rowKey)
+            {
+                _map.Remove(rowKey);
+            }
+
+            public IEnumerator<T> GetEnumerator()
+            {
+                return _map.Values.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return _map.Values.GetEnumerator();
+            }
+        }
     }    
 }
