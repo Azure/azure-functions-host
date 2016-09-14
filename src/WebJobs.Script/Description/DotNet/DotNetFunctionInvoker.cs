@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Kick off the package restore and return.
             // Any errors will be logged in RestorePackagesAsync
             RestorePackagesAsync(true)
-                .ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted);
+                .ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         private async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (functionResult is Task)
             {
-                functionResult = await ((Task)functionResult).ContinueWith(t => GetTaskResult(t));
+                functionResult = await ((Task)functionResult).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
             }
 
             if (functionResult != null)

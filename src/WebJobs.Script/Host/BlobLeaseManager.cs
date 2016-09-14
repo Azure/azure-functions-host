@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     _processingLease = false;
-                });
+                }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         private async Task AcquireOrRenewLeaseAsync()

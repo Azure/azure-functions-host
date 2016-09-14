@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // We'll give the factory some time to process cancellation, 
             // then dispose of our token
-            Task.Delay(100000)
+            Task.Delay(30000)
                 .ContinueWith(t =>
                 {
                     try
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     catch
                     {
                     }
-                });
+                }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         public TaskAwaiter<MethodInfo> GetAwaiter()

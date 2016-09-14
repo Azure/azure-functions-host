@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (_traceWriter != null)
                     {
-                        string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3})", 
+                        string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3})",
                             newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString());
                         _traceWriter.Info(message);
                     }
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script
                                 {
                                     t.Exception.Handle(e => true);
                                 }
-                            });
+                            }, TaskContinuationOptions.ExecuteSynchronously);
                     }
 
                     // Wait for a short period of time before restarting to
