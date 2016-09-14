@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using Xunit;
@@ -26,8 +28,23 @@ public void Run(){
             var diagnostic = diagnostics.FirstOrDefault(d => string.Compare(d.Id, DotNetConstants.InvalidFileMetadataReferenceCode) == 0);
 
             Assert.NotNull(diagnostic);
-            Assert.Equal("The reference 'System.Runtime.dll' is invalid. If you are attempting to add a framework reference, please remove the '.dll' file extension.", 
+            Assert.Equal("The reference 'System.Runtime.dll' is invalid. If you are attempting to add a framework reference, please remove the '.dll' file extension.",
                 diagnostic.GetMessage());
+        }
+
+        [Fact]
+        public void Compilation_WithErrors_HasExpectedDiagnostics()
+        {
+            string code = @"
+public void Run(){
+  invalid.SomeMethod();
+}";
+            Script<object> script = CSharpScript.Create(code);
+            var compilation = new CSharpCompilation(script.GetCompilation());
+
+            ImmutableArray<Diagnostic> diagnostics = compilation.GetDiagnostics();
+
+            Assert.Equal(1, diagnostics.Count());
         }
     }
 }
