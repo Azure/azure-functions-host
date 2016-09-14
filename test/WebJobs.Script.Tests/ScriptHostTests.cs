@@ -448,7 +448,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             Assert.Null(scriptConfig.FunctionTimeout);
 
-            config["timeout"] = "00:00:30";
+            config["functionTimeout"] = "00:00:30";
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.FunctionTimeout);
@@ -494,11 +494,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
 
-            config["timeout"] = "00:05:01";
+            config["functionTimeout"] = "00:05:01";
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TimeSpan.FromSeconds(301), scriptConfig.FunctionTimeout);
 
-            config["timeout"] = "00:00:00.9";
+            config["functionTimeout"] = "00:00:00.9";
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(TimeSpan.FromMilliseconds(900), scriptConfig.FunctionTimeout);
         }
@@ -515,10 +515,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
 
-                config["timeout"] = "00:05:01";
+                config["functionTimeout"] = "00:05:01";
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
 
-                config["timeout"] = "00:00:00.9";
+                config["functionTimeout"] = "00:00:00.9";
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
             }
             finally

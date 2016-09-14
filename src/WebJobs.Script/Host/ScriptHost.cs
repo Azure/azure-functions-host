@@ -844,7 +844,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            if (config.TryGetValue("timeout", out value))
+            if (config.TryGetValue("functionTimeout", out value))
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
 
