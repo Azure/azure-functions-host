@@ -15,6 +15,27 @@ namespace Microsoft.Azure.WebJobs.Script
             return new ConditionalTraceWriter(traceWriter, predicate);
         }
 
+        public static TraceWriter Apply(this TraceWriter traceWriter, IDictionary<string, object> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+
+            Action<TraceEvent> interceptor = (t) =>
+            {
+                // apply the properties
+                foreach (var property in properties)
+                {
+                    if (!t.Properties.ContainsKey(property.Key))
+                    {
+                        t.Properties.Add(property.Key, property.Value);
+                    }
+                }
+            };
+            return new InterceptingTraceWriter(traceWriter, interceptor);
+        }
+
         public static void Verbose(this TraceWriter traceWriter, string message, IDictionary<string, object> properties)
         {
             TraceEvent traceEvent = CreateEvent(message, TraceLevel.Verbose, properties);

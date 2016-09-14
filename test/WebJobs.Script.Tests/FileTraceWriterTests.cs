@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_AppliesLevelFilter()
+        public void Trace_WritesExpectedLogs()
         {
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
@@ -175,6 +175,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceWriter.Warning("Test Warning");
             traceWriter.Error("Test Error");
 
+            // trace a system event - expect it to be ignored
+            var properties = new Dictionary<string, object>
+            {
+                { ScriptConstants.TracePropertyIsSystemTraceKey, true }
+            };
+            traceWriter.Info("Test System", properties);
+
             traceWriter.Flush();
 
             string logFile = directory.EnumerateFiles().First().FullName;
@@ -183,6 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(text.Contains("Test Warning"));
             Assert.True(text.Contains("Test Info"));
             Assert.False(text.Contains("Test Verbose"));
+            Assert.False(text.Contains("Test System"));
         }
 
         private void WriteLogs(string logFilePath, int numLogs)

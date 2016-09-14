@@ -327,24 +327,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return function;
         }
 
-        protected override void OnInitializeConfig(JobHostConfiguration config)
+        protected override void OnInitializeConfig(ScriptHostConfiguration config)
         {
             base.OnInitializeConfig(config);
 
             // Add our WebHost specific services
-            config.AddService<IMetricsLogger>(_metricsLogger);
+            var hostConfig = config.HostConfig;
+            hostConfig.AddService<IMetricsLogger>(_metricsLogger);
+
+            var systemEventGenerator = hostConfig.GetService<ISystemEventGenerator>() ?? new SystemEventGenerator();
+            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, TraceLevel.Verbose);
+            if (config.TraceWriter != null)
+            {
+                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
+            }
+            else
+            {
+                config.TraceWriter = systemTraceWriter;
+            }
 
             // Add our exception handler
-            config.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
+            hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
 
             // Register the new "FastLogger" for Dashboard support
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
             if (dashboardString != null)
             {
                 var fastLogger = new FastLogger(dashboardString);
-                config.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+                hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
             }
-            config.DashboardConnectionString = null; // disable slow logging
+            hostConfig.DashboardConnectionString = null; // disable slow logging
         }
 
         protected override void OnHostStarted()

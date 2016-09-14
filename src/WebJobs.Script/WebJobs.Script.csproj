@@ -384,6 +384,7 @@
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
+    <Compile Include="Diagnostics\InterceptingTraceWriter.cs" />
     <Compile Include="Diagnostics\ITraceWriterFactory.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
