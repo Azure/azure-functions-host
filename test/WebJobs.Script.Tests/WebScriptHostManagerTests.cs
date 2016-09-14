@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -201,22 +202,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }).GetAwaiter().GetResult();
 
                 // verify startup system trace logs
-                string events = string.Join("\r\n", EventGenerator.Events);
-                string[] expectedLogs = new string[]
+                string[] expectedPatterns = new string[]
                 {
                     "Info Reading host configuration file",
-                    "Info Host lock lease acquired by instance ID",
+                    "Info Host lock lease acquired by instance ID '(.+)'",
                     "Info Function 'Excluded' is marked as excluded",
-                    "Info Generating",
-                    "Info Starting Host (HostId=function-tests-node, Version=1.0.0.0",
+                    @"Info Generating ([0-9]+) job function\(s\)",
+                    @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, Debug=False\)",
                     "Info WebJobs.Indexing Found the following functions:",
                     "Verbose The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
                     "Error The following 1 functions are in error:"
                 };
-                foreach (string expectedLog in expectedLogs)
+                foreach (string pattern in expectedPatterns)
                 {
-                    Assert.True(EventGenerator.Events.Any(p => p.StartsWith(expectedLog)), $"Expected trace event {expectedLog} not found.");
+                    Assert.True(EventGenerator.Events.Any(p => Regex.IsMatch(p, pattern)), $"Expected trace event {pattern} not found.");
                 }
             }
 
