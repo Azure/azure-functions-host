@@ -153,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public async Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
             IStorageAccount account = null;
+            var isPrimary = true;
             if (connectionStringName == ConnectionStringNames.Dashboard)
             {
                 account = DashboardAccount;
@@ -168,13 +169,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (!string.IsNullOrEmpty(connectionString))
                 {
                     account = ParseAccount(connectionStringName, connectionString);
+                    isPrimary = false;
                 }
             }
 
             if (account != null)
             {
                 // On the first attempt, this will make a network call to verify the credentials work.
-                await _storageCredentialsValidator.ValidateCredentialsAsync(account, cancellationToken);
+                await _storageCredentialsValidator.ValidateCredentialsAsync(account, isPrimary, cancellationToken);
             }
 
             return account;

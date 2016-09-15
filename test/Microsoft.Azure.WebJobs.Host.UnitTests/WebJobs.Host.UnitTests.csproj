@@ -159,6 +159,7 @@
     <Compile Include="ConverterManagerTests.cs" />
     <Compile Include="DefaultExtensionRegistryTests.cs" />
     <Compile Include="EmptyFunctionIndexProvider.cs" />
+    <Compile Include="Executors\DefaultStorageCredentialsValidatorTests.cs" />
     <Compile Include="Executors\DefaultJobActivatorTests.cs" />
     <Compile Include="Executors\DefaultStorageAccountProviderTests.cs" />
     <Compile Include="Executors\DynamicHostIdProviderTests.cs" />

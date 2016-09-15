@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IStorageCredentialsValidator
     {
-        Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken);
+        Task ValidateCredentialsAsync(IStorageAccount account, bool isPrimaryAccount, CancellationToken cancellationToken);
     }
 }

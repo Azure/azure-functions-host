@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             Mock<IStorageCredentialsValidator> validatorMock = new Mock<IStorageCredentialsValidator>(
                 MockBehavior.Strict);
-            validatorMock.Setup(v => v.ValidateCredentialsAsync(parsedAccount, It.IsAny<CancellationToken>()))
+            validatorMock.Setup(v => v.ValidateCredentialsAsync(parsedAccount, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                          .Returns(Task.FromResult(0))
                          .Verifiable();
             IStorageCredentialsValidator validator = validatorMock.Object;
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IStorageAccountParser parser = CreateParser(services, connectionStringName, connectionString, parsedAccount);
             Mock<IStorageCredentialsValidator> validatorMock = new Mock<IStorageCredentialsValidator>(
                 MockBehavior.Strict);
-            validatorMock.Setup(v => v.ValidateCredentialsAsync(parsedAccount, It.IsAny<CancellationToken>()))
+            validatorMock.Setup(v => v.ValidateCredentialsAsync(parsedAccount, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Throws(expectedException);
             IStorageCredentialsValidator validator = validatorMock.Object;
             IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         private static IStorageCredentialsValidator CreateValidator(IStorageAccount account)
         {
             Mock<IStorageCredentialsValidator> mock = new Mock<IStorageCredentialsValidator>(MockBehavior.Strict);
-            mock.Setup(v => v.ValidateCredentialsAsync(account, It.IsAny<CancellationToken>()))
+            mock.Setup(v => v.ValidateCredentialsAsync(account, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0));
             return mock.Object;
         }

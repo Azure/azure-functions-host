@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 
@@ -16,8 +18,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
         private readonly HashSet<StorageCredentials> _validatedCredentials = new HashSet<StorageCredentials>();
+        private StorageCredentials _primaryCredentials = null;
 
-        public async Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
+        public async Task ValidateCredentialsAsync(IStorageAccount account, bool isPrimaryAccount, CancellationToken cancellationToken)
         {
             if (account == null)
             {
@@ -27,17 +30,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             StorageCredentials credentials = account.Credentials;
 
             // Avoid double-validating the same account and credentials.
-            if (_validatedCredentials.Contains(credentials))
+            if ((!isPrimaryAccount && _validatedCredentials.Contains(credentials)) || _primaryCredentials == credentials)
             {
                 return;
             }
 
-            await ValidateCredentialsAsyncCore(account, cancellationToken);
+            await ValidateCredentialsAsyncCore(account, isPrimaryAccount, cancellationToken);
             _validatedCredentials.Add(credentials);
         }
 
-        private static async Task ValidateCredentialsAsyncCore(IStorageAccount account,
-            CancellationToken cancellationToken)
+        private async Task ValidateCredentialsAsyncCore(IStorageAccount account,
+            bool isPrimaryAccount, CancellationToken cancellationToken)
         {
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
@@ -56,8 +59,37 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             catch
             {
                 string message = String.Format(CultureInfo.CurrentCulture,
-                    "The account credentials for '{0}' are incorrect.", account.Credentials.AccountName);
+                    "Invalid storage account '{0}'. Please make sure your credentials are correct.",
+                    account.Credentials.AccountName);
                 throw new InvalidOperationException(message);
+            }
+
+            if (isPrimaryAccount)
+            {
+                // Primary storage accounts require Queues
+                IStorageQueueClient queueClient = account.CreateQueueClient();
+                IStorageQueue queue = queueClient.GetQueueReference("name");
+                try
+                {
+                    await queue.ExistsAsync(cancellationToken);
+                    _primaryCredentials = account.Credentials;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (StorageException exception)
+                {
+                    WebException webException = exception.GetBaseException() as WebException;
+                    if (webException != null && webException.Status == WebExceptionStatus.NameResolutionFailure)
+                    {
+                        string message = String.Format(CultureInfo.CurrentCulture,
+                            "Invalid storage account '{0}'. Primary storage accounts must be general "
+                            + "purpose accounts and not restricted blob storage accounts.", account.Credentials.AccountName);
+                        throw new InvalidOperationException(message);
+                    }
+                    throw;
+                }
             }
         }
     }
