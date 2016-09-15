@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_instanceId == null)
                 {
-                    _instanceId = Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID")
+                    _instanceId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)
                         ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
 
                     _instanceId = _instanceId.Substring(0, 32);
@@ -1029,7 +1029,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool IsDynamicSku()
         {
-            string hostingPlan = Environment.GetEnvironmentVariable("WEBSITE_SKU");
+            string hostingPlan = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku);
             return hostingPlan != null && hostingPlan == "Dynamic";
         }
 

@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static ScriptHostConfiguration GetScriptHostConfiguration(string scriptPath, string logPath)
         {
-            string home = Environment.GetEnvironmentVariable("HOME");
+            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             if (!string.IsNullOrEmpty(home))
             {
                 // Create the tools folder if it doesn't exist
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
 
             // If running on Azure Web App, derive the host ID from the site name
-            string hostId = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
+            string hostId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
             if (!String.IsNullOrEmpty(hostId))
             {
                 // Truncate to the max host name length if needed

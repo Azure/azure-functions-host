@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID"));
+                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId));
             }
         }
 
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _standbyMode.Value;
                 }
-                if (Environment.GetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE") == "1")
+                if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
                 {
                     return true;
                 }

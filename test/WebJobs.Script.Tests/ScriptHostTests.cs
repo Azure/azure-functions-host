@@ -476,13 +476,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
             }
             finally
             {
-                Environment.SetEnvironmentVariable("WEBSITE_SKU", null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
         }
 
@@ -513,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
                 config["functionTimeout"] = "00:05:01";
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
@@ -523,7 +523,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             finally
             {
-                Environment.SetEnvironmentVariable("WEBSITE_SKU", null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
         }
 

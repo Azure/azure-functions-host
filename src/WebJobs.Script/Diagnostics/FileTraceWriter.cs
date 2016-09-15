@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             object value;
-            if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyIsSystemTraceKey, out value) 
+            if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyIsSystemTraceKey, out value)
                 && value is bool && (bool)value)
             {
                 // we don't want to write system traces to the user trace files
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static string GetInstanceId()
         {
-            string instanceId = System.Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID");
+            string instanceId = System.Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
             if (string.IsNullOrEmpty(instanceId))
             {
                 instanceId = Environment.MachineName;

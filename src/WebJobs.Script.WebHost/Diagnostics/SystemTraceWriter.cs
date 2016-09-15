@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public SystemTraceWriter(ISystemEventGenerator eventGenerator, TraceLevel level) : base(level)
         {
-            _appName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
+            _appName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
             _subscriptionId = GetSubscriptionId();
             _eventGenerator = eventGenerator;
         }
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private static string GetSubscriptionId()
         {
-            string ownerName = Environment.GetEnvironmentVariable("WEBSITE_OWNER_NAME") ?? string.Empty;
+            string ownerName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
             if (!string.IsNullOrEmpty(ownerName))
             {
                 int idx = ownerName.IndexOf('+');

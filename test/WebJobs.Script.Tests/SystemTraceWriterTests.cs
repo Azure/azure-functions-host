@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public SystemTraceWriterTests()
         {
             _subscriptionId = "e3235165-1600-4819-85f0-2ab362e909e4";
-            Environment.SetEnvironmentVariable("WEBSITE_OWNER_NAME", $"{_subscriptionId}+westuswebspace");
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
 
             _websiteName = "functionstest";
-            Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", _websiteName);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
 
             _mockEventGenerator = new Mock<ISystemEventGenerator>(MockBehavior.Strict);
             _traceWriter = new SystemTraceWriter(_mockEventGenerator.Object, TraceLevel.Verbose);
@@ -71,8 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
-            Environment.SetEnvironmentVariable("WEBSITE_OWNER_NAME", null);
-            Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", null);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, null);
         }
     }
 }

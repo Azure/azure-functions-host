@@ -29,14 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (new TestEnvironment())
             {
-                Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.Equal(true, WebScriptHostManager.InStandbyMode);
 
-                Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "0");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
-                Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
         }
@@ -74,19 +74,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 T next = default(T);
                 try
                 {
-                    Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
                     var settings = GetWebHostSettings();
                     prev = func(settings);
                     Assert.NotNull(prev);
 
-                    Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "0");
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                     current = func(settings);
                     Assert.NotNull(current);
                     Assert.NotSame(prev, current);
 
                     // test only set one way
-                    Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", "1");
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                     next = func(settings);
                     Assert.NotNull(next);
                     Assert.Same(next, current);
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private WebHostSettings GetWebHostSettings()
         {
-            var home = Environment.GetEnvironmentVariable("HOME");
+            var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             return new WebHostSettings
             {
                 IsSelfHost = true,
@@ -143,11 +143,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public TestEnvironment()
             {
-                _prevHome = Environment.GetEnvironmentVariable("HOME");
+                _prevHome = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
 
                 _home = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
                 Directory.CreateDirectory(_home);
-                Environment.SetEnvironmentVariable("HOME", _home);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _home);
 
                 Reset();
             }
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Reset();
 
-                Environment.SetEnvironmentVariable("HOME", _prevHome);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _prevHome);
                 try
                 {
                     Directory.Delete(_home, recursive: true);
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private void Reset()
             {
                 WebScriptHostManager.ResetStandbyMode();
-                Environment.SetEnvironmentVariable("WEBSITE_PLACEHOLDER_MODE", null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
             }
         }
     }

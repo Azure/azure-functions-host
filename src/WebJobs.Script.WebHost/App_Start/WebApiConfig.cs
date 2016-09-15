@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static void PrependFoldersToEnvironmentPath()
         {
             // Only do this when %HOME% is defined (normally on Azure)
-            string home = Environment.GetEnvironmentVariable("HOME");
+            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             if (!string.IsNullOrEmpty(home))
             {
                 // Create the tools folder if it doesn't exist
@@ -111,11 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             WebHostSettings settings = new WebHostSettings();
 
-            string home = Environment.GetEnvironmentVariable("HOME");
+            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
-                settings.ScriptPath = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
+                settings.ScriptPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
             }

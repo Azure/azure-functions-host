@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string NugetPathEnvironmentKey = "AzureWebJobs_NuGetPath";
         private const string NuGetFileName = "nuget.exe";
-        
+
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _traceWriter.Info("Starting NuGet restore");
 
                 process.Start();
-                
+
                 process.BeginErrorReadLine();
                 process.BeginOutputReadLine();
             }
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (!string.IsNullOrEmpty(kuduPath))
                 {
                     path = Path.Combine(kuduPath, "bin\\scripts", NuGetFileName);
-                }                
+                }
             }
 
             // Return the resolved value or expect NuGet.exe to be present in the path.
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public static bool RequiresPackageRestore(string functionPath)
         {
             string projectFilePath = Path.Combine(functionPath, DotNetConstants.ProjectFileName);
-            
+
             if (!File.Exists(projectFilePath))
             {
                 // If there's no project.json, we can just return from here 
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static string GetNugetPackagesPath()
         {
             string nugetHome = null;
-            string home = Environment.GetEnvironmentVariable("HOME");
+            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             if (!string.IsNullOrEmpty(home))
             {
                 // We're hosted in Azure

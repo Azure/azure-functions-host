@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _runPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             _lockFilePath = Path.Combine(_runPath, DotNetConstants.ProjectLockFileName);
-            _oldHomeEnv = Environment.GetEnvironmentVariable("HOME");
+            _oldHomeEnv = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             _targetAssemblyPath = Path.Combine(_runPath, "data\\Functions\\packages\\nuget\\Test.Package\\1.0.0\\lib\\net45");
             _targetAssemblyFilePath = Path.Combine(_targetAssemblyPath, Path.GetFileName(this.GetType().Assembly.Location));
             Directory.CreateDirectory(_targetAssemblyPath);
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Create our Lock file using the current assembly as the target
             File.WriteAllText(_lockFilePath, string.Format(Resources.ProjectLockFileFormatString, Path.GetFileName(this.GetType().Assembly.Location)));
 
-            Environment.SetEnvironmentVariable("HOME", _runPath);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _runPath);
         }
 
         public void Dispose()
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.Delete(_runPath, true);
             }
 
-            Environment.SetEnvironmentVariable("HOME", _oldHomeEnv);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _oldHomeEnv);
         }
 
         [Fact]
