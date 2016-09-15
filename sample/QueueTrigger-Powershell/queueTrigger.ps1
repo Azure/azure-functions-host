@@ -3,5 +3,10 @@ $json = $in | ConvertFrom-Json
 
 Write-Output "PowerShell script processed queue message '$json'"
 
-$entity = [string]::Format('{{ "Status": 0, "Title": "PowerShell Table Entity for message {0}" }}', $json.id)
+$title = [string]::Format("PowerShell Table Entity for message {0}", $json.id)
+$entity = [PSObject]@{
+  Status = 0
+  Title = $title
+}
+$entity = $entity | ConvertTo-Json
 $entity | Out-File -Encoding Ascii $output
