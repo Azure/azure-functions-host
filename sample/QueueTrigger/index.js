@@ -4,7 +4,5 @@
     context.log('DequeueCount=%s', context.bindingData.dequeueCount);
     context.log('InsertionTime=%s', context.bindingData.insertionTime);
 
-    context.done(null, {
-        receipt: workItem
-    });
+    context.done(null, workItem);
 }

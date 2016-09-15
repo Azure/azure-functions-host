@@ -9,7 +9,7 @@
         {
             "type": "mobileTable",
             "direction": "out",
-            "name": "item",
+            "name": "$return",
             "tableName": "Item",
             "connection": "AzureWebJobs_TestMobileUri"
         }

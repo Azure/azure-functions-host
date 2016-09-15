@@ -12,8 +12,5 @@
 open System
 open Microsoft.Azure.WebJobs.Host
 
-let Run (input: string, messageProperties: byref<string>, log: TraceWriter) =
-
-    let json = """{"message":"Hello from F# ! ","location":"fsharp.org"}"""
-
-    messageProperties <- json
+let Run (input: string, log: TraceWriter) =
+    """{"message":"Hello from F# ! ","location":"fsharp.org"}"""

@@ -8,7 +8,7 @@
         },
         {
             "type": "blob",
-            "name": "receipt",
+            "name": "$return",
             "direction": "out",
             "path": "samples-workitems/{id}"
         }

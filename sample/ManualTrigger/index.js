@@ -6,7 +6,5 @@ module.exports = function (context, input) {
     var blobIn = context.bindings.blobIn;
     context.log('First: %s Last:%s', blobIn.first, blobIn.last);
 
-    context.done(null, {
-        blobOut: util.format(blobIn.first, blobIn.last)
-    });
+    context.done(null, util.format(blobIn.first, blobIn.last));
 }

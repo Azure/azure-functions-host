@@ -10,13 +10,10 @@
 //----------------------------------------------------------------------------------------
 // This is the implementation of the function 
 
-
 open System
 open Microsoft.Azure.WebJobs.Host
 
-// Had to add the <Out> attribute here to make the bindings happy, without it, the type validation fails
-// at indexing time. Need to see if there's something we can do...
-let Run(input: string, item: byref<string>, log: TraceWriter) =
+let Run(input: string, log: TraceWriter) =
     log.Info "F# ApiHub trigger function processed a file..."
-    item <- input
+    input
 

@@ -9,7 +9,7 @@
         },
         {
             "type": "sendGrid",
-            "name": "message",
+            "name": "$return",
             "direction": "out",
             "to": "{CustomerEmail}"
         }

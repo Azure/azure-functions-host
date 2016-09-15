@@ -2,10 +2,10 @@
     context.log('Queue triggerd Node.js function input:', input);
     context.log('Sending Template Notification...');
 
-    context.bindings.notification = {
+    var notification = {
         message: "Hello from Node! ",
         location:"Redmond"
     };
 
-    context.done();
+    context.done(null, notification);
 }

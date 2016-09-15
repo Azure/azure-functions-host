@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             parameters = ProcessInputParameters(parameters);
 
-            object functionResult = function.Invoke(null, parameters);
+            object result = function.Invoke(null, parameters);
 
             // after the function executes, we have to copy values back into the original
             // array to ensure object references are maintained (since we took a copy above)
@@ -216,14 +216,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 originalParameters[i] = parameters[i];
             }
 
-            if (functionResult is Task)
+            if (result is Task)
             {
-                functionResult = await ((Task)functionResult).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
+                result = await ((Task)result).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
             }
 
-            if (functionResult != null)
+            if (result != null)
             {
-                _resultProcessor(function, parameters, systemParameters, functionResult);
+                _resultProcessor(function, parameters, systemParameters, result);
+            }
+
+            // if a return value binding was specified, copy the return value
+            // into the output binding slot (by convention the last parameter)
+            var returnValueBinding = Metadata.Bindings.SingleOrDefault(p => p.IsReturn);
+            if (returnValueBinding != null)
+            {
+                originalParameters[originalParameters.Length - 1] = result;
             }
         }
 

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -102,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
+                ParameterDescriptor descriptor = null;
                 foreach (var parameter in parameters)
                 {
                     // Is it the trigger parameter?
@@ -119,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             parameterType = parameterType.GetElementType();
                         }
 
-                        var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
+                        descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
                         var binding = bindings.FirstOrDefault(b => string.Compare(b.Metadata.Name, parameter.Name, StringComparison.Ordinal) == 0);
                         if (binding != null)
                         {
@@ -162,6 +164,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequestMessage)));
                 }
 
+                if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))
+                {
+                    // If a return value binding has been specified, set up an output
+                    // binding to map it to. By convention, this is set up as the last
+                    // parameter.
+                    descriptors.Add(descriptor);
+                }
+
                 return descriptors;
             }
             catch (AggregateException exc)
@@ -179,6 +189,41 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // setup the descriptor with the default parameters
             methodAttributes.Clear();
             return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+        }
+
+        internal static bool TryCreateReturnValueParameterDescriptor(Type functionReturnType, IEnumerable<FunctionBinding> bindings, out ParameterDescriptor descriptor)
+        {
+            descriptor = null;
+
+            var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
+            if (returnBinding == null)
+            {
+                return false;
+            }
+
+            if (typeof(Task).IsAssignableFrom(functionReturnType))
+            {
+                if (!(functionReturnType.IsGenericType && functionReturnType.GetGenericTypeDefinition() == typeof(Task<>)))
+                {
+                    throw new InvalidOperationException($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {functionReturnType.Name}.");
+                }
+                functionReturnType = functionReturnType.GetGenericArguments()[0];
+            }
+
+            var byRefType = functionReturnType.MakeByRefType();
+            descriptor = new ParameterDescriptor(ScriptConstants.SystemReturnParameterName, byRefType);
+            descriptor.Attributes |= ParameterAttributes.Out;
+
+            Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
+            if (customAttributes != null)
+            {
+                foreach (var customAttribute in customAttributes)
+                {
+                    descriptor.CustomAttributes.Add(customAttribute);
+                }
+            }
+
+            return true;
         }
     }
 }

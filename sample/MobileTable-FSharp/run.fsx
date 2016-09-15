@@ -19,11 +19,9 @@ type Item =
       ProcessedAt : DateTimeOffset
       CreatedAt : DateTimeOffset }
 
-let Run (input : string, newItem : byref<Item>, log: TraceWriter) = 
-    let item = 
-        { Text = "Hello from F#! " + input
-          Id = "cew02"
-          IsProcessed = true
-          ProcessedAt = System.DateTimeOffset.Now
-          CreatedAt = System.DateTimeOffset.Now }
-    newItem <- item
+let Run (input : string, log: TraceWriter) = 
+    { Text = "Hello from F#! " + input
+      Id = "cew02"
+      IsProcessed = true
+      ProcessedAt = System.DateTimeOffset.Now
+      CreatedAt = System.DateTimeOffset.Now }

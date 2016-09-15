@@ -7,12 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -71,6 +71,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.CallAsync("MobileTableTable", arguments);
 
             await WaitForMobileTableRecordAsync("Item", id);
+        }
+
+        [Fact]
+        public async Task MultipleOutputs()
+        {
+            string id1 = Guid.NewGuid().ToString();
+            string id2 = Guid.NewGuid().ToString();
+            string id3 = Guid.NewGuid().ToString();
+
+            JObject input = new JObject
+            {
+                { "Id1", id1 },
+                { "Id2", id2 },
+                { "Id3", id3 }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+            await Fixture.Host.CallAsync("MultipleOutputs", arguments);
+
+            // verify all 3 output blobs were written
+            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            await TestHelpers.WaitForBlobAsync(blob);
+            string blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 1", TestHelpers.RemoveByteOrderMark(blobContent));
+
+            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            await TestHelpers.WaitForBlobAsync(blob);
+            blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 2", TestHelpers.RemoveByteOrderMark(blobContent));
+
+            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            await TestHelpers.WaitForBlobAsync(blob);
+            blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 3", TestHelpers.RemoveByteOrderMark(blobContent));
         }
 
         [Fact]
