@@ -12,9 +12,9 @@
 open System
 open Microsoft.Azure.WebJobs.Host
 
-type Output =  { text : string }
+type Output = { text : string }
 
 let Run (input: string, newItem: byref<obj>, log: TraceWriter) =
-    newItem <- { text = "Hello from F#! " + input }
+    { text = "Hello from F#!" + input }
 
 

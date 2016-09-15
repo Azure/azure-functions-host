@@ -338,6 +338,7 @@
     <Compile Include="Description\DotNet\FunctionAssemblyLoaderTests.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionInvokerTests.cs" />
     <Compile Include="Description\DotNet\PackageManagerTests.cs" />
+    <Compile Include="Description\DotNet\DotNetFunctionDescriptorProviderTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
@@ -494,6 +495,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\CSharp\ManualTrigger\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\MultipleOutputs\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\MultipleOutputs\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\CSharp\NotificationHubNative\function.json">
@@ -748,6 +755,9 @@
     <None Include="TestScripts\Node\MultipleExports\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\MultipleOutputs\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\NotificationHubNative\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -799,6 +809,9 @@
     <Content Include="TestScripts\Node\MultipleExports\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="TestScripts\Node\MultipleOutputs\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Content Include="TestScripts\Node\NotificationHubNative\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

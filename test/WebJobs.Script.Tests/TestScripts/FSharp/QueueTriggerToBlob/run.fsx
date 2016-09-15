@@ -11,19 +11,12 @@
 // This is the implementation of the function 
 
 open System
-open System.Linq
-open System.Threading.Tasks
-open System.IO
 open Microsoft.Azure.WebJobs.Host
 
-//type WorkItem() =
-//    member val Id = "" with get, set
-
 [<CLIMutable>]
-type WorkItem =
-    { Id : string }
+type WorkItem = { Id : string }
 
-let Run(input: WorkItem, output: byref<string>, log: TraceWriter) = 
+let Run(input: WorkItem, log: TraceWriter) = 
     let json = String.Format("{{ \"id\": \"{0}\" }}", input.Id)    
     log.Info(sprintf "F# script processed queue message '%s'" json)
-    output <- json
+    json

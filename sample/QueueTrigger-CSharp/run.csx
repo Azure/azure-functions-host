@@ -5,9 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 
-public static void Run(Message message, out string result, TraceWriter log)
+public static string Run(Message message, TraceWriter log)
 {
     log.Info($"C# Queue trigger function processed message: {message.Id}");
-
-    result = message.Value;
+    return message.Value;
 }

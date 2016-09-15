@@ -52,6 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        public bool IsReturn
+        {
+            get
+            {
+                return string.Compare(Name, ScriptConstants.SystemReturnParameterBindingName, StringComparison.OrdinalIgnoreCase) == 0;
+            }
+        }
+
         /// <summary>
         /// Gets the raw binding metadata (after name resolution has been applied
         /// to all values).

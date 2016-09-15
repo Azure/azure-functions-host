@@ -21,14 +21,11 @@ type Item() =
     // Mobile table properties
     member val CreatedAt = DateTimeOffset() with get,set
 
-let Run(input: string, item: byref<Item>, log: TraceWriter) =
-    item <-
-        Item(Id = input, 
-             Text = "Hello from F#!",
-             IsProcessed = false,
-             ProcessedAt = DateTimeOffset(),
-             CreatedAt = DateTimeOffset())
-
+let Run(input: string, log: TraceWriter) =
+    let item = Item(Id = input, Text = "Hello from F#!", IsProcessed = false, ProcessedAt = DateTimeOffset(), CreatedAt = DateTimeOffset())
     log.Info(sprintf "Inserting item %s" item.Id)
+    item
+
+    
 
 

@@ -12,8 +12,7 @@
 open System
 open Microsoft.Azure.WebJobs.Host
 
-let Run (input: string, output: byref<string>, log: TraceWriter) =
+let Run (input: string, log: TraceWriter) =
     log.Verbose(sprintf "F# ApiHub trigger function processed a file...");
-
-    output <- input
+    input
 

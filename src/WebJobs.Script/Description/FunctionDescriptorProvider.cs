@@ -181,6 +181,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentException("A valid name must be assigned to the binding.");
             }
+
+            if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
+            {
+                throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
+            }
         }
 
         protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)

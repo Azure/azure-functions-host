@@ -1,8 +1,7 @@
-﻿public static void Run(Input input, string blobIn, out string blobOut, TraceWriter log)
+﻿public static string Run(Input input, string blobIn, TraceWriter log)
 {
     log.Info($"C# manually triggered function called: InId: {input.InId}, OutId: {input.OutId}");
-
-    blobOut = blobIn; 
+    return blobIn; 
 }
 
 public class Input

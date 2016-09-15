@@ -7,7 +7,7 @@
         },
         {
             "type": "notificationHub",
-            "name": "notification",
+            "name": "$return",
             "direction": "out"
         }
     ]

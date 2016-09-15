@@ -7,7 +7,7 @@
         },
         {
             "type": "notificationHub",
-            "name": "messageProperties",
+            "name": "$return",
             "direction": "out"
         }
     ]

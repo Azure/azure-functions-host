@@ -8,7 +8,7 @@
         },
         {
             "type": "blob",
-            "name": "result",
+            "name": "$return",
             "direction": "out",
             "path": "samples-output-csharp/{Id}"
         }
