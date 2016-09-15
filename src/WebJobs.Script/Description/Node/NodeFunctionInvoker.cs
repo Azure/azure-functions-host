@@ -172,15 +172,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
-            // if the function returned binding values via the function result,
-            // apply them to context.bindings
             var bindings = (Dictionary<string, object>)scriptExecutionContext["bindings"];
-            IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
-            if (functionOutputs != null)
+            var returnValueBinding = outputBindings.SingleOrDefault(p => p.Metadata.IsReturn);
+            if (returnValueBinding != null)
             {
-                foreach (var output in functionOutputs)
+                // if there is a $return binding, bind the entire function return to it
+                // if additional output bindings need to be bound, they'll have to use the explicit
+                // context.bindings mechanism to set values, not return value.
+                bindings[ScriptConstants.SystemReturnParameterBindingName] = functionResult;
+            }
+            else
+            {
+                // if the function returned binding values via the function result,
+                // apply them to context.bindings
+                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
+                if (functionOutputs != null)
                 {
-                    bindings[output.Key] = output.Value;
+                    foreach (var output in functionOutputs)
+                    {
+                        bindings[output.Key] = output.Value;
+                    }
                 }
             }
 

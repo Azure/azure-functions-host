@@ -647,6 +647,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task MultipleOutputs()
+        {
+            string id1 = Guid.NewGuid().ToString();
+            string id2 = Guid.NewGuid().ToString();
+            string id3 = Guid.NewGuid().ToString();
+
+            JObject input = new JObject
+            {
+                { "id1", id1 },
+                { "id2", id2 },
+                { "id3", id3 }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+            await Fixture.Host.CallAsync("MultipleOutputs", arguments);
+
+            // verify all 3 output blobs were written
+            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            await TestHelpers.WaitForBlobAsync(blob);
+            string blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 1", blobContent.Trim());
+
+            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            await TestHelpers.WaitForBlobAsync(blob);
+            blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 2", blobContent.Trim());
+
+            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            await TestHelpers.WaitForBlobAsync(blob);
+            blobContent = blob.DownloadText();
+            Assert.Equal("Test Blob 3", blobContent.Trim());
+        }
+
+        [Fact]
         public async Task ApiHubTableEntityIn()
         {
             TestHelpers.ClearFunctionLogs("ApiHubTableEntityIn");

@@ -12,7 +12,6 @@
 open System
 open Microsoft.Azure.WebJobs.Host
 
-let Run (blob: string, output: byref<string>, log: TraceWriter) =
+let Run (blob: string, log: TraceWriter) =
     log.Verbose(sprintf "F# Blob trigger function processed a blob. Blob=%s" blob)
-
-    output <- blob
+    blob

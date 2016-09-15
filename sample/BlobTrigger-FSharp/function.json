@@ -9,7 +9,7 @@
         },
         {
             "type": "blob",
-            "name": "output",
+            "name": "$return",
             "direction": "out",
             "path": "samples-output-fsharp/{name}"
         }

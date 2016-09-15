@@ -7,7 +7,7 @@
         },
         {
             "type": "documentDB",
-            "name": "item",
+            "name": "$return",
             "direction": "out",
             "databaseName": "ItemDb",
             "collectionName": "ItemCollection",

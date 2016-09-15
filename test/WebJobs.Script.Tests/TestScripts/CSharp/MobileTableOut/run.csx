@@ -1,15 +1,22 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 
-public static void Run(string input, out Item item, TraceWriter log)
+public static async Task<Item> Run(string input, TraceWriter log)
 {
-    item = new Item
+    var item = new Item
     {
         Id = input,
         Text = "Hello from C#!"
     };
 
     log.Info($"Inserting item {item.Id}");
+
+    // artificially making this function async to test
+    // async return values
+    await Task.Delay(500);
+
+    return item;
 }
 
 public class Item

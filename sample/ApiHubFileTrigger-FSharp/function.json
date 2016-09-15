@@ -9,7 +9,7 @@
             "name": "input"
         },
         {
-            "name": "output",
+            "name": "$return",
             "type": "apiHubFile",
             "connection": "AzureWebJobsDropBox",
             "direction": "out",
