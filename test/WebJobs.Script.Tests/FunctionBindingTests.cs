@@ -149,5 +149,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);
         }
+
+        [Fact]
+        public void ReadAsCollection_StringArray_WithBOM()
+        {
+            JArray values = new JArray();
+            values.Add("Value1");
+            values.Add("Value2");
+            values.Add("Value3");
+
+            // add the BOM character to the string
+            var json = "\xFEFF" + values.ToString() + "\r\n";
+
+            MemoryStream ms = new MemoryStream();
+            StreamWriter writer = new StreamWriter(ms);
+            writer.Write(json);
+            writer.Flush();
+            ms.Position = 0;
+
+            var collection = FunctionBinding.ReadAsCollection(ms).Cast<JValue>().ToArray();
+
+            Assert.Equal(3, collection.Length);
+            Assert.Equal("Value1", (string)collection[0]);
+            Assert.Equal("Value2", (string)collection[1]);
+            Assert.Equal("Value3", (string)collection[2]);
+        }
     }
 }

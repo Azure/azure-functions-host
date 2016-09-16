@@ -121,13 +121,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             if (value is Stream)
             {
                 // first deserialize the stream as a string
-                byte[] bytes;
-                using (MemoryStream ms = new MemoryStream())
+                using (var reader = new StreamReader((Stream)value))
                 {
-                    ((Stream)value).CopyTo(ms);
-                    bytes = ms.ToArray();
+                    value = reader.ReadToEnd();
                 }
-                value = Encoding.UTF8.GetString(bytes);
             }
 
             string stringValue = value as string;
