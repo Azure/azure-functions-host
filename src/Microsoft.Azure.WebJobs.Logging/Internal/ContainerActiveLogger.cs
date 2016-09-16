@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             TableOperation insertOperation = TableOperation.InsertOrReplace(prevEntry);
 
             // Execute the insert operation.
-            return _instanceTable.ExecuteAsync(insertOperation);
+            return _instanceTable.SafeWriteAsync(insertOperation);
         }
     }
 }

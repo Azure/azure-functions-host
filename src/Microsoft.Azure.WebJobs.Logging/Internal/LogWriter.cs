@@ -3,13 +3,13 @@
 
 
 using System;
-using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage.Table;
-using System.Collections;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -319,14 +319,14 @@ namespace Microsoft.Azure.WebJobs.Logging
                 batch.InsertOrReplace(e);
                 if (batch.Count >= batchSize)
                 {
-                    Task tUpload = _instanceTable.ExecuteBatchAsync(batch);
+                    Task tUpload = _instanceTable.SafeWriteAsync(batch);
                     t.Add(tUpload);
                     batch = new TableBatchOperation();
                 }
             }
             if (batch.Count > 0)
             {
-                Task tUpload = _instanceTable.ExecuteBatchAsync(batch);
+                Task tUpload = _instanceTable.SafeWriteAsync(batch);
                 t.Add(tUpload);
             }
 

@@ -1,10 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Globalization;
+using System.Net;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -62,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
         // Used to fetch an existing container entry so we can append it. 
+        // Returns null if not found. 
         public static Task<ContainerActiveEntity> LookupAsync(CloudTable table, long timeBucket, string containerName)
         {
             TableOperation retrieveOperation = TableOperation.Retrieve<ContainerActiveEntity>(
@@ -69,10 +72,22 @@ namespace Microsoft.Azure.WebJobs.Logging
                 RowKeyTimeInterval(timeBucket, containerName));
 
             // Execute the retrieve operation.
-            TableResult retrievedResult = table.Execute(retrieveOperation);
-
-            var x = (ContainerActiveEntity)retrievedResult.Result;
-            return Task.FromResult(x);
+            ContainerActiveEntity result;
+            try
+            {
+                TableResult retrievedResult = table.Execute(retrieveOperation);
+                result = (ContainerActiveEntity)retrievedResult.Result;                
+            }
+            catch (StorageException e)
+            {
+                var code = (HttpStatusCode)e.RequestInformation.HttpStatusCode;
+                if (code != HttpStatusCode.NotFound)
+                {
+                    throw;
+                }
+                result = null;
+            }
+            return Task.FromResult(result);
         }
 
         public DateTime StartTime { get; set; }

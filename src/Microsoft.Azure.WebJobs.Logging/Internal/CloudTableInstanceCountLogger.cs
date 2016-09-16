@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging.Internal
 {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
             };
 
             TableOperation opInsert = TableOperation.Insert(entity);
-            await _instanceTable.ExecuteAsync(opInsert);
+            await _instanceTable.SafeWriteAsync(opInsert);
         }
 
         /// <summary>
