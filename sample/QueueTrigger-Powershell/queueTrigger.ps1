@@ -9,4 +9,4 @@ $entity = [PSObject]@{
   Title = $title
 }
 $entity = $entity | ConvertTo-Json
-$entity | Out-File -Encoding Ascii $output
+$entity | Out-File -Encoding UTF8 $output

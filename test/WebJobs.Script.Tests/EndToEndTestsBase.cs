@@ -396,12 +396,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return doc;
         }
 
-        protected static string RemoveByteOrderMarkAndWhitespace(string s)
-        {
-            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
-        }
-
         protected static bool VerifyNotificationHubExceptionMessage(Exception exception)
         {
             if ((exception.Source == "Microsoft.Azure.NotificationHubs")
