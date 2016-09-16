@@ -458,7 +458,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\Script\functions.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>

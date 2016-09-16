@@ -812,6 +812,9 @@
     <Content Include="TestScripts\Node\HttpTriggerPromise\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="TestScripts\Node\functions.tests.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="TestScripts\Node\MultipleExports\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

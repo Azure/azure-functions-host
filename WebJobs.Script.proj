@@ -168,6 +168,21 @@
     <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
   </Target>
 
+  <PropertyGroup Condition=" '$(APPVEYOR_API_URL)' != '' ">
+    <AppveyorModules>mocha-appveyor-reporter</AppveyorModules>
+    <AppveyorReporter>--reporter mocha-appveyor-reporter</AppveyorReporter>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildConfiguration>Debug</BuildConfiguration>
+    <BuildConfiguration Condition=" $(Configuration) != '' ">$(Configuration)</BuildConfiguration>
+  </PropertyGroup>
+
+  <Target Name="MochaTest" DependsOnTargets="Build" AfterTargets="UnitTest">
+    <Exec Command="npm i mocha chai $(AppveyorModules)" />
+    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
+  </Target>
+
   <Target Name="Clean" DependsOnTargets="GetBinplace">
     <MSBuild Projects="@(Binplace)"
              Targets="Clean"

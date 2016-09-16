@@ -14,3 +14,4 @@ Publish
 /TestResults
 
 /tools/NuGet.exe
+/node_modules
