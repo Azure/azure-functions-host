@@ -3,15 +3,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
-using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
-using Microsoft.CodeAnalysis.Text;
 using Microsoft.FSharp.Compiler;
 using Microsoft.FSharp.Compiler.SimpleSourceCodeServices;
 using Microsoft.FSharp.Compiler.SourceCodeServices;
@@ -45,30 +43,36 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bool debug = true;
 
             // First use the C# compiler to resolve references, to get consistenct with the C# Azure Functions programming model
-            Script<object> script = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
+            Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
             Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices();
 
-            // We currently create the script file in the directory itself
-            var scriptFile = Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile),Path.ChangeExtension(Path.GetTempFileName(), "fsx"));
             FSharpErrorInfo[] errors = null;
-
-            //var exitCode = result.Item2;
             FSharpOption<Assembly> assemblyOption = null;
+            string scriptFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(functionMetadata.ScriptFile));
+
             try
             {
+                var scriptFileBuilder = new StringBuilder();
+
                 // Write an adjusted version of the script file, prefixing some 'open' decarations
-                foreach (var import in script.Options.Imports)
+                foreach (string import in script.Options.Imports)
                 {
-                    File.AppendAllLines(scriptFile, new string[] { "open " + import });
-                    
+                    scriptFileBuilder.AppendLine("open " + import);
                 }
-                File.AppendAllLines(scriptFile, new string[] { "# 0 @\"" + functionMetadata.ScriptFile + "\"" });
 
+                // Suppress undesirable warnings
+                scriptFileBuilder.AppendLine("#nowarn \"988\"");
+
+                // Set the line to match the original script
+                scriptFileBuilder.AppendLine("# 0 @\"" + functionMetadata.ScriptFile + "\"");
+
+                // Add our original script
                 string scriptSource = GetFunctionSource(functionMetadata);
+                scriptFileBuilder.AppendLine(scriptSource);
 
-                File.AppendAllText(scriptFile, scriptSource);
+                File.WriteAllText(scriptFilePath, scriptFileBuilder.ToString());
 
                 var otherFlags = new List<string>();
 
@@ -98,14 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add("-r:System.Linq.Expressions.dll"); // System.Linq.IQueryable<T>
                 otherFlags.Add("-r:System.Threading.Tasks.dll"); // valuetype [System.Threading.Tasks]System.Threading.CancellationToken
                 otherFlags.Add("-r:System.IO.dll");  //  System.IO.TextWriter
-                                                 //yield "System.Console"  //  System.Console.Out etc.
                 otherFlags.Add("-r:System.Net.Requests.dll");  //  System.Net.WebResponse etc.
                 otherFlags.Add("-r:System.Collections.dll"); // System.Collections.Generic.List<T>
                 otherFlags.Add("-r:System.Runtime.Numerics.dll"); // BigInteger
                 otherFlags.Add("-r:System.Threading.dll");  // OperationCanceledException
                 otherFlags.Add("-r:System.Runtime.dll");
                 otherFlags.Add("-r:System.Numerics.dll");
-
 
                 if (debug)
                 {
@@ -115,11 +117,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
 
                 // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
-                otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "exe"));
+                otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "dll"));
 
                 // Get the #load closure
-                var loadFileOptionsAsync = FSharp.Compiler.SourceCodeServices.FSharpChecker.Create().GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
-                var loadFileOptions = Microsoft.FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
+                var loadFileOptionsAsync = FSharpChecker.Create().GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
+                var loadFileOptions = FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
                 foreach (var loadedFileName in loadFileOptions.ProjectFileNames)
                 {
                     if (Path.GetFileName(loadedFileName) != Path.GetFileName(functionMetadata.ScriptFile))
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
 
                 // Add the (adjusted) script file itself
-                otherFlags.Add(scriptFile);
+                otherFlags.Add(scriptFilePath);
 
                 // Make the output streams (unused)
                 var outStreams = FSharpOption<Tuple<TextWriter, TextWriter>>.Some(new Tuple<TextWriter, TextWriter>(Console.Out, Console.Error));
@@ -138,12 +140,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 var result = compiler.CompileToDynamicAssembly(otherFlags: otherFlags.ToArray(), execute: outStreams);
 
                 errors = result.Item1;
-                //var exitCode = result.Item2;
                 assemblyOption = result.Item3;
             }
             finally
             {
-                File.Delete(scriptFile);
+                File.Delete(scriptFilePath);
             }
             return new FSharpCompilation(errors, assemblyOption);
         }

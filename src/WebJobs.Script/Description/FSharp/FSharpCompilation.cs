@@ -4,18 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
-using Microsoft.CodeAnalysis.Scripting.Hosting;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.FSharp.Compiler;
-using Microsoft.FSharp.Compiler.SimpleSourceCodeServices;
-using Microsoft.FSharp.Compiler.SourceCodeServices;
 using Microsoft.FSharp.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -37,27 +32,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             foreach (var error in _errors)
             {
                 var severity = error.Severity == FSharpErrorSeverity.Error ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning;
-                var dd = new DiagnosticDescriptor("FS" + error.ErrorNumber.ToString(), error.Message, error.Message, error.Subcategory, severity, true);
-                var loc = Location.Create(error.FileName, TextSpan.FromBounds(error.StartColumn, error.EndColumn), new LinePositionSpan(new LinePosition(error.StartLineAlternate, error.StartColumn), new LinePosition(error.EndLineAlternate, error.EndColumn)));
-                var diag = Diagnostic.Create(dd, loc);
-                result.Add(diag);
+                var descriptor = new DiagnosticDescriptor("FS" + error.ErrorNumber.ToString(), error.Message, error.Message, error.Subcategory, severity, true);
+                var location = Location.Create(error.FileName,
+                    TextSpan.FromBounds(error.StartColumn, error.EndColumn),
+                    new LinePositionSpan(new LinePosition(error.StartLineAlternate, error.StartColumn),
+                    new LinePosition(error.EndLineAlternate, error.EndColumn)));
+
+                var diagnostic = Diagnostic.Create(descriptor, location);
+
+                result.Add(diagnostic);
             }
             return result.ToImmutable();
         }
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
         {
-            if (_assemblyOption == null)
-            {
-                var diagnostics = this.GetDiagnostics();
-                var diagnosticsText = new System.Text.StringBuilder();
-                foreach (var diag in diagnostics)
-                {
-                    diagnosticsText.Append(diag.ToString());
-                }
-
-                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText.ToString(), diagnostics);
-            }
+            EnsureAssemblyOption();
 
             // Scrape the compiled assembly for entry points
             IList<MethodReference<MethodInfo>> methods =
@@ -91,18 +81,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Assembly EmitAndLoad(CancellationToken cancellationToken)
         {
+            EnsureAssemblyOption();
+
+            return _assemblyOption.Value;
+        }
+
+        private void EnsureAssemblyOption()
+        {
             if (_assemblyOption == null)
             {
                 var diagnostics = this.GetDiagnostics();
                 var diagnosticsText = new System.Text.StringBuilder();
-                foreach (var diag in diagnostics)
+                foreach (var diagostic in diagnostics)
                 {
-                    diagnosticsText.Append(diag.ToString());
+                    diagnosticsText.Append(diagostic.ToString());
                 }
+
                 throw new CompilationErrorException("Script compilation failed. " + diagnosticsText, this.GetDiagnostics());
             }
-
-            return _assemblyOption.Value;
         }
     }
 }
