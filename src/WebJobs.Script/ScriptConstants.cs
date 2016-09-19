@@ -27,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
 
+        public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";
-        internal const string FunctionMetadataFileName = "function.json";
+        public const string FunctionMetadataFileName = "function.json";
     }
 }
