@@ -14,7 +14,9 @@ using System.Web.Http;
 using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -27,11 +29,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly IFunctionsManager _functionsManager;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, IFunctionsManager functionsManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
+            _functionsManager = functionsManager;
         }
 
         [HttpPost]
@@ -135,13 +139,71 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return false;
         }
 
+        [HttpPut]
+        [Route("admin/functions/{name}")]
+        public async Task<HttpResponseMessage> CreateOrUpdate(string name, [FromBody]FunctionEnvelope functionEnvelope)
+        {
+            return Request.CreateResponse(HttpStatusCode.Accepted, await _functionsManager.CreateOrUpdateAsync(name, functionEnvelope));
+        }
+
+        [HttpGet]
+        [Route("admin/functions")]
+        public async Task<IEnumerable<FunctionEnvelope>> List()
+        {
+            return await _functionsManager.ListFunctionsConfigAsync();
+            //return Request.CreateResponse(HttpStatusCode.OK, functions);
+        }
+
+        [HttpGet]
+        [Route("admin/functions/{name}")]
+        public async Task<HttpResponseMessage> Get(string name)
+        {
+            return Request.CreateResponse(HttpStatusCode.OK, await _functionsManager.GetFunctionConfigAsync(name));
+        }
+
+        [HttpGet]
+        [Route("admin/functions/{name}/secrets")]
+        public async Task<HttpResponseMessage> GetSecrets(string name)
+        {
+            return Request.CreateResponse(HttpStatusCode.OK, await _functionsManager.GetFunctionSecretsAsync(name));
+        }
+
+        [HttpDelete]
+        [Route("admin/functions/{name}")]
+        public HttpResponseMessage Delete(string name)
+        {
+            _functionsManager.DeleteFunction(name);
+            return Request.CreateResponse(HttpStatusCode.NoContent);
+        }
+
+        [HttpGet]
+        [Route("admin/functions/config")]
+        public async Task<HttpResponseMessage> GetHostSettings()
+        {
+            return Request.CreateResponse(HttpStatusCode.OK, await _functionsManager.GetHostConfigAsync());
+        }
+
+        [HttpPut]
+        [Route("admin/functions/config")]
+        public async Task<HttpResponseMessage> PutHostSettings()
+        {
+            return Request.CreateResponse(HttpStatusCode.Created, await _functionsManager.PutHostConfigAsync(await Request.Content.ReadAsAsync<JObject>()));
+        }
+
+        [HttpPost]
+        [Route("admin/run/vscode")]
+        public HttpResponseMessage LaunchVsCode()
+        {
+            Process.Start(@"C:\Program Files (x86)\Microsoft VS Code\Code.exe", System.Environment.CurrentDirectory);
+            return Request.CreateResponse(HttpStatusCode.Accepted);
+        }
+
         public override Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
         {
             // For all admin api requests, we'll update the ScriptHost debug timeout
             // For now, we'll enable debug mode on ANY admin requests. Since the Portal interacts through
             // the admin API this is sufficient for identifying when the Portal is connected.
             _scriptHostManager.Instance?.NotifyDebug();
-
             return base.ExecuteAsync(controllerContext, cancellationToken);
         }
     }
