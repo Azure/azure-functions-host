@@ -581,6 +581,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("")]
         [InlineData("host")]
         [InlineData("Host")]
         [InlineData("-function")]
