@@ -25,8 +25,7 @@ var assert = require('assert');
         return Promise.reject('reject');
     }
     else if (scenario == 'promiseApiDone') {
-        context.done();
-        return Promise.resolve();
+        return Promise.resolve().then(() => context.done());
     }
     else if (scenario == 'randGuid') {
         context.bindings.blob = input.value;

@@ -850,13 +850,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             // call multiple times to reduce flakiness (function can exit before Promise.resolve executes)
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
-                await Task.WhenAny(Fixture.Host.CallAsync("Scenarios", arguments), Task.Delay(5000));
+                await Task.WhenAny(Fixture.Host.CallAsync("Scenarios", arguments), Task.Delay(3000));
             }
 
             var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
-
             Assert.True(logs.Any(p => p.Contains("Error: Choose either to return a promise or call 'done'.  Do not use both in your script.")));
             Assert.True(logs.Any(p => p.Contains("Function completed (Success")));
         }
