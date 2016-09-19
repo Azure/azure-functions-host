@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -13,7 +14,6 @@ using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
-
     public class LoggerTest
     {
         static string CommonFuncName1 = "gamma";
@@ -58,7 +58,20 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
-        // Test reading when there's not able. 
+        // Unit testing on function name normalization. 
+        [Theory]
+        [InlineData("abc123", "abc123")]
+        [InlineData("ABC123", "abc123")] // case insensitive, normalizes to same value as lowercase. 
+        [InlineData("abc-123", "abc:2D123")] // '-' is escaped 
+        [InlineData("abc:2D123", "abc:3A2d123")] // double escape still works. Previous escaped values become lowercase.
+        public void NormalizeFunctionName(string name, string expected)
+        {
+            var method = typeof(ILogWriter).Assembly.GetType("Microsoft.Azure.WebJobs.Logging.TableScheme").GetMethod("NormalizeFunctionName", BindingFlags.Static | BindingFlags.Public);
+            Func<string, string> escape = (string val) => (string) method.Invoke(null, new object[] { val } );
+            string actual = escape(name);
+            Assert.Equal(actual, expected);
+        }
+
         [Fact]
         public async Task ReadNoTable()
         {
@@ -208,6 +221,59 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
+        // Logs are case-insensitive, case-preserving
+        [Fact]
+        public async Task Casing()
+        {
+            // Make some very precise writes and verify we read exactly what we'd expect.
+
+            var table = GetNewLoggingTable();
+            try
+            {
+                ILogWriter writer = LogFactory.NewWriter("c1", table);
+                ILogReader reader = LogFactory.NewReader(table);
+
+                string FuncOriginal = "UPPER-lower";
+                string Func2 = FuncOriginal.ToLower(); // casing permutations
+                string Func3 = Func2.ToLower();
+
+                var t1a = new DateTime(2010, 3, 6, 10, 11, 20, DateTimeKind.Utc);
+
+                FunctionInstanceLogItem l1 = new FunctionInstanceLogItem
+                {
+                    FunctionInstanceId = Guid.NewGuid(),
+                    FunctionName = FuncOriginal,
+                    StartTime = t1a,
+                    LogOutput = "one"
+                    // inferred as Running since no end time.
+                };
+                await writer.AddAsync(l1);
+
+                await writer.FlushAsync();
+                // Start event should exist. 
+
+
+                var definitionSegment = await reader.GetFunctionDefinitionsAsync(null);
+                Assert.Equal(1, definitionSegment.Results.Length);
+                Assert.Equal(FuncOriginal, definitionSegment.Results[0].Name);
+
+                // Lookup various casings 
+                foreach (var name in new string[] { FuncOriginal, Func2, Func3 })
+                {
+                    var entries = await GetRecentAsync(reader, name);
+                    Assert.Equal(1, entries.Length);
+                    Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
+                    Assert.Equal(entries[0].EndTime, null);
+                    Assert.Equal(entries[0].FunctionName, FuncOriginal); // preserving. 
+                }            
+            }
+            finally
+            {
+                // Cleanup
+                table.DeleteIfExists();
+            }
+        }
+             
         [Fact]
         public async Task LogExactWriteAndRead()
         {

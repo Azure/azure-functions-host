@@ -26,17 +26,22 @@ namespace Microsoft.Azure.WebJobs.Logging
         string IFunctionDefinition.Name
         {
             get
-            {
-                return this.RowKey;
+            {                
+                return OriginalName ?? this.RowKey;
             }
         }
+
+        // Store the orginal name since functions are case-insensitive, but rowkey must be normalized (table is case-sensitive) 
+        // and functions must be case-preserving. 
+        public string OriginalName { get; set; }
 
         public static FunctionDefinitionEntity New(string functionName)
         {
             return new FunctionDefinitionEntity
             {
                 PartitionKey = PartitionKeyFormat,
-                RowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName))
+                RowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName)),
+                OriginalName = functionName
             };
         }
     }

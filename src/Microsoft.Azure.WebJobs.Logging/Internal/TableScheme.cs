@@ -2,8 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.WindowsAzure.Storage.Table;
 using System.Globalization;
+using System.Text;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -81,9 +82,48 @@ namespace Microsoft.Azure.WebJobs.Logging
             throw new InvalidOperationException("Row key is in illegal format: " + rowKey);
         }
 
+        private static string EscapeStorageCharacter(char character)
+        {
+            var ordinalValue = (ushort)character;
+            if (ordinalValue < 0x100)
+            {
+                return string.Format(CultureInfo.InvariantCulture, ":{0:X2}", ordinalValue);
+            }
+            else
+            {
+                return string.Format(CultureInfo.InvariantCulture, "::{0:X4}", ordinalValue);
+            }
+        }
+
+        // Assumes we have a valid function name. 
+        // Function names are case-insensitive, case-preserving. 
+        // Table storage is case-sensitive. So need to normalize case to use as table keys. 
+        // Normalize must be one-to-one to avoid collisions. 
+        // Escape any non-alphanumeric characters so that we 
+        //  a) have a valid rowkey name 
+        //  b) don't have characeters that conflict with separators in the row key (like '-')
         public static string NormalizeFunctionName(string functionName)
         {
-            return functionName.ToLower(CultureInfo.InvariantCulture);
+            StringBuilder sb = new StringBuilder();
+            foreach (var ch in functionName)
+            {
+                if (ch >= 'a' && ch <= 'z')
+                {
+                    sb.Append(ch);
+                }
+                else if (ch >= 'A' && ch <= 'Z')
+                {
+                    sb.Append((char)(ch - 'A' + 'a'));
+                }
+                else if (ch >= '0' && ch <= '9')
+                {
+                    sb.Append(ch);
+                }
+                else {
+                    sb.Append(EscapeStorageCharacter(ch));
+                }
+            }
+            return sb.ToString();            
         }
 
         public static string NormalizeContainerName(string containerName)

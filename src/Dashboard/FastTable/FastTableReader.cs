@@ -125,7 +125,7 @@ namespace Dashboard.Data
         private async Task<FunctionSnapshot> ReadAsync(string functionId)
         {
             var snapshots = await GetSnapshotsAsync();
-            var snapshot = snapshots.FirstOrDefault(x => x.Id == functionId);
+            var snapshot = snapshots.FirstOrDefault(x => string.Equals(x.Id, functionId, StringComparison.OrdinalIgnoreCase));
             return snapshot;
         }
 
