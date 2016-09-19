@@ -129,16 +129,16 @@ namespace Microsoft.Azure.WebJobs.Script
             // file. However, we leave this here for assurances.
             LastDebugNotify = DateTime.Now;
 
-            // create or update the debug marker file to trigger a
+            // create or update the debug sentinel file to trigger a
             // debug timeout update across all instances
-            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
-            if (!File.Exists(debugModeFilePath))
+            string debugSentinelFileName = Path.Combine(ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+            if (!File.Exists(debugSentinelFileName))
             {
-                File.Create(debugModeFilePath).Dispose();
+                File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
             }
             else
             {
-                File.SetLastWriteTimeUtc(debugModeFilePath, DateTime.UtcNow);
+                File.SetLastWriteTimeUtc(debugSentinelFileName, DateTime.UtcNow);
             }
         }
 
@@ -240,10 +240,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
             }
 
-            string debugModeFilePath = Path.Combine(ScriptConfig.RootLogPath, "debug");
-            this.LastDebugNotify = File.GetLastWriteTime(debugModeFilePath);
+            string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+            string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
+            this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
 
-            _debugModeFileWatcher = new FileSystemWatcher(ScriptConfig.RootLogPath, "debug")
+            _debugModeFileWatcher = new FileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName)
             {
                 EnableRaisingEvents = true
             };

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
             ScriptHost host = _fixture.Host;
-            string debugModeFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "debug");
+            string debugSentinelFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
 
             host.LastDebugNotify = DateTime.MinValue;
             Assert.False(host.InDebugMode);
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // verify that our file watcher for the debug file is configured
             // properly by touching the file and ensuring that our host goes into
             // debug mode
-            File.SetLastWriteTimeUtc(debugModeFilePath, DateTime.UtcNow);
+            File.SetLastWriteTimeUtc(debugSentinelFilePath, DateTime.UtcNow);
 
             await TestHelpers.Await(() =>
             {
@@ -98,8 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHost host = _fixture.Host;
 
-            string debugModeFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "debug");
-            File.Delete(debugModeFilePath);
+            string debugSentinelFileName = Path.Combine(host.ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+            File.Delete(debugSentinelFileName);
             host.LastDebugNotify = DateTime.MinValue;
 
             Assert.False(host.InDebugMode);
@@ -107,17 +107,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DateTime lastDebugNotify = host.LastDebugNotify;
             host.NotifyDebug();
             Assert.True(host.InDebugMode);
-            Assert.True(File.Exists(debugModeFilePath));
+            Assert.True(File.Exists(debugSentinelFileName));
+            string text = File.ReadAllText(debugSentinelFileName);
+            Assert.Equal("This is a system managed marker file used to control runtime debug mode behavior.", text);
             Assert.True(host.LastDebugNotify > lastDebugNotify);
 
             Thread.Sleep(500);
 
-            DateTime lastModified = File.GetLastWriteTime(debugModeFilePath);
+            DateTime lastModified = File.GetLastWriteTime(debugSentinelFileName);
             lastDebugNotify = host.LastDebugNotify;
             host.NotifyDebug();
             Assert.True(host.InDebugMode);
-            Assert.True(File.Exists(debugModeFilePath));
-            Assert.True(File.GetLastWriteTime(debugModeFilePath) > lastModified);
+            Assert.True(File.Exists(debugSentinelFileName));
+            Assert.True(File.GetLastWriteTime(debugSentinelFileName) > lastModified);
             Assert.True(host.LastDebugNotify > lastDebugNotify);
         }
 
