@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
+using System.Reflection;
+using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
@@ -55,6 +57,34 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 table.DeleteIfExists();
             }
         }
+
+        // Test reading when there's not able. 
+        [Fact]
+        public async Task ReadNoTable()
+        {
+            var table = GetNewLoggingTable();
+            ILogReader reader = LogFactory.NewReader(table);
+            Assert.False(table.Exists());
+
+            var segmentDef = await reader.GetFunctionDefinitionsAsync(null);
+            Assert.Equal(0, segmentDef.Results.Length);
+
+            var segmentTimeline = await reader.GetActiveContainerTimelineAsync(DateTime.MinValue, DateTime.MaxValue, null);
+            Assert.Equal(0, segmentTimeline.Results.Length);
+
+            var segmentRecent = await reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
+            {
+                FunctionName = "abc",
+                Start = DateTime.MinValue,
+                End = DateTime.MaxValue,
+                MaximumResults = 1000                 
+            }, null);
+            Assert.Equal(0, segmentRecent.Results.Length);
+
+            var item = await reader.LookupFunctionInstanceAsync(Guid.NewGuid());
+            Assert.Null(item);
+        } 
+
 
         [Fact]
         public async Task TimeRange()
@@ -315,8 +345,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             item.EndTime = item.StartTime.AddSeconds(1);
             await writer.AddAsync(item); // end 
         }
-
-
+                
         CloudTable GetNewLoggingTable()
         {
             string storageString = "AzureWebJobsDashboard";

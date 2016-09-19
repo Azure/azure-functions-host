@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -76,11 +77,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
 
-        private static async Task SafeCreateAsync(this CloudTable table)
+        private static async Task SafeCreateAsync(this CloudTable table, int intervalMilliseconds = 5000, int totalMilliseconds = 120*1000)
         {
-            var interval = TimeSpan.FromSeconds(5);
-            var total = TimeSpan.FromSeconds(120);
-
             while(true)
             {
                 try
@@ -97,20 +95,72 @@ namespace Microsoft.Azure.WebJobs.Logging
                         throw;
                     }
 
-                    if (total.TotalMilliseconds < 0)
+                    if (totalMilliseconds < 0)
                     {
                         // timeout. 
                         throw;
                     }
                 }
-                await Task.Delay(interval);
-                total = total.Subtract(interval);
+                await Task.Delay(intervalMilliseconds);
+                totalMilliseconds -= intervalMilliseconds;
+            }
+        }
+
+
+        // Do a query. 
+        // If table doesn't exist, return 0-length list of results. 
+        public static Task<TElement[]> SafeExecuteQueryAsync<TElement>(this CloudTable table, TableQuery<TElement> query)
+            where TElement : ITableEntity, new()
+        {
+            try
+            {
+                IEnumerable<TElement> results = table.ExecuteQuery(query);
+                var rows = results.ToArray();
+                return Task.FromResult(rows);
+            }
+            catch (StorageException e)
+            {
+                var code = (HttpStatusCode)e.RequestInformation.HttpStatusCode;
+                if (code == HttpStatusCode.NotFound)
+                {
+                    return Task.FromResult(new TElement[0]);
+                }
+                throw;
+            }
+        }
+
+        // Do a query
+        // If table doesn't exist, return null. 
+        public static async Task<TableQuerySegment<TElement>> SafeExecuteQuerySegmentedAsync<TElement>(
+            this CloudTable table,
+            TableQuery<TElement> query, 
+            TableContinuationToken token, 
+            CancellationToken cancellationToken)
+        where TElement : ITableEntity, new()
+        {
+            try
+            {
+                var segment = await table.ExecuteQuerySegmentedAsync<TElement>(
+                  query,
+                  token,
+                  cancellationToken);
+                return segment;
+            }
+            catch (StorageException e)
+            {
+                var code = (HttpStatusCode)e.RequestInformation.HttpStatusCode;
+                if (code == HttpStatusCode.NotFound)
+                {
+                    // TableQuerySegment ctor is private, so return null. 
+                    return null;
+                }
+                throw;
             }
         }
 
         // Write table entry. 
         // If table doesn't exist (such as if it was deleted), then recreate it. 
-        public static async Task SafeWriteAsync(this CloudTable table, TableBatchOperation batch)
+        public static async Task SafeExecuteAsync(this CloudTable table, TableBatchOperation batch)
         {
             try
             {
@@ -130,12 +180,11 @@ namespace Microsoft.Azure.WebJobs.Logging
             await table.ExecuteBatchAsync(batch);
         }
 
-        public static async Task SafeWriteAsync(this CloudTable table, TableOperation operation)
+        public static async Task<TableResult> SafeExecuteAsync(this CloudTable table, TableOperation operation)
         {
             try
             {
-                await table.ExecuteAsync(operation);
-                return;
+                return await table.ExecuteAsync(operation);
             }
             catch (StorageException e)
             {
@@ -147,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             await table.SafeCreateAsync();  
-            await table.ExecuteAsync(operation);
+            return await table.ExecuteAsync(operation);
         }
     }
 }

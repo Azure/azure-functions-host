@@ -318,14 +318,14 @@ namespace Microsoft.Azure.WebJobs.Logging
                 batch.InsertOrReplace(e);
                 if (batch.Count >= batchSize)
                 {
-                    Task tUpload = _instanceTable.SafeWriteAsync(batch);
+                    Task tUpload = _instanceTable.SafeExecuteAsync(batch);
                     t.Add(tUpload);
                     batch = new TableBatchOperation();
                 }
             }
             if (batch.Count > 0)
             {
-                Task tUpload = _instanceTable.SafeWriteAsync(batch);
+                Task tUpload = _instanceTable.SafeExecuteAsync(batch);
                 t.Add(tUpload);
             }
 

@@ -23,16 +23,14 @@ namespace Microsoft.Azure.WebJobs.Logging
             {
                 throw new ArgumentNullException("table");
             }
-            table.CreateIfNotExists();
             this._instanceTable = table;
         }
 
-        public Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)        
+        public async Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)        
         {
             var query = InstanceCountEntity.GetQuery(startTime, endTime);
 
-            IEnumerable<InstanceCountEntity> results = _instanceTable.ExecuteQuery(query);
-            var rows = results.ToArray();
+            InstanceCountEntity[] rows = await _instanceTable.SafeExecuteQueryAsync(query);
 
             var startTicks = startTime.Ticks;
             var endTicks = endTime.Ticks;
@@ -64,13 +62,13 @@ namespace Microsoft.Azure.WebJobs.Logging
                 };
             }
 
-            return Task.FromResult(chart);
+            return chart;
         }
 
-        public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
+        public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
             var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
-            var results = _instanceTable.ExecuteQuery(query).ToArray();
+            var results = await _instanceTable.SafeExecuteQueryAsync(query);
 
             DateTime min = DateTime.MinValue;
             foreach (var entity in results)
@@ -82,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
             
             var segment = new Segment<IFunctionDefinition>(results);
-            return Task.FromResult(segment);
+            return segment;
         }
 
         // Lookup a single instance by id. 
@@ -92,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             TableOperation retrieveOperation = InstanceTableEntity.GetRetrieveOperation(id);
 
             // Execute the retrieve operation.
-            TableResult retrievedResult = await _instanceTable.ExecuteAsync(retrieveOperation);
+            TableResult retrievedResult = await _instanceTable.SafeExecuteAsync(retrieveOperation);
 
             var x = (InstanceTableEntity)retrievedResult.Result;
 
@@ -103,10 +101,10 @@ namespace Microsoft.Azure.WebJobs.Logging
             return x.ToFunctionLogItem();
         }
 
-        public Task<Segment<ActivationEvent>> GetActiveContainerTimelineAsync(DateTime start, DateTime end, string continuationToken)
+        public async Task<Segment<ActivationEvent>> GetActiveContainerTimelineAsync(DateTime start, DateTime end, string continuationToken)
         {
             var query = ContainerActiveEntity.GetQuery(start, end);
-            var results = _instanceTable.ExecuteQuery(query).ToArray();
+            var results = await _instanceTable.SafeExecuteQueryAsync(query);
             
             List<ActivationEvent> l = new List<ActivationEvent>();
             Dictionary<string, string> intern = new Dictionary<string, string>();
@@ -131,10 +129,10 @@ namespace Microsoft.Azure.WebJobs.Logging
                 });
             }
 
-            return Task.FromResult(new Segment<ActivationEvent>(l.ToArray(), null));
+            return new Segment<ActivationEvent>(l.ToArray(), null);
         }
 
-        public Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(string functionName, DateTime start, DateTime end, string continuationToken)
+        public async Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(string functionName, DateTime start, DateTime end, string continuationToken)
         {
             if (functionName == null)
             {
@@ -145,9 +143,9 @@ namespace Microsoft.Azure.WebJobs.Logging
                 throw new ArgumentOutOfRangeException("start");
             }
             var rangeQuery = TimelineAggregateEntity.GetQuery(functionName, start, end);
-            var results = _instanceTable.ExecuteQuery(rangeQuery).ToArray();
+            var results = await _instanceTable.SafeExecuteQueryAsync(rangeQuery);
 
-            return Task.FromResult(new Segment<IAggregateEntry>(results));
+            return new Segment<IAggregateEntry>(results);
         }
 
         // Could be very long 
@@ -158,13 +156,20 @@ namespace Microsoft.Azure.WebJobs.Logging
             TableQuery<RecentPerFuncEntity> rangeQuery = RecentPerFuncEntity.GetRecentFunctionsQuery(queryParams);
 
             CancellationToken cancellationToken;
-            TableContinuationToken realContinuationToken = Utility.DeserializeToken(continuationToken); ;
-            var segment = await _instanceTable.ExecuteQuerySegmentedAsync<RecentPerFuncEntity>(
+            TableContinuationToken realContinuationToken = Utility.DeserializeToken(continuationToken);
+            var segment = await _instanceTable.SafeExecuteQuerySegmentedAsync<RecentPerFuncEntity>(
                 rangeQuery, 
                 realContinuationToken, 
                 cancellationToken);
 
-            return new Segment<IRecentFunctionEntry>(segment.Results.ToArray(), Utility.SerializeToken(segment.ContinuationToken));
+            if (segment == null)
+            {
+                return new Segment<IRecentFunctionEntry>(new IRecentFunctionEntry[0]);
+            }
+            else
+            {
+                return new Segment<IRecentFunctionEntry>(segment.Results.ToArray(), Utility.SerializeToken(segment.ContinuationToken));
+            }
         }
     }
 }

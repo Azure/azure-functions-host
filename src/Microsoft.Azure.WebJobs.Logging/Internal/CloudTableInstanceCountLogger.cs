@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
             };
 
             TableOperation opInsert = TableOperation.Insert(entity);
-            await _instanceTable.SafeWriteAsync(opInsert);
+            await _instanceTable.SafeExecuteAsync(opInsert);
         }
 
         /// <summary>
