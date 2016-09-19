@@ -40,21 +40,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task AdminRequests_PutHostInDebugMode()
         {
-            var debugFilePath = Path.Combine(_fixture.HostSettings.LogPath, "debug");
+            var debugSentinelFilePath = Path.Combine(_fixture.HostSettings.LogPath, "Host", ScriptConstants.DebugSentinelFileName);
 
-            File.Delete(debugFilePath);
+            File.Delete(debugSentinelFilePath);
 
             HttpResponseMessage response = await GetHostStatusAsync();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            Assert.True(File.Exists(debugFilePath));
-            var lastModified = File.GetLastWriteTime(debugFilePath);
+            Assert.True(File.Exists(debugSentinelFilePath));
+            var lastModified = File.GetLastWriteTime(debugSentinelFilePath);
 
             await Task.Delay(100);
 
             response = await GetHostStatusAsync();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.True(lastModified < File.GetLastWriteTime(debugFilePath));
+            Assert.True(lastModified < File.GetLastWriteTime(debugSentinelFilePath));
         }
 
         [Fact]
