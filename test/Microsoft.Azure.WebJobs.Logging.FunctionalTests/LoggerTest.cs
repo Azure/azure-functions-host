@@ -330,7 +330,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             CloudStorageAccount account = CloudStorageAccount.Parse(acs);
             var client = account.CreateCloudTableClient();
             var table = client.GetTableReference(tableName);
-            table.CreateIfNotExists();
+            
+            // Explicitly don't create the table. The logging library should deal with it. 
 
             return table;
         }

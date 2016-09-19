@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                 throw new ArgumentNullException("table");
             }
             this._containerName = computerContainerName;         
-            table.CreateIfNotExists();
             this._instanceTable = table;
         }
 
