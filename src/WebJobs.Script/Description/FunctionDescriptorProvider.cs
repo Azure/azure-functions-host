@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format(@"^([a-zA-Z][a-zA-Z0-9]{0,127}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)), RegexOptions.Compiled);
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)), RegexOptions.Compiled);
 
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
