@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private BlobLeaseManager _blobLeaseManager;
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
+        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
@@ -647,7 +649,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ValidateFunctionName(string functionName)
         {
-            if (string.Compare(Path.GetFileNameWithoutExtension(ScriptConstants.HostMetadataFileName), functionName, StringComparison.OrdinalIgnoreCase) == 0)
+            if (!FunctionNameValidationRegex.IsMatch(functionName))
             {
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid function name.", functionName));
             }

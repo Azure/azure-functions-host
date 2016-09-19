@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "test",
                 Type = "Blob"
             });
-            
+
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
                 _provider.ValidateFunction(functionMetadata);
@@ -76,7 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        public void ValidateBinding_EmptyName_Throws(string bindingName)
+        [InlineData("_binding")]
+        [InlineData("binding-test")]
+        [InlineData("binding name")]
+        public void ValidateBinding_InvalidName_Throws(string bindingName)
         {
             BindingMetadata bindingMetadata = new BindingMetadata
             {
@@ -88,7 +91,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _provider.ValidateBinding(bindingMetadata);
             });
 
-            Assert.Equal("A valid name must be assigned to the binding.", ex.Message);
+            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData("bindingName")]
+        [InlineData("binding1")]
+        [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
+        public void ValidateBinding_ValidName_DoesNotThrow(string bindingName)
+        {
+            BindingMetadata bindingMetadata = new BindingMetadata
+            {
+                Name = bindingName
+            };
+
+            if (bindingMetadata.IsReturn)
+            {
+                bindingMetadata.Direction = BindingDirection.Out;
+            }
+
+            try
+            {
+                _provider.ValidateBinding(bindingMetadata);
+            }
+            catch (ArgumentException)
+            {
+                Assert.True(false, $"Valid binding name '{bindingName}' failed validation.");
+            }
         }
 
         protected virtual void Dispose(bool disposing)

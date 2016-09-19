@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -17,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format(@"^([a-zA-Z][a-zA-Z0-9]{0,127}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)), RegexOptions.Compiled);
+
         protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
         {
             Host = host;
@@ -158,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
             }
 
-            HashSet<string> names = new HashSet<string>();
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var binding in functionMetadata.Bindings)
             {
                 ValidateBinding(binding);
@@ -177,9 +180,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
         {
-            if (string.IsNullOrEmpty(bindingMetadata.Name))
+            if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
             {
-                throw new ArgumentException("A valid name must be assigned to the binding.");
+                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
             }
 
             if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
