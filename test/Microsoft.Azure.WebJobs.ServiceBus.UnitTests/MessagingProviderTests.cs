@@ -71,6 +71,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
                 _provider.GetConnectionString("MissingConnection");
             });
             Assert.Equal("Microsoft Azure WebJobs SDK ServiceBus connection string 'AzureWebJobsMissingConnection' is missing or empty.", ex.Message);
+
+            _config.ConnectionString = null;
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                _provider.GetConnectionString(null);
+            });
+            Assert.Equal("Microsoft Azure WebJobs SDK ServiceBus connection string 'AzureWebJobsServiceBus' is missing or empty.", ex.Message);
         }
 
         public void Dispose()
