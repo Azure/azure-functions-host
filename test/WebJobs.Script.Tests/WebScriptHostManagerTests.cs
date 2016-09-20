@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -17,9 +18,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class WebScriptHostManagerTests : IClassFixture<WebScriptHostManagerTests.Fixture>
+    public class WebScriptHostManagerTests : IClassFixture<WebScriptHostManagerTests.Fixture>, IDisposable
     {
         private Fixture _fixture;
+
+        // Some tests need their own manager that differs from the fixture.
+        private WebScriptHostManager _manager;
 
         public WebScriptHostManagerTests(Fixture fixture)
         {
@@ -149,6 +153,77 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Same(functions[1], result);
         }
 
+        [Fact]
+        public async Task OnTimeoutException_IgnoreToken_StopsManager()
+        {
+            var trace = new TestTraceWriter(TraceLevel.Info);
+
+            await RunTimeoutExceptionTest(trace, handleCancellation: false);
+
+            await TestHelpers.Await(() => !_manager.IsRunning);
+            Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
+            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+        }
+
+        [Fact]
+        public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
+        {
+            var trace = new TestTraceWriter(TraceLevel.Info);
+
+            await RunTimeoutExceptionTest(trace, handleCancellation: true);
+
+            // wait a few seconds to make sure the manager doesn't die
+            await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !_manager.IsRunning, timeout: 3000));
+            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
+            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+        }
+
+        private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)
+        {
+            TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
+            _manager = await CreateAndStartWebScriptHostManager(trace);
+
+            string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
+
+            var args = new Dictionary<string, object>
+            {
+                { "input", scenarioName }
+            };
+
+            await Assert.ThrowsAsync<FunctionTimeoutException>(() => _manager.Instance.CallAsync("TimeoutToken", args));
+        }
+
+        private async Task<WebScriptHostManager> CreateAndStartWebScriptHostManager(TraceWriter traceWriter)
+        {
+            var functions = new Collection<string> { "TimeoutToken" };
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = $@"TestScripts\CSharp",
+                TraceWriter = traceWriter,
+                FileLoggingMode = FileLoggingMode.Always,
+                Functions = functions,
+                FunctionTimeout = TimeSpan.FromSeconds(3)
+            };
+
+            var manager = new WebScriptHostManager(config, new SecretManager(), new WebHostSettings());
+            Task task = Task.Run(() => { manager.RunAndBlock(); });
+            await TestHelpers.Await(() => manager.IsRunning);
+
+            return manager;
+        }
+
+        public void Dispose()
+        {
+            if (_manager != null)
+            {
+                _manager.Stop();
+                _manager.Dispose();
+            }
+        }
+
         public class Fixture : IDisposable
         {
             public Fixture()
@@ -265,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             private class MockWebScriptHostManager : WebScriptHostManager
             {
-                public MockWebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) 
+                public MockWebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings)
                     : base(config, secretManager, webHostSettings)
                 {
                 }

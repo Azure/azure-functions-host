@@ -5,14 +5,15 @@ using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using System.Web.Hosting;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostExceptionHandler : IWebJobsExceptionHandler
     {
-        private WebScriptHostManager _manager;
-        public WebScriptHostExceptionHandler(WebScriptHostManager manager)
+        private ScriptHostManager _manager;
+        public WebScriptHostExceptionHandler(ScriptHostManager manager)
         {
             if (manager == null)
             {
@@ -26,21 +27,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
+        public async Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
         {
+            FunctionTimeoutException timeoutException = exceptionInfo.SourceException as FunctionTimeoutException;
+
+            if (timeoutException?.Task != null)
+            {
+                // We may double the timeoutGracePeriod here by first waiting to see if the iniital
+                // function task that started the exception has completed.
+                Task completedTask = await Task.WhenAny(timeoutException.Task, Task.Delay(timeoutGracePeriod));
+
+                // If the function task has completed, simply return. The host has already logged the timeout.
+                if (completedTask == timeoutException.Task)
+                {
+                    return;
+                }
+            }
+
             LogErrorAndFlush("A function timeout has occurred. Host is shutting down.", exceptionInfo.SourceException);
 
             // We can't wait on this as it may cause a deadlock if the timeout was fired
             // by a Listener that cannot stop until it has completed.
-            Task taskIgnore = _manager.StopAsync();
+            Task ignoreTask = _manager.StopAsync();
 
-            // Give the manager some time to shut down gracefully.
-            Task.Delay(timeoutGracePeriod).ContinueWith((ct) =>
-            {
-                HostingEnvironment.InitiateShutdown();
-            });
+            // Give the manager and all running tasks some time to shut down gracefully.
+            await Task.Delay(timeoutGracePeriod);
 
-            return Task.CompletedTask;
+            HostingEnvironment.InitiateShutdown();
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
