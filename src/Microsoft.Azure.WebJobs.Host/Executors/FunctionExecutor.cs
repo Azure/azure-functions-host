@@ -83,11 +83,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 TriggerReason = functionStartedMessage.ReasonDetails,
                 StartTime = functionStartedMessage.StartTime.DateTime
             };
-            if (_fastLogger != null)
-            {
-                // Log started
-                await _fastLogger.AddAsync(fastItem);
-            }
 
             try
             {
@@ -247,6 +242,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         if (functionTraceLevel >= TraceLevel.Info)
                         {
                             startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
+                        }
+
+                        if (_fastLogger != null)
+                        {
+                            // Log started
+                            fastItem.Arguments = message.Arguments;
+                            await _fastLogger.AddAsync(fastItem);
                         }
 
                         try
