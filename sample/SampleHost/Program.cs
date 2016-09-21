@@ -12,6 +12,7 @@ namespace SampleHost
         {
             var config = new JobHostConfiguration();
             config.Queues.VisibilityTimeout = TimeSpan.FromSeconds(15);
+            config.Queues.MaxDequeueCount = 3;
 
             if (config.IsDevelopment)
             {

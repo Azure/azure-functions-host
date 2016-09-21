@@ -41,9 +41,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             TestTraceWriter logger = new TestTraceWriter(TraceLevel.Verbose);
             SingletonManager singletonManager = new SingletonManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
+            var blobsConfiguration = new JobHostBlobsConfiguration();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
+                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5), blobsConfiguration,
                 exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
                 sharedContextProvider, new DefaultExtensionRegistry(), singletonManager, logger);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,

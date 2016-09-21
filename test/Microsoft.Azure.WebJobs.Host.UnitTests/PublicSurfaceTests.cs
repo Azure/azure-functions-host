@@ -150,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "JobHost",
                 "JobHostConfiguration",
                 "JobHostQueuesConfiguration",
+                "JobHostBlobsConfiguration",
                 "IJobActivator",
                 "ITypeLocator",
                 "INameResolver",
@@ -207,7 +208,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "Binder",
                 "IWebJobsExceptionHandler",
                 "WebJobsExceptionHandler",
-                "FunctionTimeoutException"
+                "FunctionTimeoutException",
+                "PoisonMessageEventArgs"
             };
 
             AssertPublicTypes(expected, assembly);

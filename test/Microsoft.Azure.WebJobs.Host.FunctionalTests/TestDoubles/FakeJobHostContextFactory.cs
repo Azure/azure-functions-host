@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                host, StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver,
+                host, StorageAccountProvider, QueueConfiguration, config.Blobs, TypeLocator, DefaultJobActivator.Instance, nameResolver,
                 ConsoleProvider, new JobHostConfiguration(), shutdownToken, cancellationToken, BackgroundExceptionDispatcher, HostIdProvider, FunctionExecutor,
                 FunctionIndexProvider, BindingProvider, HostInstanceLoggerProvider, FunctionInstanceLoggerProvider,
                 FunctionOutputLoggerProvider);

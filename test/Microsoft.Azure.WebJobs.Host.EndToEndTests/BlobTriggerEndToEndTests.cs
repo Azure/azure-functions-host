@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -9,14 +10,16 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
-    public class BlobTriggerTests : IDisposable
+    public class BlobTriggerEndToEndTests : IDisposable
     {
-        private const string TestArtifactPrefix = "e2etestsingletrigger";
-        private const string ContainerName = TestArtifactPrefix + "-%rnd%";
+        private const string TestArtifactPrefix = "e2etests";
+        private const string SingleTriggerContainerName = TestArtifactPrefix + "singletrigger-%rnd%";
+        private const string PoisonTestContainerName = TestArtifactPrefix + "poison-%rnd%";
         private const string BlobName = "test";
 
         private static ManualResetEvent _blobProcessedEvent;
@@ -27,7 +30,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private readonly CloudStorageAccount _storageAccount;
         private readonly RandomNameResolver _nameResolver;
 
-        public BlobTriggerTests()
+        private static object _syncLock = new object();
+        private static List<string> poisonBlobMessages = new List<string>();
+
+        public BlobTriggerEndToEndTests()
         {
             _timesProcessed = 0;
 
@@ -35,17 +41,56 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _hostConfiguration = new JobHostConfiguration()
             {
                 NameResolver = _nameResolver,
-                TypeLocator = new FakeTypeLocator(typeof(BlobTriggerTests)),
+                TypeLocator = new FakeTypeLocator(this.GetType()),
             };
 
             _storageAccount = CloudStorageAccount.Parse(_hostConfiguration.StorageConnectionString);
             CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-            _testContainer = blobClient.GetContainerReference(_nameResolver.ResolveInString(ContainerName));
+            _testContainer = blobClient.GetContainerReference(_nameResolver.ResolveInString(SingleTriggerContainerName));
             Assert.False(_testContainer.Exists());
             _testContainer.Create();
         }
 
-        public static void SingleBlobTrigger([BlobTrigger(ContainerName + "/{name}")] string sleepTimeInSeconds)
+        public static void BlobProcessorPrimary(
+            [BlobTrigger(PoisonTestContainerName + "/{name}")] string input)
+        {
+            // throw to generate a poison blob message
+            throw new Exception();
+        }
+
+        // process the poison queue for the primary storage account
+        public static void PoisonBlobQueueProcessorPrimary(
+            [QueueTrigger("webjobs-blobtrigger-poison")] JObject message)
+        {
+            lock (_syncLock)
+            {
+                string blobName = (string)message["BlobName"];
+                poisonBlobMessages.Add(blobName);
+            }
+        }
+
+        public static void BlobProcessorSecondary(
+            [StorageAccount("SecondaryStorage")]
+            [BlobTrigger(PoisonTestContainerName + "/{name}")] string input)
+        {
+            // throw to generate a poison blob message
+            throw new Exception();
+        }
+
+        // process the poison queue for the secondary storage account
+        public static void PoisonBlobQueueProcessorSecondary(
+            [StorageAccount("SecondaryStorage")]
+            [QueueTrigger("webjobs-blobtrigger-poison")] JObject message)
+        {
+            lock (_syncLock)
+            {
+                string blobName = (string)message["BlobName"];
+                poisonBlobMessages.Add(blobName);
+            }
+        }
+
+        public static void SingleBlobTrigger(
+            [BlobTrigger(SingleTriggerContainerName + "/{name}")] string sleepTimeInSeconds)
         {
             Interlocked.Increment(ref _timesProcessed);
 
@@ -55,44 +100,32 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _blobProcessedEvent.Set();
         }
 
-        public static void PoisonBlobTrigger([BlobTrigger(ContainerName + "/{name}"), StorageAccount("SecondaryStorage")] string input)
+        [Theory]
+        [InlineData("AzureWebJobsSecondaryStorage")]
+        [InlineData("AzureWebJobsStorage")]
+        public async Task PoisonMessage_CreatedInCorrectStorageAccount(string storageAccountSetting)
         {
-            throw new Exception();
-        }
+            poisonBlobMessages.Clear();
 
-        public void Dispose()
-        {
-            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-            foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))
-            {
-                testContainer.Delete();
-            }
-        }
-
-        [Fact]
-        public void PoisonQueue_CreatedOnTriggerStorage()
-        {
-            TextWriter hold = Console.Out;
-            StringWriter consoleOutput = new StringWriter();
-            Console.SetOut(consoleOutput);
-
-            CloudStorageAccount secondary = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AzureWebJobsSecondaryStorage"));
-            var client = secondary.CreateCloudBlobClient();
-            var container = client.GetContainerReference(_nameResolver.ResolveInString(ContainerName));
+            var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable(storageAccountSetting));
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var containerName = _nameResolver.ResolveInString(PoisonTestContainerName);
+            var container = blobClient.GetContainerReference(containerName);
             container.Create();
-            CloudBlockBlob blob = container.GetBlockBlobReference(BlobName);
+
+            var blobName = Guid.NewGuid().ToString();
+            CloudBlockBlob blob = container.GetBlockBlobReference(blobName);
             blob.UploadText("0");
 
-            // Process the blob first
             using (JobHost host = new JobHost(_hostConfiguration))
             {
-                DateTime startTime = DateTime.Now;
-
                 host.Start();
 
-                Task.Delay(20000).GetAwaiter().GetResult();
-
-                host.Stop();
+                // wait for the poison message to be handled
+                await TestHelpers.Await(() =>
+                {
+                    return poisonBlobMessages.Contains(blobName);
+                });
             }
         }
 
@@ -119,8 +152,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 timeToProcess = (int)(DateTime.Now - startTime).TotalMilliseconds;
 
-                host.Stop();
-
                 Console.SetOut(hold);
 
                 Assert.Equal(1, _timesProcessed);
@@ -128,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                 var executions = consoleOutputLines.Where(p => p.Contains("Executing"));
                 Assert.Equal(1, executions.Count());
-                Assert.StartsWith(string.Format("Executing 'BlobTriggerTests.SingleBlobTrigger' (Reason='New blob detected: {0}/{1}', Id=", blob.Container.Name, blob.Name), executions.Single());
+                Assert.StartsWith(string.Format("Executing 'BlobTriggerEndToEndTests.SingleBlobTrigger' (Reason='New blob detected: {0}/{1}', Id=", blob.Container.Name, blob.Name), executions.Single());
             }
 
             // Then start again and make sure the blob doesn't get reprocessed
@@ -140,8 +171,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 host.Start();
 
                 bool blobReprocessed = _blobProcessedEvent.WaitOne(2 * timeToProcess);
-
-                host.Stop();
 
                 Assert.False(blobReprocessed);
             }
@@ -164,12 +193,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 host2.Start();
 
                 Assert.True(_blobProcessedEvent.WaitOne(TimeSpan.FromSeconds(60)));
-
-                host1.Stop();
-                host2.Stop();
             }
 
             Assert.Equal(1, _timesProcessed);
+        }
+
+        public void Dispose()
+        {
+            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
+            foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))
+            {
+                testContainer.Delete();
+            }
         }
     }
 }

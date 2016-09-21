@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.NotNull(config.Tracing);
             Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
             Assert.Equal(0, config.Tracing.Tracers.Count);
+            Assert.False(config.Blobs.CentralizedPoisonQueue);
 
             StorageClientFactory clientFactory = config.GetService<StorageClientFactory>();
             Assert.NotNull(clientFactory);

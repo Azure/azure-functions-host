@@ -36,8 +36,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                host, StorageAccountProvider, Queues, typeLocator, DefaultJobActivator.Instance, nameResolver,
-                new NullConsoleProvider(), new JobHostConfiguration(), shutdownToken, cancellationToken, new WebJobsExceptionHandler(),
+                host, StorageAccountProvider, Queues, config.Blobs, typeLocator, DefaultJobActivator.Instance, nameResolver,
+                new NullConsoleProvider(), config, shutdownToken, cancellationToken, new WebJobsExceptionHandler(),
                 functionIndexProvider: FunctionIndexProvider, singletonManager: SingletonManager, hostIdProvider: HostIdProvider);
         }
     }

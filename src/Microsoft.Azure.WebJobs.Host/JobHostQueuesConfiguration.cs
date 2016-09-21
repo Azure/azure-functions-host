@@ -8,7 +8,9 @@ using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
-    /// <summary>Represents configuration for <see cref="QueueTriggerAttribute"/>.</summary>
+    /// <summary>
+    /// Represents configuration for <see cref="QueueTriggerAttribute"/>.
+    /// </summary>
     public sealed class JobHostQueuesConfiguration : IQueueConfiguration
     {
         private const int DefaultMaxDequeueCount = 5;

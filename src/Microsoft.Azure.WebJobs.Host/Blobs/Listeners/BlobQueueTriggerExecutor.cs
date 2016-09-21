@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _registrations = new ConcurrentDictionary<string, BlobQueueRegistration>();
         }
 
+        public bool TryGetRegistration(string functionId, out BlobQueueRegistration registration)
+        {
+            return _registrations.TryGetValue(functionId, out registration);
+        }
+
         public void Register(string functionId, BlobQueueRegistration registration)
         {
             _registrations.AddOrUpdate(functionId, registration, (i1, i2) => registration);

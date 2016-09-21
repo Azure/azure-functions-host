@@ -215,6 +215,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration(storageAccountProvider);
+            JobHostBlobsConfiguration blobsConfiguration = new JobHostBlobsConfiguration();
             IWebJobsExceptionHandler exceptionHandler =
                 new TaskBackgroundExceptionHandler<TResult>(taskSource);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
@@ -234,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
+                queueConfiguration, blobsConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
@@ -301,8 +302,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource, IEnumerable<string> ignoreFailureFunctions)
         {
-            return RunTrigger<TResult>(account, programType, setTaskSource, DefaultJobActivator.Instance,
-                ignoreFailureFunctions);
+            return RunTrigger<TResult>(account, programType, setTaskSource, DefaultJobActivator.Instance, ignoreFailureFunctions);
         }
 
         public static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,

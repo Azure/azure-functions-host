@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs
 
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
+        private readonly JobHostBlobsConfiguration _blobsConfiguration = new JobHostBlobsConfiguration();
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
         private IJobHostContextFactory _contextFactory;
@@ -213,6 +214,14 @@ namespace Microsoft.Azure.WebJobs
         public JobHostQueuesConfiguration Queues
         {
             get { return _queueConfiguration; }
+        }
+
+        /// <summary>
+        /// Gets the configuration used by <see cref="BlobTriggerAttribute"/>.
+        /// </summary>
+        public JobHostBlobsConfiguration Blobs
+        {
+            get { return _blobsConfiguration; }
         }
 
         /// <summary>

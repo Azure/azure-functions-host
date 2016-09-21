@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -49,31 +47,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 TaskSource.TrySetResult(blob);
             }
-        }
-
-        [Fact]
-        public void BlobTrigger_IfBindingAlwaysFails_MovesToPoisonQueue()
-        {
-            // Arrange
-            IStorageAccount account = CreateFakeStorageAccount();
-            IStorageBlobContainer container = CreateContainer(account, ContainerName);
-            IStorageBlockBlob blob = container.GetBlockBlobReference(BlobName);
-            CloudBlockBlob expectedBlob = blob.SdkObject;
-            blob.UploadText("ignore");
-
-            // Act
-            string result = RunTrigger<string>(account, typeof(PoisonBlobProgram),
-                (s) => PoisonBlobProgram.TaskSource = s,
-                new string[] { typeof(PoisonBlobProgram).FullName + ".PutInPoisonQueue" });
-
-            // Assert
-            BlobTriggerMessage message = JsonConvert.DeserializeObject<BlobTriggerMessage>(result);
-            Assert.NotNull(message);
-            Assert.Equal(typeof(PoisonBlobProgram).FullName + ".PutInPoisonQueue", message.FunctionId);
-            Assert.Equal(StorageBlobType.BlockBlob, message.BlobType);
-            Assert.Equal(ContainerName, message.ContainerName);
-            Assert.Equal(BlobName, message.BlobName);
-            Assert.NotEmpty(message.ETag);
         }
 
         private class PoisonBlobProgram

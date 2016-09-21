@@ -98,6 +98,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             localProcessor.MessageAddedToPoisonQueue += (sender, e) =>
                 {
                     Assert.Same(sender, localProcessor);
+                    Assert.Same(_poisonQueue, e.PoisonQueue);
+                    Assert.NotNull(e.Message);
                     poisonMessageHandlerCalled = true;
                 };
 

@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
             SharedQueueWatcher sharedWatcher,
-            IQueueConfiguration queueConfiguration)
+            IQueueConfiguration queueConfiguration,
+            QueueProcessor queueProcessor = null)
         {
             if (trace == null)
             {
@@ -85,8 +86,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _sharedWatcher = sharedWatcher;
             }
 
-            EventHandler poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler)null;
-            _queueProcessor = CreateQueueProcessor(
+            EventHandler<PoisonMessageEventArgs> poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler<PoisonMessageEventArgs>)null;
+            _queueProcessor = queueProcessor ?? CreateQueueProcessor(
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
                 _trace, _queueConfiguration, poisonMessageEventHandler);
         }
@@ -273,9 +274,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private void OnMessageAddedToPoisonQueue(object sender, EventArgs e)
+        private void OnMessageAddedToPoisonQueue(object sender, PoisonMessageEventArgs e)
         {
-            _sharedWatcher.Notify(_poisonQueue.Name);
+            // TODO: this is assuming that the poison queue is in the same
+            // storage account
+            _sharedWatcher.Notify(e.PoisonQueue.Name);
         }
 
         private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
@@ -298,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TraceWriter trace, IQueueConfiguration queueConfig, EventHandler poisonQueueMessageAddedHandler)
+        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TraceWriter trace, IQueueConfiguration queueConfig, EventHandler<PoisonMessageEventArgs> poisonQueueMessageAddedHandler)
         {
             QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, queueConfig, poisonQueue);
 

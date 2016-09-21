@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             var fastLogger = _config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>();
             IWebJobsExceptionHandler exceptionHandler = _config.GetService<IWebJobsExceptionHandler>();
 
-            return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
+            return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.Blobs, _config.TypeLocator, _config.JobActivator,
                 _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, exceptionHandler, hostIdProvider, fastLogger: fastLogger);
         }
 
@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             JobHost host,
             IStorageAccountProvider storageAccountProvider,
             IQueueConfiguration queueConfiguration,
+            JobHostBlobsConfiguration blobsConfiguration,
             ITypeLocator typeLocator,
             IJobActivator activator,
             INameResolver nameResolver,
@@ -117,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             IExtensionRegistry extensions = config.GetExtensions();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, exceptionHandler,
+                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration, exceptionHandler,
                 messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, trace);
 
             if (bindingProvider == null)
