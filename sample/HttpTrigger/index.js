@@ -6,8 +6,9 @@
         context.log('test-header=' + headerValue);
     }
 
+    var res;
     if (typeof req.query.name == 'undefined') {
-        context.res = {
+        res = {
             status: 400,
             body: "Please pass a name on the query string",
             headers: {
@@ -16,7 +17,7 @@
         };
     }
     else {
-        context.res = {
+        res = {
             status: 200,
             body: "Hello " + req.query.name,
             headers: {
@@ -25,5 +26,5 @@
         };
     }
 
-    context.done();
+    context.done(null, res);
 }
