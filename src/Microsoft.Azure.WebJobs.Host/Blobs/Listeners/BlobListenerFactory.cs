@@ -136,9 +136,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueueClient queueClient = _hostAccount.CreateQueueClient();
             IStorageBlobClient blobClient = _hostAccount.CreateBlobClient();
 
+            // Important: We're using the "data account" here, which is the account that the
+            // function the listener is for is targeting. This is the account that will be used
+            // to read the trigger blob.
+            IStorageBlobClient userBlobClient = _dataAccount.CreateBlobClient();
+            IStorageQueueClient userQueueClient = _dataAccount.CreateQueueClient();
+
             string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(hostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
+            IStorageQueue poisonQueue = userQueueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
 
             SharedQueueWatcher sharedQueueWatcher = _sharedContextProvider.GetOrCreateInstance<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
@@ -153,14 +160,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // Create a "bridge" listener that will monitor the blob
             // notification queue and dispatch to the target job function.
             SharedBlobQueueListener sharedBlobQueueListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobQueueListener>(
-                new SharedBlobQueueListenerFactory(sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
+                new SharedBlobQueueListenerFactory(sharedQueueWatcher, hostBlobTriggerQueue, poisonQueue,
                     _queueConfiguration, _exceptionHandler, _trace, sharedBlobListener.BlobWritterWatcher));
             var queueListener = new BlobListener(sharedBlobQueueListener);
-
-            // Important: We're using the "data account" here, which is the account that the
-            // function the listener is for is targeting. This is the account that will be used
-            // to read the trigger blob.
-            IStorageBlobClient userBlobClient = _dataAccount.CreateBlobClient();
 
             // Register our function with the shared queue listener
             RegisterWithSharedBlobQueueListenerAsync(sharedBlobQueueListener, userBlobClient);

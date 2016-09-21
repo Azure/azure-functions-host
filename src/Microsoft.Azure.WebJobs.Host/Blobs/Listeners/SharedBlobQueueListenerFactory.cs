@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class SharedBlobQueueListenerFactory : IFactory<SharedBlobQueueListener>
     {
         private readonly SharedQueueWatcher _sharedQueueWatcher;
-        private readonly IStorageQueueClient _queueClient;
+        private readonly IStorageQueue _poisonQueue;
         private readonly IStorageQueue _hostBlobTriggerQueue;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public SharedBlobQueueListenerFactory(
             SharedQueueWatcher sharedQueueWatcher,
-            IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
+            IStorageQueue poisonQueue,
             IQueueConfiguration queueConfiguration,
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("sharedQueueWatcher");
             }
 
-            if (queueClient == null)
+            if (poisonQueue == null)
             {
-                throw new ArgumentNullException("queueClient");
+                throw new ArgumentNullException("poisonQueue");
             }
 
             if (hostBlobTriggerQueue == null)
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             _sharedQueueWatcher = sharedQueueWatcher;
-            _queueClient = queueClient;
+            _poisonQueue = poisonQueue;
             _hostBlobTriggerQueue = hostBlobTriggerQueue;
             _queueConfiguration = queueConfiguration;
             _exceptionHandler = exceptionHandler;
@@ -76,13 +76,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public SharedBlobQueueListener Create()
         {
-            IStorageQueue blobTriggerPoisonQueue =
-                _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
             BlobQueueTriggerExecutor triggerExecutor =
                 new BlobQueueTriggerExecutor(_blobWrittenWatcher);
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
-            IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
+            IListener listener = new QueueListener(_hostBlobTriggerQueue, _poisonQueue, triggerExecutor,
                 delayStrategy, _exceptionHandler, _trace, _sharedQueueWatcher, _queueConfiguration);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }
