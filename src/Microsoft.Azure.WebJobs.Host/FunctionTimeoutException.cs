@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -32,17 +33,31 @@ namespace Microsoft.Azure.WebJobs.Host
         {
         }
 
-        /// <inheritdoc/>
-        public FunctionTimeoutException(string message, Guid instanceId, string methodName, TimeSpan timeout, Exception innerException)
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="message">The exception message.</param>
+        /// <param name="instanceId">The function instance Id.</param>
+        /// <param name="methodName">The fully qualified method name.</param>
+        /// <param name="timeout">The configured timeout value.</param>
+        /// <param name="task">The function Task.</param>
+        /// <param name="innerException">The exception that is the cause of the current exception (or null).</param>
+        public FunctionTimeoutException(string message, Guid instanceId, string methodName, TimeSpan timeout, Task task, Exception innerException)
             : base(message, instanceId, methodName, innerException)
         {
             Timeout = timeout;
+            Task = task;
         }
 
         /// <summary>
         /// The function timeout value that expired.
         /// </summary>
         public TimeSpan Timeout { get; set; }
+
+        /// <summary>
+        /// The task that did not complete due to a timeout.
+        /// </summary>
+        public Task Task { get; set; }
 
         /// <inheritdoc/>
         public override void GetObjectData(SerializationInfo info, StreamingContext context)

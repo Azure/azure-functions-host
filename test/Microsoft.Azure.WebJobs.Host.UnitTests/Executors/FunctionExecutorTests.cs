@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             var timeoutSource = new CancellationTokenSource();
             var shutdownSource = new CancellationTokenSource();
-            bool throwOnTimeout = false;
+            bool throwOnTimeout = true;
 
             await FunctionExecutor.InvokeAsync(mockInvoker.Object, new object[0], timeoutSource, shutdownSource,
                 throwOnTimeout, TimeSpan.MinValue, null);

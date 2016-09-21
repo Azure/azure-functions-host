@@ -170,7 +170,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             Exception exception = exceptionInfo.SourceException;
 
-            bool isTimeout = exception.IsTimeout();
             if (exception.IsTimeout())
             {
                 TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
@@ -608,20 +607,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Start the invokeTask.
             Task invokeTask = invoker.InvokeAsync(invokeParameters);
 
-            // A task that will throw a TaskCanceledException if #2 occurs.
-            Task shutdownTask = Task.Delay(-1, functionCancellationTokenSource.Token);
-
-            // A task that will throw when either #1 or #2 occurs.
-            Task<Task> invokeOrShutdownTask = Task.WhenAny(invokeTask, shutdownTask);
-
             // Combine #1 and #2 with a timeout task (handled by this method).
-            bool isTimeout = await TryHandleTimeoutAsync(invokeOrShutdownTask, throwOnTimeout, timeoutTokenSource.Token,
+            // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
+            // if there is a timeout.
+            bool isTimeout = await TryHandleTimeoutAsync(invokeTask, functionCancellationTokenSource.Token, throwOnTimeout, timeoutTokenSource.Token,
                 timerInterval, instance, () => functionCancellationTokenSource.Cancel());
 
             // #2 occurred. If we're going to throwOnTimeout, watch for a timeout while we wait for invokeTask to complete.
-            if (throwOnTimeout && !isTimeout && invokeOrShutdownTask.Result == shutdownTask)
+            if (throwOnTimeout && !isTimeout && functionCancellationTokenSource.IsCancellationRequested)
             {
-                await TryHandleTimeoutAsync(invokeTask, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
+                await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
             }
 
             await invokeTask;
@@ -630,18 +625,20 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// <summary>
         /// Executes a timeout pattern. Throws an exception if the timeoutToken is canceled before taskToTimeout completes and throwOnTimeout is true.
         /// </summary>
-        /// <param name="taskToTimeout">The task to run.</param>
+        /// <param name="invokeTask">The task to run.</param>
+        /// <param name="shutdownToken">A token that is canceled if a host shutdown is requested.</param>
         /// <param name="throwOnTimeout">True if the method should throw an OperationCanceledException if it times out.</param>
         /// <param name="timeoutToken">The token to watch. If it is canceled, taskToTimeout has timed out.</param>
         /// <param name="onTimeout">A callback to be executed if a timeout occurs.</param>
         /// <param name="timeoutInterval">The timeout period. Used only in the exception message.</param>
         /// <param name="instance">The function instance. Used only in the exceptionMessage</param>
         /// <returns>True if a timeout occurred. Otherwise, false.</returns>
-        private static async Task<bool> TryHandleTimeoutAsync(Task taskToTimeout, bool throwOnTimeout, CancellationToken timeoutToken,
+        private static async Task<bool> TryHandleTimeoutAsync(Task invokeTask, CancellationToken shutdownToken, bool throwOnTimeout, CancellationToken timeoutToken,
             TimeSpan timeoutInterval, IFunctionInstance instance, Action onTimeout)
         {
             Task timeoutTask = Task.Delay(-1, timeoutToken);
-            Task completedTask = await Task.WhenAny(taskToTimeout, timeoutTask);
+            Task shutdownTask = Task.Delay(-1, shutdownToken);
+            Task completedTask = await Task.WhenAny(invokeTask, shutdownTask, timeoutTask);
 
             if (completedTask == timeoutTask)
             {
@@ -655,7 +652,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     // If we need to throw, throw now. This will bubble up and eventually bring down the host after
                     // a short grace period for the function to handle the cancellation.
                     string errorMessage = string.Format("Timeout value of {0} was exceeded by function: {1}", timeoutInterval, instance.FunctionDescriptor.ShortName);
-                    throw new FunctionTimeoutException(errorMessage, instance.Id, instance.FunctionDescriptor.ShortName, timeoutInterval, null);
+                    throw new FunctionTimeoutException(errorMessage, instance.Id, instance.FunctionDescriptor.ShortName, timeoutInterval, invokeTask, null);
                 }
 
                 return true;
