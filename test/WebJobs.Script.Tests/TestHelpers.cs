@@ -4,11 +4,16 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -120,6 +125,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
             return new DirectoryInfo(functionLogsPath);
+        }
+
+        public static FunctionBinding CreateTestBinding(JObject json)
+        {
+            ScriptBindingContext context = new ScriptBindingContext(json);
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), new TestTraceWriter(TraceLevel.Verbose));
+            ScriptBinding scriptBinding = null;
+            provider.TryCreate(context, out scriptBinding);
+            BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+            ScriptHostConfiguration config = new ScriptHostConfiguration();
+            return new ExtensionBinding(config, scriptBinding, bindingMetadata);
         }
     }
 }

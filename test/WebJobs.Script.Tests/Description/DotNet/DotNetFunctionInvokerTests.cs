@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Moq;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
@@ -139,6 +140,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             // Verify that logs on the second instance were suppressed
             int count = dependencies.TraceWriter.Traces.Count();
             Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void ValidateFunctionBindingArguments_ReturnBinding_Succeeds()
+        {
+            Collection<FunctionParameter> parameters = new Collection<FunctionParameter>()
+            {
+                new FunctionParameter("input", "String", false, RefKind.None)
+            };
+            FunctionSignature signature = new FunctionSignature("Test", "Test", ImmutableArray.CreateRange<FunctionParameter>(parameters), false);
+
+            Collection<FunctionBinding> inputBindings = new Collection<FunctionBinding>()
+            {
+                TestHelpers.CreateTestBinding(new JObject
+                {
+                    { "type", "blobTrigger" },
+                    { "name", "input" },
+                    { "direction", "in" },
+                    { "path", "test" }
+                })
+            };
+            Collection<FunctionBinding> outputBindings = new Collection<FunctionBinding>()
+            {
+                TestHelpers.CreateTestBinding(new JObject
+                {
+                    { "type", "blob" },
+                    { "name", ScriptConstants.SystemReturnParameterBindingName },
+                    { "direction", "out" },
+                    { "path", "test/test" }
+                })
+            };
+            var diagnostics = DotNetFunctionInvoker.ValidateFunctionBindingArguments(signature, "input", inputBindings, outputBindings);
+            Assert.Equal(0, diagnostics.Count());
         }
 
         private RunDependencies CreateDependencies(TraceLevel traceLevel = TraceLevel.Info)

@@ -1,6 +1,6 @@
 ﻿using System;
 
-public static object Run(string input, out object newItem)
+public static object Run(string input)
 {
     return new 
     {

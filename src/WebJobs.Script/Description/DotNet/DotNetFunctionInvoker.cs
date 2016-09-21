@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 compilationResult = compilation.GetDiagnostics();
 
                 signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
-                compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+                compilationResult = ValidateFunctionBindingArguments(signature, _triggerInputName, _inputBindings, _outputBindings, compilationResult.ToBuilder());
             }
             catch (CompilationErrorException exc)
             {
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
                 FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
+                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
                 TraceCompilationDiagnostics(bindingDiagnostics);
 
                 Assembly assembly = compilation.EmitAndLoad(cancellationToken);
@@ -373,25 +373,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<Diagnostic>.Empty;
         }
 
-        private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature,
+        internal static ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature, string triggerInputName,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {
             var resultBuilder = builder ?? ImmutableArray<Diagnostic>.Empty.ToBuilder();
 
-            if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
+            if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, triggerInputName, StringComparison.Ordinal) == 0))
             {
-                string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", _triggerInputName);
+                string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", triggerInputName);
                 var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingTriggerArgumentCompilationCode,
                     "Missing trigger argument", message, "AzureFunctions", DiagnosticSeverity.Error, true);
 
                 resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
             }
 
-            var bindings = _inputBindings.Where(b => !b.Metadata.IsTrigger).Union(_outputBindings);
+            var bindings = inputBindings.Where(b => !b.Metadata.IsTrigger).Union(outputBindings);
 
             foreach (var binding in bindings)
             {
                 if (string.Compare("http", binding.Metadata.Type, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    continue;
+                }
+
+                if (binding.Metadata.IsReturn)
                 {
                     continue;
                 }
