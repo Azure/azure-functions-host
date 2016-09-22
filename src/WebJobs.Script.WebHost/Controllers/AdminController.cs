@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            ParameterDescriptor inputParameter = function.Parameters.First();
+            ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { inputParameter.Name, invocation.Input }
