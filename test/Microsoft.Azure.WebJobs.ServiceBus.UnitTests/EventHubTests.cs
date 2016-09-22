@@ -52,5 +52,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             var client = config.GetEventHubClient("k1");
             Assert.Equal(expectedPathName, client.Path);
         }
+
+
+        [Theory]
+        [InlineData("e", "n1", "n1/e/")]
+        [InlineData("e--1", "host_.path.foo", "host_.path.foo/e--1/")]
+        [InlineData("Ab", "Cd", "cd/ab/")]
+        [InlineData("A=", "Cd", "cd/a:3D/")]
+        [InlineData("A:", "Cd", "cd/a:3A/")]
+        public void EventHubBlobPrefix(string eventHubName, string serviceBusNamespace, string expected)
+        {
+            string actual = EventHubConfiguration.GetBlobPrefix(eventHubName, serviceBusNamespace);
+            Assert.Equal(expected, actual);
+        }
     }
 }

@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -31,6 +33,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         private readonly PartitionManagerOptions _partitionOptions; // optional, used to create EventProcessorHost
 
         private string _defaultStorageString; // set to JobHostConfig.StorageConnectionString
+
+        /// <summary>
+        /// Name of the blob container that the EventHostProcessor instances uses to coordinate load balancing listening on an event hub. 
+        /// Each event hub gets its own blob prefix within the container. 
+        /// </summary>
+        public const string LeaseContainerName = "azure-webjobs-eventhub";
 
         /// <summary>
         /// default constructor. Callers can reference this without having any assembly references to service bus assemblies. 
@@ -230,12 +238,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                     sb.EntityPath = null; // need to remove to use with EventProcessorHost
                 }
 
+                var @namespace = GetServiceBusNamespace(sb);
+                var blobPrefix = GetBlobPrefix(actualPath, @namespace);
+
+                // Use blob prefix support available in EPH starting in 2.2.6 
                 EventProcessorHost host = new EventProcessorHost(
-                   eventProcessorHostName,
-                   actualPath,
-                   consumerGroup,
-                   sb.ToString(),
-                   storageConnectionString);
+                    hostName: eventProcessorHostName,
+                    eventHubPath: actualPath,
+                    consumerGroupName: consumerGroup, 
+                    eventHubConnectionString: sb.ToString(),
+                    storageConnectionString: storageConnectionString, 
+                    leaseContainerName: LeaseContainerName,
+                   leaseBlobPrefix: blobPrefix);
 
                 if (_partitionOptions != null)
                 {
@@ -254,6 +268,90 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 }
             }
             throw new InvalidOperationException("No event hub receiver named " + eventHubName);
+        }
+
+        private static string EscapeStorageCharacter(char character)
+        {
+            var ordinalValue = (ushort)character;
+            if (ordinalValue < 0x100)
+            {
+                return string.Format(CultureInfo.InvariantCulture, ":{0:X2}", ordinalValue);
+            }
+            else
+            {
+                return string.Format(CultureInfo.InvariantCulture, "::{0:X4}", ordinalValue);
+            }
+        }
+                
+        // Escape a blob path.  
+        // For diagnostics, we want human-readble strings that resemble the input. 
+        // Inputs are most commonly alphanumeric with a fex extra chars (dash, underscore, dot). 
+        // Escape character is a ':', which is also escaped. 
+        // Blob names are case sensitive; whereas input is case insensitive, so normalize to lower.  
+        private static string EscapeBlobPath(string path)
+        {
+            StringBuilder sb = new StringBuilder(path.Length);
+            foreach (char c in path)
+            {
+                if (c >= 'a' && c <= 'z')
+                {
+                    sb.Append(c);
+                }
+                else if (c == '-' || c == '_' || c == '.') 
+                {
+                    // Potentially common carahcters. 
+                    sb.Append(c);
+                }
+                else if (c >= 'A' && c <= 'Z')
+                {
+                    sb.Append((char)(c - 'A' + 'a')); // ToLower
+                }
+                else if (c >= '0' && c <= '9')
+                {
+                    sb.Append(c);
+                }
+                else
+                {
+                    sb.Append(EscapeStorageCharacter(c));
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private static string GetServiceBusNamespace(ServiceBusConnectionStringBuilder connectionString)
+        {
+            // EventHubs only have 1 endpoint. 
+            var url = connectionString.Endpoints.First();
+            var @namespace = url.Host;
+            return @namespace;
+        }
+
+        /// <summary>
+        /// Get the blob prefix used with EventProcessorHost for a given event hub.  
+        /// </summary>
+        /// <param name="eventHubName">the event hub path</param>
+        /// <param name="serviceBusNamespace">the event hub's service bus namespace.</param>
+        /// <returns>a blob prefix path that can be passed to EventProcessorHost.</returns>
+        /// <remarks>
+        /// An event hub is defined by it's path and namespace. The namespace is extracted from the connection string. 
+        /// This must be an injective one-to-one function because:
+        /// 1. multiple machines listening on the same event hub must use the same blob prefix. This means it must be deterministic. 
+        /// 2. different event hubs must not resolve to the same path. 
+        /// </remarks>        
+        public static string GetBlobPrefix(string eventHubName, string serviceBusNamespace)
+        {
+            if (eventHubName == null)
+            {
+                throw new ArgumentNullException("eventHubName");
+            }
+            if (serviceBusNamespace == null)
+            {
+                throw new ArgumentNullException("serviceBusNamespace");
+            }
+
+            string key = EscapeBlobPath(serviceBusNamespace) + "/" + EscapeBlobPath(eventHubName) + "/";
+            return key;
         }
 
         EventProcessorOptions IEventHubProvider.GetOptions()
