@@ -88,11 +88,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             ITriggerBinding binding;
             if (queueName != null)
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, queueName, attribute.Access, _config);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, attribute.Access, _config, queueName);
             }
             else
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access, _config);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, attribute.Access, _config, topicName, subscriptionName);
             }
 
             return Task.FromResult<ITriggerBinding>(binding);

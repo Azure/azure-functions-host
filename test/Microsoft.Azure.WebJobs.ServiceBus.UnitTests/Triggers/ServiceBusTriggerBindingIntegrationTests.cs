@@ -19,14 +19,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
 {
     public class ServiceBusTriggerBindingIntegrationTests : IClassFixture<InvariantCultureFixture>
     {
-        private ITriggerBinding _binding;
+        private ITriggerBinding _queueBinding;
+        private ITriggerBinding _topicBinding;
 
         public ServiceBusTriggerBindingIntegrationTests()
         {
             IQueueTriggerArgumentBindingProvider provider = new UserTypeArgumentBindingProvider();
             ParameterInfo pi = new StubParameterInfo("parameterName", typeof(UserDataType));
             var argumentBinding = provider.TryCreate(pi);
-            _binding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null, "queueName", AccessRights.Manage, new ServiceBusConfiguration());
+            _queueBinding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null, AccessRights.Manage, new ServiceBusConfiguration(), "queueName");
+            _topicBinding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null, AccessRights.Manage, new ServiceBusConfiguration(), "subscriptionName", "topicName");
         }
 
         [Theory]
@@ -44,20 +46,25 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
             object convertedPropertyValue = parseMethod.Invoke(null, new object[]{userPropertyValue});
             userProperty.SetValue(expectedObject, convertedPropertyValue);
             string messageContent = JsonConvert.SerializeObject(expectedObject);
-            BrokeredMessage message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(messageContent)), true);
-            message.ContentType = ContentTypes.ApplicationJson;
-
             ValueBindingContext context = new ValueBindingContext(null, CancellationToken.None);
 
-            // Act
-            ITriggerData data = _binding.BindAsync(message, context).GetAwaiter().GetResult();
+            Action<ITriggerBinding> testBinding = (b) =>
+            {
+                // Act
+                BrokeredMessage message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(messageContent)), true);
+                message.ContentType = ContentTypes.ApplicationJson;
+                ITriggerData data = _queueBinding.BindAsync(message, context).GetAwaiter().GetResult();
 
-            // Assert
-            Assert.NotNull(data);
-            Assert.NotNull(data.ValueProvider);
-            Assert.NotNull(data.BindingData);
-            Assert.True(data.BindingData.ContainsKey(userPropertyName));
-            Assert.Equal(userProperty.GetValue(expectedObject, null), data.BindingData[userPropertyName]);
+                // Assert
+                Assert.NotNull(data);
+                Assert.NotNull(data.ValueProvider);
+                Assert.NotNull(data.BindingData);
+                Assert.True(data.BindingData.ContainsKey(userPropertyName));
+                Assert.Equal(userProperty.GetValue(expectedObject, null), data.BindingData[userPropertyName]);
+            };
+
+            testBinding(_queueBinding);
+            testBinding(_topicBinding);
         }
 
         private class StubParameterInfo : ParameterInfo

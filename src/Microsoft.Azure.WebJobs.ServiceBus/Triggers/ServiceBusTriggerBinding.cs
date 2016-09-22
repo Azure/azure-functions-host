@@ -30,30 +30,31 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         private readonly AccessRights _accessRights;
         private readonly ServiceBusConfiguration _config;
 
-        public ServiceBusTriggerBinding(string parameterName, Type parameterType, 
-            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName, AccessRights accessRights, ServiceBusConfiguration config)
+        public ServiceBusTriggerBinding(string parameterName, Type parameterType, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
+            AccessRights accessRights, ServiceBusConfiguration config, string queueName)
+            : this(parameterName, parameterType, argumentBinding, account, accessRights, config)
+        {
+            _queueName = queueName;
+            _entityPath = queueName;
+        }
+
+        public ServiceBusTriggerBinding(string parameterName, Type parameterType, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
+            AccessRights accessRights, ServiceBusConfiguration config, string topicName, string subscriptionName)
+            : this(parameterName, parameterType, argumentBinding, account, accessRights, config)
+        {
+            _topicName = topicName;
+            _subscriptionName = subscriptionName;
+            _entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
+        }
+
+        private ServiceBusTriggerBinding(string parameterName, Type parameterType, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, 
+            ServiceBusAccount account, AccessRights accessRights, ServiceBusConfiguration config) 
         {
             _parameterName = parameterName;
             _converter = CreateConverter(parameterType);
             _argumentBinding = argumentBinding;
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
-            _queueName = queueName;
-            _entityPath = queueName;
-            _accessRights = accessRights;
-            _config = config;
-        }
-
-        public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding,
-            ServiceBusAccount account, string topicName, string subscriptionName, AccessRights accessRights, ServiceBusConfiguration config)
-        {
-            _parameterName = parameterName;
-            _argumentBinding = argumentBinding;
-            _account = account;
-            _namespaceName = ServiceBusClient.GetNamespaceName(account);
-            _topicName = topicName;
-            _subscriptionName = subscriptionName;
-            _entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
             _accessRights = accessRights;
             _config = config;
         }
