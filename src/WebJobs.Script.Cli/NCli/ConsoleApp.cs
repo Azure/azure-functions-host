@@ -81,13 +81,6 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
                 var verb = InstantiateType(verbType.Type);
                 _dependencyResolver.RegisterService<IVerb>(verb);
 
-                if (_args == null || _args.Length == 1)
-                {
-                    return verb;
-                }
-
-                var stack = new Stack<string>(_args.Skip(1).Reverse());
-
                 foreach (var option in verbType.Options)
                 {
                     if (option.Attribute.DefaultValue != null)
@@ -96,8 +89,14 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
                     }
                 }
 
-                var orderedOptions = new Stack<PropertyInfo>(verbType.Options.Where(o => o.Attribute._order != -1).OrderBy(o => o.Attribute._order).Select(o => o.PropertyInfo).Reverse().ToArray());
+                if (_args == null || _args.Length == 1)
+                {
+                    return verb;
+                }
 
+                var stack = new Stack<string>(_args.Skip(1).Reverse());
+
+                var orderedOptions = new Stack<PropertyInfo>(verbType.Options.Where(o => o.Attribute._order != -1).OrderBy(o => o.Attribute._order).Select(o => o.PropertyInfo).Reverse().ToArray());
 
                 if (verbType.Metadata.Scope != null)
                 {
