@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
-        public Collection<FunctionDescriptor> Functions { get; private set; }
+        public virtual Collection<FunctionDescriptor> Functions { get; private set; }
 
         public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
             functionErrors.Add(error);
         }
 
-        public async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
             // TODO: Don't hardcode Functions Type name
             // TODO: Validate inputs

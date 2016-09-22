@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             PrimaryHostTraceProperties = new Dictionary<string, object>
             {
-                { ScriptConstants.TracePropertyPrimaryHostKey, Metadata.Name }
+                { ScriptConstants.TracePropertyPrimaryHostKey, true }
             };
         }
 

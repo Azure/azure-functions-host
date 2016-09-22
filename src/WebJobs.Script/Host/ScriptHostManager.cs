@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public virtual bool IsRunning { get; private set; }
 
-        public ScriptHost Instance
+        public virtual ScriptHost Instance
         {
             get
             {
