@@ -265,12 +265,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Kudu
                 filePath = filePath.Replace(VfsSpecialFolders.SystemDrivePath, VfsSpecialFolders.SystemDriveFolder);
             }
 
-            return new Uri($"{_environment.AppBaseUrlPrefix}/api/vfs/{filePath.Trim('\\').Replace("\\", "/")}{(isDirectory ? "/" : string.Empty)}");
+            return new Uri($"{_environment.AppBaseUrlPrefix}/admin/vfs/{filePath.Trim('\\').Replace("\\", "/")}{(isDirectory ? "/" : string.Empty)}");
         }
 
         private Uri GetFunctionHref(string functionName)
         {
-            return new Uri($"{_environment.AppBaseUrlPrefix}/api/functions/{functionName}");
+            return new Uri($"{_environment.AppBaseUrlPrefix}/admin/functions/{functionName}");
         }
 
         private string GetFunctionPath(string name)

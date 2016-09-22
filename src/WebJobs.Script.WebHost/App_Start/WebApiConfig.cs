@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.Web;
 using System.Web.Http;
 using System.Web.Http.Cors;
@@ -39,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 var cors = new EnableCorsAttribute(LocalhostConstants.AzureFunctionsCors, "*", "*");
                 config.EnableCors(cors);
+                config.Formatters.Clear();
+                config.Formatters.Add(new JsonMediaTypeFormatter());
             }
 
             // Delete hostingstart.html if any. Azure creates that in all sites by default
