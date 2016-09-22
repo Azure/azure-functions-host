@@ -501,6 +501,103 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ServiceBusTopicTrigger_Succeeds()
+        {
+            string topicName = "samples-topic";
+            string subscriptionName = "samples";
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+
+            if (!namespaceManager.TopicExists(topicName))
+            {
+                namespaceManager.CreateTopic(topicName);
+            }
+
+            if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
+            {
+                namespaceManager.CreateSubscription(topicName, subscriptionName);
+            }
+
+            var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
+
+            // write a start message to the queue to kick off the processing
+            string id = Guid.NewGuid().ToString();
+            string value = Guid.NewGuid().ToString();
+            JObject message = new JObject
+            {
+                { "id", id },
+                { "value", value }
+            };
+            using (Stream stream = new MemoryStream())
+            using (TextWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(message.ToString());
+                writer.Flush();
+                stream.Position = 0;
+
+                client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            }
+
+            client.Close();
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal(value, result.Trim());
+        }
+
+        [Fact]
+        public async Task ServiceBusTopicTrigger_ManualInvoke_Succeeds()
+        {
+            string topicName = "samples-topic";
+            string subscriptionName = "samples";
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+
+            if (!namespaceManager.TopicExists(topicName))
+            {
+                namespaceManager.CreateTopic(topicName);
+            }
+
+            if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
+            {
+                namespaceManager.CreateSubscription(topicName, subscriptionName);
+            }
+
+            string uri = "admin/functions/servicebustopictrigger";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+            string id = Guid.NewGuid().ToString();
+            string value = Guid.NewGuid().ToString();
+            JObject input = new JObject()
+            {
+                { "input", new JObject()
+                    {
+                        { "id", id },
+                        { "value", value }
+                    }.ToString()
+                }
+            };
+            string json = input.ToString();
+            request.Content = new StringContent(json);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+            var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
+            Assert.Equal(value, result.Trim());
+        }
+
+        [Fact]
         public async Task HostStatus_Succeeds()
         {
             string uri = "admin/host/status";
