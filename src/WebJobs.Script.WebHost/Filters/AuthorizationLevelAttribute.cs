@@ -30,9 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            SecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
+            var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
+            var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
 
-            if (!IsAuthorized(actionContext.Request, Level, secretManager))
+            if (!settings.IsSelfHost && !IsAuthorized(actionContext.Request, Level, secretManager))
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         {
             // TODO: Add support for validating "EasyAuth" headers
 
-            // first see if a key value is specified via headers or query string (header takes precidence)
+            // first see if a key value is specified via headers or query string (header takes precedence)
             IEnumerable<string> values;
             string keyValue = null;
             if (request.Headers.TryGetValues(FunctionsKeyHeaderName, out values))
