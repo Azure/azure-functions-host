@@ -412,6 +412,7 @@
     <Compile Include="Bindings\AsyncCollector\OutValueProvider.cs" />
     <Compile Include="Bindings\AsyncCollector\SyncAsyncCollectorAdapter.cs" />
     <Compile Include="Triggers\TriggerArgumentBinding\ArraryTriggerArgumentBinding.cs" />
+    <Compile Include="Triggers\TriggerArgumentBinding\CustomTriggerArgumentBinding.cs" />
     <Compile Include="Triggers\TriggerArgumentBinding\PocoTriggerArgumentBinding.cs" />
     <Compile Include="Triggers\TriggerArgumentBinding\SimpleTriggerArgumentBinding.cs" />
     <Compile Include="Triggers\TriggerArgumentBinding\StringTriggerArgumentBinding.cs" />

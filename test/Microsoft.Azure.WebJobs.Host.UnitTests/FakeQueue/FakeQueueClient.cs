@@ -31,11 +31,23 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             return Task.FromResult(0);
         }
 
+        // Test hook for customizing converters
+        public Action<IConverterManager> SetConverters
+        {
+            get; set;
+        }
+
         void IExtensionConfigProvider.Initialize(ExtensionConfigContext context)
         {
             INameResolver nameResolver = context.Config.GetService<INameResolver>();
             IConverterManager cm = context.Config.GetService<IConverterManager>();
             cm.AddConverter<string, FakeQueueData>(x => new FakeQueueData { Message = x });
+
+            if (this.SetConverters != null)
+            {
+                this.SetConverters(cm);
+            }
+            
             cm.AddConverter<FakeQueueData, string>(msg => msg.Message);
             cm.AddConverter<OtherFakeQueueData, FakeQueueData>(OtherFakeQueueData.ToEvent);
 

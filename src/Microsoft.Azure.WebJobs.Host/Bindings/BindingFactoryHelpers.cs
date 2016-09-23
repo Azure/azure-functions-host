@@ -20,7 +20,38 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// </summary>
     internal static class BindingFactoryHelpers
     {
-         // Bind a trigger argument to various parameter types. 
+        // If a conversion function exists from TMessage --> exactType, then use it. 
+        // else return null.
+        private static SimpleTriggerArgumentBinding<TMessage, TTriggerValue> GetDirectTriggerBinding<TMessage, TTriggerValue>(
+            Type exactType,
+            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
+            IConverterManager converterManager)
+        {
+            // Wrapper to convert runtime Type to a compile time  generic. 
+            var method = typeof(BindingFactoryHelpers).GetMethod("GetDirectTriggerBindingWorker", BindingFlags.NonPublic | BindingFlags.Static);
+            method = method.MakeGenericMethod(typeof(TMessage), typeof(TTriggerValue), exactType);
+            var argumentBinding = MethodInvoke<SimpleTriggerArgumentBinding<TMessage, TTriggerValue>>(
+                method, 
+                bindingStrategy, converterManager);
+            return argumentBinding;
+        }
+
+        private static SimpleTriggerArgumentBinding<TMessage, TTriggerValue>
+            GetDirectTriggerBindingWorker<TMessage, TTriggerValue, TUserType>(
+            ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
+            IConverterManager converterManager)
+        {
+            var directConvert = converterManager.GetConverter<TMessage, TUserType, Attribute>();
+            if (directConvert != null)
+            {
+                var argumentBinding = new CustomTriggerArgumentBinding<TMessage, TTriggerValue, TUserType>(
+                    bindingStrategy, converterManager, directConvert);
+                return argumentBinding;
+            }
+            return null;
+        }
+
+        // Bind a trigger argument to various parameter types. 
         // Handles either T or T[], 
         internal static ITriggerDataArgumentBinding<TTriggerValue> GetTriggerArgumentBinding<TMessage, TTriggerValue>(
             ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
@@ -29,15 +60,25 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             out bool singleDispatch)
         {
             ITriggerDataArgumentBinding<TTriggerValue> argumentBinding = null;
+
+            // If there's a direct binding from TMessage to the parameter's exact type; use that. 
+            // This takes precedence over array bindings. 
+            argumentBinding = GetDirectTriggerBinding<TMessage, TTriggerValue>(parameter.ParameterType, bindingStrategy, converterManager);
+            if (argumentBinding != null)
+            {
+                singleDispatch = true;
+                return argumentBinding;
+            }
+
+            // Or array 
             if (parameter.ParameterType.IsArray)
             {
                 // dispatch the entire batch in a single call. 
                 singleDispatch = false;
 
                 var elementType = parameter.ParameterType.GetElementType();
-
                 var innerArgumentBinding = GetTriggerArgumentElementBinding<TMessage, TTriggerValue>(elementType, bindingStrategy, converterManager);
-
+                                
                 argumentBinding = new ArrayTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, innerArgumentBinding, converterManager);
 
                 return argumentBinding;
@@ -59,6 +100,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy,
             IConverterManager converterManager)
         {
+            var argumentBinding = GetDirectTriggerBinding<TMessage, TTriggerValue>(elementType, bindingStrategy, converterManager);
+            if (argumentBinding != null)
+            {
+                // Exact match in converter manager. Always takes precedence. 
+                return argumentBinding;
+            }
+
             if (elementType == typeof(TMessage))
             {
                 return new SimpleTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager);
@@ -69,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
             else
             {
+                // Catch-all. 
                 // Default, assume a Poco
                 return new PocoTriggerArgumentBinding<TMessage, TTriggerValue>(bindingStrategy, converterManager, elementType);
             }

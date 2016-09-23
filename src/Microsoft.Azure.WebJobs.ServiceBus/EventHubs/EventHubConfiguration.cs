@@ -376,6 +376,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             cm.AddConverter<string, EventData>(ConvertString2EventData);
             cm.AddConverter<EventData, string>(ConvertEventData2String);
             cm.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations
+            cm.AddConverter<EventData, byte[]>(ConvertEventData2Bytes); // direct, handles non-string representations
 
             var bf = new BindingFactory(nameResolver, cm);
 
@@ -404,6 +405,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         {
             var eventData = new EventData(input);
             return eventData;
+        }
+
+        private static byte[] ConvertEventData2Bytes(EventData input)
+        {
+            var bytes = input.GetBytes();
+            return bytes;
         }
 
         private static EventData ConvertString2EventData(string input)

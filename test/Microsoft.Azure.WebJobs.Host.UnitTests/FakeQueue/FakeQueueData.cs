@@ -7,10 +7,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     // Fake queue message. Equivalent of CloudQueueMessage or EventData
     public class FakeQueueData
     {
-        // This correpsonds to string & poco conversion. 
+        // This corresponds to string & poco conversion. 
         public string Message { get; set; }
 
         // Advanced property not captured with JSON serialization. 
         public string ExtraPropertery { get; set; }
+
+        // For testing passing bytes. 
+        public byte Byte { get; set; }
     }
 }

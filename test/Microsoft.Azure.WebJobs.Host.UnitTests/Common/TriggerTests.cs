@@ -43,6 +43,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
                 this.Finished();
             }
         }
+                
+        public class FunctionsByteArray : FunctionsBase
+        {
+            // If a Item-->byte[]  converter is registered with the ConverterManager, then 
+            // that is invoked and this function receives a single Item. 
+            // Else, assume array means batch, and this will receive an array of items serialized to Byte. 
+            public void Trigger([FakeQueueTrigger] byte[] single)
+            {
+                _collected.Add(single);
+                this.Finished();
+            }
+        }
+                
+        public class FunctionsDoubleByteArray : FunctionsBase
+        {
+            public void Trigger([FakeQueueTrigger] byte[][] single)
+            {
+                _collected.Add(single);
+                this.Finished();
+            }
+        }
 
         class FunctionsSingleString : FunctionsBase
         {
@@ -214,14 +235,88 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             Assert.Equal(e0.Message, items[0]);
         }
 
+        static void AddItem2ByteArrayConverter(IConverterManager cm)
+        {
+            cm.AddConverter<FakeQueueData, byte[]>(msg => System.Text.Encoding.UTF8.GetBytes(msg.Message));
+        }
+        static void AddItem2ByteConverter(IConverterManager cm)
+        {
+            cm.AddConverter<FakeQueueData, byte>(msg => msg.Byte);
+        }
+
+        // If a Item-->Byte[] converter is registered, 
+        // then dispatch the Item as a single byte[] callback
+        [Fact]
+        public void TestByteArrayDispatch()
+        {
+            var e0 = new FakeQueueData
+            {
+                Message = "ABC"
+            };
+
+            var client = new FakeQueueClient();
+            client.SetConverters = AddItem2ByteArrayConverter;
+            
+            var items = Run<FunctionsByteArray>(client, e0);
+            Assert.Equal(1, items.Length);
+            
+            // This uses the Item --> byte[] converter. Dispatch as a single item.
+            // Received as 1 object, a byte[]. 
+            var bytes = System.Text.Encoding.UTF8.GetBytes(e0.Message);
+            Assert.Equal(bytes, items[0]);
+        }
+
+        // If a Item-->Byte[] converter is registered, 
+        // then dispatch a batch of Items as a single byte[][] callback
+        [Fact]
+        public void TestByteArrayDispatch3()
+        {
+            var client = new FakeQueueClient();
+            client.SetConverters = AddItem2ByteArrayConverter;
+
+            object[] items = Run<FunctionsDoubleByteArray>(client,
+                new FakeQueueData { Message = "AB" },
+                new FakeQueueData { Message = "CD" }
+                );
+            Assert.Equal(1, items.Length);
+
+            var arg = (byte[][])(items[0]);
+
+            Assert.Equal(new byte[] { 65, 66 }, arg[0]);
+            Assert.Equal(new byte[] { 67, 68 }, arg[1]);
+        }
+
+        // IF a Item-->Byte converter is specified (not a byte[]), 
+        // Then dispatch a batch of Items as a byte[]. 
+        [Fact]
+        public void TestByteArrayDispatch2()
+        {
+            var client = new FakeQueueClient();
+            client.SetConverters = AddItem2ByteConverter;
+            
+            var items = Run<FunctionsByteArray>(client,
+                new FakeQueueData { Byte = 1 },
+                new FakeQueueData { Byte = 2 },
+                new FakeQueueData { Byte = 3 }
+                );
+            Assert.Equal(1, items.Length);
+
+            // Received as 1 batch, with 3 entries. 
+            var bytes = new byte[] { 1, 2, 3 };
+            Assert.Equal(bytes, items[0]);
+        }
+
         // Helper to send items to the listener, and return what they collected
         private object[] Run<TFunction>(params FakeQueueData[] items) where TFunction : FunctionsBase, new()
         {
+            return Run<TFunction>(new FakeQueueClient(), items);
+        }
+
+        private object[] Run<TFunction>(FakeQueueClient client, params FakeQueueData[] items) where TFunction : FunctionsBase, new()
+        {        
             var activator = new FakeActivator();
             var func1 = new TFunction();
             activator.Add(func1);
-
-            FakeQueueClient client = new FakeQueueClient();
 
             var host = TestHelpers.NewJobHost<TFunction>(client, activator);
 
