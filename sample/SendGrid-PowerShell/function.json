@@ -10,6 +10,7 @@
             "type": "sendGrid",
             "name": "message",
             "direction": "out",
+            "apiKey": "MySendGridKey",
             "to": "{CustomerEmail}"
         }
     ]

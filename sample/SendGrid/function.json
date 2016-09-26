@@ -10,6 +10,7 @@
             "type": "sendGrid",
             "name": "$return",
             "direction": "out",
+            "apiKey" : "MySendGridKey",
             "to": "{customerEmail}"
         }
     ]

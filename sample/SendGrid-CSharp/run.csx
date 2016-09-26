@@ -1,20 +1,25 @@
-#r "SendGridMail"
-#load "..\Shared\Message.csx"
+#r "SendGrid"
+#load "..\Shared\Order.csx"
 
 using System;
-using SendGrid;
+using SendGrid.Helpers.Mail;
 using Microsoft.Azure.WebJobs.Host;
 
-public static SendGridMessage Run(Order order, TraceWriter log)
+public static Mail Run(Order order, TraceWriter log)
 {
     log.Info($"C# Queue trigger function processed order: {order.OrderId}");
 
-    var message = new SendGridMessage()
+    var message = new Mail
     {
-        Subject = string.Format("Thanks for your order (#{0})!", order.OrderId),
-        Text = string.Format("{0}, your order ({1}) is being processed!", order.CustomerName, order.OrderId)
+        Subject = $"Thanks for your order (#{order.OrderId})!"        
     };
-    message.AddTo(order.CustomerEmail);
 
+    Content content = new Content
+    {
+        Type = "text/plain",
+        Value = $"{order.CustomerName}, your order ({order.OrderId}) is being processed!"
+    };
+    message.AddContent(content);
+  
     return message;
 }
