@@ -37,6 +37,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>
         /// Default name for fast log tables.
         /// </summary>
-        public const string DefaultLogTableName = "AzureFunctionsLogTable";
+        public const string DefaultLogTableName = "AzureWebJobsHostLogs";
     }
 }
