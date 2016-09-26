@@ -15,7 +15,7 @@ namespace Dashboard.Data
 
         public IResultSegment<IndexerLogEntry> ReadWithoutDetails(int maximumResults, string continuationToken)
         {
-            throw new NotImplementedException();
+            return new ResultSegment<IndexerLogEntry>(new IndexerLogEntry[0], null);
         }
     }
 }

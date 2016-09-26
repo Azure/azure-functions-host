@@ -84,6 +84,10 @@ namespace Dashboard.Data
         private async Task<FunctionInstanceSnapshot> LookupAsync(Guid id)
         {
             var t = await _reader.LookupFunctionInstanceAsync(id);
+            if (t == null)
+            {
+                return null;
+            }
             return t.ConvertToSnapshot();
         }
 

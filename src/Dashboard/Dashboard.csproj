@@ -294,6 +294,7 @@
     <Compile Include="FastTable\NullHostVersionReader.cs" />
     <Compile Include="FastTable\NullIDashboardVersionManager.cs" />
     <Compile Include="FastTable\NullIIndexerLogReader.cs" />
+    <Compile Include="FastTable\NullInvoker.cs" />
     <Compile Include="FastTable\NullLogReader.cs" />
     <Compile Include="FastTable\NullInvocationIndexReader.cs" />
     <Compile Include="FastTable\SimpleConcurrentDocument.cs" />

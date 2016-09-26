@@ -77,6 +77,7 @@ namespace Dashboard
                 Bind<IHeartbeatValidityMonitor>().To<NullHeartbeatValidityMonitor>();
 
                 Bind<IAborter>().To<NullAborter>();
+                Bind<IInvoker>().To<NullInvoker>();
 
                 // for diagnostics
                 Bind<IIndexerLogReader>().To<NullIIndexerLogReader>();
