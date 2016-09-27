@@ -139,7 +139,10 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                     _synchronizedWriter.Flush();
                 }
 
-                snapshot = _innerWriter.ToString();
+                // Explicitly specify the length. Without this, any writes occurring 
+                // during the call to ToString() could throw.
+                StringBuilder innerBuilder = _innerWriter.GetStringBuilder();
+                snapshot = innerBuilder.ToString(0, innerBuilder.Length);
 
                 if (flushAndClose)
                 {
