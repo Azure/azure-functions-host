@@ -11,13 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private MetricsEventManager _metricsEventManager;
 
         public WebHostMetricsLogger()
-            : this(new MetricsEventGenerator(), 5)
+            : this(new EventGenerator(), 5)
         {
         }
 
-        public WebHostMetricsLogger(IMetricsEventGenerator metricsEventGenerator, int metricEventIntervalInSeconds)
+        public WebHostMetricsLogger(IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
         {
-            _metricsEventManager = new MetricsEventManager(metricsEventGenerator, metricEventIntervalInSeconds);
+            _metricsEventManager = new MetricsEventManager(eventGenerator, metricEventIntervalInSeconds);
         }
 
         public void BeginEvent(MetricEvent metricEvent)
