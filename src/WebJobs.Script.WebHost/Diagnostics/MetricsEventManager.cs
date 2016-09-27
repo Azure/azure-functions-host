@@ -17,16 +17,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {        
         private static FunctionActivityTracker instance = null;
         private object _functionActivityTrackerLockObject = new object();
-        private IMetricsEventGenerator _metricsEventGenerator;
+        private IEventGenerator _eventGenerator;
         private int _metricEventIntervalInSeconds;
         private static string siteName;
 
-        internal MetricsEventManager(IMetricsEventGenerator generator, int metricEventIntervalInSeconds)
+        internal MetricsEventManager(IEventGenerator generator, int metricEventIntervalInSeconds)
         {
             // we read this in ctor (not static ctor) since it can change on the fly
             siteName = GetNormalizedString(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
 
-            _metricsEventGenerator = generator;
+            _eventGenerator = generator;
             _metricEventIntervalInSeconds = metricEventIntervalInSeconds;
         }
 
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (instance == null)
                 {
-                    instance = new FunctionActivityTracker(_metricsEventGenerator, _metricEventIntervalInSeconds);
+                    instance = new FunctionActivityTracker(_eventGenerator, _metricEventIntervalInSeconds);
                 }
                 instance.FunctionStarted(startedEvent);
             }
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     continue;
                 }
 
-                _metricsEventGenerator.RaiseFunctionsInfoEvent(
+                _eventGenerator.LogFunctionDetailsEvent(
                     siteName,
                     GetNormalizedString(function.Name),
                     function.Metadata != null
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
 
-            internal FunctionActivityTracker(IMetricsEventGenerator generator, int metricEventIntervalInSeconds)
+            internal FunctionActivityTracker(IEventGenerator generator, int metricEventIntervalInSeconds)
             {
                 MetricsEventGenerator = generator;
                 _metricEventIntervalInSeconds = metricEventIntervalInSeconds;
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            internal IMetricsEventGenerator MetricsEventGenerator { get; private set; }            
+            internal IEventGenerator MetricsEventGenerator { get; private set; }            
 
             protected virtual void Dispose(bool disposing)
             {
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     executionTimespan = (currentTime - runningFunctionInfo.StartTime).TotalMilliseconds;
                 }
 
-                MetricsEventGenerator.RaiseFunctionExecutionEvent(
+                MetricsEventGenerator.LogFunctionExecutionEvent(
                     _executionId,
                     siteName,
                     concurrency,
@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {
-                    MetricsEventGenerator.RaiseMetricsPerFunctionEvent(siteName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
+                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(siteName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
                 }
             }
 

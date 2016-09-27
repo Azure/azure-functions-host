@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class SystemTraceWriterTests : IDisposable
     {
         private readonly SystemTraceWriter _traceWriter;
-        private readonly Mock<ISystemEventGenerator> _mockEventGenerator;
+        private readonly Mock<IEventGenerator> _mockEventGenerator;
         private readonly string _websiteName;
         private readonly string _subscriptionId;
 
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _websiteName = "functionstest";
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
 
-            _mockEventGenerator = new Mock<ISystemEventGenerator>(MockBehavior.Strict);
+            _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
             _traceWriter = new SystemTraceWriter(_mockEventGenerator.Object, TraceLevel.Verbose);
         }
 
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventDetailsKey, details);
 
-            _mockEventGenerator.Setup(p => p.LogEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message, null));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message, null));
 
             _traceWriter.Trace(traceEvent);
 
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, eventName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
 
-            _mockEventGenerator.Setup(p => p.LogEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, string.Empty, traceEvent.Message, ex));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, string.Empty, traceEvent.Message, ex));
 
             _traceWriter.Trace(traceEvent);
 

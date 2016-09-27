@@ -254,9 +254,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static WebHostMetricsLogger CreateWebHostMetricsLoggerInstance(List<FunctionExecutionEventArguments> functionExecutionEventArgumentsList)
         {
-            var metricsEventGenerator = new Mock<IMetricsEventGenerator>();
+            var metricsEventGenerator = new Mock<IEventGenerator>();
             metricsEventGenerator
-                .Setup(e => e.RaiseFunctionExecutionEvent(
+                .Setup(e => e.LogFunctionExecutionEvent(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<int>(),
