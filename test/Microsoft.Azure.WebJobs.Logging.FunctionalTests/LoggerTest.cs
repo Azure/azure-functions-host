@@ -3,14 +3,12 @@
 
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
-using System.Reflection;
-using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
@@ -67,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public void NormalizeFunctionName(string name, string expected)
         {
             var method = typeof(ILogWriter).Assembly.GetType("Microsoft.Azure.WebJobs.Logging.TableScheme").GetMethod("NormalizeFunctionName", BindingFlags.Static | BindingFlags.Public);
-            Func<string, string> escape = (string val) => (string) method.Invoke(null, new object[] { val } );
+            Func<string, string> escape = (string val) => (string)method.Invoke(null, new object[] { val });
             string actual = escape(name);
             Assert.Equal(actual, expected);
         }
@@ -90,13 +88,13 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 FunctionName = "abc",
                 Start = DateTime.MinValue,
                 End = DateTime.MaxValue,
-                MaximumResults = 1000                 
+                MaximumResults = 1000
             }, null);
             Assert.Equal(0, segmentRecent.Results.Length);
 
             var item = await reader.LookupFunctionInstanceAsync(Guid.NewGuid());
             Assert.Null(item);
-        } 
+        }
 
 
         [Fact]
@@ -206,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 await writer.AddAsync(l1);
 
                 await writer.FlushAsync();
-                
+
                 // Should overwrite the previous row. 
 
                 entries = await GetRecentAsync(reader, Func1);
@@ -265,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
                     Assert.Equal(entries[0].EndTime, null);
                     Assert.Equal(entries[0].FunctionName, FuncOriginal); // preserving. 
-                }            
+                }
             }
             finally
             {
@@ -273,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 table.DeleteIfExists();
             }
         }
-             
+
         [Fact]
         public async Task LogExactWriteAndRead()
         {
@@ -321,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     ErrorDetails = "this failed"
                 };
                 await WriteAsync(writer, l3);
-                                
+
                 await writer.FlushAsync();
 
                 // Now read 
@@ -351,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     var recent1 = await GetRecentAsync(reader, Func1);
                     Assert.Equal(2, recent1.Length);
 
-                    Assert.Equal(recent1[0].FunctionInstanceId, l3.FunctionInstanceId); 
+                    Assert.Equal(recent1[0].FunctionInstanceId, l3.FunctionInstanceId);
                     Assert.Equal(recent1[1].FunctionInstanceId, l1.FunctionInstanceId);
                 }
 
@@ -367,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                     var recent2 = await GetRecentAsync(reader, Func2);
                     Assert.Equal(1, recent2.Length);
                     Assert.Equal(recent2[0].FunctionInstanceId, l2.FunctionInstanceId);
-                }           
+                }
             }
             finally
             {
@@ -381,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             return GetRecentAsync(reader, functionName, DateTime.MinValue, DateTime.MaxValue);
         }
 
-        static async Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, string functionName, 
+        static async Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, string functionName,
             DateTime start, DateTime end)
         {
             var query = await reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
@@ -411,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             item.EndTime = item.StartTime.AddSeconds(1);
             await writer.AddAsync(item); // end 
         }
-                
+
         CloudTable GetNewLoggingTable()
         {
             string storageString = "AzureWebJobsDashboard";
@@ -425,11 +423,11 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             CloudStorageAccount account = CloudStorageAccount.Parse(acs);
             var client = account.CreateCloudTableClient();
             var table = client.GetTableReference(tableName);
-            
+
             // Explicitly don't create the table. The logging library should deal with it. 
 
             return table;
         }
 
-    }    
+    }
 }

@@ -2,12 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
-using System.Reflection;
-using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 await func(table);
                 Assert.True(false); // should have thrown 
             }
-            catch (StorageException e)
+            catch (StorageException)
             {
                 // Success
             }
