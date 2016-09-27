@@ -423,18 +423,11 @@ namespace Dashboard.ApiControllers
             if (parentGuid.HasValue)
             {
                 FunctionInstanceSnapshot ancestor = _functionInstanceLookup.Lookup(parentGuid.Value);
-                bool? hasValidHeartbeat;
-
                 if (ancestor != null)
                 {
-                    hasValidHeartbeat = HostInstanceHasHeartbeat(ancestor);
-                }
-                else
-                {
-                    hasValidHeartbeat = null;
-                }
-
-                model.Ancestor = new InvocationLogViewModel(ancestor, hasValidHeartbeat);
+                    bool? hasValidHeartbeat = HostInstanceHasHeartbeat(ancestor);
+                    model.Ancestor = new InvocationLogViewModel(ancestor, hasValidHeartbeat);
+                }                
             }
 
             return Ok(model);
