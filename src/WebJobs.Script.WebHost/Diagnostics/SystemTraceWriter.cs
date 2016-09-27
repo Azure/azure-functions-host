@@ -9,15 +9,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemTraceWriter : TraceWriter
     {
-        private ISystemEventGenerator _eventGenerator;
+        private IEventGenerator _eventGenerator;
         private string _appName;
         private string _subscriptionId;
 
-        public SystemTraceWriter(TraceLevel level) : this(new SystemEventGenerator(), level)
+        public SystemTraceWriter(TraceLevel level) : this(new EventGenerator(), level)
         {
         }
 
-        public SystemTraceWriter(ISystemEventGenerator eventGenerator, TraceLevel level) : base(level)
+        public SystemTraceWriter(IEventGenerator eventGenerator, TraceLevel level) : base(level)
         {
             _appName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
             _subscriptionId = GetSubscriptionId();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            _eventGenerator.LogEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, traceEvent.Exception);
+            _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, traceEvent.Exception);
         }
 
         private static string GetSubscriptionId()

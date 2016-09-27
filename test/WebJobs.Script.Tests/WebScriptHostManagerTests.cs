@@ -350,13 +350,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 protected override void OnInitializeConfig(ScriptHostConfiguration config)
                 {
                     var hostConfig = config.HostConfig;
-                    hostConfig.AddService<ISystemEventGenerator>(TestEventGenerator);
+                    hostConfig.AddService<IEventGenerator>(TestEventGenerator);
 
                     base.OnInitializeConfig(config);
                 }
             }
 
-            public class TestSystemEventGenerator : ISystemEventGenerator
+            public class TestSystemEventGenerator : IEventGenerator
             {
                 private readonly object _syncLock = new object();
 
@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 public List<string> Events { get; private set; }
 
-                public void LogEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
+                public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
                 {
                     var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
                     string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
@@ -377,7 +377,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
 
-                public void LogMetric(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+                public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
                 {
                     throw new NotImplementedException();
                 }
