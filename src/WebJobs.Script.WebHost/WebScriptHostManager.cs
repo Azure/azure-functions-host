@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostConfig = config.HostConfig;
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
 
-            var systemEventGenerator = hostConfig.GetService<ISystemEventGenerator>() ?? new SystemEventGenerator();
+            var systemEventGenerator = hostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
             var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, TraceLevel.Verbose);
             if (config.TraceWriter != null)
             {
