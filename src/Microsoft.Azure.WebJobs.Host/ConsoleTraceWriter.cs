@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         protected override void InvokeTextWriter(TraceEvent traceEvent)
         {
-            if (MapTraceLevel(traceEvent.Source, traceEvent.Level) <= _traceConfig.ConsoleLevel)
+            if (traceEvent.Level <= _traceConfig.ConsoleLevel)
             {
                 // For Errors/Warnings we change the Console color
                 // for visibility
@@ -47,23 +47,6 @@ namespace Microsoft.Azure.WebJobs.Host
                 {
                     Console.ForegroundColor = holdColor;
                 }
-            }         
-        }
-
-        internal static TraceLevel MapTraceLevel(string source, TraceLevel level)
-        {
-            // We want to minimize the noise written to console, so we map the actual
-            // TraceLevel to our own interpreted Console TraceLevel
-            if (source == TraceSource.Host ||
-                source == TraceSource.Indexing ||
-                (source == TraceSource.Execution && level == TraceLevel.Info))
-            {
-                return level;
-            }
-            else
-            {
-                // All other traces, are treated as Verbose.
-                return TraceLevel.Verbose;
             }
         }
     }

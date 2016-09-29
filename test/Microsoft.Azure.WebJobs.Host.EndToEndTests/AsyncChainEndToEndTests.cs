@@ -116,7 +116,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
                     "Job host stopped",
                     "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
+                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)",
+                    "User TraceWriter log",
+                    "Another User TextWriter log",
+                    "User TextWriter log (TestParam)"
                 }.OrderBy(p => p).ToArray();
 
                 bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
@@ -192,9 +195,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(24, consoleOutputLines.Length);
-                    Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
-                    Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                    Assert.Equal(27, consoleOutputLines.Length);
+                    Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
+                    Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                    Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
                 }
             }
 
