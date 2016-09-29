@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -193,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
+                    ValidateTraceProperties(trace);
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                     Assert.Equal(27, consoleOutputLines.Length);
@@ -203,6 +205,38 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
 
             Console.SetOut(hold);
+        }
+
+        private void ValidateTraceProperties(TestTraceWriter trace)
+        {
+            foreach (var traceEvent in trace.Traces)
+            {
+                var message = traceEvent.Message;
+                var startedOrEndedMessage = message.StartsWith("Executing: ") || message.StartsWith("Executed: ");
+                var userMessage = message.Contains("User TextWriter") || message.Contains("User TraceWriter");
+
+                if (startedOrEndedMessage || userMessage)
+                {
+                    Assert.Equal(3, traceEvent.Properties.Count);
+
+                    Assert.IsType<Guid>(traceEvent.Properties["MS_HostInstanceId"]);
+                    Assert.IsType<Guid>(traceEvent.Properties["MS_FunctionInvocationId"]);
+
+                    if (startedOrEndedMessage)
+                    {
+                        // Validate that the FunctionDescriptor looks right
+                        var start = message.IndexOf("'") + 1;
+                        var end = message.IndexOf("'", start) - start;
+                        var functionName = message.Substring(start, end);
+                        var descriptor = (FunctionDescriptor)traceEvent.Properties["MS_FunctionDescriptor"];
+                        Assert.Equal(functionName, descriptor.ShortName);
+                    }
+                }
+                else
+                {
+                    Assert.Equal(0, traceEvent.Properties.Count);
+                }
+            }
         }
 
         [Fact]

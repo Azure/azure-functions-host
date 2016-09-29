@@ -382,8 +382,10 @@
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
     <Compile Include="DefaultNameResolver.cs" />
+    <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
+    <Compile Include="Loggers\TraceEventExtensions.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            _trace.Info(string.Format(CultureInfo.InvariantCulture, "Executing: '{0}' - Reason: '{1}'", message.Function.ShortName, message.FormatReason()), TraceSource.Execution);
+            string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executing: '{0}' - Reason: '{1}'", message.Function.ShortName, message.FormatReason());
+            Trace(TraceLevel.Info, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution);
             return Task.FromResult<string>(null);
         }
 
@@ -32,18 +34,27 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         {
             if (message.Succeeded)
             {
-                _trace.Info(string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Succeeded)", message.Function.ShortName), source: TraceSource.Execution);
+                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Succeeded)", message.Function.ShortName);
+                Trace(TraceLevel.Info, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution);
             }
             else
             {
-                _trace.Error(string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Failed)", message.Function.ShortName), message.Failure.Exception, TraceSource.Execution);
+                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Failed)", message.Function.ShortName);
+                Trace(TraceLevel.Error, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution, message.Failure.Exception);
 
                 // Also log the eror message using TraceSource.Host, to ensure
                 // it gets written to Console
-                _trace.Error(string.Format(CultureInfo.InvariantCulture, 
-                    "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId), message.Failure.Exception, TraceSource.Host);
+                traceMessage = string.Format(CultureInfo.InvariantCulture, "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId);
+                Trace(TraceLevel.Error, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Host, message.Failure.Exception);
             }
             return Task.FromResult(0);
+        }
+
+        private void Trace(TraceLevel level, Guid hostInstanceId, FunctionDescriptor descriptor, Guid functionId, string message, string source, Exception exception = null)
+        {
+            TraceEvent traceEvent = new TraceEvent(level, message, source, exception);
+            traceEvent.AddFunctionInstanceDetails(hostInstanceId, descriptor, functionId);
+            _trace.Trace(traceEvent);
         }
 
         public Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)

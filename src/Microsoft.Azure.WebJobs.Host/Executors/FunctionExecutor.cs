@@ -225,8 +225,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 using (functionCancellationTokenSource)
                 {
                     // We create a new composite trace writer that will also forward
-                    // output to the function output log (in addition to console, user TraceWriter, etc.).
-                    TraceWriter traceWriter = new CompositeTraceWriter(_trace, functionOutputTextWriter, functionTraceLevel);
+                    // output to the function output log (in addition to console, user TraceWriter, etc.).                    
+                    TraceWriter functionTraceWriter = new FunctionInstanceTraceWriter(instance, HostOutputMessage.HostInstanceId, _trace, functionTraceLevel);
+                    TraceWriter traceWriter = new CompositeTraceWriter(functionTraceWriter, functionOutputTextWriter, functionTraceLevel);
 
                     // Must bind before logging (bound invoke string is included in log message).
                     FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, functionCancellationTokenSource.Token, traceWriter);

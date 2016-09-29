@@ -32,7 +32,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 {
                     ShortName = "TestJob"
                 },
-                ReasonDetails = "TestReason"
+                ReasonDetails = "TestReason",
+                HostInstanceId = Guid.NewGuid(),
+                FunctionInstanceId = Guid.NewGuid()
             };
 
             await _logger.LogFunctionStartedAsync(message, CancellationToken.None);
@@ -42,6 +44,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
             Assert.Equal("Executing: 'TestJob' - Reason: 'TestReason'", traceEvent.Message);
+            Assert.Equal(3, traceEvent.Properties.Count);
+            Assert.Equal(message.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
+            Assert.Equal(message.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
+            Assert.Same(message.Function, traceEvent.Properties["MS_FunctionDescriptor"]);
         }
 
         [Fact]
@@ -55,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             FunctionCompletedMessage successMessage = new FunctionCompletedMessage
             {
                 Function = descriptor,
-                FunctionInstanceId = Guid.NewGuid()
+                FunctionInstanceId = Guid.NewGuid(),
+                HostInstanceId = Guid.NewGuid()
             };
 
             Exception ex = new Exception("Kaboom!");
@@ -63,7 +70,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             {
                 Function = descriptor,
                 Failure = new FunctionFailure { Exception = ex },
-                FunctionInstanceId = new Guid("8d71c9e3-e809-4cfb-bb78-48ae25c7d26d")
+                FunctionInstanceId = new Guid("8d71c9e3-e809-4cfb-bb78-48ae25c7d26d"),
+                HostInstanceId = Guid.NewGuid()
             };
 
             await _logger.LogFunctionCompletedAsync(successMessage, CancellationToken.None);
@@ -75,18 +83,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
             Assert.Equal("Executed: 'TestJob' (Succeeded)", traceEvent.Message);
+            Assert.Equal(successMessage.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
+            Assert.Equal(successMessage.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
+            Assert.Same(successMessage.Function, traceEvent.Properties["MS_FunctionDescriptor"]);
 
             traceEvent = _traceWriter.Traces[1];
             Assert.Equal(TraceLevel.Error, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
             Assert.Equal("Executed: 'TestJob' (Failed)", traceEvent.Message);
             Assert.Same(ex, traceEvent.Exception);
+            Assert.Equal(failureMessage.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
+            Assert.Equal(failureMessage.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
+            Assert.Same(failureMessage.Function, traceEvent.Properties["MS_FunctionDescriptor"]);
 
             traceEvent = _traceWriter.Traces[2];
             Assert.Equal(TraceLevel.Error, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Host, traceEvent.Source);
             Assert.Equal("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '8d71c9e3-e809-4cfb-bb78-48ae25c7d26d'", traceEvent.Message);
             Assert.Same(ex, traceEvent.Exception);
+            Assert.Equal(failureMessage.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
+            Assert.Equal(failureMessage.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
+            Assert.Same(failureMessage.Function, traceEvent.Properties["MS_FunctionDescriptor"]);
         }
     }
 }
