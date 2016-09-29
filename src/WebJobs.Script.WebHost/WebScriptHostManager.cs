@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
         private static bool? _standbyMode;
-        private readonly IMetricsLogger _metricsLogger;
+        private readonly WebHostMetricsLogger _metricsLogger;
         private readonly SecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
@@ -231,6 +231,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (_secretManager != null)
                 {
                     _secretManager.Dispose();
+                }
+
+                if (_metricsLogger != null)
+                {
+                    _metricsLogger.Dispose();
                 }
             }
 

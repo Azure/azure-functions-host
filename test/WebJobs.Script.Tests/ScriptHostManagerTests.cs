@@ -207,6 +207,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var mockMetricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
                 config.HostConfig.AddService<IMetricsLogger>(mockMetricsLogger.Object);
+                mockMetricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>())).Returns(new object());
+                mockMetricsLogger.Setup(p => p.EndEvent(It.IsAny<object>()));
+                mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
                 return ScriptHost.Create(config);

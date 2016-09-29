@@ -5,125 +5,373 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class MetricsEventManagerTests
     {
-        private Random _randomNumberGenerator = new Random();
         private const int MinimumLongRunningDurationInMs = 2000;
         private const int MinimumRandomValueForLongRunningDurationInMs = MinimumLongRunningDurationInMs + MinimumLongRunningDurationInMs;
+        private readonly Random _randomNumberGenerator = new Random();
+        private readonly MetricsEventManager _metricsEventManager;
+        private readonly WebHostMetricsLogger _metricsLogger;
+        private readonly List<FunctionExecutionEventArguments> _functionExecutionEventArguments;
+        private readonly List<SystemMetricEvent> _events;
+
+        public MetricsEventManagerTests()
+        {
+            _functionExecutionEventArguments = new List<FunctionExecutionEventArguments>();
+
+            var mockEventGenerator = new Mock<IEventGenerator>();
+            mockEventGenerator.Setup(e => e.LogFunctionExecutionEvent(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<int>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<long>(),
+                    It.IsAny<bool>()))
+                .Callback((string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success) =>
+                {
+                    _functionExecutionEventArguments.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
+                });
+
+            _events = new List<SystemMetricEvent>();
+            mockEventGenerator.Setup(p => p.LogFunctionMetricEvent(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<long>(),
+                    It.IsAny<long>(),
+                    It.IsAny<long>(),
+                    It.IsAny<long>()))
+                .Callback((string subscriptionId, string appName, string eventName, long average, long min, long max, long count) =>
+                {
+                    var evt = new SystemMetricEvent
+                    {
+                        EventName = eventName,
+                        Average = average,
+                        Minimum = min,
+                        Maximum = max,
+                        Count = count
+                    };
+                    _events.Add(evt);
+                });
+
+            _metricsEventManager = new MetricsEventManager(mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
+            _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
+        }
+
+        [Fact]
+        public void LogEvent_QueuesPendingEvent()
+        {
+            _metricsLogger.LogEvent("Event1");
+
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
+            Assert.Equal("event1", evt.EventName);  // case is normalized to lower
+            Assert.Equal(1, evt.Count);
+            Assert.Equal(0, evt.Average);
+            Assert.Equal(0, evt.Minimum);
+            Assert.Equal(0, evt.Maximum);
+
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event3");
+
+            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void LogEvent_AggregatesIntoExistingEvent()
+        {
+            SystemMetricEvent initialEvent = new SystemMetricEvent
+            {
+                EventName = "Event1",
+                Count = 1
+            };
+
+            _metricsEventManager.QueuedEvents[initialEvent.EventName] = initialEvent;
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+
+            for (int i = 0; i < 10; i++)
+            {
+                _metricsLogger.LogEvent("Event1");
+
+                Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+
+                // verify the new event was aggregated into the existing
+                Assert.Equal(2 + i, initialEvent.Count);
+            }
+
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void BeginEvent_ReturnsEventHandle()
+        {
+            object eventHandle = _metricsLogger.BeginEvent("Event1");
+
+            SystemMetricEvent evt = (SystemMetricEvent)eventHandle;
+            Assert.Equal("event1", evt.EventName);
+            Assert.True((DateTime.UtcNow - evt.Timestamp).TotalSeconds < 15);
+        }
+
+        [Fact]
+        public void EndEvent_CompletesPendingEvent()
+        {
+            object eventHandle = _metricsLogger.BeginEvent("Event1");
+
+            Thread.Sleep(25);
+            _metricsLogger.EndEvent(eventHandle);
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+
+            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
+            Assert.Equal("event1", evt.EventName);
+            Assert.Equal(1, evt.Count);
+            Assert.True(evt.Maximum > 0);
+            Assert.True(evt.Minimum > 0);
+            Assert.True(evt.Average > 0);
+        }
+
+        [Fact]
+        public void LatencyEvent_CompletesPendingEvent()
+        {
+            using (_metricsLogger.LatencyEvent("Event1"))
+            {
+                Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+            }
+
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+            var evt = _metricsEventManager.QueuedEvents.Single().Value;
+            Assert.Equal("event1", evt.EventName);
+            Assert.Equal(1, evt.Count);
+        }
+
+        [Fact]
+        public void EndEvent_AggregatesIntoExistingEvent()
+        {
+            long prevMin = 123;
+            long prevMax = 456;
+            long prevAvg = 789;
+            SystemMetricEvent initialEvent = new SystemMetricEvent
+            {
+                EventName = "Event1",
+                Minimum = prevMin,
+                Maximum = prevMax,
+                Average = prevAvg,
+                Count = 1
+            };
+
+            _metricsEventManager.QueuedEvents[initialEvent.EventName] = initialEvent;
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+
+            for (int i = 0; i < 10; i++)
+            {
+                SystemMetricEvent latencyEvent = (SystemMetricEvent)_metricsLogger.BeginEvent("Event1");
+                Thread.Sleep(50);
+                _metricsLogger.EndEvent(latencyEvent);
+
+                Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+
+                // verify the new event was aggregated into the existing
+                Assert.Equal(2 + i, initialEvent.Count);
+                long latencyMS = (long)latencyEvent.Duration.TotalMilliseconds;
+                Assert.Equal(initialEvent.Average, prevAvg + latencyMS);
+                Assert.Equal(initialEvent.Minimum, Math.Min(prevMin, latencyMS));
+                Assert.Equal(initialEvent.Maximum, Math.Max(prevMax, latencyMS));
+                prevMin = initialEvent.Minimum;
+                prevMax = initialEvent.Maximum;
+                prevAvg += latencyMS;
+            }
+
+            Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void EndEvent_InvalidHandle_NoOp()
+        {
+            Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+
+            _metricsLogger.EndEvent(new object());
+
+            Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void TimerFlush_MultipleEventsQueued_EmitsExpectedEvents()
+        {
+            object eventHandle = _metricsLogger.BeginEvent("Event1");
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event3");
+            Thread.Sleep(25);
+            _metricsLogger.EndEvent(eventHandle);
+
+            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+
+            _metricsEventManager.TimerFlush(null);
+
+            Assert.Equal(3, _events.Count());
+
+            SystemMetricEvent evt = _events.Single(p => p.EventName == "event1");
+            Assert.True(evt.Average > 0);
+            Assert.True(evt.Minimum > 0);
+            Assert.True(evt.Maximum > 0);
+            Assert.Equal(1, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event2");
+            Assert.Equal(3, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event3");
+            Assert.Equal(1, evt.Count);
+
+            Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void TimerFlush_CalledOnExpectedInterval()
+        {
+            int flushInterval = 10;
+            Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
+            MetricsEventManager eventManager = mockEventManager.Object;
+
+            int numFlushes = 0;
+            mockEventManager.Protected().Setup("TimerFlush", ItExpr.IsAny<object>())
+                .Callback<object>((state) =>
+                {
+                    numFlushes++;
+                });
+
+            Thread.Sleep(200);
+
+            // here we're just verifying that we're called
+            // multiple times
+            Assert.True(numFlushes >= 5);
+
+            mockEventManager.VerifyAll();
+        }
+
+        [Fact]
+        public void Dispose_FlushesQueuedEvents()
+        {
+            _metricsLogger.LogEvent("Event1");
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event2");
+            _metricsLogger.LogEvent("Event3");
+
+            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+
+            _metricsEventManager.Dispose();
+
+            Assert.Equal(3, _events.Count());
+            Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+        }
 
         [Fact]
         public async Task MetricsEventManager_BasicTest()
         {
-            var argsList = new List<FunctionExecutionEventArguments>();
-            var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
-            taskList.Add(ShortTestFunction(metricsLogger));
-            taskList.Add(LongTestFunction(metricsLogger));
+            taskList.Add(ShortTestFunction(_metricsLogger));
+            taskList.Add(LongTestFunction(_metricsLogger));
 
             await AwaitFunctionTasks(taskList);
-            ValidateFunctionExecutionEventArgumentsList(argsList, 2);
+            ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, 2);
         }
 
         [Fact]
         public async Task MetricsEventManager_MultipleConcurrentShortFunctionExecutions()
         {
-            var argsList = new List<FunctionExecutionEventArguments>();
-            var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
             var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                taskList.Add(ShortTestFunction(metricsLogger));
+                taskList.Add(ShortTestFunction(_metricsLogger));
             }
             
             await AwaitFunctionTasks(taskList);
-            ValidateFunctionExecutionEventArgumentsList(argsList, concurrency);
+            ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
         [Fact]
         public async Task MetricsEventManager_MultipleConcurrentLongFunctionExecutions()
         {
-            var argsList = new List<FunctionExecutionEventArguments>();
-            var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
             var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                taskList.Add(LongTestFunction(metricsLogger));
+                taskList.Add(LongTestFunction(_metricsLogger));
             }
 
             await AwaitFunctionTasks(taskList);
-            ValidateFunctionExecutionEventArgumentsList(argsList, concurrency);
+            ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
             
-            // All event should have the same executionId
-            var invalidArgsList = argsList.Where(e => e.ExecutionId != argsList[0].ExecutionId).ToList();
+            // All events should have the same executionId
+            var invalidArgsList = _functionExecutionEventArguments.Where(e => e.ExecutionId != _functionExecutionEventArguments[0].ExecutionId).ToList();
             Assert.True(invalidArgsList.Count == 0,
-                string.Format("There are events with different execution id. List:{0} Invalid entries:{1}",
-                    SerializeFunctionExecutionEventArguments(argsList),
+                string.Format("There are events with different execution ids. List:{0} Invalid entries:{1}",
+                    SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments),
                     SerializeFunctionExecutionEventArguments(invalidArgsList)));
 
-            Assert.True(argsList.Count >= concurrency * 2,
-                string.Format("Each function invocation should emit atleast two etw events. List:{0}", SerializeFunctionExecutionEventArguments(argsList)));
+            Assert.True(_functionExecutionEventArguments.Count >= concurrency * 2,
+                string.Format("Each function invocation should emit atleast two etw events. List:{0}", SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments)));
 
-            var uniqueInvocationIds = argsList.Select(i => i.InvocationId).Distinct().ToList();
+            var uniqueInvocationIds = _functionExecutionEventArguments.Select(i => i.InvocationId).Distinct().ToList();
             // Each invocation should have atleast one 'InProgress' event
             var invalidInvocationIds = uniqueInvocationIds.Where(
-                i => !argsList.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.Finished.ToString())
-                        || !argsList.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.InProgress.ToString())).ToList();
+                i => !_functionExecutionEventArguments.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.Finished.ToString())
+                        || !_functionExecutionEventArguments.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.InProgress.ToString())).ToList();
 
             Assert.True(invalidInvocationIds.Count == 0,
                 string.Format("Each invocation should have atleast one 'InProgress' event. Invalid invocation ids:{0} List:{1}",
                     string.Join(",", invalidInvocationIds),
-                    SerializeFunctionExecutionEventArguments(argsList)));
+                    SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments)));
         }
 
         [Fact]
         public async Task MetricsEventManager_MultipleConcurrentFunctions()
         {
-            var argsList = new List<FunctionExecutionEventArguments>();
-            var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
             var taskList = new List<Task>();
             var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
                 if (_randomNumberGenerator.Next(100) < 50 ? true : false)
                 {
-                    taskList.Add(ShortTestFunction(metricsLogger));
+                    taskList.Add(ShortTestFunction(_metricsLogger));
                 }
                 else
                 {
-                    taskList.Add(LongTestFunction(metricsLogger));
+                    taskList.Add(LongTestFunction(_metricsLogger));
                 }
             }
 
             await AwaitFunctionTasks(taskList);
-            ValidateFunctionExecutionEventArgumentsList(argsList, concurrency);
+            ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
         [Fact]
         public async Task MetricsEventManager_NonParallelExecutionsShouldHaveDifferentExecutionId()
         {
-            var argsList = new List<FunctionExecutionEventArguments>();
-            var metricsLogger = CreateWebHostMetricsLoggerInstance(argsList);
-            await ShortTestFunction(metricsLogger);
+            await ShortTestFunction(_metricsLogger);
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
-            await ShortTestFunction(metricsLogger);
+            await ShortTestFunction(_metricsLogger);
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
-            Assert.True(argsList[0].ExecutionId != argsList[argsList.Count - 1].ExecutionId, "Execution ids are same");
+            Assert.True(_functionExecutionEventArguments[0].ExecutionId != _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are same");
         }
 
         private static async Task AwaitFunctionTasks(List<Task> taskList)
@@ -250,28 +498,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             return true;
-        }
-
-        private static WebHostMetricsLogger CreateWebHostMetricsLoggerInstance(List<FunctionExecutionEventArguments> functionExecutionEventArgumentsList)
-        {
-            var metricsEventGenerator = new Mock<IEventGenerator>();
-            metricsEventGenerator
-                .Setup(e => e.LogFunctionExecutionEvent(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<int>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<long>(),
-                    It.IsAny<bool>()))
-                .Callback(
-                (string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success) =>
-                {
-                    functionExecutionEventArgumentsList.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
-                });
-
-            return new WebHostMetricsLogger(metricsEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
         }
 
         private async Task LongTestFunction(WebHostMetricsLogger metricsLogger)

@@ -11,6 +11,21 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        public static string GetSubscriptionId()
+        {
+            string ownerName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
+            if (!string.IsNullOrEmpty(ownerName))
+            {
+                int idx = ownerName.IndexOf('+');
+                if (idx > 0)
+                {
+                    return ownerName.Substring(0, idx);
+                }
+            }
+
+            return null;
+        }
+
         public static bool IsValidUserType(Type type)
         {
             return !type.IsInterface && !type.IsPrimitive && !(type.Namespace == "System");

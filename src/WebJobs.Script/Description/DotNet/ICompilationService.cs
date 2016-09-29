@@ -3,15 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     [CLSCompliant(false)]
     public interface ICompilationService
     {
+        string Language { get; }
+
         IEnumerable<string> SupportedFileTypes { get; }
 
         ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata);

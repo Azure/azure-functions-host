@@ -28,6 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metadataResolver = metadataResolver;
         }
 
+        public string Language
+        {
+            get
+            {
+                return "CSharp";
+            }
+        }
+
         public IEnumerable<string> SupportedFileTypes
         {
             get

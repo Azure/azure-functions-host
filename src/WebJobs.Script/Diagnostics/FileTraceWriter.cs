@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // purge any log files (regardless of instance ID) whose last write time was earlier
             // than our retention policy
-            var filesToPurge = _logDirectory.GetFiles("*.log").Where(p => (DateTime.Now - p.LastWriteTime).TotalDays > LastModifiedCutoffDays);
+            var filesToPurge = _logDirectory.GetFiles("*.log").Where(p => (DateTime.UtcNow - p.LastWriteTimeUtc).TotalDays > LastModifiedCutoffDays);
             DeleteFiles(filesToPurge);
 
             // we include a machine identifier in the log file name to ensure we don't have any

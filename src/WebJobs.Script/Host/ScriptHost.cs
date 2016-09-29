@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return (DateTime.Now - LastDebugNotify).TotalMinutes < DebugModeTimeoutMinutes;
+                return (DateTime.UtcNow - LastDebugNotify).TotalMinutes < DebugModeTimeoutMinutes;
             }
         }
 
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // This is redundant, since we're also watching the debug marker
             // file. However, we leave this here for assurances.
-            LastDebugNotify = DateTime.Now;
+            LastDebugNotify = DateTime.UtcNow;
 
             // create or update the debug sentinel file to trigger a
             // debug timeout update across all instances
@@ -171,184 +171,188 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void Initialize()
         {
-            // read host.json and apply to JobHostConfiguration
-            string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
-
-            // If it doesn't exist, create an empty JSON file
-            if (!File.Exists(hostConfigFilePath))
-            {
-                File.WriteAllText(hostConfigFilePath, "{}");
-            }
-
-            if (ScriptConfig.HostConfig.IsDevelopment)
-            {
-                ScriptConfig.HostConfig.UseDevelopmentSettings();
-            }
-            else
-            {
-                // TEMP: Until https://github.com/Azure/azure-webjobs-sdk-script/issues/100 is addressed
-                // we're using some presets that are a good middle ground
-                ScriptConfig.HostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(10);
-                ScriptConfig.HostConfig.Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
-            }
-
-            string json = File.ReadAllText(hostConfigFilePath);
-
-            JObject hostConfig;
-            try
-            {
-                hostConfig = JObject.Parse(json);
-            }
-            catch (JsonException ex)
-            {
-                throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
-            }
-
-            ApplyConfiguration(hostConfig, ScriptConfig);
-
-            // Set up a host level TraceMonitor that will receive notification
-            // of ALL errors that occur. This allows us to inspect/log errors.
-            var traceMonitor = new TraceMonitor()
-                .Filter(p => { return true; })
-                .Subscribe(HandleHostError);
-            ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
-
-            TraceWriter = ScriptConfig.TraceWriter;
-            TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
-            if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
-            {
-                // Host file logging is only done conditionally
-                string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-                TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel).Conditional(p => FileLoggingEnabled);
-
-                if (TraceWriter != null)
-                {
-                    // create a composite writer so our host logs are written to both
-                    TraceWriter = new CompositeTraceWriter(new[] { TraceWriter, fileTraceWriter });
-                }
-                else
-                {
-                    TraceWriter = fileTraceWriter;
-                }
-            }
-
-            if (TraceWriter != null)
-            {
-                ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
-            }
-            else
-            {
-                // if no TraceWriter has been configured, default it to Console
-                TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
-            }
-
-            string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-            string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
-            this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
-
-            _debugModeFileWatcher = new FileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName)
-            {
-                EnableRaisingEvents = true
-            };
-            _debugModeFileWatcher.Created += OnDebugModeFileChanged;
-            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-
-            var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
-            ScriptConfig.BindingProviders = bindingProviders;
-
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
-
-            if (ScriptConfig.FileWatchingEnabled)
-            {
-                _scriptFileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
-                {
-                    IncludeSubdirectories = true,
-                    EnableRaisingEvents = true
-                };
-                _scriptFileWatcher.Changed += OnFileChanged;
-                _scriptFileWatcher.Created += OnFileChanged;
-                _scriptFileWatcher.Deleted += OnFileChanged;
-                _scriptFileWatcher.Renamed += OnFileChanged;
-            }
-
-            // If a file change should result in a restart, we debounce the event to
-            // ensure that only a single restart is triggered within a specific time window.
-            // This allows us to deal with a large set of file change events that might
-            // result from a bulk copy/unzip operation. In such cases, we only want to
-            // restart after ALL the operations are complete and there is a quiet period.
-            _restart = (e) =>
-            {
-                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
-                TraceWriter.Info("Host configuration has changed. Signaling restart.");
-
-                // signal host restart
-                _restartEvent.Set();
-            };
-            _restart = _restart.Debounce(500);
-
-            // take a snapshot so we can detect function additions/removals
-            _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
-
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             if (metricsLogger == null)
             {
-                ScriptConfig.HostConfig.AddService<IMetricsLogger>(new MetricsLogger());
+                metricsLogger = new MetricsLogger();
+                ScriptConfig.HostConfig.AddService<IMetricsLogger>(metricsLogger);
             }
 
-            var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            if (storageString == null)
+            using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
-                // Disable core storage 
-                ScriptConfig.HostConfig.StorageConnectionString = null;
-            }
-            else
-            {
-                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
-                // and subscribe for change notifications.
-                _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
-                _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
-            }
+                // read host.json and apply to JobHostConfiguration
+                string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
 
-            List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
-            {
-                new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-                new NodeFunctionDescriptorProvider(this, ScriptConfig),
-                new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
-            };
+                // If it doesn't exist, create an empty JSON file
+                if (!File.Exists(hostConfigFilePath))
+                {
+                    File.WriteAllText(hostConfigFilePath, "{}");
+                }
 
-            // Allow BindingProviders to initialize
-            foreach (var bindingProvider in ScriptConfig.BindingProviders)
-            {
+                if (ScriptConfig.HostConfig.IsDevelopment)
+                {
+                    ScriptConfig.HostConfig.UseDevelopmentSettings();
+                }
+                else
+                {
+                    // TEMP: Until https://github.com/Azure/azure-webjobs-sdk-script/issues/100 is addressed
+                    // we're using some presets that are a good middle ground
+                    ScriptConfig.HostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(10);
+                    ScriptConfig.HostConfig.Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
+                }
+
+                string json = File.ReadAllText(hostConfigFilePath);
+
+                JObject hostConfig;
                 try
                 {
-                    bindingProvider.Initialize();
+                    hostConfig = JObject.Parse(json);
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
-                    // If we're unable to initialize a binding provider for any reason, log the error
-                    // and continue
-                    TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
+                    throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
-            }
 
-            // read all script functions and apply to JobHostConfiguration
-            Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
-            Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
-            string defaultNamespace = "Host";
-            string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
-            Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
-            List<Type> types = new List<Type>();
-            types.Add(type);
+                ApplyConfiguration(hostConfig, ScriptConfig);
 
-            ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
+                // Set up a host level TraceMonitor that will receive notification
+                // of ALL errors that occur. This allows us to inspect/log errors.
+                var traceMonitor = new TraceMonitor()
+                    .Filter(p => { return true; })
+                    .Subscribe(HandleHostError);
+                ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
 
-            Functions = functions;
+                TraceWriter = ScriptConfig.TraceWriter;
+                TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
+                if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
+                {
+                    // Host file logging is only done conditionally
+                    string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+                    TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel).Conditional(p => FileLoggingEnabled);
 
-            if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
-            {
-                PurgeOldLogDirectories();
+                    if (TraceWriter != null)
+                    {
+                        // create a composite writer so our host logs are written to both
+                        TraceWriter = new CompositeTraceWriter(new[] { TraceWriter, fileTraceWriter });
+                    }
+                    else
+                    {
+                        TraceWriter = fileTraceWriter;
+                    }
+                }
+
+                if (TraceWriter != null)
+                {
+                    ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
+                }
+                else
+                {
+                    // if no TraceWriter has been configured, default it to Console
+                    TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
+                }
+
+                string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+                string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
+                this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
+
+                _debugModeFileWatcher = new FileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName)
+                {
+                    EnableRaisingEvents = true
+                };
+                _debugModeFileWatcher.Created += OnDebugModeFileChanged;
+                _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
+
+                var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
+                ScriptConfig.BindingProviders = bindingProviders;
+
+                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
+
+                if (ScriptConfig.FileWatchingEnabled)
+                {
+                    _scriptFileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
+                    {
+                        IncludeSubdirectories = true,
+                        EnableRaisingEvents = true
+                    };
+                    _scriptFileWatcher.Changed += OnFileChanged;
+                    _scriptFileWatcher.Created += OnFileChanged;
+                    _scriptFileWatcher.Deleted += OnFileChanged;
+                    _scriptFileWatcher.Renamed += OnFileChanged;
+                }
+
+                // If a file change should result in a restart, we debounce the event to
+                // ensure that only a single restart is triggered within a specific time window.
+                // This allows us to deal with a large set of file change events that might
+                // result from a bulk copy/unzip operation. In such cases, we only want to
+                // restart after ALL the operations are complete and there is a quiet period.
+                _restart = (e) =>
+                {
+                    TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
+                    TraceWriter.Info("Host configuration has changed. Signaling restart.");
+
+                    // signal host restart
+                    _restartEvent.Set();
+                };
+                _restart = _restart.Debounce(500);
+
+                // take a snapshot so we can detect function additions/removals
+                _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
+
+                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+                if (storageString == null)
+                {
+                    // Disable core storage 
+                    ScriptConfig.HostConfig.StorageConnectionString = null;
+                }
+                else
+                {
+                    // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                    // and subscribe for change notifications.
+                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
+                }
+
+                List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
+                {
+                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
+                    new DotNetFunctionDescriptorProvider(this, ScriptConfig),
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+                };
+
+                // Allow BindingProviders to initialize
+                foreach (var bindingProvider in ScriptConfig.BindingProviders)
+                {
+                    try
+                    {
+                        bindingProvider.Initialize();
+                    }
+                    catch (Exception ex)
+                    {
+                        // If we're unable to initialize a binding provider for any reason, log the error
+                        // and continue
+                        TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
+                    }
+                }
+
+                // read all script functions and apply to JobHostConfiguration
+                Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
+                Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
+                string defaultNamespace = "Host";
+                string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
+                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
+                Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
+                List<Type> types = new List<Type>();
+                types.Add(type);
+
+                ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
+
+                Functions = functions;
+
+                if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
+                {
+                    PurgeOldLogDirectories();
+                }
             }
         }
 
@@ -393,7 +397,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
-            LastDebugNotify = DateTime.Now;
+            LastDebugNotify = DateTime.UtcNow;
         }
 
         private void BlobLeaseManagerHasLeaseChanged(object sender, EventArgs e)

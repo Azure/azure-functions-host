@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly ICompilationService _compilationService;
+        private readonly IMetricsLogger _metricsLogger;
 
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
@@ -47,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
+            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
             _metadataResolver = new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
@@ -264,7 +267,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                return await currentValueLoader;
+                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+                using (_metricsLogger.LatencyEvent(eventName))
+                {
+                    return await currentValueLoader;
+                }  
             }
             catch (OperationCanceledException)
             {

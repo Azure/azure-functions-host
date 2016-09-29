@@ -116,6 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
+            var triggerType = Metadata.Bindings.First(p => p.IsTrigger).Type;
+            string eventName = string.Format(MetricEventNames.FunctionInvokeByTriggerFormat, triggerType);
+            _metrics.LogEvent(eventName);
+
             try
             {
                 TraceWriter.Info($"Function started (Id={invocationId})");

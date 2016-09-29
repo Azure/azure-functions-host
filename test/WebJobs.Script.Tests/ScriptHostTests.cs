@@ -66,10 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.LastDebugNotify = DateTime.MinValue;
             Assert.False(host.InDebugMode);
 
-            host.LastDebugNotify = DateTime.Now - TimeSpan.FromSeconds(60 * ScriptHost.DebugModeTimeoutMinutes);
+            host.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * ScriptHost.DebugModeTimeoutMinutes);
             Assert.False(host.InDebugMode);
 
-            host.LastDebugNotify = DateTime.Now - TimeSpan.FromSeconds(60 * (ScriptHost.DebugModeTimeoutMinutes - 1));
+            host.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * (ScriptHost.DebugModeTimeoutMinutes - 1));
             Assert.True(host.InDebugMode);
         }
 

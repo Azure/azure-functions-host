@@ -387,10 +387,12 @@
     <Compile Include="Diagnostics\InterceptingTraceWriter.cs" />
     <Compile Include="Diagnostics\ITraceWriterFactory.cs" />
     <Compile Include="Diagnostics\MetricEvent.cs" />
+    <Compile Include="Diagnostics\MetricEventNames.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ExpandoObjectJsonConverter.cs" />
+    <Compile Include="Extensions\IMetricsLoggerExtensions.cs" />
     <Compile Include="Extensions\TraceWriterExtensions.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />

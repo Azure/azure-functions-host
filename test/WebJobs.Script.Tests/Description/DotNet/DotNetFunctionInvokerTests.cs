@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -212,6 +213,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             var traceWriterFactory = new Mock<ITraceWriterFactory>();
             traceWriterFactory.Setup(f => f.Create())
                 .Returns(traceWriter);
+
+            var metricsLogger = new MetricsLogger();
+            scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
             return new RunDependencies
             {

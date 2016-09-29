@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (webScriptHostManager != null)
             {
                 webScriptHostManager.Stop();
+                webScriptHostManager.Dispose();
             }
         }
     }
