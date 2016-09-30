@@ -267,11 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
-                using (_metricsLogger.LatencyEvent(eventName))
-                {
-                    return await currentValueLoader;
-                }  
+                return await currentValueLoader;
             }
             catch (OperationCanceledException)
             {
@@ -292,21 +288,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 await VerifyPackageReferencesAsync();
 
-                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+                using (_metricsLogger.LatencyEvent(eventName))
+                {
+                    ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
-                TraceCompilationDiagnostics(bindingDiagnostics);
+                    ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
+                    TraceCompilationDiagnostics(bindingDiagnostics);
 
-                Assembly assembly = compilation.EmitAndLoad(cancellationToken);
-                _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
-                // Get our function entry point
-                _functionSignature = functionSignature;
-                System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                    .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
+                    // Get our function entry point
+                    _functionSignature = functionSignature;
+                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
+                        .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
 
-                return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                    return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                }
             }
             catch (CompilationErrorException ex)
             {
