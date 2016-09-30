@@ -14,6 +14,14 @@ namespace Microsoft.Azure.WebJobs.Logging
     /// </summary>
     public class FunctionInstanceLogItem : IFunctionInstanceBaseEntry
     {
+        // Max lengths of various fields.
+        // Except for output logging, these shouldn't get hit in practice.
+        // Truncate if they're exceeded. 
+        private const int MaxTriggerReasonLength = 200;
+        private const int MaxErrorLength = 500;
+        private const int MaxLogOutputLength = 2000 + 3;
+        private const int MaxParameterPayloadLength = 1000;
+
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
 
@@ -49,8 +57,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, string> Arguments { get; set; }
 
-        // Direct inline capture for small log outputs. For large log outputs, this is faulted over to a blob. 
-        /// <summary></summary>
+        /// <summary>Direct inline capture for small log outputs. For large log outputs, this is faulted over to a blob. </summary>
         public string LogOutput { get; set; }
 
         /// <summary>
@@ -152,6 +159,57 @@ namespace Microsoft.Azure.WebJobs.Logging
                     throw new InvalidOperationException("Status and Error Details are inconsistent.");
                 }
             }
+        }
+                     
+        /// <summary>
+        /// Truncate various fields to fit in logging sizes. 
+        /// </summary>
+        public void Truncate()
+        {
+            // This is fundamentally driven by performance. We need to fit log entries into table rows.
+            // Truncate to ensure that we're under table's maximum request payload size (4mb).
+            // None of these limits (except for output log)  should actually get hit in normal scenarios. 
+            this.TriggerReason = Truncate(this.TriggerReason, MaxTriggerReasonLength);
+            this.ErrorDetails = Truncate(this.ErrorDetails, MaxErrorLength);
+
+            // Logger should already have truncated this, but just in case. 
+            this.LogOutput = Truncate(this.LogOutput, MaxLogOutputLength);
+
+            // Arguments may have 1 larger argument for the trigger. 
+            // The other arguments should all be small. 
+            if (this.Arguments != null)
+            {
+                bool truncate = false;
+                foreach (var kv in this.Arguments)
+                {
+                    if (kv.Value.Length > MaxParameterPayloadLength)
+                    {
+                        truncate = true;
+                    }
+                    break;                    
+                }
+                if (truncate)
+                {
+                    Dictionary<string, string> args2 = new Dictionary<string, string>();
+                    foreach (var kv in this.Arguments)
+                    {
+                        args2[kv.Key] = Truncate(kv.Value, MaxParameterPayloadLength);
+                    }
+                    this.Arguments = args2;
+                }
+            }
+        }
+
+        private static string Truncate(string value, int maxLength)
+        {
+            if (value != null)
+            {
+                if (value.Length > maxLength)
+                {
+                    return value.Substring(0, maxLength) + "...";
+                }
+            }
+            return value;
         }
 
         private FunctionInstanceStatus InferStatus()

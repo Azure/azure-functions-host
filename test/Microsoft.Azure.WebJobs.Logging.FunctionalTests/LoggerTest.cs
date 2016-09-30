@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
@@ -268,6 +269,53 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             finally
             {
                 // Cleanup
+                table.DeleteIfExists();
+            }
+        }
+
+        // Test that large output logs getr truncated. 
+        [Fact]
+        public async Task LargeWritesAreTruncated()
+        {
+            var table = GetNewLoggingTable();
+            try
+            {
+                ILogWriter writer = LogFactory.NewWriter("c1", table);
+
+                // Max table request size is 4mb. That gives roughly 40kb per row. 
+                string largeValue = new string('x', 100 * 1000);
+
+                for (int i = 0; i < 90; i++)
+                {
+                    var now = DateTime.UtcNow;
+                    var item = new FunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        Arguments = new Dictionary<string, string>
+                    {
+                        { "p1", largeValue },
+                        { "p2", largeValue },
+                        { "p3", largeValue },
+                        { "p4", largeValue }
+                    },
+                        StartTime = now,
+                        EndTime = now.AddSeconds(3),
+                        FunctionName = "tst2",
+                        LogOutput = largeValue,
+                        ErrorDetails = largeValue,
+                        TriggerReason = largeValue
+                    };
+
+                    await writer.AddAsync(item);
+                }
+
+                // If we didn't truncate, then this would throw with a 413 "too large" exception. 
+                await writer.FlushAsync();
+
+                // If we got here without an exception, then we successfully truncated the rows. 
+            }
+            finally
+            {
                 table.DeleteIfExists();
             }
         }

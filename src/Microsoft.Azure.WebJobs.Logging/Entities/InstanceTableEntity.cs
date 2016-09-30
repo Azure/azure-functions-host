@@ -19,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         internal static InstanceTableEntity New(FunctionInstanceLogItem item)
         {
+            item.Truncate();
+
             string argumentJson = null;
             if (item.Arguments != null)
             {
