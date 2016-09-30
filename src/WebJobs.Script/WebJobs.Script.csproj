@@ -355,8 +355,8 @@
     <Compile Include="Description\PowerShell\PowerShellFunctionInvoker.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
-    <Compile Include="Description\FSharp\FSharpCompilation.cs" />
-    <Compile Include="Description\FSharp\FSharpCompiler.cs" />
+    <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\FSharp\FSharpCompiler.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />

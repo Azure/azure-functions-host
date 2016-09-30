@@ -124,6 +124,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--tailcalls-");
                 }
 
+                // If we have a private assembly folder, make sure the compiler uses it to resolve dependencies
+                string privateAssembliesFolder = Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName);
+                if (Directory.Exists(privateAssembliesFolder))
+                {
+                    otherFlags.Add("--lib:" + Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName));
+                }
+
                 // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
                 otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "dll"));
 

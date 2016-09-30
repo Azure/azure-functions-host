@@ -171,6 +171,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
         }
+
+        [Fact]
+        public async Task PrivateAssemblyDependenciesAreLoaded()
+        {
+            var request = new System.Net.Http.HttpRequestMessage();
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
+
+            await Fixture.Host.CallAsync("PrivateAssemblyReference", arguments);
+
+            Assert.Equal("Test result", request.Properties["DependencyOutput"]);
+        }
+
         [Fact]
         public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
@@ -214,11 +229,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             static TestFixture()
             {
+                CreateTestDependency();
                 CreateSharedAssemblies();
             }
 
             public TestFixture() : base(ScriptRoot, "fsharp")
             {
+            }
+
+            private static void CreateTestDependency()
+            {
+                string assemblyPath = Path.Combine(ScriptRoot, @"PrivateAssemblyReference\bin");
+
+                if (Directory.Exists(assemblyPath))
+                {
+                    Directory.Delete(assemblyPath, true);
+                }
+
+                Directory.CreateDirectory(assemblyPath);
+
+                string primaryReferenceSource = @"
+namespace TestDependency
+{
+    public class TestClass
+    {
+        public string GetValue()
+        {
+            return ""Test result"";
+        }
+    }
+}";
+
+                var primarySyntaxTree = CSharpSyntaxTree.ParseText(primaryReferenceSource);
+                Compilation compilation = CSharpCompilation.Create("TestDependency", new[] { primarySyntaxTree })
+                    .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                    .WithReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+
+                compilation.Emit(Path.Combine(assemblyPath, "TestDependency.dll"));
             }
 
             private static void CreateSharedAssemblies()
@@ -274,17 +321,17 @@ namespace SecondaryDependency
             }
         }
 
-                public class TestInput
-                {
-                    public int Id { get; set; }
-                    public string Value { get; set; }
-                }
+        public class TestInput
+        {
+            public int Id { get; set; }
+            public string Value { get; set; }
+        }
 
-                public class ScenarioInput
-                {
-                    public string Scenario { get; set; }
-                    public string Container { get; set; }
-                    public string Value { get; set; }
-                }
+        public class ScenarioInput
+        {
+            public string Scenario { get; set; }
+            public string Container { get; set; }
+            public string Value { get; set; }
+        }
     }
 }
