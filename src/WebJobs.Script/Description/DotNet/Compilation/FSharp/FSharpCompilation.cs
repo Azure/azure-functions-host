@@ -15,7 +15,7 @@ using Microsoft.FSharp.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class FSharpCompilation : ICompilation
+    internal class FSharpCompilation : IDotNetCompilation
     {
         private FSharpErrorInfo[] _errors;
         private FSharpOption<Assembly> _assemblyOption;
@@ -81,7 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return RefKind.None;
         }
 
-        public Assembly EmitAndLoad(CancellationToken cancellationToken)
+        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+
+        public Assembly Emit(CancellationToken cancellationToken)
         {
             EnsureAssemblyOption();
 

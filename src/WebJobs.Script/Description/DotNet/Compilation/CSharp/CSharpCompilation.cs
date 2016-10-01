@@ -19,7 +19,7 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class CSharpCompilation : ICompilation
+    public sealed class CSharpCompilation : IDotNetCompilation
     {
         private readonly Compilation _compilation;
 
@@ -87,7 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
-        public Assembly EmitAndLoad(CancellationToken cancellationToken)
+        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+
+        public Assembly Emit(CancellationToken cancellationToken)
         {
             using (var assemblyStream = new MemoryStream())
             {

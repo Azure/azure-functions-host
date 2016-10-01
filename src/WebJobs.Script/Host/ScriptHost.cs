@@ -982,6 +982,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.CSharp;
                 case "js":
                     return ScriptType.Javascript;
+                case "ts":
+                    return ScriptType.TypeScript;
                 case "ps1":
                     return ScriptType.PowerShell;
                 case "cmd":

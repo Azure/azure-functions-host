@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory
+    public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>
     {
         private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp, ScriptType.DotNetAssembly }.ToImmutableArray();
         private static OptimizationLevel? _optimizationLevel;
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
         }
 
-        ImmutableArray<ScriptType> ICompilationServiceFactory.SupportedScriptTypes => SupportedScriptTypes;
+        ImmutableArray<ScriptType> ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>.SupportedScriptTypes => SupportedScriptTypes;
 
         internal static OptimizationLevel OptimizationLevel
         {
@@ -56,14 +56,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _optimizationLevel = level;
         }
 
-        public ICompilationService CreateService(ScriptType scriptType, IFunctionMetadataResolver metadataResolver)
+        public ICompilationService<IDotNetCompilation> CreateService(ScriptType scriptType, IFunctionMetadataResolver metadata)
         {
             switch (scriptType)
             {
                 case ScriptType.CSharp:
-                    return new CSharpCompilationService(metadataResolver, OptimizationLevel);
+                    return new CSharpCompilationService(metadata, OptimizationLevel);
                 case ScriptType.FSharp:
-                    return new FSharpCompilationService(metadataResolver, OptimizationLevel, _traceWriter, _loggerFactory);
+                    return new FSharpCompilationService(metadata, OptimizationLevel, _traceWriter, _loggerFactory);
                 case ScriptType.DotNetAssembly:
                     return new RawAssemblyCompilationService();
                 default:

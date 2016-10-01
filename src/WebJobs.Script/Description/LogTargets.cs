@@ -3,15 +3,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public interface ICompilationService
+    /// <summary>
+    /// Specifies the log to target.
+    /// </summary>
+    [Flags]
+    internal enum LogTargets
     {
-        string Language { get; }
-
-        IEnumerable<string> SupportedFileTypes { get; }
-
-        ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata);
+        None = 0,
+        System = 1,
+        User = 2,
+        All = System | User
     }
 }

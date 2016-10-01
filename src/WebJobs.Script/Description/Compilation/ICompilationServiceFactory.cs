@@ -6,10 +6,10 @@ using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public interface ICompilationServiceFactory
+    public interface ICompilationServiceFactory<TCompilationService, TMetadata> where TCompilationService : ICompilationService
     {
         ImmutableArray<ScriptType> SupportedScriptTypes { get; }
 
-        ICompilationService CreateService(ScriptType scriptType, IFunctionMetadataResolver metadataResolver);
+        TCompilationService CreateService(ScriptType scriptType, TMetadata metadata);
     }
 }

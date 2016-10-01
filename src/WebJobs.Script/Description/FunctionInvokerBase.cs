@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -13,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -229,6 +231,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected void TraceOnPrimaryHost(string message, TraceLevel level)
         {
             TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
+        }
+
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
+        {
+            if (logTarget == LogTargets.None)
+            {
+                return;
+            }
+
+            TraceWriter traceWriter = TraceWriter;
+            IDictionary<string, object> properties = PrimaryHostTraceProperties;
+
+            if (!logTarget.HasFlag(LogTargets.User))
+            {
+                traceWriter = Host.TraceWriter;
+                properties = PrimaryHostSystemTraceProperties;
+            }
+            else if (!logTarget.HasFlag(LogTargets.System))
+            {
+                properties = PrimaryHostUserTraceProperties;
+            }
+
+            foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
+            {
+                traceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), properties);
+            }
         }
 
         protected virtual void Dispose(bool disposing)

@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class RawAssemblyCompilation : ICompilation
+    public class RawAssemblyCompilation : IDotNetCompilation
     {
         private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
         private readonly string _assemblyFilePath;
@@ -26,7 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Assembly FunctionAssembly => _functionAssembly ?? (_functionAssembly = Assembly.LoadFrom(_assemblyFilePath));
 
-        public Assembly EmitAndLoad(CancellationToken cancellationToken)
+        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+
+        public Assembly Emit(CancellationToken cancellationToken)
         {
             return FunctionAssembly;
         }

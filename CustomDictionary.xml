@@ -82,6 +82,7 @@
       <Term CompoundAlternate="TableName">tableName</Term>
       <Term CompoundAlternate="ETag">etag</Term>
       <Term CompoundAlternate="ETag">eTag</Term>
+      <Term CompoundAlternate="Typescript">TypeScript</Term>
     </Compound>
     <DiscreteExceptions>
 		<Term>WebJobs</Term>
