@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
+        public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";
 
         // Optional env var that can be set to a local file path containing custom binding extensions.
         public const string AzureWebJobsExtensionsPath = "AzureWebJobs_ExtensionsPath";

@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Bash,
         FSharp,
         DotNetAssembly,
+        TypeScript,
         Unknown
     }
 }

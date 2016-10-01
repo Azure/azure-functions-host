@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -15,7 +16,7 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class CSharpCompilationService : ICompilationService
+    public class CSharpCompilationService : ICompilationService<IDotNetCompilation>
     {
         private static readonly string[] FileTypes = { ".csx", ".cs" };
         private static readonly Encoding UTF8WithNoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
@@ -35,14 +36,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IEnumerable<string> SupportedFileTypes => FileTypes;
 
-        public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
+        public bool PersistsOutput => false;
+
+        async Task<object> ICompilationService.GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
+            => await GetFunctionCompilationAsync(functionMetadata);
+
+        public Task<IDotNetCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
         {
             string code = GetFunctionSource(functionMetadata);
             Script<object> script = CSharpScript.Create(code, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
 
             Compilation compilation = GetScriptCompilation(script, functionMetadata);
 
-            return new CSharpCompilation(compilation);
+            return Task.FromResult<IDotNetCompilation>(new CSharpCompilation(compilation));
         }
 
         internal static string GetFunctionSource(FunctionMetadata functionMetadata)

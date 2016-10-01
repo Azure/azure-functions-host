@@ -24,7 +24,7 @@ using static Microsoft.Azure.WebJobs.Script.FileUtility;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class FSharpCompilationService : ICompilationService
+    internal class FSharpCompilationService : ICompilationService<IDotNetCompilation>
     {
         private static readonly string[] FileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
         private readonly IFunctionMetadataResolver _metadataResolver;
@@ -49,7 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IEnumerable<string> SupportedFileTypes => FileTypes;
 
-        public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
+        public bool PersistsOutput => false;
+
+        async Task<object> ICompilationService.GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
+            => await GetFunctionCompilationAsync(functionMetadata);
+
+        public Task<IDotNetCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
         {
             // First use the C# compiler to resolve references, to get consistency with the C# Azure Functions programming model
             // Add the #r statements from the .fsx file to the resolver source
@@ -200,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }), TaskContinuationOptions.OnlyOnFaulted);
             }
 
-            return new FSharpCompilation(errors, assemblyOption);
+            return Task.FromResult<IDotNetCompilation>(new FSharpCompilation(errors, assemblyOption));
         }
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)

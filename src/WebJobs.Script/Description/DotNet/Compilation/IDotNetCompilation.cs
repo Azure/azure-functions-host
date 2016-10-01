@@ -10,12 +10,8 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public interface ICompilation
+    public interface IDotNetCompilation : ICompilation<Assembly>
     {
-        ImmutableArray<Diagnostic> GetDiagnostics();
-
         FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver);
-
-        Assembly EmitAndLoad(CancellationToken cancellationToken);
     }
 }

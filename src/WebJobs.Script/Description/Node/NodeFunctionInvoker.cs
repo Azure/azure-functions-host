@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Dynamic;
@@ -17,8 +18,13 @@ using EdgeJs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+using ScriptFunc = System.Func<object, System.Threading.Tasks.Task<object>>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -27,13 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly string _script;
+        private readonly ICompilationService<IJavaScriptCompilation> _compilationService;
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
+        private readonly IMetricsLogger _metricsLogger;
 
-        private Func<object, Task<object>> _scriptFunc;
-        private static Func<object, Task<object>> _clearRequireCache;
-        private static Func<object, Task<object>> _globalInitializationFunc;
+        private ScriptFunc _scriptFunc;
+        private static ScriptFunc _clearRequireCache;
+        private static ScriptFunc _globalInitializationFunc;
+        private FunctionLoader<ScriptFunc> _functionLoader;
+        private Func<Task> _reloadScript;
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
@@ -48,15 +57,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
+            ICompilationService<IJavaScriptCompilation> compilationService, ITraceWriterFactory traceWriterFactory = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
             _trigger = trigger;
-            string scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
-            _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _entryPoint = functionMetadata.EntryPoint;
+            _compilationService = compilationService;
+
+            // If the compilation service writes to the common file system, we only want the primary host to generate
+            // compilation output
+            if (_compilationService.PersistsOutput)
+            {
+                _compilationService = new ConditionalJavaScriptCompilationService(Host.SettingsManager, compilationService, () => Host.IsPrimary);
+            }
+
+            _functionLoader = new FunctionLoader<ScriptFunc>(CreateFunctionTarget);
+            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+
+            _reloadScript = ReloadScriptAsync;
+            _reloadScript = _reloadScript.Debounce();
 
             InitializeFileWatcherIfEnabled();
         }
@@ -67,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public static event UnhandledExceptionEventHandler UnhandledException;
 
-        private static Func<object, Task<object>> GlobalInitializationFunc
+        private static ScriptFunc GlobalInitializationFunc
         {
             get
             {
@@ -79,22 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Func<object, Task<object>> ScriptFunc
-        {
-            get
-            {
-                if (_scriptFunc == null)
-                {
-                    // We delay create the script function so any syntax errors in
-                    // the function will be reported to the Dashboard as an invocation
-                    // error rather than a host startup error
-                    _scriptFunc = Edge.Func(_script);
-                }
-                return _scriptFunc;
-            }
-        }
-
-        private static Func<object, Task<object>> ClearRequireCacheFunc
+        private static ScriptFunc ClearRequireCacheFunc
         {
             get
             {
@@ -104,6 +111,67 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 return _clearRequireCache;
             }
+        }
+
+        private async Task<ScriptFunc> GetFunctionTargetAsync()
+        {
+            ScriptFunc result = _scriptFunc;
+            if (result == null)
+            {
+                _scriptFunc = result = await _functionLoader.GetFunctionTargetAsync();
+            }
+
+            return result;
+        }
+
+        private async Task<ScriptFunc> CreateFunctionTarget(CancellationToken cancellationToken)
+        {
+            string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+
+            using (_metricsLogger.LatencyEvent(eventName))
+            {
+                IJavaScriptCompilation compilation = await CompileAndTraceAsync(LogTargets.System, suppressCompilationSummary: true);
+
+                string functionScriptPath = compilation.Emit(cancellationToken);
+                string script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, functionScriptPath.Replace('\\', '/'));
+
+                return Edge.Func(script);
+            }
+        }
+
+        private async Task<IJavaScriptCompilation> CompileAndTraceAsync(LogTargets logTargets, bool throwOnCompilationError = true, bool suppressCompilationSummary = true)
+        {
+            try
+            {
+                IJavaScriptCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
+
+                if (compilation.SupportsDiagnostics)
+                {
+                    ImmutableArray<Diagnostic> diagnostics = compilation.GetDiagnostics();
+                    TraceCompilationDiagnostics(diagnostics, logTargets);
+
+                    if (!suppressCompilationSummary)
+                    {
+                        bool compilationSucceeded = !diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error);
+
+                        TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
+                    }
+                }
+
+                return compilation;
+            }
+            catch (CompilationErrorException ex)
+            {
+                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                TraceCompilationDiagnostics(ex.Diagnostics, logTargets);
+
+                if (throwOnCompilationError)
+                {
+                    throw;
+                }
+            }
+
+            return null;
         }
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
@@ -121,7 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
 
-            object functionResult = await ScriptFunc(scriptExecutionContext);
+            ScriptFunc function = await GetFunctionTargetAsync();
+
+            object functionResult = await function(scriptExecutionContext);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
         }
@@ -133,9 +203,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // create an ordered array of all inputs and add to
             // the execution context. These will be promoted to
             // positional parameters
-            List<object> inputs = new List<object>();
-            inputs.Add(bindings[_trigger.Name]);
-
+            var inputs = new List<object>
+            {
+                bindings[_trigger.Name]
+            };
             var nonTriggerInputBindings = _inputBindings.Where(p => !p.Metadata.IsTrigger);
             foreach (var inputBinding in nonTriggerInputBindings)
             {
@@ -185,8 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // if the function returned binding values via the function result,
                 // apply them to context.bindings
-                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
-                if (functionOutputs != null)
+                if (functionResult is IDictionary<string, object> functionOutputs)
                 {
                     foreach (var output in functionOutputs)
                     {
@@ -230,33 +300,46 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
-            if (_scriptFunc == null)
+            if (_scriptFunc != null)
             {
-                // we're not loaded yet, so nothing to reload
-                return;
+                // clear the node module cache
+                // This is done for any files to ensure that, if a file change triggers
+                // a host restart, we leave the cache clean.
+                ClearRequireCacheFunc(null).GetAwaiter().GetResult();
             }
-
-            // clear the node module cache
-            // This is done for any files to ensure that, if a file change triggers
-            // a host restart, we leave the cache clean.
-            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
-            if (string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
+            string fileExtension = Path.GetExtension(fileName);
+            if (string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0 &&
+                _compilationService.SupportedFileTypes.Contains(fileExtension))
             {
-                // one of the script files for this function changed
-                // force a reload on next execution
-                _scriptFunc = null;
+                _reloadScript();
+            }
+        }
 
-                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
+        private async Task ReloadScriptAsync()
+        {
+            // one of the script files for this function changed
+            // force a reload on next execution
+            _functionLoader.Reset();
+            _scriptFunc = null;
+
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
+
+            IJavaScriptCompilation compilation = await CompileAndTraceAsync(LogTargets.User, throwOnCompilationError: false);
+
+            if (compilation.SupportsDiagnostics)
+            {
+                bool compilationSucceeded = !compilation.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error);
+                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
             }
         }
 
         private async Task<Dictionary<string, object>> CreateScriptExecutionContextAsync(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
-            var log = (Func<object, Task<object>>)(p =>
+            var log = (ScriptFunc)(p =>
             {
                 var logData = (IDictionary<string, object>)p;
                 string message = (string)logData["msg"];
@@ -292,7 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             });
 
             var bindings = new Dictionary<string, object>();
-            var bind = (Func<object, Task<object>>)(p =>
+            var bind = (ScriptFunc)(p =>
             {
                 IDictionary<string, object> bindValues = (IDictionary<string, object>)p;
                 foreach (var bindValue in bindValues)
@@ -619,7 +702,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         private static async Task InitializeAsync()
         {
-            var handle = (Func<object, Task<object>>)(err =>
+            var handle = (ScriptFunc)(err =>
             {
                 if (UnhandledException != null)
                 {

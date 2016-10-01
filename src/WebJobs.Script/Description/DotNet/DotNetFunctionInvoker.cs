@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private readonly ICompilationService _compilationService;
+        private readonly ICompilationService<IDotNetCompilation> _compilationService;
         private readonly FunctionLoader<MethodInfo> _functionLoader;
         private readonly IMetricsLogger _metricsLogger;
 
@@ -41,10 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private string[] _watchedFileTypes;
 
-        internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader,
-            ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null,
+        internal DotNetFunctionInvoker(ScriptHost host,
+            FunctionMetadata functionMetadata,
+            Collection<FunctionBinding> inputBindings,
+            Collection<FunctionBinding> outputBindings,
+            IFunctionEntryPointResolver functionEntryPointResolver,
+            FunctionAssemblyLoader assemblyLoader,
+            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
+            ITraceWriterFactory traceWriterFactory = null,
             IFunctionMetadataResolver metadataResolver = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
@@ -133,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
                 compilationResult = compilation.GetDiagnostics();
 
                 signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
@@ -281,9 +285,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
                 using (_metricsLogger.LatencyEvent(eventName))
                 {
-                    ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                    IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
-                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                    Assembly assembly = compilation.Emit(cancellationToken);
                     _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter, Host.ScriptConfig.HostConfig.LoggerFactory);
 
                     FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
@@ -326,32 +330,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceOnPrimaryHost(exc.Message, TraceLevel.Error);
 
                 throw new CompilationErrorException("Unable to restore packages", ImmutableArray<Diagnostic>.Empty);
-            }
-        }
-
-        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
-        {
-            if (logTarget == LogTargets.None)
-            {
-                return;
-            }
-
-            TraceWriter traceWriter = TraceWriter;
-            IDictionary<string, object> properties = PrimaryHostTraceProperties;
-
-            if (!logTarget.HasFlag(LogTargets.User))
-            {
-                traceWriter = Host.TraceWriter;
-                properties = PrimaryHostSystemTraceProperties;
-            }
-            else if (!logTarget.HasFlag(LogTargets.System))
-            {
-                properties = PrimaryHostUserTraceProperties;
-            }
-
-            foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
-            {
-                traceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), properties);
             }
         }
 
@@ -504,15 +482,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return processor ?? ((_, __, ___, ____) => { /*noop*/ });
-        }
-
-        [Flags]
-        internal enum LogTargets
-        {
-            None = 0,
-            System = 1,
-            User = 2,
-            All = System | User
         }
     }
 }

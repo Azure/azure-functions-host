@@ -442,6 +442,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "swagger", "swagger", "{DCC9
 		sample\.azurefunctions\swagger\swagger.json = sample\.azurefunctions\swagger\swagger.json
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "HttpTrigger-TypeScript", "{62489417-341D-42AD-9E84-E97EB8236979}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-TypeScript\function.json = sample\HttpTrigger-TypeScript\function.json
+		sample\HttpTrigger-TypeScript\index.ts = sample\HttpTrigger-TypeScript\index.ts
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -566,5 +572,6 @@ Global
 		{EB76E1C8-C823-4707-BD83-20304425EFC4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{7D50E081-A161-4E83-A6D4-F8529E518613} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6} = {7D50E081-A161-4E83-A6D4-F8529E518613}
+		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

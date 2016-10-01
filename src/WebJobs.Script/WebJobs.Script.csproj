@@ -414,31 +414,43 @@
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
+    <Compile Include="Description\Compilation\ICompilation.cs" />
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
-    <Compile Include="Description\DotNet\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\IDotNetCompilation.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
-    <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
-    <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
-    <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
-    <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\DotNetCompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ExtensionSharedAssemblyProvider.cs" />
-    <Compile Include="Description\DotNet\FSharp\FSharpCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\FunctionParameter.cs" />
-    <Compile Include="Description\DotNet\ICompilation.cs" />
-    <Compile Include="Description\DotNet\ICompilationServiceFactory.cs" />
-    <Compile Include="Description\DotNet\ICompilationService.cs" />
+    <Compile Include="Description\Compilation\ICompilationServiceFactory.cs" />
+    <Compile Include="Description\Compilation\ICompilationService.cs" />
     <Compile Include="Description\DotNet\IFunctionMetadataResolver.cs" />
     <Compile Include="Description\DotNet\ISharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\LocalSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\DirectSharedAssemblyProvider.cs" />
-    <Compile Include="Description\DotNet\Raw\RawAssemblyCompilation.cs" />
-    <Compile Include="Description\DotNet\Raw\RawAssemblyCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\Raw\RawAssemblyCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\Raw\RawAssemblyCompilationService.cs" />
     <Compile Include="Description\FunctionInvocationContext.cs" />
     <Compile Include="Description\FunctionLoader.cs" />
+    <Compile Include="Description\LogTargets.cs" />
+    <Compile Include="Description\Node\Compilation\ConditionalJavaScriptCompilationService.cs" />
+    <Compile Include="Description\Node\Compilation\IJavaScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\JavaScriptCompilationServiceFactory.cs" />
+    <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilationService.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\CompilationOption.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\StringCompilationOption.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptions.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationService.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
-    <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
@@ -603,6 +615,7 @@
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" /> -->
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

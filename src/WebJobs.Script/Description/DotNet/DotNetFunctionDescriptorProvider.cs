@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal sealed class DotNetFunctionDescriptorProvider : FunctionDescriptorProvider, IDisposable
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
-        private readonly ICompilationServiceFactory _compilationServiceFactory;
+        private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
            : this(host, config, new DotNetCompilationServiceFactory(host.TraceWriter, config.HostConfig.LoggerFactory))
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
-            ICompilationServiceFactory compilationServiceFactory)
+            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory)
             : base(host, config)
         {
             _assemblyLoader = new FunctionAssemblyLoader(config.RootScriptPath);

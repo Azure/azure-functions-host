@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class RawAssemblyCompilationService : ICompilationService
+    public class RawAssemblyCompilationService : ICompilationService<IDotNetCompilation>
     {
         private static string[] _supportedFileTypes = new[] { ".dll", ".exe" };
 
@@ -17,9 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IEnumerable<string> SupportedFileTypes => _supportedFileTypes;
 
-        public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
+        public bool PersistsOutput => false;
+
+        async Task<object> ICompilationService.GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
+            => await GetFunctionCompilationAsync(functionMetadata);
+
+        public Task<IDotNetCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
         {
-            return new RawAssemblyCompilation(functionMetadata.ScriptFile, functionMetadata.EntryPoint);
+            return Task.FromResult<IDotNetCompilation>(new RawAssemblyCompilation(functionMetadata.ScriptFile, functionMetadata.EntryPoint));
         }
     }
 }
