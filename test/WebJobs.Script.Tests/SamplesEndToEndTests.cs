@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Temp")]
+        [Fact]
         public async Task EventHubTrigger()
         {
             TestHelpers.ClearFunctionLogs("EventHubTrigger");

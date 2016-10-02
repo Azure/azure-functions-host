@@ -115,12 +115,12 @@ namespace Microsoft.Azure.WebJobs.Script
                         Type type = string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
                             ? typeof(byte[]) : typeof(string);
 
-                        //if (string.Compare("many", Context.Cardinality, StringComparison.OrdinalIgnoreCase) == 0)
-                        //{
-                        //    // arrays are supported for both trigger input as well
-                        //    // as output bindings
-                        //    type = type.MakeArrayType();
-                        //}
+                        if (string.Compare("many", Context.Cardinality, StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            // arrays are supported for both trigger input as well
+                            // as output bindings
+                            type = type.MakeArrayType();
+                        }
 
                         return type;
                     }
