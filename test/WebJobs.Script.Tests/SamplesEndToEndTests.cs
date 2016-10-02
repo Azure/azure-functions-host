@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 events.Add(new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None))));
             }
 
-            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubReceiver");
+            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
             string eventHubName = Environment.GetEnvironmentVariable("AzureWebJobsEventHubPath");
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
             await eventHubClient.SendBatchAsync(events);
