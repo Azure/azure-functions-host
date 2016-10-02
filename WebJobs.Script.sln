@@ -369,8 +369,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusTopicTrigger", "S
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{391A580B-AA88-4125-9E83-42B4BC6B9260}"
 	ProjectSection(SolutionItems) = preProject
-		sample\EventHubTrigger-Batch\function.json = sample\EventHubTrigger-Batch\function.json
-		sample\EventHubTrigger-Batch\index.js = sample\EventHubTrigger-Batch\index.js
+		sample\EventHubTrigger\function.json = sample\EventHubTrigger\function.json
+		sample\EventHubTrigger\index.js = sample\EventHubTrigger\index.js
 	EndProjectSection
 EndProject
 Global
