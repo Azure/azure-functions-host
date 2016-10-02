@@ -41,6 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         [JsonConverter(typeof(StringEnumConverter))]
         public DataType? DataType { get; set; }
 
+        [JsonConverter(typeof(StringEnumConverter))]
+        public Cardinality? Cardinality { get; set; }
+
         /// <summary>
         /// Gets a value indicating whether this binding is a trigger binding.
         /// </summary>

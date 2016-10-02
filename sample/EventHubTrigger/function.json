@@ -3,16 +3,9 @@
         {
             "type": "eventHubTrigger",
             "name": "input",
+            "cardinality": "many",
             "direction": "in",
             "connection": "AzureWebJobsEventHubReceiver",
-            "path": "%AzureWebJobsEventHubPath%",
-            "consumerGroup": "$Default"
-        },
-        {
-            "type": "eventHub",
-            "name": "output",
-            "direction": "out",
-            "connection": "AzureWebJobsEventHubSender",
             "path": "%AzureWebJobsEventHubPath%"
         }
     ]

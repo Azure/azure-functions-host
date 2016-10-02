@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Xml.Linq;
@@ -35,6 +37,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public SamplesEndToEndTests(TestFixture fixture)
         {
             _fixture = fixture;
+        }
+
+        [Fact]
+        public async Task EventHubTrigger()
+        {
+            TestHelpers.ClearFunctionLogs("EventHubTrigger");
+
+            // write 3 events
+            List<EventData> events = new List<EventData>();
+            string[] ids = new string[3];
+            for (int i = 0; i < 3; i++)
+            {
+                ids[i] = Guid.NewGuid().ToString();
+                JObject jo = new JObject
+                {
+                    { "value", ids[i] }
+                };
+                events.Add(new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None))));
+            }
+
+            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubReceiver");
+            string eventHubName = "testhub";
+            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
+            await eventHubClient.SendBatchAsync(events);
+
+            string logs = null;
+            await TestHelpers.Await(() =>
+            {
+                // wait for all 3 of the unique IDs send
+                // above have been processed
+                logs = string.Join("\r\n", TestHelpers.GetFunctionLogsAsync("EventHubTrigger", throwOnNoLogs: false).Result);
+                return ids.All(p => logs.Contains(p));
+            });
+
+            Assert.True(logs.Contains("IsArray true"));
         }
 
         [Fact]

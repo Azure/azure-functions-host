@@ -31,6 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public DataType DataType { get; set; }
 
         /// <summary>
+        /// Gets or sets the cardinality hint for the binding.
+        /// </summary>
+        public Cardinality Cardinality { get; set; }
+
+        /// <summary>
         /// Gets or sets the target value the binding is binding to.
         /// </summary>
         public object Value { get; set; }

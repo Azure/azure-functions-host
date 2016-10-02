@@ -16,11 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script
     [CLSCompliant(false)]
     public class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
+        private readonly string _serviceBusAssemblyName;
         private EventHubConfiguration _eventHubConfiguration;
 
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
+            _serviceBusAssemblyName = typeof(BrokeredMessage).Assembly.GetName().Name;
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -85,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, "Microsoft.ServiceBus", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(assemblyName, _serviceBusAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
             {
                 assembly = typeof(BrokeredMessage).Assembly;
             }
@@ -110,8 +112,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (Context.Access == FileAccess.Read)
                     {
-                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
+                        Type type = string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
                             ? typeof(byte[]) : typeof(string);
+
+                        if (string.Compare("many", Context.Cardinality, StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            // arrays are supported for both trigger input as well
+                            // as output bindings
+                            type = type.MakeArrayType();
+                        }
+
+                        return type;
                     }
                     else
                     {

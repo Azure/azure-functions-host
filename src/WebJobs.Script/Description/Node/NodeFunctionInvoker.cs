@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
@@ -29,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _script;
-        private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
+        private static readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private static readonly ExpandoObjectJsonConverter _expandoObjectJsonConverter = new ExpandoObjectJsonConverter();
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
@@ -144,7 +143,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     Binder = binder,
                     BindingData = bindingData,
-                    DataType = inputBinding.Metadata.DataType ?? DataType.String
+                    DataType = inputBinding.Metadata.DataType ?? DataType.String,
+                    Cardinality = inputBinding.Metadata.Cardinality ?? Cardinality.One
                 };
                 await inputBinding.BindAsync(bindingContext);
 
@@ -419,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
+        private static Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
         {
             rawBody = null;
 
@@ -475,10 +475,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// If the specified input is a JSON string or JToken, attempt to deserialize it into
+        /// If the specified input is a JSON string, an array of JSON strings, or JToken, attempt to deserialize it into
         /// an object or array.
         /// </summary>
-        private bool TryConvertJson(object input, out object result)
+        internal static bool TryConvertJson(object input, out object result)
         {
             if (input is JToken)
             {
@@ -487,7 +487,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             result = null;
             string inputString = input as string;
-            if (inputString == null)
+            string[] inputStrings = input as string[];
+            if (inputString == null && inputStrings == null)
             {
                 return false;
             }
@@ -495,24 +496,56 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (Utility.IsJson(inputString))
             {
                 // if the input is json, try converting to an object or array
-                Dictionary<string, object> jsonObject;
-                Dictionary<string, object>[] jsonObjectArray;
-                if (TryDeserializeJson(inputString, out jsonObject))
+                if (TryDeserializeJsonObjectOrArray(inputString, out result))
                 {
-                    result = jsonObject;
                     return true;
                 }
-                else if (TryDeserializeJson(inputString, out jsonObjectArray))
+            }
+            else if (inputStrings != null && inputStrings.All(p => Utility.IsJson(p)))
+            {
+                // if the input is an array of json strings, try converting to
+                // an array
+                object[] results = new object[inputStrings.Length];
+                for (int i = 0; i < inputStrings.Length; i++)
                 {
-                    result = jsonObjectArray;
-                    return true;
+                    if (TryDeserializeJsonObjectOrArray(inputStrings[i], out result))
+                    {
+                        results[i] = result;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
+                result = results;
+                return true;
             }
 
             return false;
         }
 
-        private bool TryDeserializeJson<TResult>(string json, out TResult result)
+        private static bool TryDeserializeJsonObjectOrArray(string json, out object result)
+        {
+            result = null;
+
+            // if the input is json, try converting to an object or array
+            Dictionary<string, object> jsonObject;
+            Dictionary<string, object>[] jsonObjectArray;
+            if (TryDeserializeJson(json, out jsonObject))
+            {
+                result = jsonObject;
+                return true;
+            }
+            else if (TryDeserializeJson(json, out jsonObjectArray))
+            {
+                result = jsonObjectArray;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryDeserializeJson<TResult>(string json, out TResult result)
         {
             result = default(TResult);
 
