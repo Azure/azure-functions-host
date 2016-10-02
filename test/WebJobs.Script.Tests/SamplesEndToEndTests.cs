@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubReceiver");
-            string eventHubName = "testhub";
+            string eventHubName = Environment.GetEnvironmentVariable("AzureWebJobsEventHubPath");
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
             await eventHubClient.SendBatchAsync(events);
 
