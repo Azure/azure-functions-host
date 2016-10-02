@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -158,12 +158,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-FSharp", "BlobT
 	ProjectSection(SolutionItems) = preProject
 		sample\BlobTrigger-FSharp\function.json = sample\BlobTrigger-FSharp\function.json
 		sample\BlobTrigger-FSharp\run.fsx = sample\BlobTrigger-FSharp\run.fsx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{B80C88CF-68EE-4400-A68D-216F1F85179C}"
-	ProjectSection(SolutionItems) = preProject
-		sample\EventHubTrigger\function.json = sample\EventHubTrigger\function.json
-		sample\EventHubTrigger\index.js = sample\EventHubTrigger\index.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-Batch", "BlobTrigger-Batch", "{C23BB3D1-6921-4FCF-8E45-09540E1F986E}"
@@ -373,6 +367,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusTopicTrigger", "S
 		sample\ServiceBusTopicTrigger\index.js = sample\ServiceBusTopicTrigger\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{391A580B-AA88-4125-9E83-42B4BC6B9260}"
+	ProjectSection(SolutionItems) = preProject
+		sample\EventHubTrigger-Batch\function.json = sample\EventHubTrigger-Batch\function.json
+		sample\EventHubTrigger-Batch\index.js = sample\EventHubTrigger-Batch\index.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -435,7 +435,6 @@ Global
 		{9B95236B-987B-4928-B2CB-561823B38FA2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD03} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{B80C88CF-68EE-4400-A68D-216F1F85179C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -471,5 +470,6 @@ Global
 		{EB3A602B-4B32-4742-B4A2-39445BD2FBE3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8E4F0ED5-75E0-4D0C-9469-05F738B1EC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{EE27035A-633D-48AE-BB86-597BBDBA706E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{391A580B-AA88-4125-9E83-42B4BC6B9260} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

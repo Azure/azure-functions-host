@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
             Name = GetMetadataValue<string>("name");
             Type = GetMetadataValue<string>("type");
             DataType = GetMetadataValue<string>("datatype");
+            Cardinality = GetMetadataValue<string>("cardinality");
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -59,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// Gets the data type for the binding.
         /// </summary>
         public string DataType { get; private set; }
+        
+        /// <summary>
+        /// Gets the cardinality for the binding.
+        /// </summary>
+        public string Cardinality { get; private set; }
 
         /// <summary>
         /// Gets the <see cref="FileAccess"/> for this binding.

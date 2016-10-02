@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class NodeFunctionInvokerTests
     {
         [Fact]
-        public static void ConvertBindingValue_PerformsExpectedConversions()
+        public void ConvertBindingValue_PerformsExpectedConversions()
         {
             var c = new ExpandoObject() as IDictionary<string, object>;
             c["A"] = "Testing";
@@ -29,6 +29,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string json = (string)NodeFunctionInvoker.ConvertBindingValue(o);
             Assert.Equal("{\"A\":\"Testing\",\"B\":{\"A\":\"Testing\",\"B\":1234,\"C\":[1,\"Two\",3]}}", json.Replace(" ", string.Empty));
+        }
+
+        [Fact]
+        public void TryConvertJson_ArrayOfJsonObjectStrings()
+        {
+            string[] input = new string[]
+            {
+                "{ \"name\": \"Larry\" }",
+                "{ \"name\": \"Moe\" }",
+                "{ \"name\": \"Curly\" }"
+            };
+
+            object result = null;
+            bool didConvert = NodeFunctionInvoker.TryConvertJson(input, out result);
+            Assert.True(didConvert);
+
+            object[] objects = result as object[];
+            Dictionary<string, object> obj = (Dictionary<string, object>)objects[0];
+            Assert.Equal("Larry", obj["name"]);
+
+            obj = (Dictionary<string, object>)objects[1];
+            Assert.Equal("Moe", obj["name"]);
+
+            obj = (Dictionary<string, object>)objects[2];
+            Assert.Equal("Curly", obj["name"]);
         }
     }
 }
