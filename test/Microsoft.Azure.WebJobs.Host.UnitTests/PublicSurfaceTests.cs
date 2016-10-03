@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
@@ -40,6 +42,61 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                     Assert.Equal("Microsoft.WindowsAzure.Storage", name);
                 }
             }
+        }
+
+        [Fact]
+        public void LoggingPublicSurface_LimitedToSpecificTypes()
+        {
+            var assembly = typeof(ILogWriter).Assembly;
+
+            var expected = new[]
+            {
+                "ActivationEvent",
+                "CloudTableInstanceCountLogger",
+                "FunctionInstanceLogItem",
+                "FunctionInstanceLogItemExtensions",
+                "FunctionInstanceStatus",
+                "FunctionStatusExtensions",
+                "FunctionVolumeTimelineEntry",
+                "IAggregateEntry",
+                "IFunctionDefinition",
+                "IFunctionInstanceBaseEntry",
+                "ILogReader",
+                "ILogWriter",
+                "InstanceCountEntity",
+                "InstanceCountLoggerBase",
+                "IRecentFunctionEntry",
+                "LogFactory",
+                "ProjectionHelper",
+                "RecentFunctionQuery",
+                "Segment`1"
+            };
+
+            AssertPublicTypes(expected, assembly);
+        }
+
+
+        [Fact]
+        public void ServiceBusPublicSurface_LimitedToSpecificTypes()
+        {
+            var assembly = typeof(ServiceBusAttribute).Assembly;
+
+            var expected = new[]
+            {
+                "EventHubAttribute",
+                "EventHubConfiguration",
+                "EventHubJobHostConfigurationExtensions",
+                "EventHubTriggerAttribute",
+                "MessageProcessor",
+                "MessagingProvider",
+                "ServiceBusAccountAttribute",
+                "ServiceBusAttribute",
+                "ServiceBusConfiguration",
+                "ServiceBusJobHostConfigurationExtensions",
+                "ServiceBusTriggerAttribute"
+            };
+
+            AssertPublicTypes(expected, assembly);
         }
 
         [Fact]
