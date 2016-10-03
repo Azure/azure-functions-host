@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         private const int MaxErrorLength = 500;
         private const int MaxLogOutputLength = 2000 + 3;
         private const int MaxParameterPayloadLength = 1000;
+        private const int MaxParameterTotalPayloadLength = 2000;
 
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
@@ -180,15 +181,30 @@ namespace Microsoft.Azure.WebJobs.Logging
             if (this.Arguments != null)
             {
                 bool truncate = false;
+                int argSize = 0;
                 foreach (var kv in this.Arguments)
                 {
+                    argSize += kv.Key.Length;
                     if (kv.Value.Length > MaxParameterPayloadLength)
                     {
                         truncate = true;
+                        argSize += MaxParameterPayloadLength;
                     }
-                    break;                    
+                    else
+                    {
+                        argSize += kv.Value.Length;
+                    }    
                 }
-                if (truncate)
+
+                if (argSize > MaxParameterTotalPayloadLength)
+                {
+                    // This shouldn't happen in any normal case. 
+                    // We'd need either a) a very large number of individual parameters; 
+                    // b) multiple parameters (not just the trigger) with large payloads.
+                    // At this point, we can't log all that, so just truncate. 
+                    this.Arguments = null;
+                }
+                else if (truncate)
                 {
                     Dictionary<string, string> args2 = new Dictionary<string, string>();
                     foreach (var kv in this.Arguments)

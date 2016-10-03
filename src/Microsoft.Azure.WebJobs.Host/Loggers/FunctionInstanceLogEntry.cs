@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         public IDictionary<string, string> Arguments { get; set; }
 
         /// <summary>Direct inline capture for output written to the per-function instance TextWriter log. 
-        /// For large log outputs, this is faulted over to a blob. </summary>
+        /// For large log outputs, this is truncated</summary>
         public string LogOutput { get; set; }
     }
 }

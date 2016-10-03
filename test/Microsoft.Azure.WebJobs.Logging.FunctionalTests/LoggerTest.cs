@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
-        // Test that large output logs getr truncated. 
+        // Test that large output logs get truncated. 
         [Fact]
         public async Task LargeWritesAreTruncated()
         {
@@ -281,22 +281,30 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             try
             {
                 ILogWriter writer = LogFactory.NewWriter("c1", table);
+                ILogReader reader = LogFactory.NewReader(table);
+
+                List<Guid> functionIds = new List<Guid>();
 
                 // Max table request size is 4mb. That gives roughly 40kb per row. 
+                string smallValue = new string('y', 100 );
                 string largeValue = new string('x', 100 * 1000);
+                string truncatedPrefix = largeValue.Substring(0, 100);
 
                 for (int i = 0; i < 90; i++)
                 {
+                    var functionId = Guid.NewGuid();
+                    functionIds.Add(functionId);
+
                     var now = DateTime.UtcNow;
                     var item = new FunctionInstanceLogItem
                     {
-                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionInstanceId = functionId,
                         Arguments = new Dictionary<string, string>
                     {
                         { "p1", largeValue },
-                        { "p2", largeValue },
-                        { "p3", largeValue },
-                        { "p4", largeValue }
+                        { "p2", smallValue },
+                        { "p3", smallValue },
+                        { "p4", smallValue }
                     },
                         StartTime = now,
                         EndTime = now.AddSeconds(3),
@@ -313,6 +321,77 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 await writer.FlushAsync();
 
                 // If we got here without an exception, then we successfully truncated the rows. 
+
+                // If we got here without an exception, then we successfully truncated the rows. 
+                // Lookup and verify 
+                var instance = await reader.LookupFunctionInstanceAsync(functionIds[0]);
+                Assert.True(instance.LogOutput.StartsWith(truncatedPrefix));
+                Assert.True(instance.ErrorDetails.StartsWith(truncatedPrefix));
+                Assert.True(instance.TriggerReason.StartsWith(truncatedPrefix));
+
+                Assert.Equal(4, instance.Arguments.Count);
+                Assert.True(instance.Arguments["p1"].StartsWith(truncatedPrefix));
+                Assert.Equal(smallValue, instance.Arguments["p2"]);
+                Assert.Equal(smallValue, instance.Arguments["p3"]);
+                Assert.Equal(smallValue, instance.Arguments["p4"]);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
+        }
+
+        // Test that large output logs getr truncated. 
+        [Fact]
+        public async Task LargeWritesWithParametersAreTruncated()
+        {
+            var table = GetNewLoggingTable();
+            try
+            {
+                ILogWriter writer = LogFactory.NewWriter("c1", table);
+                ILogReader reader = LogFactory.NewReader(table);
+
+                // Max table request size is 4mb. That gives roughly 40kb per row. 
+                string largeValue = new string('x', 100 * 1000);
+                string truncatedPrefix = largeValue.Substring(0, 100);
+
+                List<Guid> functionIds = new List<Guid>();
+                for (int i = 0; i < 90; i++)
+                {
+                    var functionId = Guid.NewGuid();
+                    functionIds.Add(functionId);
+                    var now = DateTime.UtcNow;
+                    var item = new FunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = functionId,
+                        Arguments = new Dictionary<string, string>(),
+                        StartTime = now,
+                        EndTime = now.AddSeconds(3),
+                        FunctionName = "tst2",
+                        LogOutput = largeValue,
+                        ErrorDetails = largeValue,
+                        TriggerReason = largeValue
+                    };
+                    for (int j = 0; j < 1000; j++)
+                    {
+                        string paramName = "p" + j.ToString();
+                        item.Arguments[paramName] = largeValue;
+                    }
+
+                    await writer.AddAsync(item);
+                }
+
+                // If we didn't truncate, then this would throw with a 413 "too large" exception. 
+                await writer.FlushAsync();
+
+                // If we got here without an exception, then we successfully truncated the rows. 
+                // Lookup and verify 
+                var instance = await reader.LookupFunctionInstanceAsync(functionIds[0]);
+                Assert.True(instance.LogOutput.StartsWith(truncatedPrefix));
+                Assert.True(instance.ErrorDetails.StartsWith(truncatedPrefix));
+                Assert.True(instance.TriggerReason.StartsWith(truncatedPrefix));
+
+                Assert.Equal(0, instance.Arguments.Count); // totally truncated. 
             }
             finally
             {
