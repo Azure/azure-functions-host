@@ -87,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "EventHubConfiguration",
                 "EventHubJobHostConfigurationExtensions",
                 "EventHubTriggerAttribute",
+                "EventHubAsyncCollector",
                 "MessageProcessor",
                 "MessagingProvider",
                 "ServiceBusAccountAttribute",
