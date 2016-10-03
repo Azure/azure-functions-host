@@ -58,7 +58,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
-            string eventHubName = Environment.GetEnvironmentVariable("AzureWebJobsEventHubPath");
+            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
+            string eventHubName;
+            if (!string.IsNullOrWhiteSpace(builder.EntityPath))
+            {
+                eventHubName = builder.EntityPath;
+            }
+            else
+            {
+                eventHubName = Environment.GetEnvironmentVariable("AzureWebJobsEventHubPath");
+            }
+
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
             await eventHubClient.SendBatchAsync(events);
 
