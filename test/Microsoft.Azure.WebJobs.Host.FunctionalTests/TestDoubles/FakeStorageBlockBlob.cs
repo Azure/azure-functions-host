@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _parent = parent;
             _containerName = parent.Name;
             _metadata = new Dictionary<string, string>();
-            if (properties != null )
+            if (properties != null)
             {
                 _properties = properties;
             }
@@ -93,9 +93,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             throw new NotImplementedException();
         }
 
-        public Task<string> DownloadTextAsync(CancellationToken cancellationToken)
+        public async Task<string> DownloadTextAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            using (Stream stream = await OpenReadAsync(CancellationToken.None))
+            {
+                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
         }
 
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)

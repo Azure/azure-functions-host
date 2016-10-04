@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             if (currentToken != null)
             {
                 var edgeMarker = results.FindIndex(r => r.Name == currentToken.NextMarker);
-                
+
                 // if it is not the last element then filter all before the marker including the marker
                 if (!(edgeMarker == results.Count - 1))
                 {
@@ -340,6 +340,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             public Stream OpenRead(string blobName)
             {
+                if (!_items.ContainsKey(blobName))
+                {
+                    throw StorageExceptionFactory.Create(404, "BlobNotFound");
+                }
+
                 return new MemoryStream(_items[blobName].Contents, writable: false);
             }
 

@@ -379,6 +379,8 @@
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\Binder.cs" />
+    <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
+    <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="FunctionTimeoutException.cs" />

@@ -131,12 +131,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
-            SharedQueueWatcher sharedQueueWatcher = _sharedContextProvider.GetOrCreateInstance<SharedQueueWatcher>(
-                new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
-
-            SharedBlobListener sharedBlobListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobListener>(
-                new SharedBlobListenerFactory(_hostAccount, _exceptionHandler, _blobWrittenWatcherSetter));
-
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
             IStorageQueueClient queueClient = _hostAccount.CreateQueueClient();
@@ -145,6 +139,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(hostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
+
+            SharedQueueWatcher sharedQueueWatcher = _sharedContextProvider.GetOrCreateInstance<SharedQueueWatcher>(
+                new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
+
+            SharedBlobListener sharedBlobListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobListener>(
+                new SharedBlobListenerFactory(hostId, _hostAccount, _exceptionHandler, _blobWrittenWatcherSetter));
 
             // Register the blob container we wish to monitor with the shared blob listener.
             await RegisterWithSharedBlobListenerAsync(hostId, sharedBlobListener, blobClient,

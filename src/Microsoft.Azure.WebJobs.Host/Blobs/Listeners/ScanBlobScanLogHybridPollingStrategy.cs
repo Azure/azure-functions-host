@@ -19,10 +19,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class ScanBlobScanLogHybridPollingStrategy : IBlobListenerStrategy
     {
-        private static readonly TimeSpan PollingtInterval = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(10);
         private readonly IDictionary<IStorageBlobContainer, ContainerScanInfo> _scanInfo;
         private readonly ConcurrentQueue<IStorageBlob> _blobsFoundFromScanOrNotification;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private IBlobScanInfoManager _blobScanInfoManager;
         // A budget is allocated representing the number of blobs to be listed in a polling 
         // interval, each container will get its share of _scanBlobLimitPerPoll/number of containers.
         // this share will be listed for each container each polling interval
@@ -30,8 +31,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private PollLogsStrategy _pollLogStrategy;
         private bool _disposed;
 
-        public ScanBlobScanLogHybridPollingStrategy() : base()
+        public ScanBlobScanLogHybridPollingStrategy(IBlobScanInfoManager blobScanInfoManager) : base()
         {
+            _blobScanInfoManager = blobScanInfoManager;
             _scanInfo = new Dictionary<IStorageBlobContainer, ContainerScanInfo>(new StorageBlobContainerComparer());
             _pollLogStrategy = new PollLogsStrategy(performInitialScan: false);
             _cancellationTokenSource = new CancellationTokenSource();
@@ -63,13 +65,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             ContainerScanInfo containerScanInfo;
             if (!_scanInfo.TryGetValue(container, out containerScanInfo))
             {
+                // First, try to load serialized scanInfo for this container.
+                DateTime? latestStoredScan = await _blobScanInfoManager.LoadLatestScanAsync(container.ServiceClient.Credentials.AccountName, container.Name);
+
                 containerScanInfo = new ContainerScanInfo()
                 {
                     Registrations = new List<ITriggerExecutor<IStorageBlob>>(),
-                    LastSweepCycleLatestModified = DateTime.MinValue,
+                    LastSweepCycleLatestModified = latestStoredScan ?? DateTime.MinValue,
                     CurrentSweepCycleLatestModified = DateTime.MinValue,
                     ContinuationToken = null
                 };
+
                 _scanInfo.Add(container, containerScanInfo);
             }
 
@@ -116,18 +122,38 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             await Task.WhenAll(pollingTasks);
 
             // Run subsequent iterations at "_pollingInterval" second intervals.
-            return new TaskSeriesCommandResult(wait: Task.Delay(PollingtInterval));
+            return new TaskSeriesCommandResult(wait: Task.Delay(PollingInterval));
         }
 
-        private async Task PollAndNotify(IStorageBlobContainer container, ContainerScanInfo containerInfo, CancellationToken cancellationToken, List<IStorageBlob> failedNotifications)
+        private async Task PollAndNotify(IStorageBlobContainer container, ContainerScanInfo containerScanInfo, CancellationToken cancellationToken, List<IStorageBlob> failedNotifications)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            IEnumerable<IStorageBlob> newBlobs = await PollNewBlobsAsync(container, containerInfo, cancellationToken);
+            DateTime lastScan = containerScanInfo.LastSweepCycleLatestModified;
+            IEnumerable<IStorageBlob> newBlobs = await PollNewBlobsAsync(container, containerScanInfo, cancellationToken);
 
             foreach (IStorageBlob newBlob in newBlobs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await NotifyRegistrationsAsync(newBlob, failedNotifications, cancellationToken);
+            }
+
+            // if the 'LatestModified' has changed, update it in the manager
+            if (containerScanInfo.LastSweepCycleLatestModified > lastScan)
+            {
+                DateTime latestScan = containerScanInfo.LastSweepCycleLatestModified;
+
+                // It's possible that we had some blobs that we failed to move to the queue. We want to make sure
+                // we continue to find these if the host needs to restart.
+                if (failedNotifications.Any())
+                {
+                    latestScan = failedNotifications.Min(n => n.Properties.LastModified.Value.UtcDateTime);
+                }
+
+                // Store our timestamp slightly earlier than the last timestamp. This is a failsafe for any blobs that created 
+                // milliseconds after our last scan (blob timestamps round to the second). This way we make sure to pick those
+                // up on a host restart.
+                await _blobScanInfoManager.UpdateLatestScanAsync(container.ServiceClient.Credentials.AccountName,
+                    container.Name, latestScan.AddMilliseconds(-1));
             }
         }
 
@@ -223,8 +249,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // record continuation token for next chunk retrieval
             containerScanInfo.ContinuationToken = blobSegment.ContinuationToken;
 
-            // if ending a cycle then copy currentSweepCycleStartTime to lastSweepCycleStartTime
-            if (blobSegment.ContinuationToken == null)
+            // if ending a cycle then copy currentSweepCycleStartTime to lastSweepCycleStartTime, if changed
+            if (blobSegment.ContinuationToken == null &&
+                containerScanInfo.CurrentSweepCycleLatestModified > containerScanInfo.LastSweepCycleLatestModified)
             {
                 containerScanInfo.LastSweepCycleLatestModified = containerScanInfo.CurrentSweepCycleLatestModified;
             }

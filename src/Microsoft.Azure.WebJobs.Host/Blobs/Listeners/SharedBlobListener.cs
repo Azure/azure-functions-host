@@ -8,8 +8,6 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -21,10 +19,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobListener(IStorageAccount storageAccount,
+        public SharedBlobListener(string hostId, IStorageAccount storageAccount,
             IWebJobsExceptionHandler exceptionHandler)
         {
-            _strategy = CreateStrategy(storageAccount);
+            _strategy = CreateStrategy(hostId, storageAccount);
             // Start the first iteration immediately.
             _timer = new TaskSeriesTimer(_strategy, exceptionHandler, initialWait: Task.Delay(0));
         }
@@ -89,11 +87,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        private static IBlobListenerStrategy CreateStrategy(IStorageAccount account)
+        private static IBlobListenerStrategy CreateStrategy(string hostId, IStorageAccount account)
         {
             if (!StorageClient.IsDevelopmentStorageAccount(account))
             {
-                return new ScanBlobScanLogHybridPollingStrategy();
+                IBlobScanInfoManager scanInfoManager = new StorageBlobScanInfoManager(hostId, account.CreateBlobClient());
+                return new ScanBlobScanLogHybridPollingStrategy(scanInfoManager);
             }
             else
             {
