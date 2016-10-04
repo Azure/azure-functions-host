@@ -7,9 +7,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Class providing functionality for dynamically binding to WebJobs SDK attributes at runtime.
