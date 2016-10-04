@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -121,36 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Contains("No job functions found.", hostLogs);
             Assert.Contains("Job host started", hostLogs);
             Assert.Contains("Job host stopped", hostLogs);
-        }
-
-        [Fact]
-        public void GetHttpFunctionOrNull_DecodesUriProperly()
-        {
-            WebHostSettings webHostSettings = new WebHostSettings();
-            WebScriptHostManager manager = new WebScriptHostManager(new ScriptHostConfiguration(), new SecretManager(), webHostSettings);
-
-            // Initialize the 
-            FunctionMetadata metadata = new FunctionMetadata();
-            metadata.Bindings.Add(new HttpTriggerBindingMetadata
-            {
-                Type = "HttpTrigger"
-            });
-            TestInvoker invoker = new TestInvoker();
-            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
-            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>()
-            {
-                new FunctionDescriptor("Foo Bar", invoker, metadata, parameters),
-                new FunctionDescriptor("éà  中國", invoker, metadata, parameters)
-            };
-            manager.InitializeHttpFunctions(functions);
-
-            Uri uri = new Uri("http://local/api/Foo Bar");
-            var result = manager.GetHttpFunctionOrNull(uri);
-            Assert.Same(functions[0], result);
-
-            uri = new Uri("http://local/api/éà  中國");
-            result = manager.GetHttpFunctionOrNull(uri);
-            Assert.Same(functions[1], result);
         }
 
         [Fact]

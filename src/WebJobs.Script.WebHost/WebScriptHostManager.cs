@@ -12,12 +12,14 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using System.Web.Hosting;
+using System.Web.Http;
+using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -32,12 +34,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
+        private readonly ScriptHostConfiguration _config;
         private readonly object _syncLock = new object();
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
+        private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
+        private HttpRouteCollection _httpRoutes;
 
         public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) : base(config)
         {
+            _config = config;
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _secretManager = secretManager;
@@ -51,8 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId));
             }
         }
-
-        private IDictionary<string, FunctionDescriptor> HttpFunctions { get; set; }
 
         public virtual bool Initialized
         {
@@ -237,6 +241,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     _metricsLogger.Dispose();
                 }
+
+                if (_httpRoutes != null)
+                {
+                    _httpRoutes.Dispose();
+                }
             }
 
             base.Dispose(disposing);
@@ -304,29 +313,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return getDataMethod.Invoke(null, new object[] { context });
         }
 
-        public FunctionDescriptor GetHttpFunctionOrNull(Uri uri)
+        public FunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request)
         {
-            if (uri == null)
+            if (request == null)
             {
-                throw new ArgumentNullException("uri");
+                throw new ArgumentNullException(nameof(request));
             }
 
-            if (HttpFunctions == null || HttpFunctions.Count == 0)
+            if (_httpFunctions == null || _httpFunctions.Count == 0)
             {
                 return null;
             }
 
-            // Parse the route (e.g. "api/myfunc") to get 'myfunc"
-            // including any path after "api/"
             FunctionDescriptor function = null;
-            string route = HttpUtility.UrlDecode(uri.AbsolutePath);
-            int idx = route.ToLowerInvariant().IndexOf("api", StringComparison.OrdinalIgnoreCase);
-            if (idx > 0)
+            var routeData = _httpRoutes.GetRouteData(request);
+            if (routeData != null)
             {
-                idx = route.IndexOf('/', idx);
-                route = route.Substring(idx + 1).Trim('/');
+                _httpFunctions.TryGetValue(routeData.Route, out function);
 
-                HttpFunctions.TryGetValue(route.ToLowerInvariant(), out function);
+                Dictionary<string, object> routeDataValues = null;
+                if (routeData.Values != null)
+                {
+                    routeDataValues = new Dictionary<string, object>();
+                    foreach (var pair in routeData.Values)
+                    {
+                        // filter out any unspecified optional parameters
+                        if (pair.Value != RouteParameter.Optional)
+                        {
+                            routeDataValues.Add(pair.Key, pair.Value);
+                        }
+                    }
+                }
+                
+                request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
             }
 
             return function;
@@ -378,20 +397,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal void InitializeHttpFunctions(Collection<FunctionDescriptor> functions)
         {
-            HttpFunctions = new Dictionary<string, FunctionDescriptor>();
+            // we must initialize the route factory here AFTER full configuration
+            // has been resolved so we apply any route prefix customizations
+            HttpRouteFactory httpRouteFactory = new HttpRouteFactory(_config.HttpRoutePrefix);
+
+            _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
+            _httpRoutes = new HttpRouteCollection();
+
             foreach (var function in functions)
             {
                 HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
                 if (httpTriggerBinding != null)
                 {
+                    string functionName = function.Metadata.Name;
                     string route = httpTriggerBinding.Route;
-                    if (!string.IsNullOrEmpty(route))
+                    if (string.IsNullOrEmpty(route))
                     {
-                        route += "/";
+                        // if no explicit route is provided, default to the function name
+                        route = functionName;
                     }
-                    route += function.Name;
 
-                    HttpFunctions.Add(route.ToLowerInvariant(), function);
+                    var httpRoute = httpRouteFactory.AddRoute(functionName, route, _httpRoutes);
+                    _httpFunctions.Add(httpRoute, function);
                 }
             }
         }

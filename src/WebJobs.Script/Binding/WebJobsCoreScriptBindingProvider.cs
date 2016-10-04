@@ -96,7 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 Collection<Attribute> attributes = new Collection<Attribute>();
 
-                attributes.Add(new HttpTriggerAttribute());
+                attributes.Add(new HttpTriggerAttribute
+                {
+                    RouteTemplate = Context.GetMetadataValue<string>("route")
+                });
 
                 return attributes;
             }

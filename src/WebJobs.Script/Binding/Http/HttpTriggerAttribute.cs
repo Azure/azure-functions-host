@@ -8,5 +8,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     [AttributeUsage(AttributeTargets.Parameter)]
     public sealed class HttpTriggerAttribute : Attribute
     {
+        public HttpTriggerAttribute()
+        {
+        }
+
+        public string RouteTemplate { get; set; }
     }
 }

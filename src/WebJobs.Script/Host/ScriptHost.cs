@@ -851,6 +851,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            // apply http configuration configuration
+            configSection = (JObject)config["http"];
+            string routePrefix = ScriptConstants.DefaultHttpRoutePrefix;
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("routePrefix", out value))
+                {
+                    routePrefix = (string)value;
+                }
+            }
+            scriptConfig.HttpRoutePrefix = routePrefix;
+
             if (config.TryGetValue("functionTimeout", out value))
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -15,7 +14,6 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -51,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     "Can't bind HttpTriggerAttribute to type '{0}'.", parameter.ParameterType));
             }
 
-            return Task.FromResult<ITriggerBinding>(new HttpTriggerBinding(context.Parameter, isUserTypeBinding));
+            return Task.FromResult<ITriggerBinding>(new HttpTriggerBinding(attribute, context.Parameter, isUserTypeBinding));
         }
 
         internal class HttpTriggerBinding : ITriggerBinding
@@ -59,12 +57,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             private readonly ParameterInfo _parameter;
             private readonly IBindingDataProvider _bindingDataProvider;
             private readonly bool _isUserTypeBinding;
+            private readonly Dictionary<string, Type> _bindingDataContract;
+            private readonly HttpRouteFactory _httpRouteFactory = new HttpRouteFactory();
 
-            public HttpTriggerBinding(ParameterInfo parameter, bool isUserTypeBinding)
+            public HttpTriggerBinding(HttpTriggerAttribute attribute, ParameterInfo parameter, bool isUserTypeBinding)
             {
                 _parameter = parameter;
                 _isUserTypeBinding = isUserTypeBinding;
 
+                Dictionary<string, Type> aggregateDataContract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
                 if (_isUserTypeBinding)
                 {
                     // Create the BindingDataProvider from the user Type. The BindingDataProvider
@@ -72,16 +73,42 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // bindings (i.e. the properties of the POCO can be bound to by other bindings).
                     // It is also used to extract the binding data from an instance of the Type.
                     _bindingDataProvider = BindingDataProvider.FromType(parameter.ParameterType);
+                    if (_bindingDataProvider.Contract != null)
+                    {
+                        aggregateDataContract.AddRange(_bindingDataProvider.Contract);
+                    }
                 }
+
+                // add any route parameters to the contract
+                if (!string.IsNullOrEmpty(attribute.RouteTemplate))
+                {
+                    var routeParameters = _httpRouteFactory.GetRouteParameters(attribute.RouteTemplate);
+                    var parameters = ((MethodInfo)parameter.Member).GetParameters().ToDictionary(p => p.Name, p => p.ParameterType, StringComparer.OrdinalIgnoreCase);
+                    foreach (string parameterName in routeParameters)
+                    {
+                        // don't override if the contract already includes a name
+                        if (!aggregateDataContract.ContainsKey(parameterName))
+                        {
+                            // if there is a method parameter mapped to this parameter
+                            // derive the Type from that
+                            Type type;
+                            if (!parameters.TryGetValue(parameterName, out type))
+                            {
+                                type = typeof(string);
+                            }
+                            aggregateDataContract[parameterName] = type;
+                        }
+                    }
+                }
+
+                _bindingDataContract = aggregateDataContract;
             }
 
             public IReadOnlyDictionary<string, Type> BindingDataContract
             {
                 get
                 {
-                    // if we're binding to a user Type, we'll have a contract,
-                    // otherwise none
-                    return _bindingDataProvider?.Contract;
+                    return _bindingDataContract;
                 }
             }
 
@@ -99,26 +126,42 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
 
                 IValueProvider valueProvider = null;
-                IReadOnlyDictionary<string, object> bindingData = null;
+                object poco = null;
+                IReadOnlyDictionary<string, object> userTypeBindingData = null;
                 string invokeString = ToInvokeString(request);
                 if (_isUserTypeBinding)
                 {
                     valueProvider = await CreateUserTypeValueProvider(request, invokeString);
                     if (_bindingDataProvider != null)
                     {
-                        // binding data is defined by the user type
+                        // some binding data is defined by the user type
                         // the provider might be null if the Type is invalid, or if the Type
                         // has no public properties to bind to
-                        bindingData = _bindingDataProvider.GetBindingData(valueProvider.GetValue());
+                        poco = valueProvider.GetValue();
+                        userTypeBindingData = _bindingDataProvider.GetBindingData(poco);
                     }
                 }
                 else
                 {
                     valueProvider = new HttpRequestValueBinder(_parameter, request, invokeString);
-                    bindingData = await GetRequestBindingDataAsync(request);
                 }
 
-                return new TriggerData(valueProvider, bindingData);
+                // create a modifiable collection of binding data and
+                // copy in any initial binding data from the poco
+                var aggregateBindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                aggregateBindingData.AddRange(userTypeBindingData);
+
+                // Apply additional binding data coming from request route, query params, etc.
+                var requestBindingData = await GetRequestBindingDataAsync(request, _bindingDataContract);
+                aggregateBindingData.AddRange(requestBindingData);
+
+                // apply binding data to the user type
+                if (poco != null && aggregateBindingData.Count > 0)
+                {
+                    ApplyBindingData(poco, aggregateBindingData);
+                }
+
+                return new TriggerData(valueProvider, aggregateBindingData);
             }
 
             public static string ToInvokeString(HttpRequestMessage request)
@@ -148,7 +191,26 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
             }
 
-            internal static async Task<IReadOnlyDictionary<string, object>> GetRequestBindingDataAsync(HttpRequestMessage request)
+            internal static void ApplyBindingData(object target, IDictionary<string, object> bindingData)
+            {
+                var propertyHelpers = PropertyHelper.GetProperties(target).ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in bindingData)
+                {
+                    PropertyHelper propertyHelper;
+                    if (propertyHelpers.TryGetValue(pair.Key, out propertyHelper) &&
+                        propertyHelper.Property.CanWrite)
+                    {
+                        object value = pair.Value;
+                        if (value != null && value.GetType() != propertyHelper.Property.PropertyType)
+                        {
+                            value = Convert.ChangeType(value, propertyHelper.Property.PropertyType);
+                        }
+                        propertyHelper.SetValue(target, value);
+                    }
+                }
+            }
+
+            internal static async Task<IReadOnlyDictionary<string, object>> GetRequestBindingDataAsync(HttpRequestMessage request, Dictionary<string, Type> bindingDataContract = null)
             {
                 Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                 if (request.Content != null && request.Content.Headers.ContentLength > 0)
@@ -157,19 +219,41 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     string body = await request.Content.ReadAsStringAsync();
                     Utility.ApplyBindingData(body, bindingData);
                 }
-                else
+
+                // pull binding data from the query string
+                var queryParameters = request.GetQueryNameValuePairs();
+                foreach (var pair in queryParameters)
                 {
-                    // pull binding data from the query string
-                    var queryParameters = request.GetQueryNameValuePairs();
-                    foreach (var pair in queryParameters)
+                    if (string.Compare("code", pair.Key, StringComparison.OrdinalIgnoreCase) == 0)
                     {
-                        if (string.Compare("code", pair.Key, StringComparison.OrdinalIgnoreCase) == 0)
+                        // skip any system parameters that should not be bound to
+                        continue;
+                    }
+
+                    bindingData[pair.Key] = pair.Value;
+                }
+
+                // apply any request route binding values
+                object value = null;
+                if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+                {
+                    Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
+                    foreach (var pair in routeBindingData)
+                    {
+                        // if we have a static binding contract that maps to this parameter
+                        // derive the type from that contract mapping and perform any
+                        // necessary conversion
+                        value = pair.Value;
+                        Type type = null;
+                        if (value != null && 
+                            bindingDataContract != null && 
+                            bindingDataContract.TryGetValue(pair.Key, out type) &&
+                            value.GetType() != type)
                         {
-                            // skip any system parameters that should not be bound to
-                            continue;
+                            value = Convert.ChangeType(value, type);
                         }
 
-                        bindingData[pair.Key] = pair.Value;
+                        bindingData[pair.Key] = value;
                     }
                 }
 
@@ -179,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             private async Task<IValueProvider> CreateUserTypeValueProvider(HttpRequestMessage request, string invokeString)
             {
                 // First check to see if the WebHook data has already been deserialized,
-                // otherwise read from the request content
+                // otherwise read from the request body if present
                 object value = null;
                 if (!request.Properties.TryGetValue(ScriptConstants.AzureFunctionsWebHookDataKey, out value))
                 {
@@ -188,17 +272,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         // deserialize from message body
                         value = await request.Content.ReadAsAsync(_parameter.ParameterType);
                     }
-                    else
-                    {
-                        // deserialize from Uri parameters
-                        NameValueCollection parameters = request.RequestUri.ParseQueryString();
-                        JObject intermediate = new JObject();
-                        foreach (var propertyName in parameters.AllKeys)
-                        {
-                            intermediate[propertyName] = parameters[propertyName];
-                        }
-                        value = intermediate.ToObject(_parameter.ParameterType);
-                    }
+                }
+
+                if (value == null)
+                {
+                    // create an empty object
+                    value = Activator.CreateInstance(_parameter.ParameterType);
                 }
 
                 return new SimpleValueProvider(_parameter.ParameterType, value, invokeString);
