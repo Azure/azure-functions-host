@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,23 +15,26 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Create a reader. 
     internal class LogReader : ILogReader
     {
-        // All writing goes to 1 table. 
-        private readonly CloudTable _instanceTable;
+        // Writes go to table storage. They're split across tables based on their date. 
+        private readonly ILogTableProvider _tableLookup;
 
-        public LogReader(CloudTable table)
+        public LogReader(ILogTableProvider tableLookup)
         {
-            if (table == null)
+            if (tableLookup == null)
             {
-                throw new ArgumentNullException("table");
+                throw new ArgumentNullException("tableLookup");
             }
-            this._instanceTable = table;
+            this._tableLookup = tableLookup;
         }
 
-        public async Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)        
+        public async Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)
         {
             var query = InstanceCountEntity.GetQuery(startTime, endTime);
-
-            InstanceCountEntity[] rows = await _instanceTable.SafeExecuteQueryAsync(query);
+            
+            var iter = await EpochTableIterator.NewAsync(_tableLookup);
+            var results = await iter.SafeExecuteQuerySegmentedAsync<InstanceCountEntity>(query, startTime, endTime);
+            
+            InstanceCountEntity[] rows = results.Results;
 
             var startTicks = startTime.Ticks;
             var endTicks = endTime.Ticks;
@@ -67,8 +71,9 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
+            var instanceTable = _tableLookup.GetTableForDateTime(TimeBucket.CommonEpoch);
             var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
-            var results = await _instanceTable.SafeExecuteQueryAsync(query);
+            var results = await instanceTable.SafeExecuteQueryAsync(query);
 
             DateTime min = DateTime.MinValue;
             foreach (var entity in results)
@@ -78,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     min = entity.Timestamp.DateTime;
                 }
             }
-            
+
             var segment = new Segment<IFunctionDefinition>(results);
             return segment;
         }
@@ -86,25 +91,45 @@ namespace Microsoft.Azure.WebJobs.Logging
         // Lookup a single instance by id. 
         public async Task<FunctionInstanceLogItem> LookupFunctionInstanceAsync(Guid id)
         {
-            // Create a retrieve operation that takes a customer entity.
-            TableOperation retrieveOperation = InstanceTableEntity.GetRetrieveOperation(id);
+            var tables = await _tableLookup.ListTablesAsync();
 
-            // Execute the retrieve operation.
-            TableResult retrievedResult = await _instanceTable.SafeExecuteAsync(retrieveOperation);
-
-            var x = (InstanceTableEntity)retrievedResult.Result;
-
-            if (x == null)
+            Task<FunctionInstanceLogItem>[] taskLookups = Array.ConvertAll(tables, async instanceTable =>
             {
-                return null;
+                // Create a retrieve operation that takes a customer entity.
+                TableOperation retrieveOperation = InstanceTableEntity.GetRetrieveOperation(id);
+
+                // Execute the retrieve operation.
+                TableResult retrievedResult = await instanceTable.SafeExecuteAsync(retrieveOperation);
+
+                var entity = (InstanceTableEntity)retrievedResult.Result;
+
+                if (entity == null)
+                {
+                    return null;
+                }
+                return entity.ToFunctionLogItem();
+            });
+
+            FunctionInstanceLogItem[] results = await Task.WhenAll(taskLookups);
+            foreach (var result in results)
+            {
+                if (result != null)
+                {
+                    return result;
+                }
             }
-            return x.ToFunctionLogItem();
+            return null;
         }
 
         public async Task<Segment<ActivationEvent>> GetActiveContainerTimelineAsync(DateTime start, DateTime end, string continuationToken)
         {
             var query = ContainerActiveEntity.GetQuery(start, end);
-            var results = await _instanceTable.SafeExecuteQueryAsync(query);
+
+            var iter = await EpochTableIterator.NewAsync(_tableLookup);
+            var segment = await iter.SafeExecuteQuerySegmentedAsync<ContainerActiveEntity>(
+                query, start, end);
+
+            var results = segment.Results;
             
             List<ActivationEvent> l = new List<ActivationEvent>();
             Dictionary<string, string> intern = new Dictionary<string, string>();
@@ -142,10 +167,14 @@ namespace Microsoft.Azure.WebJobs.Logging
             {
                 throw new ArgumentOutOfRangeException("start");
             }
-            var rangeQuery = TimelineAggregateEntity.GetQuery(functionName, start, end);
-            var results = await _instanceTable.SafeExecuteQueryAsync(rangeQuery);
 
-            return new Segment<IAggregateEntry>(results);
+            var iter = await EpochTableIterator.NewAsync(_tableLookup);
+
+            var rangeQuery = TimelineAggregateEntity.GetQuery(functionName, start, end);
+
+            var results = await iter.SafeExecuteQuerySegmentedAsync<TimelineAggregateEntity>(rangeQuery, start, end);
+
+            return results.As<IAggregateEntry>();
         }
 
         // Could be very long 
@@ -155,20 +184,176 @@ namespace Microsoft.Azure.WebJobs.Logging
         {
             TableQuery<RecentPerFuncEntity> rangeQuery = RecentPerFuncEntity.GetRecentFunctionsQuery(queryParams);
 
-            CancellationToken cancellationToken;
-            TableContinuationToken realContinuationToken = Utility.DeserializeToken(continuationToken);
-            var segment = await _instanceTable.SafeExecuteQuerySegmentedAsync<RecentPerFuncEntity>(
-                rangeQuery, 
-                realContinuationToken, 
-                cancellationToken);
+            var iter = await EpochTableIterator.NewAsync(_tableLookup);
+            var results = await iter.SafeExecuteQuerySegmentedAsync<RecentPerFuncEntity>(rangeQuery, queryParams.Start, queryParams.End);
 
-            if (segment == null)
+            return results.As<IRecentFunctionEntry>();
+        }
+
+        // Helper to run queries which can span multiple tables.         
+        private class EpochTableIterator
+        {
+            private readonly Dictionary<long, CloudTable> _tables; // map of epoch to physical tables.
+
+            private EpochTableIterator(Dictionary<long, CloudTable> tables)
             {
-                return new Segment<IRecentFunctionEntry>(new IRecentFunctionEntry[0]);
+                _tables = tables;
             }
-            else
+            
+            public static async Task<EpochTableIterator> NewAsync(ILogTableProvider tableLookup)
             {
-                return new Segment<IRecentFunctionEntry>(segment.Results.ToArray(), Utility.SerializeToken(segment.ContinuationToken));
+                Dictionary <long, CloudTable> d = new Dictionary<long, CloudTable>();
+
+                var tables = await tableLookup.ListTablesAsync();
+
+                foreach (var table in tables)
+                {
+                    var epoch = TimeBucket.GetEpochNumberFromTable(table);
+                    d[epoch] = table;
+                }
+                return new EpochTableIterator(d);
+            }
+
+            // Given an epoch, find the next one in physicalEpochs that it would fall into, using reverse-chronological order.              
+            // physicalEpochs - epochs for existing tables, sorted in ascending order.  This is generally short (expected under 50 elements)
+            // Returns a physical epoch (from the list passed in) that the requested epoch falls into 
+            // or -1 if there's no physical epoch below this.
+            private static long FindNext(long epoch, long[] physicalEpochs)
+            {
+                // start at most recent epoch and work backwards 
+                for (var i = physicalEpochs.Length - 1; i >= 0; i--)
+                {
+                    if (epoch >= physicalEpochs[i])
+                    {
+                        return physicalEpochs[i];
+                    }
+                }
+
+                return -1; // done 
+            }
+
+            // Helper workaround for this bug: 
+            // https://github.com/projectkudu/AzureFunctionsPortal/issues/634 
+            // Portal needs to be updated to use continuation tokens. Once it is, we can remove this shim
+            // and let the portal drive the enumeration directly. 
+            public async Task<Segment<TElement>> SafeExecuteQuerySegmentedAsync<TElement>(
+                TableQuery<TElement> rangeQuery,
+                DateTime startTime, // Range for query 
+                DateTime endTime
+            ) where TElement : ITableEntity, new()
+            {
+                List<TElement> list = new List<TElement>();
+
+                string continuationToken = null;
+                while (true)
+                {
+                    var segment = await SafeExecuteQuerySegmentedAsync(rangeQuery, startTime, endTime, continuationToken);
+
+                    list.AddRange(segment.Results);
+                    if (segment.ContinuationToken == null)
+                    {
+                        // Done!
+                        return new Segment<TElement>(list.ToArray(), null);
+                    }
+                    continuationToken = segment.ContinuationToken;
+                }
+            }
+
+            // Date range queries start with most recent (endTime) and then return entities in descending chronological order. 
+            public async Task<Segment<TElement>> SafeExecuteQuerySegmentedAsync<TElement>(
+                TableQuery<TElement> rangeQuery,
+                DateTime startTime, // Range for query 
+                DateTime endTime,
+                string continuationToken
+                ) where TElement : ITableEntity, new()
+            {
+                // Shrink to phsyical. 
+                var epochs = _tables.Keys.ToArray();
+                if (epochs.Length == 0)
+                {
+                    return new Segment<TElement>(new TElement[0]);
+                }
+                Array.Sort(epochs);
+
+                List<TElement> items = new List<TElement>();
+
+                // Incoming cursor state. 
+                TableContinuationToken realContinuationToken;
+                long currentEpoch;
+                DecodeContinuationToken(continuationToken, out realContinuationToken, out currentEpoch);
+                currentEpoch = FindNext(currentEpoch, epochs);
+
+                CloudTable table;
+                TableQuerySegment<TElement> segment = null;
+
+                if (_tables.TryGetValue(currentEpoch, out table))
+                {
+                    segment = await table.SafeExecuteQuerySegmentedAsync<TElement>(
+                        rangeQuery,
+                        realContinuationToken,
+                        CancellationToken.None);
+
+                    // segment will be null if table doesn't exist. 
+                    // That shouldn't happen normally since we're looking at physical tables.
+                    // But it could happen in a maniacal case is the table got deleted. 
+                    if (segment != null)
+                    {
+                        items.AddRange(segment.Results);
+
+                        realContinuationToken = segment.ContinuationToken;
+                        if (segment.ContinuationToken == null)
+                        {
+                            // We're done querying the current table. 
+                            // Move down to the next table. 
+                            segment = null;
+                        }
+
+                    }
+                }
+                else
+                {
+                    // This shouldn't happen since our list since FindNext() should have left us at a physical epoch.
+                    // Just fall through and treat it the same as if the table doesn't exist. 
+                }
+
+                if (segment == null)
+                {
+                    // We're done querying the current table. 
+                    // It doesn't matter whether we finished querying normally or table doesn't exist
+                    // Move down to the next table. 
+                    currentEpoch--;
+                }
+
+                string nextContinuationToken = null;
+                var next = FindNext(currentEpoch, epochs);
+                if (next >= 0)
+                {
+                    nextContinuationToken = MakeContinuationToken(currentEpoch, realContinuationToken);
+                }
+
+                return new Segment<TElement>(items.ToArray(), nextContinuationToken);
+            }
+
+            private static string MakeContinuationToken(long currentEpoch, TableContinuationToken realContinuationToken)
+            {
+                return currentEpoch.ToString(CultureInfo.InvariantCulture) + "|" + Utility.SerializeToken(realContinuationToken);
+            }
+
+            private static void DecodeContinuationToken(string continuationToken, out TableContinuationToken realContinuationToken, out long currentEpoch)
+            {
+                if (continuationToken == null)
+                {
+                    realContinuationToken = null;
+                    currentEpoch = long.MaxValue;
+                    return;
+                }
+                var split = continuationToken.Split('|');
+                if (split.Length != 2)
+                {
+                    throw new InvalidOperationException("Bad continuation token");
+                }
+                currentEpoch = long.Parse(split[0], CultureInfo.InvariantCulture);
+                realContinuationToken = Utility.DeserializeToken(split[1]);
             }
         }
     }

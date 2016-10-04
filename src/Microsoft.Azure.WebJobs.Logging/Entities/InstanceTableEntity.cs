@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Capture each individual function instance. 
     // This has full fidelity to the FunctionInstanceLogItem and can rehydrate it. 
     // 1 entity per Function-Instance. 
-    internal class InstanceTableEntity : TableEntity
+    internal class InstanceTableEntity : TableEntity, IEntityWithEpoch
     {
         const string PartitionKeyFormat = TableScheme.InstancePK;
         const string RowKeyFormat = "{0}"; // functionInstanceId
@@ -62,6 +62,11 @@ namespace Microsoft.Azure.WebJobs.Logging
                 LogOutput = this.LogOutput,
                 Arguments = this.GetArguments()
             };
+        }
+
+        public DateTime GetEpoch()
+        {
+            return this.StartTime.UtcDateTime; 
         }
 
         internal static TableOperation GetRetrieveOperation(Guid functionInstanceId)

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 {
     // Entity per minute per function type, aggregated. 
     //  This lets clients do a timeline query to see activity in a given window.  
-    internal class TimelineAggregateEntity : TableEntity, IAggregateEntry
+    internal class TimelineAggregateEntity : TableEntity, IAggregateEntry, IEntityWithEpoch
     {
         // HostId in the rowKey is additional salt in case multiple hosts are writing in the same timeline. It is ignored during read.
         const string PartitionKeyFormat = TableScheme.TimelineAggregatePK;
@@ -37,6 +37,12 @@ namespace Microsoft.Azure.WebJobs.Logging
                   rowKeyStart, rowKeyEnd);
 
             return rangeQuery;
+        }
+
+        public DateTime GetEpoch()
+        {
+            var bucket = GetTimeBucket();
+            return TimeBucket.ConvertToDateTime(bucket);         
         }
 
         // Reader, no salt

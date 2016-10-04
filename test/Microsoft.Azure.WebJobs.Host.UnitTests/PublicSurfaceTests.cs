@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IFunctionInstanceBaseEntry",
                 "ILogReader",
                 "ILogWriter",
+                "ILogTableProvider",
                 "InstanceCountEntity",
                 "InstanceCountLoggerBase",
                 "IRecentFunctionEntry",

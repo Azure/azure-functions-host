@@ -27,11 +27,6 @@ namespace Dashboard.Data
 
         private FunctionSnapshot[] _snapshots = null; // Cache of function definitions 
 
-        public FastTableReader(CloudTable table)
-        {
-            _reader = LogFactory.NewReader(table);
-        }
-
         public FastTableReader(ILogReader reader)
         {
             _reader = reader;

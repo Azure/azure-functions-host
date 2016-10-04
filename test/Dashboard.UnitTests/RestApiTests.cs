@@ -99,7 +99,7 @@ namespace Dashboard.UnitTests
         {
             private const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
 
-            private CloudTable _logTable;
+            private ILogTableProvider _provider;
 
             public HttpClient Client { get; private set; }
             public string Endpoint { get; private set; }
@@ -115,9 +115,11 @@ namespace Dashboard.UnitTests
 
             public async Task Init()
             {
-                _logTable = GetNewLoggingTable();
-                ConfigurationManager.AppSettings[FunctionLogTableAppSettingName] = _logTable.Name; // tell dashboard to use it
-                this.Data = await WriteTestLoggingDataAsync(_logTable);
+                var tableClient = GetNewLoggingTableClient();                
+                var tablePrefix = "logtesZZ" + Guid.NewGuid().ToString("n");
+                ConfigurationManager.AppSettings[FunctionLogTableAppSettingName] = tablePrefix; // tell dashboard to use it
+                _provider = LogFactory.NewLogTableProvider(tableClient, tablePrefix);
+                this.Data = await WriteTestLoggingDataAsync(_provider);
 
                 var config = new HttpConfiguration();
 
@@ -134,14 +136,20 @@ namespace Dashboard.UnitTests
 
             public void Dispose()
             {
-                _logTable.DeleteIfExists();                
+                DisposeAsync().Wait();
+            }
+            private async Task DisposeAsync()
+            {
+                var tables = await _provider.ListTablesAsync();
+                Task[] tasks = Array.ConvertAll(tables, table => table.DeleteIfExistsAsync());
+                await Task.WhenAll(tasks);                
             }
 
             // Write logs. Return what we wrote. 
             // This is baseline data. REader will verify against it exactly. This helps in aggressively catching subtle breaking changes. 
-            private async Task<FunctionInstanceLogItem[]> WriteTestLoggingDataAsync(CloudTable logTable)
+            private async Task<FunctionInstanceLogItem[]> WriteTestLoggingDataAsync(ILogTableProvider provider)
             {
-                ILogWriter writer = LogFactory.NewWriter("c1", logTable);
+                ILogWriter writer = LogFactory.NewWriter("c1", provider);
 
                 string Func1 = "alpha";
                 var time = new DateTime(2010, 3, 6, 10, 11, 20);
@@ -166,7 +174,7 @@ namespace Dashboard.UnitTests
                 return list.ToArray();
             }
 
-            CloudTable GetNewLoggingTable()
+            CloudTableClient GetNewLoggingTableClient()
             {
                 string storageString = "AzureWebJobsDashboard";
                 var acs = Environment.GetEnvironmentVariable(storageString);
@@ -174,15 +182,10 @@ namespace Dashboard.UnitTests
                 {
                     Assert.True(false, "Environment var " + storageString + " is not set. Should be set to an azure storage account connection string to use for testing.");
                 }
-                string tableName = "logtestXX" + Guid.NewGuid().ToString("n");
-
+                
                 CloudStorageAccount account = CloudStorageAccount.Parse(acs);
                 var client = account.CreateCloudTableClient();
-                var table = client.GetTableReference(tableName);
-
-                // Explicitly don't create the table. The logging library should deal with it. 
-
-                return table;
+                return client;
             }
         }
 

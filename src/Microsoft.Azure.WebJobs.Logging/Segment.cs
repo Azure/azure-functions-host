@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Microsoft.Azure.WebJobs.Logging
 {
     /// <summary>
@@ -46,5 +48,16 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Continuation token to get the next segment. 
         /// </summary>
         public string ContinuationToken { get; set; }
+
+        /// <summary>
+        /// Covariance helper
+        /// </summary>
+        /// <typeparam name="T2"></typeparam>
+        internal Segment<T2> As<T2>() 
+        {
+            T2[] array = Array.ConvertAll(this.Results, x => (T2) (object)x);
+            return new Segment<T2>(array, this.ContinuationToken); 
+
+        }
     }
 }

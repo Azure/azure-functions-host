@@ -27,6 +27,7 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug\Microsoft.Azure.WebJobs.Logging.XML</DocumentationFile>
     <LangVersion>5</LangVersion>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -94,8 +95,11 @@
     <Compile Include="FunctionVolumeTimelineEntry.cs" />
     <Compile Include="Entities\InstanceCountEntity.cs" />
     <Compile Include="FunctionInstanceStatus.cs" />
+    <Compile Include="ILogTableProvider.cs" />
     <Compile Include="IFunctionDefinition.cs" />
     <Compile Include="IFunctionInstanceBaseEntry.cs" />
+    <Compile Include="Internal\DefaultLogTableProvider.cs" />
+    <Compile Include="Internal\IEntityWithEpoch.cs" />
     <Compile Include="Internal\ProjectionHelper.cs" />
     <Compile Include="Internal\CloudTableInstanceCountLogger.cs" />
     <Compile Include="Internal\InstanceCountLoggerBase.cs" />

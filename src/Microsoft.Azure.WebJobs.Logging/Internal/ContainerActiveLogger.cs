@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // Track functionInstanceGuids (instead of just a single integer counter) in case we missed an event or double reported an event. 
         private HashSet<Guid> _outstandingCount = new HashSet<Guid>();
-        private readonly CloudTable _instanceTable;
+        private readonly ILogTableProvider _tableLookup;
         private readonly string _containerName;
 
         private bool _recent; // For catching quick functions
@@ -28,9 +28,9 @@ namespace Microsoft.Azure.WebJobs.Logging
         private CancellationTokenSource _cancel = null;
         private Task _scanner;
 
-        public ContainerActiveLogger(string containerName, CloudTable instanceTable)
+        public ContainerActiveLogger(string containerName, ILogTableProvider tableLookup)
         {
-            this._instanceTable = instanceTable;
+            this._tableLookup = tableLookup;
             this._containerName = containerName;
         }
 
@@ -132,15 +132,18 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         private Task<ContainerActiveEntity> TryGetAsync(long timeBucket)
         {
-            return ContainerActiveEntity.LookupAsync(_instanceTable, timeBucket, _containerName);
+            var instanceTable = _tableLookup.GetTableForTimeBucket(timeBucket);
+            return ContainerActiveEntity.LookupAsync(instanceTable, timeBucket, _containerName);
         }
 
         private Task SaveAsync(ContainerActiveEntity prevEntry)
         {
             TableOperation insertOperation = TableOperation.InsertOrReplace(prevEntry);
+            
+            var instanceTable = _tableLookup.GetTableForDateTime(prevEntry.StartTime);
 
             // Execute the insert operation.
-            return _instanceTable.SafeExecuteAsync(insertOperation);
+            return instanceTable.SafeExecuteAsync(insertOperation);
         }
     }
 }

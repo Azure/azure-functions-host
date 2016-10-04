@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 {
     // Index that provides list of recention invocations per function type.
     // 1 entity per Intance of a function that's executed. 
-    internal class RecentPerFuncEntity : TableEntity, IRecentFunctionEntry
+    internal class RecentPerFuncEntity : TableEntity, IRecentFunctionEntry, IEntityWithEpoch
     {
         const string PartitionKeyFormat = TableScheme.RecentFuncIndexPK;
         const string RowKeyPrefix = "{0}-{1:D20}-";
@@ -56,6 +56,10 @@ namespace Microsoft.Azure.WebJobs.Logging
             return rangeQuery;
         }
 
+        public DateTime GetEpoch()
+        {
+            return this.StartTime.UtcDateTime;
+        }
 
         // No salt. This is a prefix, so we'll pick up all ranges.
         private static string RowKeyTimeStampDescendingPrefix(string functionName, DateTime startTime)

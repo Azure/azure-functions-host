@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Describes available function names. 
     // This is useful to quickly query available functions so we can use the names in other point queries. 
     // 1 entity per function definition. 
-    internal class FunctionDefinitionEntity : TableEntity, IFunctionDefinition
+    internal class FunctionDefinitionEntity : TableEntity, IFunctionDefinition, IEntityWithEpoch
     {
         const string PartitionKeyFormat = TableScheme.FuncDefIndexPK;
         const string RowKeyFormat = "{0}"; // functionName
@@ -29,6 +29,11 @@ namespace Microsoft.Azure.WebJobs.Logging
             {                
                 return OriginalName ?? this.RowKey;
             }
+        }
+
+        public DateTime GetEpoch()
+        {
+            return TimeBucket.CommonEpoch; // Definitions span all epocs 
         }
 
         // Store the orginal name since functions are case-insensitive, but rowkey must be normalized (table is case-sensitive) 
