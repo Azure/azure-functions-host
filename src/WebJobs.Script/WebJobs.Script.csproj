@@ -326,6 +326,7 @@
     <Compile Include="Binding\HttpBinding.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
+    <Compile Include="Binding\Http\HttpRouteFactory.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
@@ -426,6 +427,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="PropertyHelper.cs" />
     <Compile Include="ScriptConstants.cs" />
     <Compile Include="Utility.cs" />
   </ItemGroup>

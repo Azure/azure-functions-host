@@ -1,15 +1,15 @@
-{
+﻿{
     "bindings": [
         {
             "type": "httpTrigger",
-            "name": "payload",
+            "name": "req",
             "direction": "in",
-            "webHookType": "genericJson",
-            "route": "hooks/csharp/generic/{action}"
+            "methods": [ "get" ],
+            "route": "node/products/{category:alpha}/{id:int?}"
         },
         {
             "type": "http",
-            "name": "res",
+            "name": "$return",
             "direction": "out"
         }
     ]

@@ -64,6 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileLoggingMode FileLoggingMode { get; set; }
 
         /// <summary>
+        /// Gets or sets the default route prefix that will be applied to
+        /// function routes.
+        /// </summary>
+        public string HttpRoutePrefix { get; set; }
+
+        /// <summary>
         /// Gets the list of functions that should be run. This list can be used to filter
         /// the set of functions that will be enabled - it can be a subset of the actual
         /// function directories. When left null (the default) all discovered functions will

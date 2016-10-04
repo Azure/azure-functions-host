@@ -254,6 +254,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_CustomRoute_ReturnsExpectedResponse()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute");
+
+            string functionKey = "82fprgh77jlbhcma3yr1zen8uv9yb0i7dwze3np2";
+            string uri = $"api/node/products/electronics/123?code={functionKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string json = await response.Content.ReadAsStringAsync();
+            var product = JObject.Parse(json);
+            Assert.Equal("electronics", (string)product["category"]);
+            Assert.Equal("123", (string)product["id"]);
+
+            // test optional route param (id)
+            uri = $"api/node/products/electronics?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            json = await response.Content.ReadAsStringAsync();
+            JArray products = JArray.Parse(json);
+            Assert.Equal(2, products.Count);
+            
+            // test a constraint violation (invalid id)
+            uri = $"api/node/products/electronics/1x3?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+            // test a constraint violation (invalid category)
+            uri = $"api/node/products/999/123?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+            // verify route parameters were part of binding data
+            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CustomRoute");
+            var log = logs.Single(p => p.Contains("category: electronics id: 123"));
+            Assert.NotNull(log);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_CustomRoute_ReturnsExpectedResponse()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTrigger-CSharp-CustomRoute");
+
+            string functionKey = "68qkqlughacc6f9n6t4ubk0jq7r5er7pta13yh20";
+            string uri = $"api/csharp/products/electronics/123?code={functionKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string json = await response.Content.ReadAsStringAsync();
+            var product = JObject.Parse(json);
+            Assert.Equal("electronics", (string)product["Category"]);
+            Assert.Equal("123", (string)product["Id"]);
+
+            // test a constraint violation (invalid id)
+            uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+            // test a constraint violation (invalid category)
+            uri = $"api/csharp/products/999/123?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+            // verify route parameters were part of binding data
+            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp-CustomRoute");
+            var log = logs.Single(p => p.Contains("category: electronics id: 123"));
+            Assert.NotNull(log);
+        }
+
+        [Fact]
         public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
         {
             // first try with function key only - expect 404
@@ -301,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GenericWebHook_CSharp_Post_Succeeds()
         {
-            string uri = "api/webhook-generic-csharp?code=827bdzxhqy3xc62cxa2hmfsh6gxzhg30s5pi64tu";
+            string uri = "api/hooks/csharp/generic/test?code=827bdzxhqy3xc62cxa2hmfsh6gxzhg30s5pi64tu";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent("{ 'Value': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -311,7 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
             string body = await response.Content.ReadAsStringAsync();
             JObject jsonObject = JObject.Parse(body);
-            Assert.Equal("Value: Foobar", jsonObject["result"]);
+            Assert.Equal("Value: Foobar Action: test", jsonObject["result"]);
         }
 
         [Fact]

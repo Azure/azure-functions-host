@@ -4,6 +4,9 @@
     "sendGrid": {
         "from": "Azure Functions <samples@functions.com>"
     },
+    "http": {
+        "routePrefix": "api"
+    },
     "tracing": {
         "fileLoggingMode": "always"
     }

@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
-
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptConstants
@@ -10,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
         public const string AzureFunctionsWebHookDataKey = "MS_AzureFunctionsWebHookData";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
+        public const string AzureFunctionsHttpRouteDataKey = "MS_AzureFunctionsHttpRouteData";
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";
@@ -30,5 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
+        public const string DefaultHttpRoutePrefix = "api";
     }
 }

@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri("http://localhost/api/httptrigger-powershell?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                RequestUri = new Uri("http://localhost/api/httptrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
                 Method = HttpMethod.Get
             };
             request.SetConfiguration(new HttpConfiguration());
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            await Fixture.Host.CallAsync("HttpTrigger-PowerShell", arguments);
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -68,16 +68,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_CustomRoute()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri("http://localhost/api/products/produce/789?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                Method = HttpMethod.Get
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            var routeData = new Dictionary<string, object>
+            {
+                { "category", "produce" },
+                { "id", "789" }
+            };
+            request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeData);
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+
+            await Fixture.Host.CallAsync("HttpTrigger-CustomRoute", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string result = await response.Content.ReadAsStringAsync();
+            Assert.Equal("Name: testuser, Category: produce, Id:789", result);
+        }
+
+        [Fact]
         public async Task HttpTriggerWithError_Get()
         {
-            string functionName = "HttpTrigger-PowerShellWithError";
+            string functionName = "HttpTrigger-WithError";
             TestHelpers.ClearFunctionLogs(functionName);
 
             HttpRequestMessage request = new HttpRequestMessage
             {
                 RequestUri =
                     new Uri(
-                        "http://localhost/api/httptrigger-powershellwitherror?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                        "http://localhost/api/httptrigger-witherror?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
                 Method = HttpMethod.Get
             };
             request.SetConfiguration(new HttpConfiguration());
@@ -111,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string testData = Guid.NewGuid().ToString();
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri("http://localhost/api/httptrigger-powershell?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5"),
+                RequestUri = new Uri("http://localhost/api/httptrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5"),
                 Method = HttpMethod.Post,
                 Content = new StringContent(testData)
             };
@@ -121,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            await Fixture.Host.CallAsync("HttpTrigger-PowerShell", arguments);
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -136,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri("http://localhost/api/httptrigger-powershell-response?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                RequestUri = new Uri("http://localhost/api/httptrigger-response?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
                 Method = HttpMethod.Get
             };
             request.SetConfiguration(new HttpConfiguration());
@@ -145,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            await Fixture.Host.CallAsync("HttpTrigger-PowerShell-Response", arguments);
+            await Fixture.Host.CallAsync("HttpTrigger-Response", arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

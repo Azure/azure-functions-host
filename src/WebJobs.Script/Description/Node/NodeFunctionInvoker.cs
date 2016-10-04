@@ -471,6 +471,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 requestObject["body"] = body;
             }
 
+            // Apply any captured route parameters to the params collection
+            object value = null;
+            if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            {
+                Dictionary<string, object> routeData = (Dictionary<string, object>)value;
+                requestObject["params"] = routeData;
+            }
+
             return requestObject;
         }
 

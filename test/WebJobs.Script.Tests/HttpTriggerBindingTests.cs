@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_Poco_FromRequestBody()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestPocoFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, true);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, true);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/myfunc?code=abc123");
 
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_Poco_WebHookData()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestPocoFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, true);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, true);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/myfunc?code=abc123");
             TestPoco testPoco = new TestPoco
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_Poco_FromQueryParameters()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestPocoFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, true);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, true);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc?code=abc123&Name=Mathew%20Charles&Location=Seattle");
 
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_HttpRequestMessage_FromRequestBody()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestHttpRequestMessageFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, false);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, false);
 
             // we intentionally do not send a content type on the request
             // to ensure that we can still extract binding data in such cases
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_HttpRequestMessage_FromQueryParameters()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestHttpRequestMessageFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, false);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, false);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc?code=abc123&Name=Mathew%20Charles&Location=Seattle");
 
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindAsync_String()
         {
             ParameterInfo parameterInfo = GetType().GetMethod("TestStringFunction").GetParameters()[0];
-            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(parameterInfo, false);
+            HttpTriggerAttributeBindingProvider.HttpTriggerBinding binding = new HttpTriggerAttributeBindingProvider.HttpTriggerBinding(new HttpTriggerAttribute(), parameterInfo, false);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/myfunc?code=abc123");
             request.Content = new StringContent("This is a test");
