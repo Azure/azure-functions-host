@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -76,10 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     _bindingDataProvider = BindingDataProvider.FromType(parameter.ParameterType);
                     if (_bindingDataProvider.Contract != null)
                     {
-                        foreach (var pair in _bindingDataProvider.Contract)
-                        {
-                            aggregateDataContract.Add(pair.Key, pair.Value);
-                        }
+                        aggregateDataContract.AddRange(_bindingDataProvider.Contract);
                     }
                 }
 
@@ -89,7 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     var routeParameters = _httpRouteFactory.GetRouteParameters(attribute.RouteTemplate);
                     foreach (string parameterName in routeParameters)
                     {
-                        aggregateDataContract[parameterName] = typeof(string);
+                        // don't override if the contract already includes a name
+                        if (!aggregateDataContract.ContainsKey(parameterName))
+                        {
+                            aggregateDataContract[parameterName] = typeof(string);
+                        }
                     }
                 }
 
@@ -141,34 +141,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // create a modifiable collection of binding data and
                 // copy in any initial binding data from the poco
                 Dictionary<string, object> aggregateBindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                if (userTypeBindingData != null)
-                {
-                    foreach (var pair in userTypeBindingData)
-                    {
-                        aggregateBindingData[pair.Key] = pair.Value;
-                    }
-                }
+                aggregateBindingData.AddRange(userTypeBindingData);
 
                 // Apply additional binding data coming from request route, query params, etc.
                 var requestBindingData = await GetRequestBindingDataAsync(request);
-                foreach (var pair in requestBindingData)
-                {
-                    aggregateBindingData[pair.Key] = pair.Value;
-                }
+                aggregateBindingData.AddRange(requestBindingData);
 
                 // apply binding data to the user type
                 if (poco != null && aggregateBindingData.Count > 0)
                 {
-                    var propertyHelpers = PropertyHelper.GetProperties(poco).ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
-                    foreach (var pair in aggregateBindingData)
-                    {
-                        PropertyHelper propertyHelper;
-                        if (propertyHelpers.TryGetValue(pair.Key, out propertyHelper) && 
-                            propertyHelper.Property.CanWrite)
-                        {
-                            propertyHelper.SetValue(poco, pair.Value);
-                        }
-                    }
+                    ApplyBindingData(poco, aggregateBindingData);
                 }
 
                 return new TriggerData(valueProvider, aggregateBindingData);
@@ -201,6 +183,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 };
             }
 
+            internal static void ApplyBindingData(object target, IDictionary<string, object> bindingData)
+            {
+                var propertyHelpers = PropertyHelper.GetProperties(target).ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in bindingData)
+                {
+                    PropertyHelper propertyHelper;
+                    if (propertyHelpers.TryGetValue(pair.Key, out propertyHelper) &&
+                        propertyHelper.Property.CanWrite)
+                    {
+                        object value = pair.Value;
+                        if (value != null && value.GetType() != propertyHelper.Property.PropertyType)
+                        {
+                            value = Convert.ChangeType(value, propertyHelper.Property.PropertyType);
+                        }
+                        propertyHelper.SetValue(target, value);
+                    }
+                }
+            }
+
             internal static async Task<IReadOnlyDictionary<string, object>> GetRequestBindingDataAsync(HttpRequestMessage request)
             {
                 Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -224,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     bindingData[pair.Key] = pair.Value;
                 }
 
-                // Apply any request route binding values to the poco
+                // apply any request route binding values
                 object value = null;
                 if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
                 {

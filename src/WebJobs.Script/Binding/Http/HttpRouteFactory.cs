@@ -6,7 +6,7 @@ using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Routing;
 
-namespace Microsoft.Azure.WebJobs.Script.Binding.Http
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpRouteFactory
     {
@@ -42,13 +42,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
         private static IEnumerable<string> ParseRouteParameters(string routeTemplate)
         {
             List<string> routeParameters = new List<string>();
-            string[] segments = routeTemplate.Split('/');
-            foreach (string segment in segments)
+
+            if (!string.IsNullOrEmpty(routeTemplate))
             {
-                if (segment.StartsWith("{") && segment.EndsWith("}"))
+                string[] segments = routeTemplate.Split('/');
+                foreach (string segment in segments)
                 {
-                    string parameter = segment.Substring(1, segment.Length - 2);
-                    routeParameters.Add(parameter);
+                    if (segment.StartsWith("{") && segment.EndsWith("}"))
+                    {
+                        string parameter = segment.Substring(1, segment.Length - 2);
+                        routeParameters.Add(parameter);
+                    }
                 }
             }
 

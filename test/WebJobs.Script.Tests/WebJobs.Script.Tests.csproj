@@ -418,6 +418,7 @@
     <Compile Include="FunctionEntryPointResolverTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\PackageAssemblyResolverTests.cs" />
+    <Compile Include="HttpRouteFactoryTests.cs" />
     <Compile Include="HttpTriggerAttributeBindingProviderTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="NodeFunctionInvokerTests.cs" />
