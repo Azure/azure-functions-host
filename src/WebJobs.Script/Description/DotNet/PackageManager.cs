@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return tcs.Task;
         }
 
-        public static string ResolveNuGetPath()
+        public static string ResolveNuGetPath(string baseKuduPath = null)
         {
             // Check if we have the path in the well known environment variable
             string path = Environment.GetEnvironmentVariable(NugetPathEnvironmentKey);
@@ -91,13 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (string.IsNullOrEmpty(path))
             {
                 // Get the latest Kudu extension path
-                string kuduFolder = Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu");
-                string kuduPath =
-                    Directory.Exists(kuduFolder) ?
-                        Directory.GetDirectories(kuduFolder)
-                                 .OrderByDescending(d => d)
-                                 .FirstOrDefault() :
-                        null;
+                string kuduFolder = baseKuduPath ?? Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu");
+                string kuduPath = Directory.Exists(kuduFolder)
+                    ? Directory.GetDirectories(kuduFolder).OrderByDescending(d => d).FirstOrDefault()
+                    : null;
 
                 if (!string.IsNullOrEmpty(kuduPath))
                 {

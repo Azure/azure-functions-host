@@ -39,5 +39,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 Assert.False(result, message);
             }
         }
+
+        [Fact]
+        public void ResolveNuGetPath_Local_WithNoEnvironmentHint_ReturnsExpectedResult()
+        {
+            using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", null))
+            {
+                string result = PackageManager.ResolveNuGetPath();
+
+                Assert.Equal("nuget.exe", result);
+            }
+        }
+
+        [Fact]
+        public void ResolveNuGetPath_Local_WithEnvironmentHint_ReturnsExpectedResult()
+        {
+            string path = @"c:\some\path\to\nuget.exe";
+
+            using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", path))
+            {
+                string result = PackageManager.ResolveNuGetPath();
+
+                Assert.Equal(path, result);
+            }
+        }
+
+        [Fact]
+        public void ResolveNuGetPath_WithKuduPath_ReturnsExpectedResult()
+        {
+            string kuduBasePath = Path.Combine(Path.GetTempPath(), @"base\kudu");
+
+            try
+            {
+                string expectedKuduPath = Path.Combine(kuduBasePath, @"kudu2");
+
+                if (Directory.Exists(kuduBasePath))
+                {
+                    Directory.Delete(kuduBasePath, true);
+                }
+
+                Directory.CreateDirectory(expectedKuduPath);
+                Directory.CreateDirectory(Path.Combine(kuduBasePath, @"kudu1"));
+
+                using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", null))
+                {
+                    string result = PackageManager.ResolveNuGetPath(kuduBasePath);
+
+                    Assert.Equal(Path.Combine(expectedKuduPath, "bin\\scripts\\nuget.exe"), result);
+                }
+            }
+            finally
+            {
+                Directory.Delete(kuduBasePath, true);
+            }
+        }
     }
 }
