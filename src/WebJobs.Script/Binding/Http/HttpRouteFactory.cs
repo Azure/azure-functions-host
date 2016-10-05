@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private readonly DirectRouteFactoryContext _routeFactoryContext;
 
-        public HttpRouteFactory(string prefix)
+        public HttpRouteFactory(string prefix = "api")
         {
             var constraintResolver = new DefaultInlineConstraintResolver();
             List<HttpActionDescriptor> actionDescriptors = new List<HttpActionDescriptor>();
@@ -36,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public IEnumerable<string> GetRouteParameters(string routeTemplate)
         {
             var routeBuilder = CreateRouteBuilder(routeTemplate);
+
+            // this template will have any inline constraints parsed
+            // out at this point
             return ParseRouteParameters(routeBuilder.Template);
         }
 

@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private HttpRouteFactory _httpRouteFactory;
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
+        private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
+        private HttpRouteCollection _httpRoutes;
 
         public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) : base(config)
         {
@@ -56,10 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId));
             }
         }
-
-        private IDictionary<IHttpRoute, FunctionDescriptor> HttpFunctions { get; set; }
-
-        private HttpRouteCollection HttpRoutes { get; set; }
 
         public virtual bool Initialized
         {
@@ -245,9 +243,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _metricsLogger.Dispose();
                 }
 
-                if (HttpRoutes != null)
+                if (_httpRoutes != null)
                 {
-                    HttpRoutes.Dispose();
+                    _httpRoutes.Dispose();
                 }
             }
 
@@ -323,16 +321,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new ArgumentNullException(nameof(request));
             }
 
-            if (HttpFunctions == null || HttpFunctions.Count == 0)
+            if (_httpFunctions == null || _httpFunctions.Count == 0)
             {
                 return null;
             }
 
             FunctionDescriptor function = null;
-            var routeData = HttpRoutes.GetRouteData(request);
+            var routeData = _httpRoutes.GetRouteData(request);
             if (routeData != null)
             {
-                HttpFunctions.TryGetValue(routeData.Route, out function);
+                _httpFunctions.TryGetValue(routeData.Route, out function);
 
                 Dictionary<string, object> routeDataValues = null;
                 if (routeData.Values != null)
@@ -404,8 +402,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // has been resolved so we apply any route prefix customizations
             _httpRouteFactory = new HttpRouteFactory(_config.HttpRoutePrefix);
 
-            HttpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
-            HttpRoutes = new HttpRouteCollection();
+            _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
+            _httpRoutes = new HttpRouteCollection();
 
             foreach (var function in functions)
             {
@@ -420,8 +418,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         route = functionName;
                     }
 
-                    var httpRoute = _httpRouteFactory.AddRoute(functionName, route, HttpRoutes);
-                    HttpFunctions.Add(httpRoute, function);
+                    var httpRoute = _httpRouteFactory.AddRoute(functionName, route, _httpRoutes);
+                    _httpFunctions.Add(httpRoute, function);
                 }
             }
         }

@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             private readonly IBindingDataProvider _bindingDataProvider;
             private readonly bool _isUserTypeBinding;
             private readonly Dictionary<string, Type> _bindingDataContract;
-            private readonly HttpRouteFactory _httpRouteFactory = new HttpRouteFactory("api");
+            private readonly HttpRouteFactory _httpRouteFactory = new HttpRouteFactory();
 
             public HttpTriggerBinding(HttpTriggerAttribute attribute, ParameterInfo parameter, bool isUserTypeBinding)
             {
@@ -83,12 +83,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 if (!string.IsNullOrEmpty(attribute.RouteTemplate))
                 {
                     var routeParameters = _httpRouteFactory.GetRouteParameters(attribute.RouteTemplate);
+                    var parameters = ((MethodInfo)parameter.Member).GetParameters().ToDictionary(p => p.Name, p => p.ParameterType, StringComparer.OrdinalIgnoreCase);
                     foreach (string parameterName in routeParameters)
                     {
                         // don't override if the contract already includes a name
                         if (!aggregateDataContract.ContainsKey(parameterName))
                         {
-                            aggregateDataContract[parameterName] = typeof(string);
+                            // if there is a method parameter mapped to this parameter
+                            // derive the Type from that
+                            Type type;
+                            if (!parameters.TryGetValue(parameterName, out type))
+                            {
+                                type = typeof(string);
+                            }
+                            aggregateDataContract[parameterName] = type;
                         }
                     }
                 }
@@ -140,11 +148,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 // create a modifiable collection of binding data and
                 // copy in any initial binding data from the poco
-                Dictionary<string, object> aggregateBindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                var aggregateBindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                 aggregateBindingData.AddRange(userTypeBindingData);
 
                 // Apply additional binding data coming from request route, query params, etc.
-                var requestBindingData = await GetRequestBindingDataAsync(request);
+                var requestBindingData = await GetRequestBindingDataAsync(request, _bindingDataContract);
                 aggregateBindingData.AddRange(requestBindingData);
 
                 // apply binding data to the user type
@@ -202,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            internal static async Task<IReadOnlyDictionary<string, object>> GetRequestBindingDataAsync(HttpRequestMessage request)
+            internal static async Task<IReadOnlyDictionary<string, object>> GetRequestBindingDataAsync(HttpRequestMessage request, Dictionary<string, Type> bindingDataContract = null)
             {
                 Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                 if (request.Content != null && request.Content.Headers.ContentLength > 0)
@@ -232,7 +240,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
                     foreach (var pair in routeBindingData)
                     {
-                        bindingData[pair.Key] = pair.Value;
+                        // if we have a static binding contract that maps to this parameter
+                        // derive the type from that contract mapping and perform any
+                        // necessary conversion
+                        value = pair.Value;
+                        Type type = null;
+                        if (value != null && 
+                            bindingDataContract != null && 
+                            bindingDataContract.TryGetValue(pair.Key, out type) &&
+                            value.GetType() != type)
+                        {
+                            value = Convert.ChangeType(value, type);
+                        }
+
+                        bindingData[pair.Key] = value;
                     }
                 }
 

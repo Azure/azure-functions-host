@@ -5,7 +5,7 @@
             "name": "info",
             "direction": "in",
             "methods": [ "get" ],
-            "route": "csharp/products/{Category:alpha}/{Id:int}"
+            "route": "csharp/products/{category:alpha}/{id:int}"
         },
         {
             "type": "http",

@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string json = await response.Content.ReadAsStringAsync();
             var product = JObject.Parse(json);
             Assert.Equal("electronics", (string)product["Category"]);
-            Assert.Equal("123", (string)product["Id"]);
+            Assert.Equal(123, (int)product["Id"]);
 
             // test a constraint violation (invalid id)
             uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
@@ -326,8 +326,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify route parameters were part of binding data
             var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp-CustomRoute");
-            var log = logs.Single(p => p.Contains("category: electronics id: 123"));
-            Assert.NotNull(log);
+            Assert.True(logs.Any(p => p.Contains("Parameters: category=electronics id=123")));
+            Assert.True(logs.Any(p => p.Contains("ProductInfo: Category=electronics Id=123")));
         }
 
         [Fact]

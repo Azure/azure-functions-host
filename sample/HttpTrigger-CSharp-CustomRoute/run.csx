@@ -11,9 +11,10 @@ public class ProductInfo
     public int Id { get; set; }
 }
 
-public static ProductInfo Run(ProductInfo info, string category, string id, TraceWriter log)
+public static ProductInfo Run(ProductInfo info, string category, int id, TraceWriter log)
 {
-    log.Info($"category: {category} id: {id}");
+    log.Info($"ProductInfo: Category={category} Id={id}");
+    log.Info($"Parameters: category={category} id={id}");
 
     return info;
 }
