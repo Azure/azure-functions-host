@@ -418,6 +418,7 @@
     <Compile Include="FunctionEntryPointResolverTests.cs" />
     <Compile Include="FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\PackageAssemblyResolverTests.cs" />
+    <Compile Include="HttpRouteFactoryTests.cs" />
     <Compile Include="HttpTriggerAttributeBindingProviderTests.cs" />
     <Compile Include="MetricsEventManagerTests.cs" />
     <Compile Include="NodeFunctionInvokerTests.cs" />
@@ -944,25 +945,31 @@
     <None Include="TestScripts\PowerShell\Common\test.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell-Response\function.json">
+    <None Include="TestScripts\PowerShell\HttpTrigger-CustomRoute\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell-Response\run.ps1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-CustomRoute\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\function.json">
+    <None Include="TestScripts\PowerShell\HttpTrigger-Response\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\modules\Get-DateToday.psm1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-Response\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShellWithError\run.ps1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-WithError\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell\function.json">
+    <None Include="TestScripts\PowerShell\HttpTrigger-WithError\modules\Get-DateToday.psm1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\PowerShell\HttpTrigger-PowerShell\run.ps1">
+    <None Include="TestScripts\PowerShell\HttpTrigger-WithError\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\PowerShell\BlobTriggerToBlob\function.json">

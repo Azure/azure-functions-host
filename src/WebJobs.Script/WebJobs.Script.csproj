@@ -326,6 +326,7 @@
     <Compile Include="Binding\HttpBinding.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
+    <Compile Include="Binding\Http\HttpRouteFactory.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
@@ -393,6 +394,7 @@
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ExpandoObjectJsonConverter.cs" />
+    <Compile Include="Extensions\IDictionaryExtensions.cs" />
     <Compile Include="Extensions\IMetricsLoggerExtensions.cs" />
     <Compile Include="Extensions\TraceWriterExtensions.cs" />
     <Compile Include="GlobalSuppressions.cs" />
@@ -426,6 +428,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="PropertyHelper.cs" />
     <Compile Include="ScriptConstants.cs" />
     <Compile Include="Utility.cs" />
   </ItemGroup>

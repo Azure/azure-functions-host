@@ -156,9 +156,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // trace objects written to the output stream
             var source = (PSDataCollection<PSObject>)sender;
-            var msg = source[e.Index].ToString();
-
-            traceWriter.Info(msg);
+            var data = source[e.Index];
+            if (data != null)
+            {
+                var msg = data.ToString();
+                traceWriter.Info(msg);
+            }
         }
 
         /// <summary>

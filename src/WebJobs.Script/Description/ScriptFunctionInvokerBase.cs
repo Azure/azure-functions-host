@@ -172,6 +172,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
                     environmentVariables[varName] = header.Value.First();
                 }
+
+                object value = null;
+                if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+                {
+                    Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
+                    foreach (var pair in routeBindingData)
+                    {
+                        string varName = string.Format(CultureInfo.InvariantCulture, "REQ_PARAMS_{0}", pair.Key.ToUpperInvariant());
+                        environmentVariables[varName] = pair.Value.ToString();
+                    }
+                }
             }
         }
     }

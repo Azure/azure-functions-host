@@ -23,6 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string Location { get; set; }
     }
 
+    public class TestPocoEx : TestPoco
+    {
+        public int Age { get; set; }
+        public string Phone { get; set; }
+
+        public string Readonly { get; }
+    }
+
     public class UtilityTests
     {
         [Theory]

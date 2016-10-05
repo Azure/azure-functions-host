@@ -2,10 +2,10 @@
     "bindings": [
         {
             "type": "httpTrigger",
-            "name": "payload",
+            "name": "info",
             "direction": "in",
-            "webHookType": "genericJson",
-            "route": "hooks/csharp/generic/{action}"
+            "methods": [ "get" ],
+            "route": "csharp/products/{category:alpha}/{id:int}"
         },
         {
             "type": "http",

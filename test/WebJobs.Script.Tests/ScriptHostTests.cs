@@ -369,6 +369,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_Http()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject http = new JObject();
+            config["http"] = http;
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, scriptConfig.HttpRoutePrefix);
+
+            http["routePrefix"] = "myprefix";
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.Equal("myprefix", scriptConfig.HttpRoutePrefix);
+        }
+
+        [Fact]
         public void ApplyConfiguration_Tracing()
         {
             JObject config = new JObject();

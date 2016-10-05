@@ -8,14 +8,14 @@ using Microsoft.Azure.WebJobs.Host;
 
 public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
-    var queryParamms = req.GetQueryNameValuePairs()
+    var queryParams = req.GetQueryNameValuePairs()
         .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
 
     log.Info(string.Format("C# HTTP trigger function processed a request. {0}", req.RequestUri));
 
     HttpResponseMessage res = null;
     string name;
-    if (queryParamms.TryGetValue("name", out name))
+    if (queryParams.TryGetValue("name", out name))
     {
         res = new HttpResponseMessage(HttpStatusCode.OK)
         {
