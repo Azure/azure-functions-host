@@ -91,8 +91,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (string.IsNullOrEmpty(path))
             {
                 // Get the latest Kudu extension path
-                string kuduPath = Directory.GetDirectories(Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu"))
-                    .OrderByDescending(d => d).FirstOrDefault();
+                string kuduFolder = Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu");
+                string kuduPath =
+                    Directory.Exists(kuduFolder) ?
+                        Directory.GetDirectories(kuduFolder)
+                                 .OrderByDescending(d => d)
+                                 .FirstOrDefault() :
+                        null;
 
                 if (!string.IsNullOrEmpty(kuduPath))
                 {
