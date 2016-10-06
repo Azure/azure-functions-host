@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -121,6 +122,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Contains("No job functions found.", hostLogs);
             Assert.Contains("Job host started", hostLogs);
             Assert.Contains("Job host stopped", hostLogs);
+        }
+
+        [Fact]
+        public async Task MultipleHostRestarts()
+        {
+            string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionTestDir);
+            string logDir = Path.Combine(_fixture.TestLogsRoot, Guid.NewGuid().ToString());
+            string secretsDir = Path.Combine(_fixture.TestSecretsRoot, Guid.NewGuid().ToString());
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration
+            {
+                RootLogPath = logDir,
+                RootScriptPath = functionTestDir,
+                FileLoggingMode = FileLoggingMode.Always,
+                RestartInterval = TimeSpan.FromMilliseconds(500)
+            };
+            SecretManager secretManager = new SecretManager(secretsDir);
+            WebHostSettings webHostSettings = new WebHostSettings();
+            var factoryMock = new Mock<IScriptHostFactory>();
+            int count = 0;
+            factoryMock.Setup(p => p.Create(config)).Callback(() =>
+            {
+                count++;
+            }).Throws(new Exception("Kaboom!"));
+
+            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager, webHostSettings, factoryMock.Object);
+
+            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() =>
+            {
+                return count > 3;
+            });
+
+            hostManager.Stop();
+            Assert.False(hostManager.IsRunning);
+
+            // regression test: previously on multiple restarts we were recomposing
+            // the writer on each restart, resulting in a nested chain of writers
+            // increasing on each restart
+            Assert.Equal(typeof(SystemTraceWriter), config.TraceWriter.GetType());
         }
 
         [Fact]
@@ -266,8 +309,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 SecretManager secretManager = new SecretManager(SecretsPath);
                 WebHostSettings webHostSettings = new WebHostSettings();
-                var mockHostManager = new MockWebScriptHostManager(config, secretManager, webHostSettings);
-                mockHostManager.TestEventGenerator = EventGenerator;
+
+                var hostConfig = config.HostConfig;
+                var testEventGenerator = new TestSystemEventGenerator();
+                hostConfig.AddService<IEventGenerator>(EventGenerator);
+                var mockHostManager = new WebScriptHostManager(config, secretManager, webHostSettings);
                 HostManager = mockHostManager;
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 
@@ -336,24 +382,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileTraceWriter traceWriter = new FileTraceWriter(functionLogPath, TraceLevel.Verbose);
                 traceWriter.Verbose("Test log message");
                 traceWriter.Flush();
-            }
-
-            private class MockWebScriptHostManager : WebScriptHostManager
-            {
-                public MockWebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings)
-                    : base(config, secretManager, webHostSettings)
-                {
-                }
-
-                public TestSystemEventGenerator TestEventGenerator { get; set; }
-
-                protected override void OnInitializeConfig(ScriptHostConfiguration config)
-                {
-                    var hostConfig = config.HostConfig;
-                    hostConfig.AddService<IEventGenerator>(TestEventGenerator);
-
-                    base.OnInitializeConfig(config);
-                }
             }
 
             public class TestSystemEventGenerator : IEventGenerator

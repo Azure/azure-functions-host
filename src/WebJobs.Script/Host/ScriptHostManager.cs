@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Wait for a short period of time before restarting to
                     // avoid cases where a host level config error might cause
                     // a rapid restart cycle
-                    Task.Delay(5000).GetAwaiter().GetResult();
+                    Task.Delay(_config.RestartInterval).GetAwaiter().GetResult();
                 }
             }
             while (!_stopped && !cancellationToken.IsCancellationRequested);

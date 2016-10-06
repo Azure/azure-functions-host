@@ -36,12 +36,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings) : base(config)
+        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null) 
+            : base(config, scriptHostFactory)
         {
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _secretManager = secretManager;
             _webHostSettings = webHostSettings;
+
+            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
+            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, TraceLevel.Verbose);
+            if (config.TraceWriter != null)
+            {
+                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
+            }
+            else
+            {
+                config.TraceWriter = systemTraceWriter;
+            }
+        }
+
+        public WebScriptHostManager(ScriptHostConfiguration config, SecretManager secretManager, WebHostSettings webHostSettings)
+            : this(config, secretManager, webHostSettings, new ScriptHostFactory())
+        {
         }
 
         public static bool IsAzureEnvironment
@@ -331,20 +348,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             base.OnInitializeConfig(config);
 
+            // Note: this method can be called many times for the same ScriptHostConfiguration
+            // so no changes should be made to the configuration itself. It is safe to modify
+            // ScriptHostConfiguration.Host config though, since the inner JobHostConfiguration
+            // is created anew on each restart.
+
             // Add our WebHost specific services
             var hostConfig = config.HostConfig;
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
-
-            var systemEventGenerator = hostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, TraceLevel.Verbose);
-            if (config.TraceWriter != null)
-            {
-                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
-            }
-            else
-            {
-                config.TraceWriter = systemTraceWriter;
-            }
 
             // Add our exception handler
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
