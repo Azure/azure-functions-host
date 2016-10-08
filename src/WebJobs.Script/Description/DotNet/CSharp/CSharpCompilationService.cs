@@ -19,13 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class CSharpCompilationService : ICompilationService
     {
         private readonly IFunctionMetadataResolver _metadataResolver;
-
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
           = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
-        public CSharpCompilationService(IFunctionMetadataResolver metadataResolver)
+        private readonly OptimizationLevel _optimizationLevel;
+
+        public CSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
         {
             _metadataResolver = metadataResolver;
+            _optimizationLevel = optimizationLevel;
         }
 
         public string Language
@@ -49,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string code = GetFunctionSource(functionMetadata);
             Script<object> script = CSharpScript.Create(code, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
 
-            Compilation compilation = GetScriptCompilation(script, true, functionMetadata);
+            Compilation compilation = GetScriptCompilation(script, functionMetadata);
 
             return new CSharpCompilation(compilation);
         }
@@ -66,12 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return code ?? string.Empty;
         }
 
-        private static Compilation GetScriptCompilation(Script<object> script, bool debug, FunctionMetadata functionMetadata)
+        private Compilation GetScriptCompilation(Script<object> script, FunctionMetadata functionMetadata)
         {
             Compilation compilation = script.GetCompilation();
 
-            OptimizationLevel compilationOptimizationLevel = OptimizationLevel.Release;
-            if (debug)
+            if (_optimizationLevel == OptimizationLevel.Debug)
             {
                 SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
                 var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
@@ -79,14 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                   path: Path.GetFileName(functionMetadata.ScriptFile),
                   options: new CSharpParseOptions(kind: SourceCodeKind.Script));
 
-                compilationOptimizationLevel = OptimizationLevel.Debug;
-
                 compilation = compilation
                     .RemoveAllSyntaxTrees()
                     .AddSyntaxTrees(debugTree);
             }
 
-            return compilation.WithOptions(compilation.Options.WithOptimizationLevel(compilationOptimizationLevel))
+            return compilation.WithOptions(compilation.Options.WithOptimizationLevel(_optimizationLevel))
                 .WithAssemblyName(FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName));
         }
     }

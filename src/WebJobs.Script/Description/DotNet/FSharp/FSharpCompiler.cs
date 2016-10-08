@@ -24,9 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
         = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
-        public FSharpCompiler(IFunctionMetadataResolver metadataResolver)
+        private readonly OptimizationLevel _optimizationLevel;
+
+        public FSharpCompiler(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
         {
             _metadataResolver = metadataResolver;
+            _optimizationLevel = optimizationLevel;
         }
 
         public string Language
@@ -47,9 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {
-            // TODO: Get debug flag from context. Set to true for now.
-            bool debug = true;
-
             // First use the C# compiler to resolve references, to get consistenct with the C# Azure Functions programming model
             Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
             Compilation compilation = script.GetCompilation();
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add("-r:System.Runtime.dll");
                 otherFlags.Add("-r:System.Numerics.dll");
 
-                if (debug)
+                if (_optimizationLevel == OptimizationLevel.Debug)
                 {
                     otherFlags.Add("--optimize-");
                     otherFlags.Add("--debug+");
