@@ -81,6 +81,7 @@
     <Compile Include="TestDoubles\FakeStorageBlobDirectory.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobProperties.cs" />
+    <Compile Include="TestDoubles\FakeStorageAppendBlob.cs" />
     <Compile Include="TestDoubles\FakeStoragePageBlob.cs" />
     <Compile Include="TestDoubles\FakeStorageBlockBlob.cs" />
     <Compile Include="TestDoubles\FakeStorageTableBatchOperation.cs" />
@@ -91,6 +92,7 @@
     <Compile Include="TestDoubles\FakeStorageTableClient.cs" />
     <Compile Include="TestDoubles\FakeStorageQueueClient.cs" />
     <Compile Include="TestDoubles\MemoryBlobStore.cs" />
+    <Compile Include="TestDoubles\MemoryCloudAppendBlobStream.cs" />
     <Compile Include="TestDoubles\MemoryCloudPageBlobStream.cs" />
     <Compile Include="TestDoubles\MemoryCloudBlockBlobStream.cs" />
     <Compile Include="TestDoubles\MemoryTableStore.cs" />

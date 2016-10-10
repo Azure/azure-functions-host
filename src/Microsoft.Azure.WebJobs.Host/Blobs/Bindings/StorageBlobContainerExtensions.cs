@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 IStorageBlob blob = container.GetPageBlobReference(blobName);
                 return Task.FromResult(blob);
             }
+            else if (argumentType == typeof(CloudAppendBlob))
+            {
+                IStorageBlob blob = container.GetAppendBlobReference(blobName);
+                return Task.FromResult(blob);
+            }
             else
             {
                 return GetExistingOrNewBlockBlobReferenceAsync(container, blobName, cancellationToken);

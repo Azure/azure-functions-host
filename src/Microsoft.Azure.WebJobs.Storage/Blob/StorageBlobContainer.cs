@@ -3,13 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 #if PUBLICSTORAGE
 using Microsoft.Azure.WebJobs.Storage.Blob;
 #else
-using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -117,6 +116,13 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public IStorageAppendBlob GetAppendBlobReference(string blobName)
+        {
+            CloudAppendBlob sdkBlob = _sdk.GetAppendBlobReference(blobName);
+            return new StorageAppendBlob(this, sdkBlob);
+        }
+
+        /// <inheritdoc />
         public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
             BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
             BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
@@ -178,19 +184,16 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 
         private static IStorageBlob ToStorageBlob(IStorageBlobContainer parent, ICloudBlob sdkBlob)
         {
-            Debug.Assert(sdkBlob != null);
-
-            CloudBlockBlob blockBlob = sdkBlob as CloudBlockBlob;
-
-            if (blockBlob != null)
+            switch (sdkBlob.BlobType)
             {
-                return new StorageBlockBlob(parent, blockBlob);
-            }
-            else
-            {
-                CloudPageBlob cloudPageBlob = sdkBlob as CloudPageBlob;
-                Debug.Assert(cloudPageBlob != null);
-                return new StoragePageBlob(parent, cloudPageBlob);
+                case BlobType.PageBlob:
+                    return new StoragePageBlob(parent, (CloudPageBlob)sdkBlob);
+                case BlobType.BlockBlob:
+                    return new StorageBlockBlob(parent, (CloudBlockBlob)sdkBlob);
+                case BlobType.AppendBlob:
+                    return new StorageAppendBlob(parent, (CloudAppendBlob)sdkBlob);
+                default:
+                    throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Blob '{0}' has an unsupported type: '{1}'.", sdkBlob.Name, sdkBlob.BlobType));
             }
         }
     }

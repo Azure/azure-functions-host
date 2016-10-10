@@ -20,6 +20,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         BlockBlob = BlobType.BlockBlob,
 
         /// <summary>A page blob.</summary>
-        PageBlob = BlobType.PageBlob
+        PageBlob = BlobType.PageBlob,
+
+        /// <summary>An append blob.</summary>
+        AppendBlob = BlobType.AppendBlob
     }
 }

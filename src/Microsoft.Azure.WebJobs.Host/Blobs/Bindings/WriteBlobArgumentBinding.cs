@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             if (blockBlob == null)
             {
-                throw new InvalidOperationException("Cannot bind a page blob using an out string.");
+                throw new InvalidOperationException("Cannot bind to page or append blobs using 'out string', 'TextWriter', or writable 'Stream' parameters.");
             }
 
             BlobCausalityManager.SetWriter(blob.Metadata, context.FunctionInstanceId);

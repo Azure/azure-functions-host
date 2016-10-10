@@ -68,11 +68,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             string blobName = message.BlobName;
 
             IStorageBlob blob;
-            
+
             switch (message.BlobType)
             {
                 case StorageBlobType.PageBlob:
                     blob = container.GetPageBlobReference(blobName);
+                    break;
+                case StorageBlobType.AppendBlob:
+                    blob = container.GetAppendBlobReference(blobName);
                     break;
                 case StorageBlobType.BlockBlob:
                 default:

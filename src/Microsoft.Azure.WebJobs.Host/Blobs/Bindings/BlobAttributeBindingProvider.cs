@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             path.ValidateContractCompatibility(context.BindingDataContract);
             BlobContainerBinding.ValidateContainerBinding(blobAttribute, parameter.ParameterType, path);
 
-            return new BlobContainerBinding(parameter.Name, containerArgumentBinding, client, path);    
+            return new BlobContainerBinding(parameter.Name, containerArgumentBinding, client, path);
         }
 
         private string Resolve(string blobName)
@@ -109,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             innerProviders.Add(CreateConverterProvider<ICloudBlob, StorageBlobToCloudBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudBlockBlob, StorageBlobToCloudBlockBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudPageBlob, StorageBlobToCloudPageBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudAppendBlob, StorageBlobToCloudAppendBlobConverter>());
             innerProviders.Add(new StreamArgumentBindingProvider(blobWrittenWatcherGetter));
             innerProviders.Add(new CloudBlobStreamArgumentBindingProvider(blobWrittenWatcherGetter));
             innerProviders.Add(new TextReaderArgumentBindingProvider());

@@ -262,6 +262,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WriteBlobParameterLog.cs">
       <Link>Protocols\WriteBlobParameterLog.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageAppendBlob.cs">
+      <Link>Storage\Blob\IStorageAppendBlob.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlob.cs">
       <Link>Storage\Blob\IStorageBlob.cs</Link>
     </Compile>
@@ -288,6 +291,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStoragePageBlob.cs">
       <Link>Storage\Blob\IStoragePageBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageAppendBlob.cs">
+      <Link>Storage\Blob\StorageAppendBlob.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobClient.cs">
       <Link>Storage\Blob\StorageBlobClient.cs</Link>
@@ -381,6 +387,7 @@
     <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
+    <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />

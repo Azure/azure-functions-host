@@ -2,9 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
@@ -78,6 +75,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public IStoragePageBlob GetPageBlobReference(string blobName)
         {
             return new FakeStoragePageBlob(_store, blobName, this);
+        }
+
+        public IStorageAppendBlob GetAppendBlobReference(string blobName)
+        {
+            return new FakeStorageAppendBlob(_store, blobName, this);
         }
 
         public virtual Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,

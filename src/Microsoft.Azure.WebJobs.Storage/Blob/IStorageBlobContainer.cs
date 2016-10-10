@@ -64,6 +64,11 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <returns>A page blob reference.</returns>
         IStoragePageBlob GetPageBlobReference(string blobName);
 
+        /// <summary>Gets an append blob reference.</summary>
+        /// <param name="blobName">The blob name.</param>
+        /// <returns>An append blob reference.</returns>
+        IStorageAppendBlob GetAppendBlobReference(string blobName);
+
         /// <summary>Gets a segment of blobs in the container.</summary>
         /// <param name="prefix">The blob name prefix.</param>
         /// <param name="useFlatBlobListing">

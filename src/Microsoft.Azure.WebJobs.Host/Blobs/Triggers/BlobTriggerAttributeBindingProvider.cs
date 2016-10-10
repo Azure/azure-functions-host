@@ -117,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             innerProviders.Add(CreateConverterProvider<ICloudBlob, StorageBlobToCloudBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudBlockBlob, StorageBlobToCloudBlockBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudPageBlob, StorageBlobToCloudPageBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudAppendBlob, StorageBlobToCloudAppendBlobConverter>());
             innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: FileAccess.Read));
             innerProviders.Add(new TextReaderArgumentBindingProvider());
             innerProviders.Add(new StringArgumentBindingProvider());

@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             if (parameter.ParameterType == typeof(IEnumerable<ICloudBlob>) ||
                 parameter.ParameterType == typeof(IEnumerable<CloudBlockBlob>) ||
                 parameter.ParameterType == typeof(IEnumerable<CloudPageBlob>) ||
+                parameter.ParameterType == typeof(IEnumerable<CloudAppendBlob>) ||
                 parameter.ParameterType == typeof(IEnumerable<TextReader>) ||
                 parameter.ParameterType == typeof(IEnumerable<Stream>) ||
                 parameter.ParameterType == typeof(IEnumerable<string>))

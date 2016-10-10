@@ -375,6 +375,55 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
+        public void BlobTrigger_IfBoundToCloudAppendBlob_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStorageAppendBlob blob = container.GetAppendBlobReference(BlobName);
+            container.CreateIfNotExists();
+            blob.UploadTextAsync("test").GetAwaiter().GetResult();
+
+            // TODO: Remove argument once host.Call supports more flexibility.
+            IDictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "blob", BlobPath }
+            };
+
+            // Act
+            CloudAppendBlob result = Call<CloudAppendBlob>(account, typeof(BlobTriggerBindToCloudAppendBlobProgram), "Call",
+                arguments, (s) => BlobTriggerBindToCloudAppendBlobProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToCloudAppendBlobAndTriggerArgumentIsMissing_CallThrows()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Exception exception = CallFailure(account, typeof(BlobTriggerBindToCloudAppendBlobProgram), "Call");
+
+            // Assert
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Missing value for trigger parameter 'blob'.", exception.Message);
+        }
+
+        private class BlobTriggerBindToCloudAppendBlobProgram
+        {
+            public static TaskCompletionSource<CloudAppendBlob> TaskSource { get; set; }
+
+            public static void Call([BlobTrigger(BlobPath)] CloudAppendBlob blob)
+            {
+                TaskSource.TrySetResult(blob);
+            }
+        }
+
+        [Fact]
         public void Int32Argument_CanCallViaStringParse()
         {
             // Arrange

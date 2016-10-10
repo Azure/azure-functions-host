@@ -163,6 +163,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return _items[containerName].OpenWritePage(blobName, size, metadata);
         }
 
+        public CloudBlobStream OpenWriteAppend(string containerName, string blobName,
+            IDictionary<string, string> metadata)
+        {
+            return _items[containerName].OpenWriteAppend(blobName, metadata);
+        }
+
         public void ReleaseLease(string containerName, string blobName, string leaseId)
         {
             _items[containerName].ReleaseLease(blobName, leaseId);
@@ -290,13 +296,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
                 Blob blob = _items[blobName];
 
-                if (blob.BlobType == StorageBlobType.BlockBlob)
+                switch (blob.BlobType)
                 {
-                    return new FakeStorageBlockBlob(store, blobName, parent);
-                }
-                else
-                {
-                    return new FakeStoragePageBlob(store, blobName, parent);
+                    case StorageBlobType.BlockBlob:
+                        return new FakeStorageBlockBlob(store, blobName, parent);
+                    case StorageBlobType.PageBlob:
+                        return new FakeStoragePageBlob(store, blobName, parent);
+                    case StorageBlobType.AppendBlob:
+                        return new FakeStorageAppendBlob(store, blobName, parent);
+                    default:
+                        throw new InvalidOperationException(string.Format("Type '{0}' is not supported.", blob.BlobType));
                 }
             }
 
@@ -378,6 +387,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
                 return new MemoryCloudPageBlobStream((bytes) => _items[blobName] =
                     new Blob(StorageBlobType.PageBlob, bytes, metadata, null, null));
+            }
+
+            public CloudBlobStream OpenWriteAppend(string blobName, IDictionary<string, string> metadata)
+            {
+                if (_items.ContainsKey(blobName))
+                {
+                    _items[blobName].ThrowIfLeased();
+                }
+
+                return new MemoryCloudAppendBlobStream((bytes) => _items[blobName] =
+                    new Blob(StorageBlobType.AppendBlob, bytes, metadata, null, null));
             }
 
             public void ReleaseLease(string blobName, string leaseId)

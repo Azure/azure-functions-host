@@ -51,6 +51,7 @@
     </Compile>
     <Compile Include="Blob\IStorageBlob.cs" />
     <Compile Include="Blob\IStorageBlobDirectory.cs" />
+    <Compile Include="Blob\IStorageAppendBlob.cs" />
     <Compile Include="Blob\StorageBlobProperties.cs" />
     <Compile Include="Blob\IStorageBlobProperties.cs" />
     <Compile Include="Blob\StorageBlobResultSegment.cs" />
@@ -59,6 +60,7 @@
     <Compile Include="Blob\StorageBlobDirectory.cs" />
     <Compile Include="Blob\IStorageBlobResultSegment.cs" />
     <Compile Include="Blob\StorageBlobType.cs" />
+    <Compile Include="Blob\StorageAppendBlob.cs" />
     <Compile Include="Blob\StoragePageBlob.cs" />
     <Compile Include="Blob\StorageBlockBlob.cs" />
     <Compile Include="Blob\StorageBlobContainer.cs" />
