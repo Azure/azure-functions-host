@@ -15,7 +15,7 @@ namespace Dashboard
                 throw new ArgumentNullException("filters");
             }
 
-            filters.Add(new HandleErrorAttribute());
+            //filters.Add(new HandleErrorAttribute());         
         }
     }
 }

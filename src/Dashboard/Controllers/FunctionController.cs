@@ -9,7 +9,6 @@ using System.Web.Mvc;
 using Dashboard.ApiControllers;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
-using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;

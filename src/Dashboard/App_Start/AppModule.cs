@@ -6,6 +6,8 @@ using System.Configuration;
 using System.Web;
 using System.Web.Caching;
 using System.Web.Mvc;
+using Autofac;
+using Autofac.Integration.Mvc;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.Filters;
@@ -17,12 +19,10 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
-using Ninject.Modules;
-using Ninject.Web.Mvc.FilterBindingSyntax;
 
 namespace Dashboard
 {
-    public class AppModule : NinjectModule
+    public static class AppModule
     {
         // Optional Appsetting to explicitly set the table name to use with fast logging. 
         private const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
@@ -31,12 +31,15 @@ namespace Dashboard
         private const string FunctionExtensionVersionAppSettingName = "FUNCTIONS_EXTENSION_VERSION";
         private const string FunctionExtensionVersionDisabled = "disabled";
 
-        public override void Load()
+        public static void Load(ContainerBuilder builder)
         {
             DashboardAccountContext context = TryCreateAccount();
-            Bind<DashboardAccountContext>().ToConstant(context);
+            builder.RegisterInstance(context);
 
-            this.BindFilter<AccountContextAttribute>(FilterScope.Global, 0);
+            // http://stackoverflow.com/a/21535799/534514
+            builder.RegisterType<AccountContextAttribute>().AsResultFilterFor<Controller>().InstancePerRequest();
+            builder.RegisterType<HandleErrorAttribute>().AsExceptionFilterFor<Controller>();
+            builder.RegisterFilterProvider();
 
             CloudStorageAccount account = context.StorageAccount;
             if (account == null)
@@ -46,8 +49,9 @@ namespace Dashboard
 
             CloudTableClient tableClient = account.CreateCloudTableClient();
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
-            Bind<CloudStorageAccount>().ToConstant(account);
-            Bind<CloudBlobClient>().ToConstant(blobClient);
+
+            builder.RegisterInstance(account).As<CloudStorageAccount>();            
+            builder.RegisterInstance(blobClient).As<CloudBlobClient>();
 
             CloudTable logTable = TryGetLogTable(tableClient);
 
@@ -57,77 +61,76 @@ namespace Dashboard
 
                 // fast table reader.                 
                 var reader = LogFactory.NewReader(logTable);
-                Bind<ILogReader>().ToConstant(reader);
+                builder.RegisterInstance(reader).As<ILogReader>();
 
                 var s = new FastTableReader(reader);
 
-                Bind<IFunctionLookup>().ToConstant(s);
-                Bind<IFunctionInstanceLookup>().ToConstant(s);
-                Bind<IFunctionStatisticsReader>().ToConstant(s);
-                Bind<IFunctionIndexReader>().ToConstant(s);
-                Bind<IRecentInvocationIndexByFunctionReader>().ToConstant(s);
-                Bind<IRecentInvocationIndexReader>().ToConstant(s);
+                builder.RegisterInstance(s)
+                    .As<IRecentInvocationIndexReader>()
+                    .As<IRecentInvocationIndexByFunctionReader>()
+                    .As<IFunctionIndexReader>()
+                    .As<IFunctionStatisticsReader>()
+                    .As<IFunctionInstanceLookup>()
+                    .As<IFunctionLookup>().SingleInstance();
 
-                Bind<IHostVersionReader>().To<NullHostVersionReader>();
+                builder.RegisterType<NullHostVersionReader>().As<IHostVersionReader>().SingleInstance();
 
                 // See services used by FunctionsController
-                Bind<IRecentInvocationIndexByJobRunReader>().To<NullInvocationIndexReader>();
-                Bind<IRecentInvocationIndexByParentReader>().To<NullInvocationIndexReader>();
+                builder.RegisterType<NullInvocationIndexReader>().As<IRecentInvocationIndexByJobRunReader>().SingleInstance();
+                builder.RegisterType<NullInvocationIndexReader>().As<IRecentInvocationIndexByParentReader>().SingleInstance();
 
-                Bind<IHeartbeatValidityMonitor>().To<NullHeartbeatValidityMonitor>();
-
-                Bind<IAborter>().To<NullAborter>();
-                Bind<IInvoker>().To<NullInvoker>();
+                builder.RegisterType<NullHeartbeatValidityMonitor>().As<IHeartbeatValidityMonitor>().SingleInstance();
+                builder.RegisterType<NullAborter>().As<IAborter>().SingleInstance();
+                builder.RegisterType<NullInvoker>().As<IInvoker>().SingleInstance();
 
                 // for diagnostics
-                Bind<IIndexerLogReader>().To<NullIIndexerLogReader>();
-                Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<NullLogReader>();
-                Bind<IDashboardVersionManager>().To<NullIDashboardVersionManager>();
+                builder.RegisterType<NullIIndexerLogReader>().As<IIndexerLogReader>().SingleInstance();
+                builder.RegisterType<NullLogReader>().As<IPersistentQueueReader<PersistentQueueMessage>>().SingleInstance();
+                builder.RegisterType<NullIDashboardVersionManager>().As<IDashboardVersionManager>().SingleInstance();
             }
             else
             {
-                Bind<ILogReader>().ToConstant(new NullFastReader());
+                builder.RegisterInstance(new NullFastReader()).As<ILogReader>();
 
                 // Traditional SDK reader. 
 
                 CloudQueueClient queueClient = account.CreateCloudQueueClient();
 
-                Bind<CloudQueueClient>().ToConstant(queueClient);
+                builder.RegisterInstance(queueClient).As<CloudQueueClient>();
+                builder.RegisterType<HostVersionReader>().As<IHostVersionReader>().SingleInstance();
+                builder.RegisterType<DashboardVersionManager>().As<IDashboardVersionManager>().SingleInstance();
+                builder.RegisterType<FunctionInstanceLookup>().As<IFunctionInstanceLookup>().SingleInstance();
+                builder.RegisterType<FunctionInstanceLogger>().As<IFunctionInstanceLogger>().SingleInstance();
+                builder.RegisterType<HostIndexManager>().As<IHostIndexManager>().SingleInstance();
+                builder.RegisterType<FunctionIndexVersionManager>().As<IFunctionIndexVersionManager>().SingleInstance();
+                builder.RegisterType<FunctionIndexManager>().As<IFunctionIndexManager>().SingleInstance();
+                builder.RegisterType<FunctionLookup>().As<IFunctionLookup>().SingleInstance();
+                builder.RegisterType<FunctionIndexReader>().As<IFunctionIndexReader>().SingleInstance();
+                builder.RegisterType<HeartbeatValidityMonitor>().As<IHeartbeatValidityMonitor>().SingleInstance();
+                builder.RegisterType<HeartbeatMonitor>().As<IHeartbeatMonitor>().SingleInstance();
+                builder.RegisterInstance(HttpRuntime.Cache).As<Cache>();
+                builder.RegisterType<FunctionStatisticsReader>().As<IFunctionStatisticsReader>().SingleInstance();
+                builder.RegisterType<FunctionStatisticsWriter>().As<IFunctionStatisticsWriter>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexReader>().As<IRecentInvocationIndexReader>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexWriter>().As<IRecentInvocationIndexWriter>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByFunctionReader>().As<IRecentInvocationIndexByFunctionReader>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByFunctionWriter>().As<IRecentInvocationIndexByFunctionWriter>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByJobRunReader>().As<IRecentInvocationIndexByJobRunReader>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByJobRunWriter>().As<IRecentInvocationIndexByJobRunWriter>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByParentReader>().As<IRecentInvocationIndexByParentReader>().SingleInstance();
+                builder.RegisterType<RecentInvocationIndexByParentWriter>().As<IRecentInvocationIndexByParentWriter>().SingleInstance();
+                builder.RegisterType<HostMessageSender>().As<IHostMessageSender>().SingleInstance();
+                builder.RegisterType<PersistentQueueReader<PersistentQueueMessage>>().As<IPersistentQueueReader<PersistentQueueMessage>>().SingleInstance();
+                builder.RegisterType<FunctionInstanceLogger>().As<IFunctionQueuedLogger>().SingleInstance();
+                builder.RegisterType<HostIndexer>().As<IHostIndexer>().SingleInstance();
+                builder.RegisterType<FunctionIndexer>().As<IFunctionIndexer>().SingleInstance();
+                builder.RegisterType<UpgradeIndexer>().As<IIndexer>().SingleInstance();
+                builder.RegisterType<Invoker>().As<IInvoker>().SingleInstance();
+                builder.RegisterType<AbortRequestLogger>().As<IAbortRequestLogger>().SingleInstance();
+                builder.RegisterType<Aborter>().As<IAborter>().SingleInstance();
 
-                Bind<IHostVersionReader>().To<HostVersionReader>();
-                Bind<IDashboardVersionManager>().To<DashboardVersionManager>();
-                Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
-                Bind<IFunctionInstanceLogger>().To<FunctionInstanceLogger>();
-                Bind<IHostIndexManager>().To<HostIndexManager>();
-                Bind<IFunctionIndexVersionManager>().To<FunctionIndexVersionManager>();
-                Bind<IFunctionIndexManager>().To<FunctionIndexManager>();
-                Bind<IFunctionLookup>().To<FunctionLookup>();
-                Bind<IFunctionIndexReader>().To<FunctionIndexReader>();
-                Bind<IHeartbeatValidityMonitor>().To<HeartbeatValidityMonitor>();
-                Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
-                Bind<Cache>().ToConstant(HttpRuntime.Cache);
-                Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
-                Bind<IFunctionStatisticsWriter>().To<FunctionStatisticsWriter>();
-                Bind<IRecentInvocationIndexReader>().To<RecentInvocationIndexReader>();
-                Bind<IRecentInvocationIndexWriter>().To<RecentInvocationIndexWriter>();
-                Bind<IRecentInvocationIndexByFunctionReader>().To<RecentInvocationIndexByFunctionReader>();
-                Bind<IRecentInvocationIndexByFunctionWriter>().To<RecentInvocationIndexByFunctionWriter>();
-                Bind<IRecentInvocationIndexByJobRunReader>().To<RecentInvocationIndexByJobRunReader>();
-                Bind<IRecentInvocationIndexByJobRunWriter>().To<RecentInvocationIndexByJobRunWriter>();
-                Bind<IRecentInvocationIndexByParentReader>().To<RecentInvocationIndexByParentReader>();
-                Bind<IRecentInvocationIndexByParentWriter>().To<RecentInvocationIndexByParentWriter>();
-                Bind<IHostMessageSender>().To<HostMessageSender>();
-                Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
-                Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
-                Bind<IHostIndexer>().To<HostIndexer>();
-                Bind<IFunctionIndexer>().To<FunctionIndexer>();
-                Bind<IIndexer>().To<UpgradeIndexer>();
-                Bind<IInvoker>().To<Invoker>();
-                Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
-                Bind<IAborter>().To<Aborter>();
-
-                Bind<IIndexerLogWriter>().To<IndexerBlobLogWriter>();
-                Bind<IIndexerLogReader>().To<IndexerBlobLogReader>();
+                builder.RegisterType<IndexerBlobLogWriter>().As<IIndexerLogWriter>().SingleInstance();
+                builder.RegisterType<IndexerBlobLogReader>().As<IIndexerLogReader>().SingleInstance();
             }
         }
 

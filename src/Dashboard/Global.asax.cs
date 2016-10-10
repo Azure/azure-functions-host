@@ -2,16 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
-using Dashboard.AppStart;
+using Autofac;
+using Autofac.Integration.Mvc;
+using Autofac.Integration.WebApi;
 using Dashboard.Data;
 using Dashboard.Indexers;
-using Ninject;
 
 namespace Dashboard
 {
@@ -19,16 +21,43 @@ namespace Dashboard
     {
         private static IIndexer _indexer;
 
+        // Include all both internal and public ctors.
+        private static ConstructorInfo[] AllConstructors(Type type)
+        {
+            return type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        public static IContainer BuildContainer(HttpConfiguration config)
+        {
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
+            }
+            ContainerBuilder builder = new ContainerBuilder();
+            AppModule.Load(builder);
+
+            // WebAPI has internal constructors. 
+            builder.RegisterApiControllers(typeof(WebApiConfig).Assembly).FindConstructorsWith(AllConstructors);
+            builder.RegisterControllers(typeof(WebApiConfig).Assembly).FindConstructorsWith(AllConstructors);
+
+            var container = builder.Build();
+
+            // Set MVC and WebApi resolved to AutoFac. 
+            DependencyResolver.SetResolver(new AutofacDependencyResolver(container));
+                        
+            config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
+
+            return container;
+        }
+
         protected void Application_Start()
         {
-            var kernel = NinjectWebCommon.Kernel;
-
-            DashboardAccountContext context = kernel.Get<DashboardAccountContext>();
-
-            AreaRegistration.RegisterAllAreas();
+            var container = BuildContainer(GlobalConfiguration.Configuration);
 
             GlobalConfiguration.Configure(WebApiConfig.Register);
-            FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
+            AreaRegistration.RegisterAllAreas();
+
+            var context = container.Resolve<DashboardAccountContext>();
 
             if (!context.HasSetupError)
             {
@@ -39,15 +68,15 @@ namespace Dashboard
                 RouteConfig.RegisterNoAccountRoutes(RouteTable.Routes); 
             }
             
-            BundleConfig.RegisterBundles(BundleTable.Bundles);
+            BundleConfig.RegisterBundles(BundleTable.Bundles);            
 
             if (!context.HasSetupError)
             {
                 ModelBinderConfig.Register();
-                HostVersionConfig.RegisterWarnings(kernel.Get<IHostVersionReader>());
+                HostVersionConfig.RegisterWarnings(container.Resolve<IHostVersionReader>());
             }
 
-            _indexer = kernel.TryGet<IIndexer>();
+            _indexer = container.ResolveOptional<IIndexer>();
 
             if (_indexer != null)
             {

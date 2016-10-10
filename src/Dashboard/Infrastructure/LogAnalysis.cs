@@ -11,7 +11,6 @@ using System.Threading;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
-using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.Azure.WebJobs.Storage;
