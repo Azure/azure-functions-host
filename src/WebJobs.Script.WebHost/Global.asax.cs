@@ -11,6 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected void Application_Start()
         {
             GlobalConfiguration.Configure(WebApiConfig.Register);
+
+            var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
+
+            if (scriptHostManager != null && !scriptHostManager.Initialized)
+            {
+                scriptHostManager.Initialize();
+            }
         }
 
         protected void Application_Error(object sender, EventArgs e)
