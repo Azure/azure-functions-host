@@ -64,6 +64,18 @@ describe('functions', () => {
             expect(run).to.be.true;
         });
 
+        it('falls back to index function', () => {
+            var run = false;
+            var func = functions.createFunction({
+                index: () => run = true,
+                other: () => run = false
+            });
+
+            func(context);
+
+            expect(run).to.be.true;
+        });
+
         it('throws if no function', () => {
             var func = functions.createFunction(1);
 
