@@ -1,1 +1,1 @@
-msbuild Webjobs.Script.proj /t:MochaTest /property:Configuration=Release
+msbuild Webjobs.Script.proj /t:MochaTest
