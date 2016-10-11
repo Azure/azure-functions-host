@@ -92,8 +92,8 @@ function getEntryPoint(f, context) {
         }
         else {
             // finally, see if there is an exported function named
-            // 'run' by convention
-            f = f['run'];
+            // 'run' or 'index' by convention
+            f = f['run'] || f['index'];
         }
     }
     else if (!util.isFunction(f)) {
