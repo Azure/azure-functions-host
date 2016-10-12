@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host
         protected string ConvertToString(TMessage eventData)
         {
             var convert = _converterManager.GetConverter<TMessage, string, Attribute>();
-            var result = convert(eventData, null);
+            var result = convert(eventData, null, null);
             return result;
         }
 

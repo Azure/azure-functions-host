@@ -383,6 +383,7 @@
     <Compile Include="Bindings\BindingProviders\ItemBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
+    <Compile Include="Bindings\FuncArgumentBuilder.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
@@ -391,6 +392,7 @@
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
+    <Compile Include="FuncConverter.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
     <Compile Include="Loggers\TraceEventExtensions.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />

@@ -42,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
-        protected abstract Task<IValueProvider> BuildAsync(TAttribute attrResolved);
+        protected abstract Task<IValueProvider> BuildAsync(TAttribute attrResolved, ValueBindingContext context);
 
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
             var attrResolved = await Cloner.ResolveFromBindingDataAsync(context);
-            return await BuildAsync(attrResolved);
+            return await BuildAsync(attrResolved, context.ValueContext);
         }
 
         public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 // Called when we invoke from dashboard. 
                 // str --> attribute --> obj 
                 var resolvedAttr = await Cloner.ResolveFromInvokeStringAsync(str);
-                return await BuildAsync(resolvedAttr);
+                return await BuildAsync(resolvedAttr, context);
             }
             else
             {

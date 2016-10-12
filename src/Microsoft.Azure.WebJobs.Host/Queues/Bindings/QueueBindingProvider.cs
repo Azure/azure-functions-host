@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
@@ -54,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             converterManager.AddConverter<byte[], IStorageQueueMessage, QueueAttribute>(ConvertByteArrayToCloudQueueMessage);
             converterManager.AddConverter<IStorageQueueMessage, byte[]>(ConvertCloudQueueMessageToByteArray);
 
+            converterManager.AddConverter<object, JObject, QueueAttribute>(SerializeToJobject);
             converterManager.AddConverter<string, IStorageQueueMessage, QueueAttribute>(ConvertStringToCloudQueueMessage);
             converterManager.AddConverter<IStorageQueueMessage, string>(ConvertCloudQueueMessageToString);
 
@@ -69,6 +71,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 ValidateQueueAttribute, nameResolver, bindClient, bindSdkClient, bindAsyncCollector);
 
             return bindingProvider;
+        }
+
+        // Hook JObject serialization to so we can stamp the object with a causality marker. 
+        private static JObject SerializeToJobject(object input, QueueAttribute attrResolved, ValueBindingContext context)
+        {
+            JObject objectToken = JObject.FromObject(input, JsonSerialization.Serializer);
+            var functionInstanceId = context.FunctionInstanceId;
+            QueueCausalityManager.SetOwner(functionInstanceId, objectToken);
+
+            return objectToken;
         }
 
         // [Queue] has some pre-existing behavior where the storage account can be specified outside of the [Queue] attribute. 

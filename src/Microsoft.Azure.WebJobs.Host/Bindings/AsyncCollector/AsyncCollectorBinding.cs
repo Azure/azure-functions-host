@@ -13,20 +13,20 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     internal class AsyncCollectorBinding<TAttribute, TMessage> : BindingBase<TAttribute>
         where TAttribute : Attribute
     {
-        private readonly Func<TAttribute, IValueProvider> _argumentBuilder;
+        private readonly FuncArgumentBuilder<TAttribute> _argumentBuilder;
 
         public AsyncCollectorBinding(
             ParameterDescriptor param,
-            Func<TAttribute, IValueProvider> argumentBuilder,
+            FuncArgumentBuilder<TAttribute> argumentBuilder,
             AttributeCloner<TAttribute> cloner) 
             : base(cloner, param)
         {
             this._argumentBuilder = argumentBuilder;
         }
 
-        protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved)
+        protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved, ValueBindingContext context)
         {
-            var value = _argumentBuilder(attrResolved);
+            var value = _argumentBuilder(attrResolved, context);
             return Task.FromResult(value);
         }      
     }

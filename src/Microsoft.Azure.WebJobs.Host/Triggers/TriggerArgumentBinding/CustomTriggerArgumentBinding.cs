@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
@@ -11,12 +12,12 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     internal class CustomTriggerArgumentBinding<TMessage, TTriggerValue, TUserType> : 
         SimpleTriggerArgumentBinding<TMessage, TTriggerValue>
     {
-        private readonly Func<TMessage, Attribute, TUserType> _converter;
+        private readonly FuncConverter<TMessage, Attribute, TUserType> _converter;
 
         public CustomTriggerArgumentBinding(
             ITriggerBindingStrategy<TMessage, TTriggerValue> bindingStrategy, 
             IConverterManager converterManager,
-            Func<TMessage, Attribute, TUserType> converter) :
+            FuncConverter<TMessage, Attribute, TUserType> converter) :
             base(bindingStrategy, converterManager)
         {
             if (converter == null)
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
 
         internal override object Convert(TMessage value, Dictionary<string, object> bindingData)
         {
-            var obj = _converter(value, null);
+            var obj = _converter(value, null, null);
             return obj;
         }
     }

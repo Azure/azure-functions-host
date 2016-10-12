@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 _builder = builder;
             }
 
-            protected override async Task<IValueProvider> BuildAsync(TAttribute attrResolved)
+            protected override async Task<IValueProvider> BuildAsync(TAttribute attrResolved, ValueBindingContext context)
             {
                 string invokeString = Cloner.GetInvokeString(attrResolved);
                 object obj = await _builder(attrResolved, _parameter.ParameterType);
