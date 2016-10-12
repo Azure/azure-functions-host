@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json.Linq;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -85,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public static string ResolveNuGetPath(string baseKuduPath = null)
         {
             // Check if we have the path in the well known environment variable
-            string path = Environment.GetEnvironmentVariable(NugetPathEnvironmentKey);
+            string path = ScriptSettingsManager.Instance.GetSetting(NugetPathEnvironmentKey);
 
             //// If we don't have the path, try to get a fully qualified path to Kudu's NuGet copy.
             if (string.IsNullOrEmpty(path))
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static string GetNugetPackagesPath()
         {
             string nugetHome = null;
-            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            string home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             if (!string.IsNullOrEmpty(home))
             {
                 // We're hosted in Azure

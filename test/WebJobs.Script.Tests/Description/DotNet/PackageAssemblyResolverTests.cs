@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Xunit;
@@ -17,12 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _runPath;
         private readonly string _targetAssemblyFilePath;
         private readonly string _targetAssemblyPath;
+        private readonly ScriptSettingsManager _settingsManager;
 
         public PackageAssemblyResolverTests()
         {
+            _settingsManager = ScriptSettingsManager.Instance;
             _runPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             _lockFilePath = Path.Combine(_runPath, DotNetConstants.ProjectLockFileName);
-            _oldHomeEnv = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            _oldHomeEnv = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             _targetAssemblyPath = Path.Combine(_runPath, "data\\Functions\\packages\\nuget\\Test.Package\\1.0.0\\lib\\net45");
             _targetAssemblyFilePath = Path.Combine(_targetAssemblyPath, Path.GetFileName(this.GetType().Assembly.Location));
             Directory.CreateDirectory(_targetAssemblyPath);
@@ -33,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Create our Lock file using the current assembly as the target
             File.WriteAllText(_lockFilePath, string.Format(Resources.ProjectLockFileFormatString, Path.GetFileName(this.GetType().Assembly.Location)));
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _runPath);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _runPath);
         }
 
         public void Dispose()
@@ -43,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.Delete(_runPath, true);
             }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _oldHomeEnv);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _oldHomeEnv);
         }
 
         [Fact]

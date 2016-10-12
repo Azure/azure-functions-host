@@ -2,17 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Autofac;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class AutofacBootstrap
     {
-        internal static void Initialize(ContainerBuilder builder, WebHostSettings settings)
+        internal static void Initialize(ScriptSettingsManager settingsManager, ContainerBuilder builder, WebHostSettings settings)
         {
+            builder.RegisterType<ScriptSettingsManager>().SingleInstance();
+
             // register the resolver so that it is disposed when the container
             // is disposed
-            var webHostResolver = new WebHostResolver();
+            var webHostResolver = new WebHostResolver(settingsManager);
             builder.RegisterInstance(webHostResolver);
 
             // these services are externally owned by the WebHostResolver, and will be disposed

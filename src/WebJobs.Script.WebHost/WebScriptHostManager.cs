@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -41,8 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
-            : base(config, scriptHostFactory)
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
+            : base(config, settingsManager, scriptHostFactory)
         {
             _config = config;
             _metricsLogger = new WebHostMetricsLogger();
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostSettings = webHostSettings;
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, TraceLevel.Verbose);
+            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
             if (config.TraceWriter != null)
             {
                 config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
@@ -62,8 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, WebHostSettings webHostSettings)
-            : this(config, secretManager, webHostSettings, new ScriptHostFactory())
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
+            : this(config, secretManager, settingsManager, webHostSettings, new ScriptHostFactory())
         {
         }
 
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId));
+                return !string.IsNullOrEmpty(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
             }
         }
 
@@ -99,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _standbyMode.Value;
                 }
-                if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+                if (ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
                 {
                     return true;
                 }
@@ -219,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.HostConfig.StorageConnectionString = null;
                 config.HostConfig.DashboardConnectionString = null;
 
-                host = ScriptHost.Create(config);
+                host = ScriptHost.Create(ScriptSettingsManager.Instance, config);
                 traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
 
                 host.Start();

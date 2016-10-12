@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static ScriptSettingsManager _settingsManager;
 
         protected ScriptHost(ScriptHostConfiguration scriptConfig)
             : base(scriptConfig.HostConfig)
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_instanceId == null)
                 {
-                    _instanceId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)
+                    _instanceId = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
                         ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
 
                     _instanceId = _instanceId.Substring(0, 32);
@@ -94,6 +95,19 @@ namespace Microsoft.Azure.WebJobs.Script
             get
             {
                 return _restartEvent;
+            }
+        }
+
+        public ScriptSettingsManager SettingsManager
+        {
+            get
+            {
+                return _settingsManager;
+            }
+
+            private set
+            {
+                _settingsManager = value;
             }
         }
 
@@ -449,11 +463,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null)
+        public static ScriptHost Create(ScriptSettingsManager settingsManager = null, ScriptHostConfiguration scriptConfig = null)
         {
             if (scriptConfig == null)
             {
                 scriptConfig = new ScriptHostConfiguration();
+            }
+
+            _settingsManager = settingsManager;
+            if (settingsManager == null)
+            {
+                _settingsManager = ScriptSettingsManager.Instance;
             }
 
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
@@ -1096,7 +1116,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     string settingName = (string)isDisabledValue;
-                    string value = Environment.GetEnvironmentVariable(settingName);
+                    string value = _settingsManager.GetSetting(settingName);
                     if (!string.IsNullOrEmpty(value) &&
                         (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
                          string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
@@ -1111,7 +1131,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool IsDynamicSku()
         {
-            string hostingPlan = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku);
+            string hostingPlan = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
             return hostingPlan != null && hostingPlan == "Dynamic";
         }
 

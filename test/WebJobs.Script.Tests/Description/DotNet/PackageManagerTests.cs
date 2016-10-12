@@ -1,12 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Xunit;
 
@@ -14,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 {
     public class PackageManagerTests
     {
+        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
+
         [Theory]
         [InlineData(@"ProjectWithLockMatch", false)]
         [InlineData(@"FunctionWithNoProject", false)]
@@ -43,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         [Fact]
         public void ResolveNuGetPath_Local_WithNoEnvironmentHint_ReturnsExpectedResult()
         {
-            using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", null))
+            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
             {
                 string result = PackageManager.ResolveNuGetPath();
 
@@ -56,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         {
             string path = @"c:\some\path\to\nuget.exe";
 
-            using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", path))
+            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", path))
             {
                 string result = PackageManager.ResolveNuGetPath();
 
@@ -81,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 Directory.CreateDirectory(expectedKuduPath);
                 Directory.CreateDirectory(Path.Combine(kuduBasePath, @"kudu1"));
 
-                using (var variables = new TestScopedEnvironmentVariables("AzureWebJobs_NuGetPath", null))
+                using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
                 {
                     string result = PackageManager.ResolveNuGetPath(kuduBasePath);
 

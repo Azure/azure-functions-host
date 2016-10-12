@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -12,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool disposed = false;
 
         public WebHostMetricsLogger()
-            : this(new EventGenerator(), 5)
+            : this(ScriptSettingsManager.Instance, new EventGenerator(), 5)
         {
         }
 
@@ -21,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsEventManager = eventManager;
         }
 
-        public WebHostMetricsLogger(IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
+        public WebHostMetricsLogger(ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
         {
-            _metricsEventManager = new MetricsEventManager(eventGenerator, metricEventIntervalInSeconds);
+            _metricsEventManager = new MetricsEventManager(settingsManager, eventGenerator, metricEventIntervalInSeconds);
         }
 
         public object BeginEvent(string eventName)

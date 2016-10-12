@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
@@ -19,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeFunctionGenerationTests
     {
+        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
+
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
@@ -195,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             Collection<FunctionDescriptor> functionDescriptors = null;
-            using (ScriptHost host = ScriptHost.Create(scriptConfig))
+            using (ScriptHost host = ScriptHost.Create(SettingsManager, scriptConfig))
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
                 {

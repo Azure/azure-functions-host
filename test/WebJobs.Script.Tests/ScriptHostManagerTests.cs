@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
@@ -19,6 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait("Category", "E2E")]
     public class ScriptHostManagerTests
     {
+        private readonly ScriptSettingsManager _settingsManager;
+
+        public ScriptHostManagerTests()
+        {
+            _settingsManager = ScriptSettingsManager.Instance;
+        }
         // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes. 
         // Test with timers: 
         [Fact]
@@ -87,10 +94,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var hostMock = new Mock<ScriptHost>(config);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<ScriptHostConfiguration>()))
+            factoryMock.Setup(f => f.Create(_settingsManager, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, factoryMock.Object);
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object);
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
@@ -115,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Throw = true
             };
-            var hostManager = new ScriptHostManager(config, scriptHostFactory);
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory);
             Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
 
             // we expect a host exception immediately
@@ -198,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public bool Throw { get; set; }
 
-            public ScriptHost Create(ScriptHostConfiguration config)
+            public ScriptHost Create(ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
             {
                 if (Throw)
                 {
@@ -212,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return ScriptHost.Create(config);
+                return ScriptHost.Create(settingsManager, config);
             }
         }
     }

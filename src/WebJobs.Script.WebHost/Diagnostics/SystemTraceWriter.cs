@@ -4,22 +4,25 @@
 using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemTraceWriter : TraceWriter
     {
         private IEventGenerator _eventGenerator;
+        private ScriptSettingsManager _settingsManager;
         private string _appName;
         private string _subscriptionId;
-
-        public SystemTraceWriter(TraceLevel level) : this(new EventGenerator(), level)
+        
+        public SystemTraceWriter(TraceLevel level) : this(new EventGenerator(), ScriptSettingsManager.Instance, level)
         {
         }
 
-        public SystemTraceWriter(IEventGenerator eventGenerator, TraceLevel level) : base(level)
+        public SystemTraceWriter(IEventGenerator eventGenerator, ScriptSettingsManager settingsManager, TraceLevel level) : base(level)
         {
-            _appName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+            _settingsManager = settingsManager;
+            _appName = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteName);
             _subscriptionId = Utility.GetSubscriptionId();
             _eventGenerator = eventGenerator;
         }

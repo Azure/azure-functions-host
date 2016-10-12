@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -15,12 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 {
     public class DotNetCompilationServiceFactoryTests
     {
+        private readonly ScriptSettingsManager _settingsManager = ScriptSettingsManager.Instance;
+
         [Fact]
         public void OptimizationLevel_CompilationReleaseModeSetToTrue_ReturnsRelease()
         {
             ResetOptimizationFlag();
 
-            using (var variables = new TestScopedEnvironmentVariables(EnvironmentSettingNames.CompilationReleaseMode, "True"))
+            using (var variables = new TestScopedSettings(_settingsManager, EnvironmentSettingNames.CompilationReleaseMode, "True"))
             {
                 Assert.Equal(OptimizationLevel.Release, DotNetCompilationServiceFactory.OptimizationLevel);
             }
@@ -31,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         {
             ResetOptimizationFlag();
 
-            using (var variables = new TestScopedEnvironmentVariables(EnvironmentSettingNames.CompilationReleaseMode, "False"))
+            using (var variables = new TestScopedSettings(_settingsManager, EnvironmentSettingNames.CompilationReleaseMode, "False"))
             {
                 Assert.Equal(OptimizationLevel.Debug, DotNetCompilationServiceFactory.OptimizationLevel);
             }
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         {
             ResetOptimizationFlag();
 
-            using (var variables = new TestScopedEnvironmentVariables(EnvironmentSettingNames.AzureWebsiteInstanceId, "123"))
+            using (var variables = new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "123"))
             {
                 Assert.Equal(OptimizationLevel.Release, DotNetCompilationServiceFactory.OptimizationLevel);
             }
@@ -59,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 { EnvironmentSettingNames.RemoteDebuggingPort, "1234" }
             };
 
-            using (new TestScopedEnvironmentVariables(variables))
+            using (new TestScopedSettings(_settingsManager, variables))
             {
                 Assert.Equal(OptimizationLevel.Debug, DotNetCompilationServiceFactory.OptimizationLevel);
             }

@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
 using Xunit;
@@ -16,17 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IEventGenerator> _mockEventGenerator;
         private readonly string _websiteName;
         private readonly string _subscriptionId;
+        private readonly ScriptSettingsManager _settingsManager;
 
         public SystemTraceWriterTests()
         {
+            _settingsManager = ScriptSettingsManager.Instance;
+
             _subscriptionId = "e3235165-1600-4819-85f0-2ab362e909e4";
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
 
             _websiteName = "functionstest";
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
-            _traceWriter = new SystemTraceWriter(_mockEventGenerator.Object, TraceLevel.Verbose);
+            _traceWriter = new SystemTraceWriter(_mockEventGenerator.Object, _settingsManager, TraceLevel.Verbose);
         }
 
         [Fact]
@@ -71,8 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, null);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, null);
         }
     }
 }

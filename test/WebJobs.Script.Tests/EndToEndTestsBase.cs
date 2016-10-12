@@ -8,12 +8,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
         private INameResolver _nameResolver = new DefaultNameResolver();
+        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
         public EndToEndTestsBase(TTestFixture fixture)
         {
@@ -283,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.           
             // The format should be: Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}
             // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
-            string apiHubConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsDropBox");
+            string apiHubConnectionString = SettingsManager.GetSetting("AzureWebJobsDropBox");
 
             if (string.IsNullOrEmpty(apiHubConnectionString))
             {

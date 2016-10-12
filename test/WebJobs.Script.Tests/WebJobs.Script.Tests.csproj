@@ -467,7 +467,7 @@
     <Compile Include="TestInvoker.cs" />
     <Compile Include="HttpTriggerBindingTests.cs" />
     <Compile Include="PowerShellFunctionGenerationTests.cs" />
-    <Compile Include="TestScopedEnvironmentVariables.cs" />
+    <Compile Include="TestScopedSettings.cs" />
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />

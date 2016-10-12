@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,9 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private bool _encryptionSupported;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
+        private static ScriptSettingsManager _settingsManager;
 
-        public DefaultKeyValueConverterFactory()
+        public DefaultKeyValueConverterFactory(ScriptSettingsManager settingsManager)
         {
+            _settingsManager = settingsManager;
             _encryptionSupported = IsEncryptionSupported();
         }
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return FeatureFlags.IsEnabled("SecretEncryption");
             }
 
-            return Environment.GetEnvironmentVariable(AzureWebsiteLocalEncryptionKey) != null;
+            return _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
         }
 
         public IKeyValueReader GetValueReader(Key key)

@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string ProgramFiles64bitKey = "ProgramW6432";
         private static ScriptType[] _supportedScriptTypes = new ScriptType[] { ScriptType.WindowsBatch, ScriptType.Python, ScriptType.PHP, ScriptType.Bash };
         private readonly string _scriptFilePath;
+        private static ScriptHost _host;
 
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             : base(host, functionMetadata, traceWriterFactory)
         {
             _scriptFilePath = scriptFilePath;
+            _host = host;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
         }
@@ -150,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // first see if the path is specified as an environment variable
             // (useful for running locally outside of Azure)
-            string path = Environment.GetEnvironmentVariable(BashPathEnvironmentKey);
+            string path = _host.SettingsManager.GetSetting(BashPathEnvironmentKey);
             if (!string.IsNullOrEmpty(path))
             {
                 path = Path.Combine(path, "bash.exe");
@@ -172,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string path = Path.Combine(programFiles, relativeX86Path);
             if (!File.Exists(path))
             {
-                programFiles = Environment.GetEnvironmentVariable(ProgramFiles64bitKey) ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                programFiles = _host.SettingsManager.GetSetting(ProgramFiles64bitKey) ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                 path = Path.Combine(programFiles, relativeX64Path);
             }
 

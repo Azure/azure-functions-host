@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -26,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(string secretsPath, bool createHostSecretsIfMissing = false)
-            : this(secretsPath, new DefaultKeyValueConverterFactory(), createHostSecretsIfMissing)
+        public SecretManager(ScriptSettingsManager settingsManager, string secretsPath, bool createHostSecretsIfMissing = false)
+            : this(secretsPath, new DefaultKeyValueConverterFactory(settingsManager), createHostSecretsIfMissing)
         {
         }
 

@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AdminControllerTests
     {
+        private readonly ScriptSettingsManager _settingsManager;
         private Mock<ScriptHost> hostMock;
         private Mock<WebScriptHostManager> managerMock;
         private Collection<FunctionDescriptor> testFunctions;
@@ -29,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public AdminControllerTests()
         {
+            _settingsManager = ScriptSettingsManager.Instance;
             testFunctions = new Collection<FunctionDescriptor>();
 
             var config = new ScriptHostConfiguration();
@@ -37,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ISecretManager secretManager = new SecretManager();
             WebHostSettings settings = new WebHostSettings();
-            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, secretManager, settings });
+            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, secretManager, _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
             testController = new AdminController(managerMock.Object);

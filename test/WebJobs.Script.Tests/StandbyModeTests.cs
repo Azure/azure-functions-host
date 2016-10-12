@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
 
@@ -13,9 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly WebHostResolver _webHostResolver;
 
+        private readonly ScriptSettingsManager _settingsManager;
+
         public StandbyModeTests()
         {
-            _webHostResolver = new WebHostResolver();
+            _settingsManager = ScriptSettingsManager.Instance;
+            _webHostResolver = new WebHostResolver(_settingsManager);
         }
 
         [Fact]
@@ -29,14 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (new TestEnvironment())
             {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.Equal(true, WebScriptHostManager.InStandbyMode);
 
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
             }
         }
@@ -74,19 +78,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 T next = default(T);
                 try
                 {
-                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
                     var settings = GetWebHostSettings();
                     prev = func(settings);
                     Assert.NotNull(prev);
 
-                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                     current = func(settings);
                     Assert.NotNull(current);
                     Assert.NotSame(prev, current);
 
                     // test only set one way
-                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                     next = func(settings);
                     Assert.NotNull(next);
                     Assert.Same(next, current);
@@ -121,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private WebHostSettings GetWebHostSettings()
         {
-            var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            var home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             return new WebHostSettings
             {
                 IsSelfHost = true,
@@ -138,16 +142,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestEnvironment : IDisposable
         {
+            private readonly ScriptSettingsManager _settingsManager;
             private string _home;
             private string _prevHome;
 
             public TestEnvironment()
             {
-                _prevHome = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+                _settingsManager = ScriptSettingsManager.Instance;
+                _prevHome = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
 
                 _home = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
                 Directory.CreateDirectory(_home);
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _home);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _home);
 
                 Reset();
             }
@@ -156,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Reset();
 
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, _prevHome);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _prevHome);
                 try
                 {
                     Directory.Delete(_home, recursive: true);
@@ -170,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private void Reset()
             {
                 WebScriptHostManager.ResetStandbyMode();
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
             }
         }
     }

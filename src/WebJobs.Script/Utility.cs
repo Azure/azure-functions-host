@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public static string GetSubscriptionId()
         {
-            string ownerName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
+            string ownerName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
             if (!string.IsNullOrEmpty(ownerName))
             {
                 int idx = ownerName.IndexOf('+');

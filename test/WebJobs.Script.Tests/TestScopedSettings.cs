@@ -3,25 +3,25 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class TestScopedEnvironmentVariables : IDisposable
+    public class TestScopedSettings : IDisposable
     {
         private readonly IDictionary<string, string> _variables;
         private readonly IDictionary<string, string> _existingVariables;
+        private readonly ScriptSettingsManager _settingsManager;
         private bool _disposed = false;
 
-        public TestScopedEnvironmentVariables(string name, string value)
-            : this(new Dictionary<string, string> { { name, value } })
+        public TestScopedSettings(ScriptSettingsManager settingsManager, string name, string value)
+            : this(settingsManager, new Dictionary<string, string> { { name, value } })
         {
         }
 
-        public TestScopedEnvironmentVariables(IDictionary<string, string> variables)
+        public TestScopedSettings(ScriptSettingsManager settingsManager, IDictionary<string, string> variables)
         {
+            _settingsManager = settingsManager;
             _variables = variables;
             _existingVariables = new Dictionary<string, string>(variables.Count);
 
@@ -32,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             foreach (var item in _variables)
             {
-                _existingVariables.Add(item.Key, Environment.GetEnvironmentVariable(item.Key));
+                _existingVariables.Add(item.Key, _settingsManager.GetSetting(item.Key));
 
-                Environment.SetEnvironmentVariable(item.Key, item.Value);
+                _settingsManager.SetSetting(item.Key, item.Value);
             }
         }
 
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             foreach (var item in _variables)
             {
-                Environment.SetEnvironmentVariable(item.Key, _existingVariables[item.Key]);
+                _settingsManager.SetSetting(item.Key, _existingVariables[item.Key]);
             }
 
             _existingVariables.Clear();

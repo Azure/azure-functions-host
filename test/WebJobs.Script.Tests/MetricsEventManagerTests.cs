@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -26,9 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly List<FunctionExecutionEventArguments> _functionExecutionEventArguments;
         private readonly List<SystemMetricEvent> _events;
+        private readonly ScriptSettingsManager _settingsManager;
 
         public MetricsEventManagerTests()
         {
+            _settingsManager = ScriptSettingsManager.Instance;
             _functionExecutionEventArguments = new List<FunctionExecutionEventArguments>();
 
             var mockEventGenerator = new Mock<IEventGenerator>();
@@ -68,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     _events.Add(evt);
                 });
 
-            _metricsEventManager = new MetricsEventManager(mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
+            _metricsEventManager = new MetricsEventManager(_settingsManager, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -244,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(_settingsManager, mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;

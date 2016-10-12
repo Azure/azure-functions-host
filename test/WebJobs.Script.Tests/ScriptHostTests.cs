@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -23,10 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
+        private readonly ScriptSettingsManager _settingsManager;
 
         public ScriptHostTests(TestFixture fixture)
         {
             _fixture = fixture;
+            _settingsManager = ScriptSettingsManager.Instance;
         }
 
         [Theory]
@@ -283,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                ScriptHost.Create(scriptConfig);
+                ScriptHost.Create(_settingsManager, scriptConfig);
             });
 
             Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
@@ -500,13 +503,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
             }
             finally
             {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
         }
 
@@ -537,7 +540,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
                 config["functionTimeout"] = "00:05:01";
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
@@ -547,7 +550,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             finally
             {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
         }
 
@@ -808,11 +811,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture
         {
+            private readonly ScriptSettingsManager _settingsManager;
+
             public TestFixture()
             {
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
-                Host = ScriptHost.Create(config);
+                _settingsManager = ScriptSettingsManager.Instance;
+                Host = ScriptHost.Create(_settingsManager, config);
             }
 
             public ScriptHost Host { get; private set; }

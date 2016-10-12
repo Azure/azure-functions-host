@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.ApiHub.Table.Internal;
 using Microsoft.Azure.WebJobs.Extensions.ApiHub.Common;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
@@ -28,12 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
 
         private static readonly Random Random = new Random();
 
+        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
+
         public static void SetDefaultConnectionFactory()
         {
             // Setup the default ApiHub connection factory to use an actual SqlAzure connector 
             // if the AzureWebJobsSql environment variable specifies the connection string,
             // otherwise use a fake tabular connector.
-            var connectionString = Environment.GetEnvironmentVariable(Key);
+            var connectionString = SettingsManager.GetSetting(Key);
             if (string.IsNullOrEmpty(connectionString))
             {
                 var tableAdapter = new FakeTabularConnectorAdapter();
@@ -44,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
                 // The value doesn't really matter here - this is just so we
                 // pass the Connection value validation that ScriptHost performs
                 // on startup
-                Environment.SetEnvironmentVariable(Key, "TestMockSqlConnection");
+                SettingsManager.SetSetting(Key, "TestMockSqlConnection");
             }
             else
             {

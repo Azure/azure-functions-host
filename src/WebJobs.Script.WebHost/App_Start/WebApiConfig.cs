@@ -8,6 +8,7 @@ using System.Web;
 using System.Web.Http;
 using Autofac;
 using Autofac.Integration.WebApi;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 
@@ -15,12 +16,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebApiConfig
     {
+        private static ScriptSettingsManager _settingsManager;
+
         public static void Register(HttpConfiguration config)
         {
-            Register(config, GetDefaultSettings());
+            _settingsManager = ScriptSettingsManager.Instance;
+            Register(config, _settingsManager, GetDefaultSettings());
         }
 
-        public static void Register(HttpConfiguration config, WebHostSettings settings = null, Action<ContainerBuilder, WebHostSettings> dependencyCallback = null)
+        public static void Register(HttpConfiguration config, ScriptSettingsManager settingsManager, WebHostSettings settings = null, Action<ContainerBuilder, WebHostSettings> dependencyCallback = null)
         {
             if (config == null)
             {
@@ -30,6 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 throw new ArgumentNullException("settings");
             }
+
+            if (settingsManager == null)
+            {
+                throw new ArgumentNullException("settingsManager");
+            }
+
+            _settingsManager = settingsManager;
 
             // Delete hostingstart.html if any. Azure creates that in all sites by default
             string hostingStart = Path.Combine(settings.ScriptPath, "hostingstart.html");
@@ -43,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
-            AutofacBootstrap.Initialize(builder, settings);
+            AutofacBootstrap.Initialize(_settingsManager, builder, settings);
 
             // Invoke registration callback
             dependencyCallback?.Invoke(builder, settings);
@@ -88,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static void PrependFoldersToEnvironmentPath()
         {
             // Only do this when %HOME% is defined (normally on Azure)
-            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             if (!string.IsNullOrEmpty(home))
             {
                 // Create the tools folder if it doesn't exist
@@ -98,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var folders = new List<string>();
                 folders.Add(Path.Combine(home, @"site\tools"));
 
-                string path = Environment.GetEnvironmentVariable("PATH");
+                string path = _settingsManager.GetSetting("PATH");
                 string additionalPaths = String.Join(";", folders);
 
                 // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
@@ -106,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     path = additionalPaths + ";" + path;
 
-                    Environment.SetEnvironmentVariable("PATH", path);
+                    _settingsManager.SetSetting("PATH", path);
                 }
             }
         }
@@ -115,11 +126,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             WebHostSettings settings = new WebHostSettings();
 
-            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             bool isLocal = string.IsNullOrEmpty(home);
             if (isLocal)
             {
-                settings.ScriptPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
+                settings.ScriptPath = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
             }

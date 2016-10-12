@@ -8,9 +8,9 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class PowerShellFunctionGenerationTests
     {
         private const string FunctionName = "TestFunction";
+        private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
         [Fact]
         public void GenerateHttpTriggerFunction()
@@ -155,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath
             };
-            var host = ScriptHost.Create(scriptConfig);
+            var host = ScriptHost.Create(SettingsManager, scriptConfig);
             return new ScriptHostInfo(host, scriptConfig, rootPath);
         }
     }

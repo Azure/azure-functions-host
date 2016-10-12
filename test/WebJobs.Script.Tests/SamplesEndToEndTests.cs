@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -32,11 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait("Category", "E2E")]
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
+        private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
         public SamplesEndToEndTests(TestFixture fixture)
         {
             _fixture = fixture;
+            _settingsManager = ScriptSettingsManager.Instance;
         }
 
         [Fact]
@@ -66,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             else
             {
-                string eventHubPath = Environment.GetEnvironmentVariable("AzureWebJobsEventHubPath");
+                string eventHubPath = _settingsManager.GetSetting("AzureWebJobsEventHubPath");
                 eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubPath);
             }
 
@@ -189,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Home_Get_WithHomepageDisabled_Succeeds()
         {
-            using (new TestScopedEnvironmentVariables(EnvironmentSettingNames.AzureWebJobsDisableHomepage, bool.TrueString))
+            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebJobsDisableHomepage, bool.TrueString))
             {
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
 
@@ -860,12 +863,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : IDisposable
         {
+            private readonly ScriptSettingsManager _settingsManager;
             private HttpConfiguration _config;
 
             public TestFixture()
             {
                 _config = new HttpConfiguration();
-
+                _settingsManager = ScriptSettingsManager.Instance;
                 HostSettings = new WebHostSettings
                 {
                     IsSelfHost = true,
@@ -873,7 +877,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                     SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
                 };
-                WebApiConfig.Register(_config, HostSettings);
+                WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
                 HttpServer = new HttpServer(_config);
                 this.HttpClient = new HttpClient(HttpServer);
