@@ -30,12 +30,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRouteFactory routeFactory = new HttpRouteFactory("api");
 
             HttpRouteCollection routes = new HttpRouteCollection();
-            var route1 = routeFactory.AddRoute("route1", "foo/bar/baz", routes);
-            var route2 = routeFactory.AddRoute("route2", "foo/bar/baz", routes);
+            var route1 = routeFactory.AddRoute("route1", "foo/bar/baz", null, routes);
+            var route2 = routeFactory.AddRoute("route2", "foo/bar/baz", null, routes);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://host/api/foo/bar/baz");
             var routeData = routes.GetRouteData(request);
             Assert.Same(route1, routeData.Route);
+        }
+
+        [Fact]
+        public static void AddRoute_AppliesHttpMethodConstraints()
+        {
+            HttpRouteFactory routeFactory = new HttpRouteFactory("api");
+
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route1 = routeFactory.AddRoute("route1", "products/{category}/{id?}", new HttpMethod[] { HttpMethod.Get }, routes);
+            var route2 = routeFactory.AddRoute("route2", "products/{category}/{id}", new HttpMethod[] { HttpMethod.Post }, routes);
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://host/api/products/electronics/123");
+            var routeData = routes.GetRouteData(request);
+            Assert.Same(route1, routeData.Route);
+
+            request = new HttpRequestMessage(HttpMethod.Get, "http://host/api/products/electronics");
+            routeData = routes.GetRouteData(request);
+            Assert.Same(route1, routeData.Route);
+
+            request = new HttpRequestMessage(HttpMethod.Post, "http://host/api/products/electronics/123");
+            routeData = routes.GetRouteData(request);
+            Assert.Same(route2, routeData.Route);
         }
     }
 }

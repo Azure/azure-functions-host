@@ -15,6 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             AuthLevel = AuthorizationLevel.Function;
         }
 
+        /// <summary>
+        /// Gets or sets the route template for the function. Can include
+        /// route parameters using WebApi supported syntax. If not specified,
+        /// will default to the function name.
+        /// See: https://www.asp.net/web-api/overview/web-api-routing-and-actions/attribute-routing-in-web-api-2#constraints
+        /// </summary>
         public string Route { get; set; }
 
         [JsonProperty(ItemConverterType = typeof(HttpMethodJsonConverter))]

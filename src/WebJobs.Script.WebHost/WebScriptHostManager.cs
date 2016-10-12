@@ -417,18 +417,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             foreach (var function in functions)
             {
-                HttpTriggerBindingMetadata httpTriggerBinding = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.SingleOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
+                var httpTriggerBinding = function.Metadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
                 if (httpTriggerBinding != null)
                 {
-                    string functionName = function.Metadata.Name;
-                    string route = httpTriggerBinding.Route;
-                    if (string.IsNullOrEmpty(route))
-                    {
-                        // if no explicit route is provided, default to the function name
-                        route = functionName;
-                    }
-
-                    var httpRoute = httpRouteFactory.AddRoute(functionName, route, _httpRoutes);
+                    var httpRoute = httpRouteFactory.AddRoute(function.Metadata.Name, httpTriggerBinding.Route, httpTriggerBinding.Methods, _httpRoutes);
                     _httpFunctions.Add(httpRoute, function);
                 }
             }

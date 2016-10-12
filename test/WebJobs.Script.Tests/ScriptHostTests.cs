@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -633,6 +635,167 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
+        }
+
+        [Fact]
+        public void HttpRoutesConflict_ReturnsExpectedResult()
+        {
+            var first = new HttpTriggerBindingMetadata
+            {
+                Route = "foo/bar/baz"
+            };
+            var second = new HttpTriggerBindingMetadata
+            {
+                Route = "foo/bar"
+            };
+            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerBindingMetadata
+            {
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerBindingMetadata
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+
+            // no conflict since methods do not intersect
+            first = new HttpTriggerBindingMetadata
+            {
+                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head },
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerBindingMetadata
+            {
+                Methods = new Collection<HttpMethod>() { HttpMethod.Post, HttpMethod.Put },
+                Route = "foo/bar/baz"
+            };
+            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerBindingMetadata
+            {
+                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head },
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerBindingMetadata
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerBindingMetadata
+            {
+                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head, HttpMethod.Put, HttpMethod.Post },
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerBindingMetadata
+            {
+                Methods = new Collection<HttpMethod>() { HttpMethod.Put },
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+        }
+
+        [Fact]
+        public void TryParseFunctionMetadata_ValidatesHttpRoutes()
+        {
+            // first add an http function
+            JObject functionConfig = new JObject();
+            functionConfig.Add("bindings", new JArray(new JObject
+            {
+                { "type", "httpTrigger" },
+                { "name", "req" },
+                { "direction", "in" },
+                { "methods", new JArray("get") },
+                { "route", "products/{category}/{id?}" }
+            }));
+            var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var functionFilesProvider = new Lazy<string[]>(() => new string[] { "run.csx" });
+            FunctionMetadata functionMetadata = null;
+            string functionError = null;
+            bool result = ScriptHost.TryParseFunctionMetadata("test", functionConfig, mappedHttpFunctions, traceWriter, functionFilesProvider, out functionMetadata, out functionError);
+            Assert.True(result);
+            Assert.NotNull(functionMetadata);
+            Assert.Null(functionError);
+            Assert.Equal(1, mappedHttpFunctions.Count);
+            Assert.True(mappedHttpFunctions.ContainsKey("test"));
+            Assert.Equal("run.csx", functionMetadata.ScriptFile);
+
+            // add another for a completely different route
+            functionConfig["bindings"] = new JArray(new JObject
+            {
+                { "type", "httpTrigger" },
+                { "name", "req" },
+                { "direction", "in" },
+                { "methods", new JArray("get") },
+                { "route", "/foo/bar/baz/" }
+            });
+            functionMetadata = null;
+            functionError = null;
+            result = ScriptHost.TryParseFunctionMetadata("test2", functionConfig, mappedHttpFunctions, traceWriter, functionFilesProvider, out functionMetadata, out functionError);
+            Assert.True(result);
+            Assert.NotNull(functionMetadata);
+            Assert.Null(functionError);
+            Assert.True(mappedHttpFunctions.ContainsKey("test2"));
+            Assert.Equal(2, mappedHttpFunctions.Count);
+
+            // add another that varies from another only by http method
+            functionConfig["bindings"] = new JArray(new JObject
+            {
+                { "type", "httpTrigger" },
+                { "name", "req" },
+                { "direction", "in" },
+                { "methods", new JArray("put", "post") },
+                { "route", "/foo/bar/baz" }
+            });
+            functionMetadata = null;
+            functionError = null;
+            result = ScriptHost.TryParseFunctionMetadata("test3", functionConfig, mappedHttpFunctions, traceWriter, functionFilesProvider, out functionMetadata, out functionError);
+            Assert.True(result);
+            Assert.NotNull(functionMetadata);
+            Assert.Null(functionError);
+            Assert.True(mappedHttpFunctions.ContainsKey("test3"));
+            Assert.Equal(3, mappedHttpFunctions.Count);
+
+            // now try to add a function for the same route
+            // where the http methods overlap
+            functionConfig["bindings"] = new JArray(new JObject
+            {
+                { "type", "httpTrigger" },
+                { "name", "req" },
+                { "direction", "in" },
+                { "route", "foo/bar/baz" }
+            });
+            functionMetadata = null;
+            functionError = null;
+            result = ScriptHost.TryParseFunctionMetadata("test4", functionConfig, mappedHttpFunctions, traceWriter, functionFilesProvider, out functionMetadata, out functionError);
+            Assert.False(result);
+            Assert.NotNull(functionMetadata);
+            Assert.True(functionError.StartsWith("The route specified conflicts with the route defined by function"));
+            Assert.Equal(3, mappedHttpFunctions.Count);
+
+            // try to add a route under reserved admin route
+            functionConfig["bindings"] = new JArray(new JObject
+            {
+                { "type", "httpTrigger" },
+                { "name", "req" },
+                { "direction", "in" },
+                { "route", "admin/foo/bar" }
+            });
+            functionMetadata = null;
+            functionError = null;
+            result = ScriptHost.TryParseFunctionMetadata("test5", functionConfig, mappedHttpFunctions, traceWriter, functionFilesProvider, out functionMetadata, out functionError);
+            Assert.False(result);
+            Assert.NotNull(functionMetadata);
+            Assert.Equal(3, mappedHttpFunctions.Count);
+            Assert.Equal("The specified route conflicts with one or more built in routes.", functionError);
         }
 
         public class AssemblyMock : Assembly

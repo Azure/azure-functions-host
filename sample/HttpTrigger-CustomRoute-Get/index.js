@@ -15,11 +15,11 @@ module.exports = function (context, req) {
         // multiple products
         result = [
             {
-                id: 123,
+                id: '12ec126e-3208-4542-a4a0-30e65438832a',
                 category: req.params.category
             },
             {
-                id: 456,
+                id: '4e2796ae-b865-4071-8a20-2a15cbaf856c',
                 category: req.params.category
             }
         ];
