@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets the last host <see cref="Exception"/> that has occurred.
         /// </summary>
-        public Exception LastError { get; private set; }
+        public virtual Exception LastError { get; private set; }
 
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
