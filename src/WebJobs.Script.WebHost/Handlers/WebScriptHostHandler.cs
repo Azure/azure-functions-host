@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 // initialize. This might happen if http requests come in while the
                 // host is starting up for the first time, or if it is restarting.
                 TimeSpan timeWaited = TimeSpan.Zero;
-                while (!scriptHostManager.IsRunning && (timeWaited < _hostTimeoutSeconds))
+                while (!scriptHostManager.IsRunning && scriptHostManager.LastError == null && (timeWaited < _hostTimeoutSeconds))
                 {
                     await Task.Delay(_hostRunningPollIntervalMs);
                     timeWaited += TimeSpan.FromMilliseconds(_hostRunningPollIntervalMs);
