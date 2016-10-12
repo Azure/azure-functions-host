@@ -40,5 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _interceptor(traceEvent);
             InnerWriter.Trace(traceEvent);
         }
+
+        public override void Flush()
+        {
+            InnerWriter.Flush();
+            base.Flush();
+        }
     }
 }
