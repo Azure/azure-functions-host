@@ -186,8 +186,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.ScriptFile = Path.Combine(rootPath, @"Common\test.js");
             metadata.Bindings.Add(trigger);
 
-            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
-            metadatas.Add(metadata);
+            List<FunctionMetadata> functions = new List<FunctionMetadata>();
+            functions.Add(metadata);
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new NodeFunctionDescriptorProvider(host, scriptConfig)
                 };
 
-                functionDescriptors = host.ReadFunctions(metadatas, descriptorProviders);
+                functionDescriptors = host.ReadFunctions(functions, descriptorProviders);
             }
 
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);

@@ -35,19 +35,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
-        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
+        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> functions, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
 
             if (bindings != null)
             {
-                foreach (var bindingMetadata in bindingMetadatas)
+                foreach (var function in functions)
                 {
-                    string type = bindingMetadata.Type.ToLowerInvariant();
+                    string type = function.Type.ToLowerInvariant();
                     switch (type)
                     {
                         case "table":
-                            TableBindingMetadata tableBindingMetadata = (TableBindingMetadata)bindingMetadata;
+                            TableBindingMetadata tableBindingMetadata = (TableBindingMetadata)function;
                             bindings.Add(new TableBinding(config, tableBindingMetadata, fileAccess));
                             break;
                         case "http":
@@ -55,11 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
-                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
+                            bindings.Add(new HttpBinding(config, function, FileAccess.Write));
                             break;
                         default:
                             FunctionBinding binding = null;
-                            if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
+                            if (TryParseFunctionBinding(config, function.Raw, out binding))
                             {
                                 bindings.Add(binding);
                             }

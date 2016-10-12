@@ -134,14 +134,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(trigger);
             metadata.ScriptType = ScriptType.PowerShell;
 
-            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
-            metadatas.Add(metadata);
+            List<FunctionMetadata> functions = new List<FunctionMetadata>();
+            functions.Add(metadata);
             FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
             {
                 new PowerShellFunctionDescriptorProvider(scriptHostInfo.Host, scriptHostInfo.Configuration)
             };
 
-            var functionDescriptors = scriptHostInfo.Host.ReadFunctions(metadatas, descriptorProviders);
+            var functionDescriptors = scriptHostInfo.Host.ReadFunctions(functions, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();

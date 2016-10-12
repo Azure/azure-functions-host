@@ -336,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // read all script functions and apply to JobHostConfiguration
-                Collection<FunctionDescriptor> functions = ReadFunctions(ScriptConfig, descriptionProviders);
+                Collection<FunctionDescriptor> functions = ReadFunctions(descriptionProviders);
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
                 string defaultNamespace = "Host";
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
@@ -570,12 +570,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        private Collection<FunctionDescriptor> ReadFunctions(ScriptHostConfiguration config, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        private Collection<FunctionDescriptor> ReadFunctions(IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
-            string scriptRootPath = config.RootScriptPath;
-            List<FunctionMetadata> metadatas = new List<FunctionMetadata>();
+            var functions = new List<FunctionMetadata>();
 
-            foreach (var scriptDir in Directory.EnumerateDirectories(scriptRootPath))
+            foreach (var scriptDir in Directory.EnumerateDirectories(ScriptConfig.RootScriptPath))
             {
                 string functionName = null;
 
@@ -601,46 +600,24 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     ValidateFunctionName(functionName);
 
-                    // TODO: we need to define a json schema document and do
-                    // schema validation and give more informative responses 
                     string json = File.ReadAllText(functionConfigPath);
                     JObject functionConfig = JObject.Parse(json);
-                    FunctionMetadata metadata = ParseFunctionMetadata(functionName, functionConfig);
 
-                    if (metadata.IsExcluded)
+                    Lazy<string[]> functionFiles = new Lazy<string[]>(() => Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray());
+                    string functionError = null;
+                    FunctionMetadata functionMetadata = null;
+                    var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, TraceWriter, functionFiles, out functionMetadata, out functionError))
                     {
-                        TraceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                        // for functions in error, log the error and don't
+                        // add to the functions collection
+                        AddFunctionError(functionName, functionError);
                         continue;
                     }
-
-                    if (metadata.IsDisabled)
+                    else if (functionMetadata != null)
                     {
-                        TraceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
+                        functions.Add(functionMetadata);
                     }
-
-                    // determine the primary script
-                    string[] functionFiles = Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray();
-                    if (functionFiles.Length == 0)
-                    {
-                        AddFunctionError(functionName, "No function script files present.");
-                        continue;
-                    }
-                    string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
-                    if (string.IsNullOrEmpty(scriptFile))
-                    {
-                        AddFunctionError(functionName,
-                            "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
-                            "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
-                        continue;
-                    }
-                    metadata.ScriptFile = scriptFile;
-
-                    // determine the script type based on the primary script file extension
-                    metadata.ScriptType = ParseScriptType(metadata.ScriptFile);
-
-                    metadata.EntryPoint = (string)functionConfig["entryPoint"];
-
-                    metadatas.Add(metadata);
                 }
                 catch (Exception ex)
                 {
@@ -649,7 +626,100 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            return ReadFunctions(metadatas, descriptorProviders);
+            return ReadFunctions(functions, descriptorProviders);
+        }
+
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions, TraceWriter traceWriter, Lazy<string[]> functionFilesProvider, out FunctionMetadata functionMetadata, out string error)
+        {
+            error = null;
+            functionMetadata = ParseFunctionMetadata(functionName, functionConfig);
+
+            if (functionMetadata.IsExcluded)
+            {
+                traceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                functionMetadata = null;
+                return true;
+            }
+
+            if (functionMetadata.IsDisabled)
+            {
+                traceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
+            }
+
+            // determine the primary script
+            string[] functionFiles = functionFilesProvider.Value;
+            if (functionFiles.Length == 0)
+            {
+                error = "No function script files present.";
+                return false;
+            }
+            string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
+            if (string.IsNullOrEmpty(scriptFile))
+            {
+                error = 
+                    "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+                return false;
+            }
+            functionMetadata.ScriptFile = scriptFile;
+
+            // determine the script type based on the primary script file extension
+            functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
+
+            functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
+
+            var httpTriggerBindingMetadata = functionMetadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
+            if (httpTriggerBindingMetadata != null)
+            {
+                if (string.IsNullOrWhiteSpace(httpTriggerBindingMetadata.Route))
+                {
+                    // if no explicit route is provided, default to the function name
+                    httpTriggerBindingMetadata.Route = functionName;
+                }
+
+                // disallow custom routes in our own reserved route space
+                string httpRoute = httpTriggerBindingMetadata.Route.Trim('/').ToLowerInvariant();
+                if (httpRoute.StartsWith("admin"))
+                {
+                    error = "The specified route conflicts with one or more built in routes.";
+                    return false;
+                }
+
+                // prevent duplicate/conflicting routes
+                foreach (var pair in mappedHttpFunctions)
+                {
+                    if (HttpRoutesConflict(httpTriggerBindingMetadata, pair.Value))
+                    {
+                        error = $"The route specified conflicts with the route defined by function '{pair.Key}'.";
+                        return false;
+                    }
+                }
+
+                mappedHttpFunctions.Add(functionName, httpTriggerBindingMetadata);
+            }
+
+            return true;
+        }
+
+        // A route is in conflict if the route matches any other existing
+        // route and there is intersection in the http methods of the two functions
+        internal static bool HttpRoutesConflict(HttpTriggerBindingMetadata functionMetadata, HttpTriggerBindingMetadata otherFunctionMetadata)
+        {
+            if (string.Compare(functionMetadata.Route.Trim('/'), otherFunctionMetadata.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
+            {
+                // routes differ, so no conflict
+                return false;
+            }
+
+            if (functionMetadata.Methods == null || functionMetadata.Methods.Count == 0 ||
+                otherFunctionMetadata.Methods == null || otherFunctionMetadata.Methods.Count == 0)
+            {
+                // if either methods collection is null or empty that means
+                // "all methods", which will intersect with any method collection
+                return true;
+            }
+
+            return functionMetadata.Methods.Intersect(otherFunctionMetadata.Methods).Any();
         }
 
         internal static void ValidateFunctionName(string functionName)
@@ -723,10 +793,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> metadatas, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            foreach (FunctionMetadata metadata in metadatas)
+            foreach (FunctionMetadata metadata in functions)
             {
                 try
                 {

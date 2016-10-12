@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Routing;
@@ -24,10 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return _routeFactoryContext.CreateBuilder(routeTemplate);
         }
 
-        public IHttpRoute AddRoute(string routeName, string routeTemplate, HttpRouteCollection routes)
+        public IHttpRoute AddRoute(string routeName, string routeTemplate, IEnumerable<HttpMethod> methods, HttpRouteCollection routes)
         {
             var routeBuilder = CreateRouteBuilder(routeTemplate);
-            var httpRoute = routes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, routeBuilder.Constraints);
+            var constraints = routeBuilder.Constraints;
+            if (methods != null && methods.Count() > 0)
+            {
+                constraints.Add("httpMethod", new HttpMethodConstraint(methods.ToArray()));
+            }
+            var httpRoute = routes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
             routes.Add(routeName, httpRoute);
 
             return httpRoute;

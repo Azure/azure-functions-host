@@ -373,16 +373,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusTopicTrigger", "S
 		sample\ServiceBusTopicTrigger\index.js = sample\ServiceBusTopicTrigger\index.js
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute", "HttpTrigger-CustomRoute", "{02FF2DFF-D7FA-4823-9E91-56C93FB2D447}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute-Get", "HttpTrigger-CustomRoute-Get", "{02FF2DFF-D7FA-4823-9E91-56C93FB2D447}"
 	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-CustomRoute\function.json = sample\HttpTrigger-CustomRoute\function.json
-		sample\HttpTrigger-CustomRoute\index.js = sample\HttpTrigger-CustomRoute\index.js
+		sample\HttpTrigger-CustomRoute-Get\function.json = sample\HttpTrigger-CustomRoute-Get\function.json
+		sample\HttpTrigger-CustomRoute-Get\index.js = sample\HttpTrigger-CustomRoute-Get\index.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-CustomRoute", "HttpTrigger-CSharp-CustomRoute", "{5957100B-2FAA-4D67-8CB3-C30D30FD92F8}"
 	ProjectSection(SolutionItems) = preProject
 		sample\HttpTrigger-CSharp-CustomRoute\function.json = sample\HttpTrigger-CSharp-CustomRoute\function.json
 		sample\HttpTrigger-CSharp-CustomRoute\run.csx = sample\HttpTrigger-CSharp-CustomRoute\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute-Post", "HttpTrigger-CustomRoute-Post", "{ADE3C399-6996-4677-89A8-60EDA27BF9C2}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CustomRoute-Post\function.json = sample\HttpTrigger-CustomRoute-Post\function.json
+		sample\HttpTrigger-CustomRoute-Post\index.js = sample\HttpTrigger-CustomRoute-Post\index.js
 	EndProjectSection
 EndProject
 Global
@@ -485,5 +491,6 @@ Global
 		{EE27035A-633D-48AE-BB86-597BBDBA706E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{02FF2DFF-D7FA-4823-9E91-56C93FB2D447} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5957100B-2FAA-4D67-8CB3-C30D30FD92F8} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{ADE3C399-6996-4677-89A8-60EDA27BF9C2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

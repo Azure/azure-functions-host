@@ -1,0 +1,22 @@
+﻿{
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "name": "req",
+            "direction": "in",
+            "methods": [ "post", "put" ],
+            "route": "node/products/{category:alpha}/{id:guid}"
+        },
+        {
+            "type": "http",
+            "name": "$return",
+            "direction": "out"
+        },
+        {
+            "type": "blob",
+            "name": "product",
+            "direction": "out",
+            "path": "samples-output/{category}/{id}"
+        }
+    ]
+}

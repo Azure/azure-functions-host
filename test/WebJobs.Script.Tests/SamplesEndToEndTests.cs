@@ -264,12 +264,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTrigger_CustomRoute_ReturnsExpectedResponse()
+        public async Task HttpTrigger_CustomRoute_Get_ReturnsExpectedResponse()
         {
-            TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute");
+            TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute-Get");
 
+            var id = Guid.NewGuid().ToString();
             string functionKey = "82fprgh77jlbhcma3yr1zen8uv9yb0i7dwze3np2";
-            string uri = $"api/node/products/electronics/123?code={functionKey}";
+            string uri = $"api/node/products/electronics/{id}?code={functionKey}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
@@ -277,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string json = await response.Content.ReadAsStringAsync();
             var product = JObject.Parse(json);
             Assert.Equal("electronics", (string)product["category"]);
-            Assert.Equal("123", (string)product["id"]);
+            Assert.Equal(id, (string)product["id"]);
 
             // test optional route param (id)
             uri = $"api/node/products/electronics?code={functionKey}";
@@ -289,21 +290,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, products.Count);
             
             // test a constraint violation (invalid id)
-            uri = $"api/node/products/electronics/1x3?code={functionKey}";
+            uri = $"api/node/products/electronics/notaguid?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // test a constraint violation (invalid category)
-            uri = $"api/node/products/999/123?code={functionKey}";
+            uri = $"api/node/products/999/{id}?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // verify route parameters were part of binding data
-            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CustomRoute");
-            var log = logs.Single(p => p.Contains("category: electronics id: 123"));
+            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CustomRoute-Get");
+            var log = logs.Single(p => p.Contains($"category: electronics id: {id}"));
             Assert.NotNull(log);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute-Post");
+
+            string id = Guid.NewGuid().ToString();
+            string functionKey = "5u3pyihh8ldfelipm3qdabw69iah0oghgzw8n959";
+            string uri = $"api/node/products/housewares/{id}?code={functionKey}";
+            JObject product = new JObject
+            {
+                { "id", id },
+                { "name", "Waffle Maker Pro" },
+                { "category", "Housewares" }
+            };
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri)
+            {
+                Content = new StringContent(product.ToString())
+            };
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+            // wait for function to execute and produce its result blob
+            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            string path = $"housewares/{id}";
+            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(path);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            JObject resultProduct = JObject.Parse(TestHelpers.RemoveByteOrderMark(result));
+            Assert.Equal(id, (string)resultProduct["id"]);
+            Assert.Equal((string)product["name"], (string)resultProduct["name"]);
         }
 
         [Fact]
