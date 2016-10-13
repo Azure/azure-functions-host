@@ -136,17 +136,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                     FunctionResult result = await this._parent._executor.TryExecuteAsync(input, CancellationToken.None);
                 }
 
+                bool hasEvents = false;
                 // Dispose all messages to help with memory pressure. If this is missed, the finalizer thread will still get them. 
                 foreach (var message in messages)
                 {
+                    hasEvents = true;
                     message.Dispose();
                 }
 
-                // There are lots of reasons this could fail. That just means that events will get double-processed, which is inevitable
-                // with event hubs anyways. 
-                // For example, it could fail if we lost the lease. That could happen if we failed to renew it due to CPU starvation or an inability 
-                // to make the outbound network calls to renew. 
-                await context.CheckpointAsync();
+                // Don't checkpoint if no events. This can reset the sequence counter to 0. 
+                if (hasEvents)
+                {
+                    // There are lots of reasons this could fail. That just means that events will get double-processed, which is inevitable
+                    // with event hubs anyways. 
+                    // For example, it could fail if we lost the lease. That could happen if we failed to renew it due to CPU starvation or an inability 
+                    // to make the outbound network calls to renew. 
+                    await context.CheckpointAsync();
+                }
             }
         } // end class Listener 
     }
