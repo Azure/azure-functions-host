@@ -17,8 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using Binder = Microsoft.Azure.WebJobs.Host.Bindings.Runtime.Binder;
-
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
