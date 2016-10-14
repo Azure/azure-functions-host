@@ -22,11 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             var client = account.CreateCloudTableClient();
-            var table = client.GetTableReference(LogFactory.DefaultLogTableName);
-            table.CreateIfNotExists();
-
+            var tableProvider = LogFactory.NewLogTableProvider(client);
+                        
             string containerName = Environment.MachineName;
-            this._writer = LogFactory.NewWriter(containerName, table);
+            this._writer = LogFactory.NewWriter(containerName, tableProvider);
         }
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
