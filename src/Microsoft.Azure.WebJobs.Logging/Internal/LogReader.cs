@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     continuationToken = segment.ContinuationToken;
                 }
             }
-
+            
             // Date range queries start with most recent (endTime) and then return entities in descending chronological order. 
             public async Task<Segment<TElement>> SafeExecuteQuerySegmentedAsync<TElement>(
                 TableQuery<TElement> rangeQuery,
@@ -267,6 +267,11 @@ namespace Microsoft.Azure.WebJobs.Logging
                 string continuationToken
                 ) where TElement : ITableEntity, new()
             {
+                if (endTime < startTime)
+                {
+                    throw new InvalidOperationException("illegal time range");
+                }
+
                 // Shrink to phsyical. 
                 var epochs = _tables.Keys.ToArray();
                 if (epochs.Length == 0)
