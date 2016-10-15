@@ -2,12 +2,30 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class TypeUtility
-    {    
+    {
+        internal static string GetFriendlyName(Type type)
+        {
+            if (TypeUtility.IsNullable(type))
+            {
+                return string.Format(CultureInfo.InvariantCulture, "Nullable<{0}>", type.GetGenericArguments()[0].Name);
+            }
+            else
+            {
+                return type.Name;
+            }
+        }
+
+        internal static bool IsNullable(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
         /// <summary>
         /// Walk from the parameter up to the containing type, looking for an instance
         /// of the specified attribute type, returning it if found.

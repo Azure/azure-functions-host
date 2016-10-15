@@ -10,6 +10,7 @@
       <Value>Guid</Value>
       <Value>linq</Value>
       <Value>mockable</Value>
+      <Value>Nullable</Value>
       <Value>Nullables</Value>
       <Value>odata</Value>
       <Value>Queryable</Value>

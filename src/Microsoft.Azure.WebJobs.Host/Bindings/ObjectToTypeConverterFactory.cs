@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return Create(identityConverter);
         }
 
-        public static IObjectToTypeConverter<TOutput> CreateForStruct<TOutput>() where TOutput : struct
+        public static IObjectToTypeConverter<TOutput> CreateForStruct<TOutput>()
         {
             IObjectToTypeConverter<TOutput> identityConverter =
                 new StructOutputConverter<TOutput, TOutput>(new IdentityConverter<TOutput>());

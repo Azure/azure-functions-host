@@ -3,23 +3,28 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
+    /// <summary>
+    /// Handles value types (structs) as well as nullable types.
+    /// </summary>
     internal class StructDataBinding<TBindingData> : IBinding
-        where TBindingData : struct
     {
         private static readonly IObjectToTypeConverter<TBindingData> Converter =
             ObjectToTypeConverterFactory.CreateForStruct<TBindingData>();
 
+        private readonly bool _isNullable;
         private readonly string _parameterName;
         private readonly IArgumentBinding<TBindingData> _argumentBinding;
 
         public StructDataBinding(string parameterName, IArgumentBinding<TBindingData> argumentBinding)
         {
+            _isNullable = TypeUtility.IsNullable(typeof(TBindingData));
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
         }
@@ -40,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
             if (!Converter.TryConvert(value, out typedValue))
             {
-                throw new InvalidOperationException("Unable to convert value to " + typeof(TBindingData).Name + ".");
+                throw new InvalidOperationException("Unable to convert value to " + TypeUtility.GetFriendlyName(typeof(TBindingData)) + ".");
             }
 
             return BindAsync(typedValue, context);
@@ -63,10 +68,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
             object untypedValue = bindingData[_parameterName];
 
-            if (!(untypedValue is TBindingData))
+            if (!(untypedValue is TBindingData) && !(untypedValue == null && _isNullable))
             {
-                throw new InvalidOperationException("Binding data for '" + _parameterName +
-                    "' is not of expected type " + typeof(TBindingData).Name + ".");
+                throw new InvalidOperationException(
+                    string.Format(CultureInfo.InvariantCulture, "Binding data for '{0}' is not of expected type {1}.", _parameterName, TypeUtility.GetFriendlyName(typeof(TBindingData))));
             }
 
             TBindingData typedValue = (TBindingData)untypedValue;

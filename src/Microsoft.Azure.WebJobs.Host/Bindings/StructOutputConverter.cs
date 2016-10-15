@@ -6,18 +6,19 @@ using Microsoft.Azure.WebJobs.Host.Converters;
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class StructOutputConverter<TInput, TOutput> : IObjectToTypeConverter<TOutput>
-        where TInput : struct
     {
+        private readonly bool _isNullable;
         private readonly IConverter<TInput, TOutput> _innerConverter;
 
         public StructOutputConverter(IConverter<TInput, TOutput> innerConverter)
         {
+            _isNullable = TypeUtility.IsNullable(typeof(TInput));
             _innerConverter = innerConverter;
         }
 
         public bool TryConvert(object input, out TOutput output)
         {
-            if (!(input is TInput))
+            if (!(input is TInput) && !(input == null && _isNullable))
             {
                 output = default(TOutput);
                 return false;

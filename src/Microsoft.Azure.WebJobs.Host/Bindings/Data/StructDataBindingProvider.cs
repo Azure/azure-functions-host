@@ -8,8 +8,10 @@ using Microsoft.Azure.WebJobs.Host.Converters;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
+    /// <summary>
+    /// Handles value types (structs) as well as nullable types.
+    /// </summary>
     internal class StructDataBindingProvider<TBindingData> : IBindingProvider
-        where TBindingData : struct
     {
         private static readonly IDataArgumentBindingProvider<TBindingData> InnerProvider =
             new CompositeArgumentBindingProvider<TBindingData>(
