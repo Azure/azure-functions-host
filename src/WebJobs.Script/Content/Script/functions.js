@@ -70,7 +70,7 @@ function createFunction(f) {
         delete context._inputs;
 
         var result = f.apply(null, inputs);
-        if (result && typeof result.then === 'function') {
+        if (result && util.isFunction(result.then)) {
             context._promise = true;
             result.then((result) => context.done(null, result))
                 .catch((err) => context.done(err));
@@ -88,22 +88,19 @@ function getEntryPoint(f, context) {
         }
         else if (Object.keys(f).length == 1) {
             // a single named function was exported
-            f = f[Object.keys(f)[0]];
+            var name = Object.keys(f)[0];
+            f = f[name];
         }
         else {
             // finally, see if there is an exported function named
             // 'run' or 'index' by convention
-            f = f['run'] || f['index'];
+            f = f.run || f.index;
         }
     }
-    else if (!util.isFunction(f)) {
-        // the module must export an object or a function
-        f = null;
-    }
 
-    if (!f) {
+    if (!util.isFunction(f)) {
         throw "Unable to determine function entry point. If multiple functions are exported, " +
-            "you must indicate the entry point, either by naming it 'run', or by naming it " +
+            "you must indicate the entry point, either by naming it 'run' or 'index', or by naming it " +
             "explicitly via the 'entryPoint' metadata property.";
     }
 

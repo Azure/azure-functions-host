@@ -201,9 +201,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         propertyHelper.Property.CanWrite)
                     {
                         object value = pair.Value;
-                        if (value != null && value.GetType() != propertyHelper.Property.PropertyType)
+                        Type targetType = propertyHelper.Property.PropertyType;
+                        if (value != null && value.GetType() != targetType)
                         {
-                            value = Convert.ChangeType(value, propertyHelper.Property.PropertyType);
+                            // if the type is nullable, we only need to convert to the
+                            // correct underlying type
+                            targetType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+                            value = Convert.ChangeType(value, targetType);
                         }
                         propertyHelper.SetValue(target, value);
                     }
@@ -250,6 +254,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             bindingDataContract.TryGetValue(pair.Key, out type) &&
                             value.GetType() != type)
                         {
+                            // if the type is nullable, we only need to convert to the
+                            // correct underlying type
+                            type = Nullable.GetUnderlyingType(type) ?? type;
                             value = Convert.ChangeType(value, type);
                         }
 

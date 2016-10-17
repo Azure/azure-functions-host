@@ -171,6 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void Initialize()
         {
+            string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+            string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
+            this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
+
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             if (metricsLogger == null)
             {
@@ -189,20 +193,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     File.WriteAllText(hostConfigFilePath, "{}");
                 }
 
-                if (ScriptConfig.HostConfig.IsDevelopment)
+                if (ScriptConfig.HostConfig.IsDevelopment || InDebugMode)
                 {
+                    // If we're in debug/development mode, use optimal debug settings
                     ScriptConfig.HostConfig.UseDevelopmentSettings();
-                }
-                else
-                {
-                    // TEMP: Until https://github.com/Azure/azure-webjobs-sdk-script/issues/100 is addressed
-                    // we're using some presets that are a good middle ground
-                    ScriptConfig.HostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(10);
-                    ScriptConfig.HostConfig.Singleton.ListenerLockPeriod = TimeSpan.FromSeconds(15);
                 }
 
                 string json = File.ReadAllText(hostConfigFilePath);
-
                 JObject hostConfig;
                 try
                 {
@@ -250,10 +247,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     // if no TraceWriter has been configured, default it to Console
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
-
-                string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-                string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
-                this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
 
                 _debugModeFileWatcher = new FileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName)
                 {

@@ -353,7 +353,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string json = await response.Content.ReadAsStringAsync();
             var product = JObject.Parse(json);
             Assert.Equal("electronics", (string)product["Category"]);
-            Assert.Equal(123, (int)product["Id"]);
+            Assert.Equal(123, (int?)product["Id"]);
+
+            // now try again without specifying optional id parameter
+            uri = $"api/csharp/products/electronics?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            json = await response.Content.ReadAsStringAsync();
+            product = JObject.Parse(json);
+            Assert.Equal("electronics", (string)product["Category"]);
+            Assert.Null((int?)product["Id"]);
 
             // test a constraint violation (invalid id)
             uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
