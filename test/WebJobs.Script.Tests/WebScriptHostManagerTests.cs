@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     @"Info Generating ([0-9]+) job function\(s\)",
                     @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, Debug=False\)",
                     "Info WebJobs.Indexing Found the following functions:",
-                    "Verbose The next 5 occurrences of the schedule will be:",
+                    "Info The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
                     "Error The following 1 functions are in error:"
                 };
