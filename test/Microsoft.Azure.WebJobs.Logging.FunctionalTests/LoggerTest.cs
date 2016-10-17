@@ -356,7 +356,9 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                         { "p1", largeValue },
                         { "p2", smallValue },
                         { "p3", smallValue },
-                        { "p4", smallValue }
+                        { "p4", smallValue },
+                        { "p5", null },
+                        { "p6", "" }
                     },
                     StartTime = now,
                     EndTime = now.AddSeconds(3),
@@ -381,11 +383,13 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             Assert.True(instance.ErrorDetails.StartsWith(truncatedPrefix));
             Assert.True(instance.TriggerReason.StartsWith(truncatedPrefix));
 
-            Assert.Equal(4, instance.Arguments.Count);
+            Assert.Equal(6, instance.Arguments.Count);
             Assert.True(instance.Arguments["p1"].StartsWith(truncatedPrefix));
             Assert.Equal(smallValue, instance.Arguments["p2"]);
             Assert.Equal(smallValue, instance.Arguments["p3"]);
             Assert.Equal(smallValue, instance.Arguments["p4"]);
+            Assert.Equal(null, instance.Arguments["p5"]);
+            Assert.Equal("", instance.Arguments["p6"]);
         }
 
         // Test that large output logs getr truncated. 

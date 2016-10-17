@@ -185,15 +185,18 @@ namespace Microsoft.Azure.WebJobs.Logging
                 foreach (var kv in this.Arguments)
                 {
                     argSize += kv.Key.Length;
-                    if (kv.Value.Length > MaxParameterPayloadLength)
+                    if (!string.IsNullOrEmpty(kv.Value))
                     {
-                        truncate = true;
-                        argSize += MaxParameterPayloadLength;
+                        if (kv.Value.Length > MaxParameterPayloadLength)
+                        {
+                            truncate = true;
+                            argSize += MaxParameterPayloadLength;
+                        }
+                        else
+                        {
+                            argSize += kv.Value.Length;
+                        }
                     }
-                    else
-                    {
-                        argSize += kv.Value.Length;
-                    }    
                 }
 
                 if (argSize > MaxParameterTotalPayloadLength)
