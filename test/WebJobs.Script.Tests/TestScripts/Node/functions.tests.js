@@ -76,9 +76,13 @@ describe('functions', () => {
             expect(run).to.be.true;
         });
 
-        it('throws if no function', () => {
+        it('throws if not a function', () => {
             var func = functions.createFunction(1);
+            expect(() => func(context)).to.throw(/Unable to determine function entry point.*/);
+        });
 
+        it('throws if object does not contain a function', () => {
+            var func = functions.createFunction({ run: 1 });
             expect(() => func(context)).to.throw(/Unable to determine function entry point.*/);
         });
     });
