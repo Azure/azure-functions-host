@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(object).Assembly.Location,
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
+                typeof(ServiceBusAttribute).Assembly.Location /*Microsoft.Azure.WebJobs.ServiceBus*/,
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
                 typeof(System.Web.Http.ApiController).Assembly.Location, /*System.Web.Http*/
                 typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
