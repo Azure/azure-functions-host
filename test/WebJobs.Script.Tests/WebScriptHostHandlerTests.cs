@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpConfiguration config = new HttpConfiguration();
             config.DependencyResolver = mockResolver.Object;
-            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1)
+            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1, hostRunningPollIntervalMS: 50)
             {
                 InnerHandler = new TestHandler()
             };
@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task SendAsync_HostNotRunning_Returns503()
         {
             _managerMock.SetupGet(p => p.IsRunning).Returns(false);
+            _managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
@@ -55,6 +56,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task SendAsync_HostInErrorState_Returns503Immediately()
+        {
+            _managerMock.SetupGet(p => p.IsRunning).Returns(false);
+            _managerMock.SetupGet(p => p.LastError).Returns(new Exception());
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
+            HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            _managerMock.VerifyGet(P => P.IsRunning, Times.Exactly(2));
         }
 
         public class TestHandler : DelegatingHandler

@@ -14,16 +14,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
     public class WebScriptHostHandler : DelegatingHandler
     {
         private readonly TimeSpan _hostTimeoutSeconds;
-        private readonly int _hostRunningPollIntervalMs = 500;
+        private readonly int _hostRunningPollIntervalMs;
         private readonly HttpConfiguration _config;
  
-        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = 30)
+        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = 30, int hostRunningPollIntervalMS = 500)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
+            _hostRunningPollIntervalMs = hostRunningPollIntervalMS;
             _hostTimeoutSeconds = new TimeSpan(0, 0, hostTimeoutSeconds);
             _config = config;
         }
