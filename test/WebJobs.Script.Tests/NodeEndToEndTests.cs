@@ -683,6 +683,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task MultipleInputs()
+        {
+            string id = Guid.NewGuid().ToString();
+
+            JObject input = new JObject
+            {
+                { "id", id },
+                { "rk1", "001" },
+                { "rk2", "002" }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+            await Fixture.Host.CallAsync("MultipleInputs", arguments);
+
+            // verify the correct output blob was written
+            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            await TestHelpers.WaitForBlobAsync(blob);
+            string blobContent = blob.DownloadText();
+            Assert.Equal("Test Entity 1, Test Entity 2", TestHelpers.RemoveByteOrderMark(blobContent.Trim()));
+        }
+
+        [Fact]
         public async Task ApiHubTableEntityIn()
         {
             TestHelpers.ClearFunctionLogs("ApiHubTableEntityIn");
