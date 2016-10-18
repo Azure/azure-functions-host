@@ -49,5 +49,10 @@ namespace Microsoft.Azure.WebJobs.Logging
                 OriginalName = functionName
             };
         }
+
+        public override string ToString()
+        {
+            return this.OriginalName;
+        }
     }
 }

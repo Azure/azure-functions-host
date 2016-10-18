@@ -32,8 +32,14 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public CloudTable GetTable(string suffix)
         {
+            var table = LegacyTableReader.TryGetLegacy(_tableClient, suffix);
+            if (table != null)
+            {
+                return table;
+            }
+
             var tableName = _tableNamePrefix + suffix;
-            var table = _tableClient.GetTableReference(tableName);
+            table = _tableClient.GetTableReference(tableName);
             return table;
         }
 
@@ -50,7 +56,13 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
             while (continuationToken != null);
 
+            var legacyTable = LegacyTableReader.GetLegacyTable(_tableClient);
+            if (legacyTable != null)
+            {
+                list.Add(legacyTable);
+            }
+
             return list.ToArray();
         }
-    }
+    }   
 }

@@ -41,13 +41,19 @@ namespace Microsoft.Azure.WebJobs.Logging
         // - integers are valid Azure Table characters, so they can easily be a table suffix. 
         public static long GetEpochNumberFromTable(CloudTable table)
         {
+            long epoch;
+            epoch = LegacyTableReader.GetEpochFromTable(table);
+            if (epoch > 0)
+            {
+                return epoch;
+            }
+
             string tableName = table.Name;
             if (tableName.Length < 5)
             {
                 return -1;
             }
             string suffix = tableName.Substring(tableName.Length - 6, 6);
-            long epoch;
             if (long.TryParse(suffix, out epoch))
             {
                 return epoch;

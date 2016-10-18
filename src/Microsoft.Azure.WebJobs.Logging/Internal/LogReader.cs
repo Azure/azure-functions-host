@@ -30,10 +30,10 @@ namespace Microsoft.Azure.WebJobs.Logging
         public async Task<FunctionVolumeTimelineEntry[]> GetVolumeAsync(DateTime startTime, DateTime endTime, int numberBuckets)
         {
             var query = InstanceCountEntity.GetQuery(startTime, endTime);
-            
+
             var iter = await EpochTableIterator.NewAsync(_tableLookup);
             var results = await iter.SafeExecuteQuerySegmentedAsync<InstanceCountEntity>(query, startTime, endTime);
-            
+
             InstanceCountEntity[] rows = results.Results;
 
             var startTicks = startTime.Ticks;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             double bucketWidthTicks = ((double)(endTicks - startTicks)) / numberBuckets;
             foreach (var row in rows)
             {
-                int idx = (int) ((row.GetTicks() - startTicks) / bucketWidthTicks);
+                int idx = (int)((row.GetTicks() - startTicks) / bucketWidthTicks);
                 if (idx >= 0 && idx < numberBuckets)
                 {
                     totalCounts[idx] += row.TotalThisPeriod;
@@ -72,20 +72,25 @@ namespace Microsoft.Azure.WebJobs.Logging
         public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
             var instanceTable = _tableLookup.GetTableForDateTime(TimeBucket.CommonEpoch);
-            var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
-            var results = await instanceTable.SafeExecuteQueryAsync(query);
+            var results = await GetFunctionDefinitionsHelperAsync(instanceTable, continuationToken);
 
-            DateTime min = DateTime.MinValue;
-            foreach (var entity in results)
+            var legacyTable = LegacyTableReader.GetLegacyTable(_tableLookup);
+            if (legacyTable != null)
             {
-                if (entity.Timestamp > min)
-                {
-                    min = entity.Timestamp.DateTime;
-                }
+                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable, continuationToken);
+                results = LegacyTableReader.Merge(results, olderResults);
             }
 
             var segment = new Segment<IFunctionDefinition>(results);
             return segment;
+        }
+
+        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table, string continuationToken)
+        {
+            var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
+            var results = await table.SafeExecuteQueryAsync(query);
+                    
+            return results;          
         }
 
         // Lookup a single instance by id. 
