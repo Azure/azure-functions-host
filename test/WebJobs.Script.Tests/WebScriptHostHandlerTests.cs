@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            _managerMock.VerifyGet(P => P.IsRunning, Times.Exactly(2));
+            _managerMock.VerifyGet(p => p.IsRunning, Times.Exactly(2));
         }
 
         public class TestHandler : DelegatingHandler
