@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -23,8 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                // This is temporarily behind a feature flag. Once other clients are able to work with the new version, this should be removed.
-                if (string.Equals(Environment.GetEnvironmentVariable("AzureWebJobsEnableMultiKey"), "true", StringComparison.OrdinalIgnoreCase))
+                // This is temporarily behind a feature flag. Once other clients are able to
+                // work with the new version, this should be removed.
+                if (FeatureFlags.IsEnabled("MultiKey"))
                 {
                     return _secretFormatters.Last();
                 }

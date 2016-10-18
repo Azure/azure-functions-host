@@ -336,6 +336,7 @@
     <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Binding\SimpleValueProvider.cs" />
+    <Compile Include="Config\FeatureFlags.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />

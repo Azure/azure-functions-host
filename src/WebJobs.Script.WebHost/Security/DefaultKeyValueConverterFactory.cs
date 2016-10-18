@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using static Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // We're temporarily placing encryption behind a feature toggle until
                 // other consumers (e.g. portal) are updated to work with it.
                 // TODO: Remove this
-                return string.Equals(Environment.GetEnvironmentVariable("AzureWebJobsEncryptionEnabled"), "true", StringComparison.OrdinalIgnoreCase);
+                return FeatureFlags.IsEnabled("SecretEncryption");
             }
 
             return Environment.GetEnvironmentVariable(AzureWebsiteLocalEncryptionKey) != null;
