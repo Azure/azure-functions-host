@@ -72,12 +72,12 @@ namespace Microsoft.Azure.WebJobs.Logging
         public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
         {
             var instanceTable = _tableLookup.GetTableForDateTime(TimeBucket.CommonEpoch);
-            var results = await GetFunctionDefinitionsHelperAsync(instanceTable, continuationToken);
+            var results = await GetFunctionDefinitionsHelperAsync(instanceTable);
 
             var legacyTable = LegacyTableReader.GetLegacyTable(_tableLookup);
             if (legacyTable != null)
             {
-                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable, continuationToken);
+                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable);
                 results = LegacyTableReader.Merge(results, olderResults);
             }
 
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             return segment;
         }
 
-        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table, string continuationToken)
+        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table)
         {
             var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
             var results = await table.SafeExecuteQueryAsync(query);
