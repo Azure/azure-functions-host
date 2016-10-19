@@ -332,11 +332,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     !string.IsNullOrEmpty(httpBinding.WebHookType))
                 {
                     input = requestObject["body"];
-
-                    // make the entire request object available as well
-                    // this is symmetric with context.res which we also support
-                    context["req"] = requestObject;
                 }
+
+                // make the entire request object available as well
+                // this is symmetric with context.res which we also support
+                context["req"] = requestObject;
             }
             else if (input is TimerInfo)
             {
@@ -372,6 +372,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             bindings.Add(_trigger.Name, input);
+
+            context.Add("_triggerType", _trigger.Type);
 
             return context;
         }

@@ -350,6 +350,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTriggerExpressApi_Get()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
+                Method = HttpMethod.Get,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+            request.Headers.Add("test-header", "Test Request Header");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "request", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerExpressApi", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
+            Assert.Equal(MediaTypeHeaderValue.Parse("application/json; charset=utf-8"), response.Content.Headers.ContentType);
+
+            string body = await response.Content.ReadAsStringAsync();
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal("undefined", (string)resultObject["reqBodyType"]);
+            Assert.Null((string)resultObject["reqBody"]);
+            Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
+            Assert.Null((string)resultObject["reqRawBody"]);
+
+            // verify binding data was populated from query parameters
+            Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
+            Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
+
+            // validate input headers
+            JObject reqHeaders = (JObject)resultObject["reqHeaders"];
+            Assert.Equal("Test Request Header", reqHeaders["test-header"]);
+        }
+
+        [Fact]
         public async Task HttpTriggerPromise_TestBinding()
         {
             HttpRequestMessage request = new HttpRequestMessage

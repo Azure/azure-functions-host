@@ -3,6 +3,8 @@
 
 var util = require('util');
 var process = require('process');
+var request = require('./http/request');
+var response = require('./http/response');
 
 module.exports = {
     globalInitialization: globalInitialization,
@@ -68,6 +70,15 @@ function createFunction(f) {
         var inputs = context._inputs;
         inputs.unshift(context);
         delete context._inputs;
+
+        var lowercaseTrigger = context._triggerType && context._triggerType.toLowerCase();
+        switch (lowercaseTrigger) {
+            case "httptrigger": 
+                context.req = request(context);
+                context.res = response(context);
+                break;
+        }
+        delete context._triggerType;
 
         var result = f.apply(null, inputs);
         if (result && util.isFunction(result.then)) {

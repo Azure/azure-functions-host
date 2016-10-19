@@ -1,0 +1,15 @@
+﻿{
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "name": "request",
+            "direction": "in",
+            "methods": [ "get", "post" ]
+        },
+        {
+            "type": "http",
+            "name": "response",
+            "direction": "out"
+        }
+    ]
+}
