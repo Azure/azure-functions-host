@@ -843,6 +843,9 @@
     <None Include="TestScripts\Node\Excluded\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\HttpTriggerExpressApi\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\HttpTrigger-Scenarios\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -904,6 +907,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\Excluded\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\Node\HttpTriggerExpressApi\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestScripts\Node\HttpTrigger-Scenarios\index.js">

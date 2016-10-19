@@ -75,10 +75,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             headers = (JObject)value;
                         }
 
-                        if (jo.TryGetValue("status", StringComparison.OrdinalIgnoreCase, out value) && value is JValue)
+                        if ((jo.TryGetValue("status", StringComparison.OrdinalIgnoreCase, out value) && value is JValue) ||
+                            (jo.TryGetValue("statusCode", StringComparison.OrdinalIgnoreCase, out value) && value is JValue))
                         {
                             statusCode = (HttpStatusCode)(int)value;
-                        } 
+                        }
                     }
                 }
                 catch (JsonException)
