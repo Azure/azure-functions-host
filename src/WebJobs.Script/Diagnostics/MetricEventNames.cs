@@ -9,7 +9,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupLatency = "host.startup.latency";
 
         // function level events
-        public const string FunctionInvokeByTriggerFormat = "function.invoke.{0}";
+        public const string FunctionInvoke = "function.invoke";
+        public const string FunctionBindingTypeFormat = "function.binding.{0}";
+        public const string FunctionBindingTypeDirectionFormat = "function.binding.{0}.{1}";
         public const string FunctionCompileLatencyByLanguageFormat = "function.compile.{0}.latency";
     }
 }

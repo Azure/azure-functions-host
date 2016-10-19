@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -116,9 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
 
-            var triggerType = Metadata.Bindings.First(p => p.IsTrigger).Type;
-            string eventName = string.Format(MetricEventNames.FunctionInvokeByTriggerFormat, triggerType);
-            _metrics.LogEvent(eventName);
+            LogInvocationMetrics(_metrics, Metadata.Bindings);
 
             try
             {
@@ -164,6 +163,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _metrics.EndEvent(startedEvent);
                 }
+            }
+        }
+
+        internal static void LogInvocationMetrics(IMetricsLogger metrics, Collection<BindingMetadata> bindings)
+        {
+            metrics.LogEvent(MetricEventNames.FunctionInvoke);
+
+            // log events for each of the binding types used
+            foreach (var binding in bindings)
+            {
+                string eventName = binding.IsTrigger ?
+                    string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
+                    string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
+                metrics.LogEvent(eventName);
             }
         }
 
