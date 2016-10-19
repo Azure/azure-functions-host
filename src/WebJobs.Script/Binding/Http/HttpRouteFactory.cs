@@ -30,8 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             var routeBuilder = CreateRouteBuilder(routeTemplate);
             var constraints = routeBuilder.Constraints;
-            if (methods != null && methods.Count() > 0)
+            if (methods != null)
             {
+                // if the methods collection is not null, apply the constraint
+                // if the methods collection is empty, we'll create a constraint
+                // that disallows ALL methods
                 constraints.Add("httpMethod", new HttpMethodConstraint(methods.ToArray()));
             }
             var httpRoute = routes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);

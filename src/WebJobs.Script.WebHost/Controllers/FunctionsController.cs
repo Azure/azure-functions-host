@@ -89,13 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }
 
-                // Validate the HttpMethod
-                // Note that for WebHook requests, WebHook receiver does its own validation
-                if (httpFunctionMetadata.Methods != null && !httpFunctionMetadata.Methods.Contains(request.Method))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
-                }
-
                 // Not a WebHook request so dispatch directly
                 response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
             }

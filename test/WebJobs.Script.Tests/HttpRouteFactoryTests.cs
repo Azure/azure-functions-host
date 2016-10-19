@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public static void AddRoute_AppliesHttpMethodConstraints()
+        public static void AddRoute_AppliesHttpMethodConstraint()
         {
             HttpRouteFactory routeFactory = new HttpRouteFactory("api");
 
@@ -58,6 +58,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request = new HttpRequestMessage(HttpMethod.Post, "http://host/api/products/electronics/123");
             routeData = routes.GetRouteData(request);
             Assert.Same(route2, routeData.Route);
+        }
+
+        [Fact]
+        public static void AddRoute_MethodsCollectionNull_DoesNotApplyHttpMethodConstraint()
+        {
+            HttpRouteFactory routeFactory = new HttpRouteFactory("api");
+
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routeFactory.AddRoute("route1", "products/{category}/{id?}", null, routes);
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://host/api/products/electronics/123");
+            var routeData = routes.GetRouteData(request);
+            Assert.Same(route, routeData.Route);
+
+            request = new HttpRequestMessage(HttpMethod.Post, "http://host/api/products/electronics/123");
+            routeData = routes.GetRouteData(request);
+            Assert.Same(route, routeData.Route);
+        }
+
+        [Fact]
+        public static void AddRoute_MethodsCollectionEmpty_AppliesHttpMethodConstraint()
+        {
+            HttpRouteFactory routeFactory = new HttpRouteFactory("api");
+
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routeFactory.AddRoute("route1", "products/{category}/{id?}", new HttpMethod[0], routes);
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://host/api/products/electronics/123");
+            var routeData = routes.GetRouteData(request);
+            Assert.Null(routeData);
+
+            request = new HttpRequestMessage(HttpMethod.Post, "http://host/api/products/electronics/123");
+            routeData = routes.GetRouteData(request);
+            Assert.Null(routeData);
         }
     }
 }
