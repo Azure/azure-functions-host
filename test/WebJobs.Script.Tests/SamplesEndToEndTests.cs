@@ -814,6 +814,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             string expectedVersion = fileVersionAttr.Version;
+            string expectedId = "5a709861cab44e68bfed5d2c2fe7fc0c";
+            Assert.Equal(expectedId, jsonContent["id"].ToString());
             Assert.Equal(expectedVersion, jsonContent["version"].ToString());
 
             // Now ensure XML content works
@@ -828,6 +830,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             XDocument doc = XDocument.Parse(content);
             var node = doc.Descendants(XName.Get("Version", ns)).Single();
             Assert.Equal(expectedVersion, node.Value);
+            node = doc.Descendants(XName.Get("Id", ns)).Single();
+            Assert.Equal(expectedId, node.Value);
 
             node = doc.Descendants(XName.Get("Errors", ns)).Single();
             Assert.True(node.IsEmpty);

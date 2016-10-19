@@ -14,7 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         }
 
         /// <summary>
-        /// Gets the host version.
+        /// Gets or sets the host id.
+        /// </summary>
+        [JsonProperty(PropertyName = "id", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the host version.
         /// </summary>
         [JsonProperty(PropertyName = "version", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string Version { get; set; }
