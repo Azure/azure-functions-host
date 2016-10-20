@@ -13,7 +13,7 @@ public class ProductInfo
 
 public static ProductInfo Run(ProductInfo info, string category, int? id, TraceWriter log)
 {
-    log.Info($"ProductInfo: Category={category} Id={id}");
+    log.Info($"ProductInfo: Category={info.Category} Id={info.Id}");
     log.Info($"Parameters: category={category} id={id}");
 
     return info;

@@ -347,25 +347,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (routeData != null)
             {
                 _httpFunctions.TryGetValue(routeData.Route, out function);
-
-                Dictionary<string, object> routeDataValues = null;
-                if (routeData.Values != null)
-                {
-                    routeDataValues = new Dictionary<string, object>();
-                    foreach (var pair in routeData.Values)
-                    {
-                        // filter out any unspecified optional parameters
-                        if (pair.Value != RouteParameter.Optional)
-                        {
-                            routeDataValues.Add(pair.Key, pair.Value);
-                        }
-                    }
-                }
-
-                request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
+                AddRouteDataToRequest(routeData, request);
             }
 
             return function;
+        }
+
+        internal static void AddRouteDataToRequest(IHttpRouteData routeData, HttpRequestMessage request)
+        {
+            if (routeData.Values != null)
+            {
+                Dictionary<string, object> routeDataValues = new Dictionary<string, object>();
+                foreach (var pair in routeData.Values)
+                {
+                    // translate any unspecified optional parameters to null values
+                    // unspecified values still need to be included as part of binding data
+                    // for correct binding to occur
+                    var value = pair.Value != RouteParameter.Optional ? pair.Value : null;
+                    routeDataValues.Add(pair.Key, value);
+                }
+
+                request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
+            } 
         }
 
         protected override void OnInitializeConfig(ScriptHostConfiguration config)
