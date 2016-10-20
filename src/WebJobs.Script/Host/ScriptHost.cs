@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.ApiHub;
 using Microsoft.Azure.WebJobs.Extensions.Bindings;
+using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
 using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Extensions.MobileApps;
 using Microsoft.Azure.WebJobs.Extensions.NotificationHubs;
@@ -523,7 +524,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 typeof(MobileAppsScriptBindingProvider),
                 typeof(NotificationHubScriptBindingProvider),
                 typeof(SendGridScriptBindingProvider),
-                typeof(TwilioScriptBindingProvider)
+                typeof(TwilioScriptBindingProvider),
+                typeof(BotFrameworkScriptBindingProvider)
             };
 
             // Create the binding providers

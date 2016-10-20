@@ -391,6 +391,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute-Pos
 		sample\HttpTrigger-CustomRoute-Post\index.js = sample\HttpTrigger-CustomRoute-Post\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bot-CSharp", "Bot-CSharp", "{EF36E33B-646C-4EF4-B0E2-517E14F6DC38}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Bot-CSharp\function.json = sample\Bot-CSharp\function.json
+		sample\Bot-CSharp\run.csx = sample\Bot-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bot", "Bot", "{98DBDE0D-364C-4865-9A4A-B17410D771F6}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Bot\function.json = sample\Bot\function.json
+		sample\Bot\run.js = sample\Bot\run.js
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -492,5 +504,7 @@ Global
 		{02FF2DFF-D7FA-4823-9E91-56C93FB2D447} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5957100B-2FAA-4D67-8CB3-C30D30FD92F8} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{ADE3C399-6996-4677-89A8-60EDA27BF9C2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EF36E33B-646C-4EF4-B0E2-517E14F6DC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{98DBDE0D-364C-4865-9A4A-B17410D771F6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal
