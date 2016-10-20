@@ -10,6 +10,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web.Http;
+using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -192,6 +194,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
             Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+        }
+
+        [Fact]
+        public void AddRouteDataToRequest_DoesNotAddRequestProperty_WhenRouteDataNull()
+        {
+            var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
+            IDictionary<string, object> values = null;
+            mockRouteData.Setup(p => p.Values).Returns(values);
+            HttpRequestMessage request = new HttpRequestMessage();
+
+            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
+
+            Assert.False(request.Properties.ContainsKey(ScriptConstants.AzureFunctionsHttpRouteDataKey));
+        }
+
+        [Fact]
+        public void AddRouteDataToRequest_AddsRequestProperty_WhenRouteDataNotNull()
+        {
+            var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
+            IDictionary<string, object> values = new Dictionary<string, object>
+            {
+                { "p1", "abc" },
+                { "p2", 123 },
+                { "p3", null },
+                { "p4", RouteParameter.Optional }
+            };
+            mockRouteData.Setup(p => p.Values).Returns(values);
+            HttpRequestMessage request = new HttpRequestMessage();
+
+            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
+
+            var result = (IDictionary<string, object>)request.Properties[ScriptConstants.AzureFunctionsHttpRouteDataKey];
+            Assert.Equal(result["p1"], "abc");
+            Assert.Equal(result["p2"], 123);
+            Assert.Equal(result["p3"], null);
+            Assert.Equal(result["p4"], null);
         }
 
         private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)
