@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
             Compilation compilation = script.GetCompilation();
 
-            var compiler = new SimpleSourceCodeServices();
+            var compiler = new SimpleSourceCodeServices(msbuildEnabled: FSharpOption<bool>.Some(false));
 
             FSharpErrorInfo[] errors = null;
             FSharpOption<Assembly> assemblyOption = null;
@@ -135,7 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "dll"));
 
                 // Get the #load closure
-                var loadFileOptionsAsync = FSharpChecker.Create().GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
+                FSharpChecker checker = FSharpChecker.Create(null, null, null, msbuildEnabled: FSharpOption<bool>.Some(false));
+                var loadFileOptionsAsync = checker.GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
                 var loadFileOptions = FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
                 foreach (var loadedFileName in loadFileOptions.ProjectFileNames)
                 {
