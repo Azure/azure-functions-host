@@ -26,12 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(string secretsPath)
-            : this(secretsPath, new DefaultKeyValueConverterFactory())
+        public SecretManager(string secretsPath, bool createHostSecretsIfMissing = false)
+            : this(secretsPath, new DefaultKeyValueConverterFactory(), createHostSecretsIfMissing)
         {
         }
 
-        public SecretManager(string secretsPath, IKeyValueConverterFactory keyValueConverterFactory)
+        public SecretManager(string secretsPath, IKeyValueConverterFactory keyValueConverterFactory, bool createHostSecretsIfMissing = false)
         {
             _secretsPath = secretsPath;
             _hostSecretsPath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
@@ -49,6 +49,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _fileWatcher.Created += OnChanged;
             _fileWatcher.Deleted += OnChanged;
             _fileWatcher.Renamed += OnChanged;
+
+            if (createHostSecretsIfMissing)
+            {
+                // The SecretManager implementation of GetHostSecrets will
+                // create a host secret if one is not present.
+                GetHostSecrets();
+            }
         }
 
         public void Dispose()

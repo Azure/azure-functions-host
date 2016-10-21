@@ -410,6 +410,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        [Fact]
+        public void Constructor_WithCreateHostSecretsIfMissingSet_CreatesHostSecret()
+        {
+            var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var hostSecretPath = Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName);
+            try
+            {
+                bool preExistingFile = File.Exists(hostSecretPath);
+
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object, true);
+                bool fileCreated = File.Exists(hostSecretPath);
+
+                Assert.False(preExistingFile);
+                Assert.True(fileCreated);
+            }
+            finally
+            {
+                Directory.Delete(secretsPath, true);
+            }
+        }
+
         private Mock<IKeyValueConverterFactory> GetConverterFactoryMock(bool simulateWriteConversion = true)
         {
             var mockValueReader = new Mock<IKeyValueReader>();
