@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // get the output value from the script
                 object value = null;
                 bool haveValue = bindings.TryGetValue(binding.Metadata.Name, out value);
-                if (!haveValue && binding.Metadata.Type == "http")
+                if (!haveValue && string.Compare(binding.Metadata.Type, "http", StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     // http bindings support a special context.req/context.res programming
                     // model, so we must map that back to the actual binding name if a value
@@ -340,6 +340,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else if (input is TimerInfo)
             {
+                // TODO: Need to generalize this model rather than hardcode
+                // so other extensions can also express their Node.js object model
                 TimerInfo timerInfo = (TimerInfo)input;
                 var inputValues = new Dictionary<string, object>()
                 {

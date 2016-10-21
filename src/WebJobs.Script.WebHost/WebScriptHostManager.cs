@@ -409,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
         }
 
-        internal void InitializeHttpFunctions(Collection<FunctionDescriptor> functions)
+        internal void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions)
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
@@ -423,8 +423,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var httpTriggerBinding = function.Metadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
                 if (httpTriggerBinding != null)
                 {
-                    var httpRoute = httpRouteFactory.AddRoute(function.Metadata.Name, httpTriggerBinding.Route, httpTriggerBinding.Methods, _httpRoutes);
-                    _httpFunctions.Add(httpRoute, function);
+                    IHttpRoute httpRoute = null;
+                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTriggerBinding.Route, httpTriggerBinding.Methods, _httpRoutes, out httpRoute))
+                    {
+                        _httpFunctions.Add(httpRoute, function);
+                    }
                 }
             }
         }

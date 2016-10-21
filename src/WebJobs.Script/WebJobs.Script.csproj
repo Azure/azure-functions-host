@@ -395,6 +395,7 @@
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ExpandoObjectJsonConverter.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Extensions\IDictionaryExtensions.cs" />
     <Compile Include="Extensions\IMetricsLoggerExtensions.cs" />
     <Compile Include="Extensions\TraceWriterExtensions.cs" />
