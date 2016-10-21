@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // serialized as json by WebApi below
                     content = jo;
 
+                    // TODO: Improve this logic
                     // Sniff the object to see if it looks like a response object
                     // by convention
                     JToken value = null;
