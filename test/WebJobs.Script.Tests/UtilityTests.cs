@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -122,6 +124,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string formattedResult = Utility.FlattenException(ex3);
             Assert.Equal("Exception message 3. Source2: Exception message 2. Source1: Exception message 1.", formattedResult);
+        }
+
+        [Fact]
+        public void RemoveUTF8ByteOrderMark_RemovesBOM()
+        {
+            string bom = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+            var inputString = "TestString";
+            var testInput = bom + inputString;
+
+            string result = Utility.RemoveUtf8ByteOrderMark(testInput);
+
+            Assert.Equal(inputString.Length + bom.Length, testInput.Length);
+            Assert.Equal(inputString.Length, result.Length);
+            Assert.Equal(inputString, result);
+        }
+
+        [Fact]
+        public void RemoveUTF8ByteOrderMark_WithNoBOM_ReturnsOriginalString()
+        {
+            var inputString = "TestString";
+            string result = Utility.RemoveUtf8ByteOrderMark(inputString);
+
+            Assert.Equal(inputString.Length, result.Length);
+            Assert.Equal(inputString, result);
         }
     }
 }
