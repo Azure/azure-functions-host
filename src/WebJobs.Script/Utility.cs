@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
@@ -155,6 +156,17 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrEmpty(input) && char.IsUpper(input[0]))
             {
                 input = char.ToLowerInvariant(input[0]) + input.Substring(1);
+            }
+
+            return input;
+        }
+
+        public static string RemoveUtf8ByteOrderMark(string input)
+        {
+            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+            if (input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, byteOrderMark, CompareOptions.Ordinal))
+            {
+                input = input.Substring(byteOrderMark.Length);
             }
 
             return input;
