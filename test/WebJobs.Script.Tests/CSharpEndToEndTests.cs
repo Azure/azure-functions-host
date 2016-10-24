@@ -96,17 +96,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
             await TestHelpers.WaitForBlobAsync(blob);
             string blobContent = blob.DownloadText();
-            Assert.Equal("Test Blob 1", TestHelpers.RemoveByteOrderMark(blobContent));
+            Assert.Equal("Test Blob 1", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
             blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
             await TestHelpers.WaitForBlobAsync(blob);
             blobContent = blob.DownloadText();
-            Assert.Equal("Test Blob 2", TestHelpers.RemoveByteOrderMark(blobContent));
+            Assert.Equal("Test Blob 2", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
             blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
             await TestHelpers.WaitForBlobAsync(blob);
             blobContent = blob.DownloadText();
-            Assert.Equal("Test Blob 3", TestHelpers.RemoveByteOrderMark(blobContent));
+            Assert.Equal("Test Blob 3", Utility.RemoveUtf8ByteOrderMark(blobContent));
         }
 
         [Fact]

@@ -45,17 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static string RemoveByteOrderMark(string s)
-        {
-            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            return s.Replace(byteOrderMark, string.Empty);
-        }
-
-        public static string RemoveByteOrderMarkAndWhitespace(string s)
-        {
-            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            return s.Trim().Replace(" ", string.Empty).Replace(byteOrderMark, string.Empty);
-        }
+        public static string RemoveByteOrderMarkAndWhitespace(string s) => Utility.RemoveUtf8ByteOrderMark(s).Trim().Replace(" ", string.Empty);
 
         public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob)
         {

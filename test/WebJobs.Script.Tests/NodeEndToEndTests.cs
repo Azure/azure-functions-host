@@ -674,7 +674,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
             await TestHelpers.WaitForBlobAsync(blob);
             string blobContent = blob.DownloadText();
-            Assert.Equal("Test Entity 1, Test Entity 2", TestHelpers.RemoveByteOrderMark(blobContent.Trim()));
+            Assert.Equal("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(blobContent.Trim()));
         }
 
         [Fact]
