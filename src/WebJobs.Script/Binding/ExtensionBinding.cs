@@ -54,6 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 await BindAsyncCollectorAsync<JObject>(context);
             }
+            else if (_binding.DefaultType == typeof(IAsyncCollector<string>))
+            {
+                await BindAsyncCollectorAsync<string>(context);
+            }
             else if (_binding.DefaultType == typeof(Stream))
             {
                 await BindStreamAsync(context, Access);
@@ -65,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     context.Value = result;
                 }
+            }
+            else
+            {
+                throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");
             }
         }
 
