@@ -5,11 +5,7 @@ var assert = require('assert');
     var scenario = input.scenario;
     context.log("Running scenario '%s'", scenario);
 
-    if (scenario == 'doubleDone') {
-        context.done();
-        context.done();
-    }
-    else if (scenario == 'nextTick') {
+    if (scenario == 'nextTick') {
         process.nextTick(function () {
             // without the workaround this would hang
             context.done();
