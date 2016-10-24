@@ -69,15 +69,15 @@ namespace Microsoft.Azure.WebJobs.Logging
             return chart;
         }
 
-        public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
+        public async Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string hostName, string continuationToken)
         {
             var instanceTable = _tableLookup.GetTableForDateTime(TimeBucket.CommonEpoch);
-            var results = await GetFunctionDefinitionsHelperAsync(instanceTable);
+            var results = await GetFunctionDefinitionsHelperAsync(instanceTable, hostName);
 
             var legacyTable = LegacyTableReader.GetLegacyTable(_tableLookup);
             if (legacyTable != null)
             {
-                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable);
+                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable, hostName);
                 results = LegacyTableReader.Merge(results, olderResults);
             }
 
@@ -85,9 +85,18 @@ namespace Microsoft.Azure.WebJobs.Logging
             return segment;
         }
 
-        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table)
+        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table, string hostName)
         {
-            var query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
+            TableQuery<FunctionDefinitionEntity> query;
+            if (hostName == null)
+            {                
+                query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
+            }
+            else
+            {
+                query = TableScheme.GetRowsWithPrefixAsync<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK, 
+                    TableScheme.NormalizeFunctionName(hostName)); 
+            }
             var results = await table.SafeExecuteQueryAsync(query);
                     
             return results;          
@@ -162,12 +171,9 @@ namespace Microsoft.Azure.WebJobs.Logging
             return new Segment<ActivationEvent>(l.ToArray(), null);
         }
 
-        public async Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(string functionName, DateTime start, DateTime end, string continuationToken)
+        public async Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(FunctionId functionId, DateTime start, DateTime end, string continuationToken)
         {
-            if (functionName == null)
-            {
-                throw new ArgumentNullException("functionName");
-            }
+            functionId.Validate();
             if (start > end)
             {
                 throw new ArgumentOutOfRangeException("start");
@@ -175,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             var iter = await EpochTableIterator.NewAsync(_tableLookup);
 
-            var rangeQuery = TimelineAggregateEntity.GetQuery(functionName, start, end);
+            var rangeQuery = TimelineAggregateEntity.GetQuery(functionId, start, end);
 
             var results = await iter.SafeExecuteQuerySegmentedAsync<TimelineAggregateEntity>(rangeQuery, start, end);
 

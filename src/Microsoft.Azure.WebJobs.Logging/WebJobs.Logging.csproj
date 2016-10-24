@@ -92,9 +92,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActivationEvent.cs" />
+    <Compile Include="FunctionId.cs" />
     <Compile Include="FunctionVolumeTimelineEntry.cs" />
     <Compile Include="Entities\InstanceCountEntity.cs" />
     <Compile Include="FunctionInstanceStatus.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="ILogTableProvider.cs" />
     <Compile Include="IFunctionDefinition.cs" />
     <Compile Include="IFunctionInstanceBaseEntry.cs" />

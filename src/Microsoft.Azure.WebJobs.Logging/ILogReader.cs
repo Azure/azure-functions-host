@@ -40,21 +40,22 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Provides function definitions.
         /// The names are needed to drill down in future queries. 
         /// </summary>
+        /// <param name="hostName">Host to get definitions for. If null, include all hosts.</param>
         /// <param name="continuationToken"></param>
         /// <returns>list of available function definitions.</returns>
-        Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken);
-        
+        Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string hostName, string continuationToken);
+
         /// <summary>
         /// Drill down to function-instances of a given type within a timeline. 
         /// This returns a sparse array of entries. 
         /// To get total functions, must issue parallel queries for all function names (function names can be obtained from <see cref="GetFunctionDefinitionsAsync"/> ). 
         /// </summary>
-        /// <param name="functionName">name of the function to query for.</param>
+        /// <param name="functionId">name of the function to query for.</param>
         /// <param name="startTime"></param>
         /// <param name="endTime"></param>
         /// <param name="continuationToken"></param>
         /// <returns></returns>
-        Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(string functionName, DateTime startTime, DateTime endTime, string continuationToken);
+        Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(FunctionId functionId, DateTime startTime, DateTime endTime, string continuationToken);
 
         /// <summary>
         /// Query recent function instances that match the given query parameters.
@@ -73,5 +74,5 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <param name="functionInstanceId">function instance id that describes this specific instance. </param>
         /// <returns>null if the instance is not found.</returns>
         Task<FunctionInstanceLogItem> LookupFunctionInstanceAsync(Guid functionInstanceId);
-    }    
+    }   
 }

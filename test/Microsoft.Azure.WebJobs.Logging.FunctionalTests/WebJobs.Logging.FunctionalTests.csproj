@@ -103,6 +103,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FunctionIdTests.cs" />
     <Compile Include="ProjectionTests.cs" />
     <Compile Include="InstanceCountLoggerBaseTests.cs" />
     <Compile Include="LoggerTest.cs" />

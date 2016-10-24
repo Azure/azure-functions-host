@@ -16,6 +16,18 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             var table = new CloudTable(new Uri("http://storage.table.core.windows.net/" + tableName));
             return table;
         }
+
+        [Theory]
+        [InlineData("abc", 1, "abc")]
+        [InlineData("abc-def", 1, "abc")]
+        [InlineData("abc-def", 2, "def")]
+        [InlineData("abc-def-xyz", 2, "def")]
+        [InlineData("abc-def-xyz", 3, "xyz")]
+        public void Parse(string rowKey, int termNumber, string expected)
+        {
+            string actual = TableScheme.GetNthTerm(rowKey, termNumber);
+            Assert.Equal(expected, actual);
+        }
         
         [Theory]
         [InlineData("test201204", 201204)]

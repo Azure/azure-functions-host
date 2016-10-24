@@ -70,7 +70,8 @@ namespace Dashboard.Data
             return _versionMapper.GetVersion(blob.Metadata);
         }
 
-        public IResultSegment<FunctionIndexEntry> Read(int maximumResults, string continuationToken)
+        // Classic logging ignores hostName filter. 
+        public IResultSegment<FunctionIndexEntry> Read(string hostName, int maximumResults, string continuationToken)
         {
             BlobContinuationToken blobContinuationToken = BlobContinuationTokenSerializer.Deserialize(continuationToken);
 

@@ -25,35 +25,29 @@ namespace Dashboard.Data
 
         private DateTime _version = DateTime.MinValue;
 
-        private FunctionSnapshot[] _snapshots = null; // Cache of function definitions 
-
         public FastTableReader(ILogReader reader)
         {
             _reader = reader;
         }
 
-        private async Task<FunctionSnapshot[]> GetSnapshotsAsync()
+        private async Task<FunctionSnapshot[]> GetSnapshotsAsync(string hostName = null)
         {
-            var segment = await _reader.GetFunctionDefinitionsAsync(null);
+            var segment = await _reader.GetFunctionDefinitionsAsync(hostName, null);
             var definitions = segment.Results;
 
-            var current = _snapshots;
+            DateTime latest = GetLatestModifiedTime(definitions);
 
-            DateTime latest = GetLatestModifiedTime(definitions);            
+            var snapshots = Array.ConvertAll(definitions, definition => new FunctionSnapshot
+            {
+                Id = definition.FunctionId.ToString(),
+                FullName = definition.Name,
+                ShortName = definition.Name,
+                Parameters = new Dictionary<string, ParameterSnapshot>(),
+                HostVersion = definition.LastModified
+            });
+            _version = latest;
 
-            if ((_snapshots == null) || (latest > _version))
-            {          
-                _snapshots = Array.ConvertAll(definitions, definition => new FunctionSnapshot
-                {
-                    Id = definition.Name,
-                    FullName = definition.Name,
-                    ShortName = definition.Name,
-                    Parameters = new Dictionary<string, ParameterSnapshot>(),
-                    HostVersion = definition.LastModified
-                });
-                _version = latest;
-            }
-            return _snapshots;
+            return snapshots;
         }
 
         private static DateTime GetLatestModifiedTime(IFunctionDefinition[] definitions)
@@ -88,11 +82,11 @@ namespace Dashboard.Data
 
         FunctionStatistics IFunctionStatisticsReader.Lookup(string functionId)
         {
-            var theTask = Task.Run(() => LookupAsync(functionId));
+            var theTask = Task.Run(() => LookupAsync(FunctionId.Parse(functionId)));
             var retVal = theTask.GetAwaiter().GetResult();
             return retVal;
         }
-        private async Task<FunctionStatistics> LookupAsync(string functionId)
+        private async Task<FunctionStatistics> LookupAsync(FunctionId functionId)
         {
             var total = new FunctionStatistics
             {
@@ -133,16 +127,17 @@ namespace Dashboard.Data
             return _version;
         }
 
-        IResultSegment<FunctionIndexEntry> IFunctionIndexReader.Read(int maximumResults, string continuationToken)
+        IResultSegment<FunctionIndexEntry> IFunctionIndexReader.Read(string hostName, int maximumResults, string continuationToken)
         {
-            var theTask = Task.Run(() => Read1Async());
+            var theTask = Task.Run(() => Read1Async(hostName));
             var retVal = theTask.GetAwaiter().GetResult();
             return retVal;
         }
 
-        private async Task<IResultSegment<FunctionIndexEntry>> Read1Async()
+        private async Task<IResultSegment<FunctionIndexEntry>> Read1Async(string hostName)
         {
-            var snapshots = await GetSnapshotsAsync();
+            var snapshots = await GetSnapshotsAsync(hostName);
+
             var results = Array.ConvertAll(snapshots, x =>
                   FunctionIndexEntry.Create(
                         FunctionIndexEntry.CreateOtherMetadata(x), x.HostVersion));
@@ -162,13 +157,13 @@ namespace Dashboard.Data
             var endTime = FromContinuationToken(continuationToken, DateTime.MaxValue);
             var snapshots = await GetSnapshotsAsync();
 
-            string[] functionNames = Array.ConvertAll(snapshots, x => x.Id);
+            string[] functionIds = Array.ConvertAll(snapshots, x => x.Id);
 
             Task<Segment<IRecentFunctionEntry>>[] queryTasks = Array.ConvertAll(
-                functionNames,
-                functionName => _reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
+                functionIds,
+                functionId => _reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
                 {
-                    FunctionName = functionName,
+                    FunctionId = FunctionId.Parse(functionId),
                     MaximumResults = maximumResults,
                     Start = DateTime.MinValue, 
                     End = endTime                    
@@ -218,17 +213,17 @@ namespace Dashboard.Data
 
         IResultSegment<RecentInvocationEntry> IRecentInvocationIndexByFunctionReader.Read(string functionId, int maximumResults, string continuationToken)
         {
-            var theTask = Task.Run(() => Read3Async(functionId, maximumResults, continuationToken));
+            var theTask = Task.Run(() => Read3Async(FunctionId.Parse(functionId), maximumResults, continuationToken));
             var retVal = theTask.GetAwaiter().GetResult();
             return retVal;
         }
 
         private async Task<IResultSegment<RecentInvocationEntry>> Read3Async(
-            string functionId, int maximumResults, string continuationToken)
+            FunctionId functionId, int maximumResults, string continuationToken)
         {
             var queryParams = new RecentFunctionQuery
             {
-                FunctionName = functionId,
+                FunctionId = functionId,
                 MaximumResults = maximumResults,
                 Start = DateTime.MinValue,
                 End = DateTime.MaxValue

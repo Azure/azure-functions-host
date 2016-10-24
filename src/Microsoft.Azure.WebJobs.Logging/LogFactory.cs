@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     public static class LogFactory
     {
         /// <summary>
-        /// Get a reader that reads from the given table. 
+        /// Get a reader that reads from the given table. A single reader can handle all hosts in the given storage account. 
         /// </summary>
         /// <param name="logTableProvider">callback interface to retrieve logging tables</param>
         /// <returns></returns>
@@ -24,12 +24,14 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Create a new log writer. 
         /// Pass in machineName to facilitate multiple compute instances writing to the same table simultaneously without interference. 
         /// </summary>
+        /// <param name="hostName">name of host. A host is a homegenous collection of compute containers, like an Azure Website / appservice. 
+        /// Multiple hosts can share a single set of azure tables. Logging is scoped per-host.</param>
         /// <param name="machineName">name of the compute container. Likely %COMPUTERNAME%. </param>
         /// <param name="logTableProvider">callback interface that gets invoked to get azure tables to write logging to.</param>
         /// <returns></returns>
-        public static ILogWriter NewWriter(string machineName, ILogTableProvider logTableProvider)
+        public static ILogWriter NewWriter(string hostName, string machineName, ILogTableProvider logTableProvider)
         {
-            return new LogWriter(machineName, logTableProvider);
+            return new LogWriter(hostName, machineName, logTableProvider);
         }
 
         /// <summary>

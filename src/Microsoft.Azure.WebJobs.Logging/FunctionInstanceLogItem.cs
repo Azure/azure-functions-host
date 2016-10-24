@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -29,8 +28,12 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>Gets or sets the Function ID of the ancestor function instance.</summary>
         public Guid? ParentId { get; set; }
 
-        /// <summary>Name of this function. This can be used in querying other instances of this function. </summary>
+        /// <summary>Short Name of this function.</summary>
         public string FunctionName { get; set; }
+
+        /// <summary>Globally unique name of this function. This is unique across hosts. 
+        /// This can be used in querying other instances of this function. </summary>
+        public FunctionId FunctionId { get; set; }
 
         /// <summary>
         /// An optional hint about why this function was invoked. It may have been triggered, replayed, manually invoked, etc. 

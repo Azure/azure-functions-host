@@ -14,23 +14,23 @@ namespace Microsoft.Azure.WebJobs.Logging
         // HostId in the rowKey is additional salt in case multiple hosts are writing in the same timeline. It is ignored during read.
         const string PartitionKeyFormat = TableScheme.TimelineAggregatePK;
         const string RowKeyPrefixFormat = "{0}-{1:D20}-"; 
-        const string RowKeyFormat       = "{0}-{1:D20}-{2}"; // functionName\timeBucket\hostId
+        const string RowKeyFormat       = "{0}-{1:D20}-{2}"; // hostname-functionName-timeBucket-hostId
 
-        public static TimelineAggregateEntity New(string containerName, string functionId, DateTime time, string hostId)
+        public static TimelineAggregateEntity New(string containerName, FunctionId functionId, DateTime time, string salt)
         {
             return new TimelineAggregateEntity
             {
                 PartitionKey = PartitionKeyFormat,
-                RowKey = RowKeyTimeInterval(functionId, time, hostId),
+                RowKey = RowKeyTimeInterval(functionId, time, salt),
                 Timestamp = DateTime.UtcNow,
                 ContainerName = containerName
             };
         }
 
-        public static TableQuery<TimelineAggregateEntity> GetQuery(string functionName, DateTime start, DateTime end)
+        public static TableQuery<TimelineAggregateEntity> GetQuery(FunctionId functionId, DateTime start, DateTime end)
         {
-            string rowKeyStart = RowKeyTimeIntervalPrefix(functionName, start);
-            string rowKeyEnd = RowKeyTimeIntervalPrefix(functionName, end);
+            string rowKeyStart = RowKeyTimeIntervalPrefix(functionId, start);
+            string rowKeyEnd = RowKeyTimeIntervalPrefix(functionId, end);
 
             var rangeQuery = TableScheme.GetRowsInRange<TimelineAggregateEntity>(
                 PartitionKeyFormat,
@@ -46,18 +46,18 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
         // Reader, no salt
-        internal static string RowKeyTimeIntervalPrefix(string functionId, DateTime dateTime)
+        internal static string RowKeyTimeIntervalPrefix(FunctionId functionId, DateTime dateTime)
         {
             var bucket = TimeBucket.ConvertToBucket(dateTime);
-            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyPrefixFormat, TableScheme.NormalizeFunctionName(functionId), bucket);
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyPrefixFormat, functionId, bucket);
             return rowKey;
         }
 
 
-        internal static string RowKeyTimeInterval(string functionId, DateTime dateTime, string hostId)
+        internal static string RowKeyTimeInterval(FunctionId functionId, DateTime dateTime, string hostId)
         {
             var bucket = TimeBucket.ConvertToBucket(dateTime);
-            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionId), bucket, hostId);
+            string rowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, functionId, bucket, hostId);
             return rowKey;
         }
 
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
         private long GetTimeBucket()
         {
-            string time = TableScheme.Get2ndTerm(this.RowKey);
+            string time = TableScheme.GetNthTerm(this.RowKey, 3);
             var minute = long.Parse(time, CultureInfo.InvariantCulture);
             return minute;
         }

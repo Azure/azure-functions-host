@@ -13,7 +13,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>
         /// Name of the function to query for. 
         /// </summary>
-        public string FunctionName { get; set; }
+        /// <remarks>This is case-sensitive, and the character set here is restricted to valid Azure Table characters. </remarks>
+        public FunctionId FunctionId { get; set; }
 
         /// <summary>
         /// Maximum results to return in a segment. Used for pagination. 

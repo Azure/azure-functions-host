@@ -36,21 +36,33 @@ namespace Dashboard.UnitTests
         [Fact]
         public async Task GetDefinition()
         {
-            
-                var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100");
+            var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100");
 
-                // Testing against specific data that we added. 
-                Assert.Equal(null, response.ContinuationToken);
-                var x = response.Entries.ToArray();
-                Assert.Equal(1, x.Length);
-                Assert.Equal("alpha", x[0].functionName);
+            // Testing against specific data that we added. 
+            Assert.Equal(null, response.ContinuationToken);
+            var x = response.Entries.ToArray();
+            Assert.Equal(1, x.Length);
+            Assert.Equal("alpha", x[0].functionName);
+        }
+
+        // Pass ?host=  parameter when getting definitions to filter to a specific host. 
+        [Fact]
+        public async Task GetDefinitionSingleHost()
+        {
+            var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100&host=missing");
+
+            // Testing against specific data that we added. 
+            Assert.Equal(null, response.ContinuationToken);
+            var x = response.Entries.ToArray();
+            Assert.Equal(0, x.Length);            
         }
 
         [Fact]
         public async Task GetInvocations()
         {
             // Lookup functions by name 
-            var response = await _client.GetJsonAsync<DashboardSegment<InvocationLogViewModel>>(_endpoint + "/api/functions/definitions/" + "alpha" + "/invocations?limit=11");
+            string uri = _endpoint + "/api/functions/definitions/" + FunctionId.Build(Fixture.HostName, "alpha") + "/invocations?limit=11";
+            var response = await _client.GetJsonAsync<DashboardSegment<InvocationLogViewModel>>(uri);
 
             var item = _fixture.Data[0];
 
@@ -98,6 +110,8 @@ namespace Dashboard.UnitTests
         public class Fixture : IDisposable
         {
             private const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";
+
+            public static string HostName = "Host";
 
             private ILogTableProvider _provider;
 
@@ -149,7 +163,7 @@ namespace Dashboard.UnitTests
             // This is baseline data. REader will verify against it exactly. This helps in aggressively catching subtle breaking changes. 
             private async Task<FunctionInstanceLogItem[]> WriteTestLoggingDataAsync(ILogTableProvider provider)
             {
-                ILogWriter writer = LogFactory.NewWriter("c1", provider);
+                ILogWriter writer = LogFactory.NewWriter(HostName, "c1", provider);
 
                 string Func1 = "alpha";
                 var time = new DateTime(2010, 3, 6, 10, 11, 20);

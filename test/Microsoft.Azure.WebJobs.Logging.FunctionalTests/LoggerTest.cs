@@ -16,7 +16,9 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
     public class LoggerTest : IDisposable, ILogTableProvider
     {
-        static string CommonFuncName1 = "gamma";
+        static string DefaultHost = "host";
+        static string CommonFuncName1 = "gamma"; 
+        static FunctionId CommonFuncId1 = FunctionId.Build(DefaultHost, CommonFuncName1); // default values
 
         private List<CloudTable> _tables = new List<CloudTable>();
 
@@ -85,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             ILogReader reader = LogFactory.NewReader(this);
             Assert.Equal(0, this._tables.Count); // no tables yet. 
             
-            var segmentDef = await reader.GetFunctionDefinitionsAsync(null);
+            var segmentDef = await reader.GetFunctionDefinitionsAsync(null, null);
             Assert.Equal(0, segmentDef.Results.Length);
 
             var segmentTimeline = await reader.GetActiveContainerTimelineAsync(DateTime.MinValue, DateTime.MaxValue, null);
@@ -93,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             var segmentRecent = await reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
             {
-                FunctionName = "abc",
+                FunctionId = FunctionId.Parse("abc"),
                 Start = DateTime.MinValue,
                 End = DateTime.MaxValue,
                 MaximumResults = 1000
@@ -109,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task TimeRange()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Time that functios are called. 
@@ -166,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task TimeRangeAcrossEpochs()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Time that functios are called. 
@@ -233,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         // logs should be sorted in reverse chronological order. 
         private async Task Verify(ILogReader reader, DateTime start, DateTime end, params FunctionInstanceLogItem[] expected)
         {
-            var recent = await GetRecentAsync(reader, CommonFuncName1, start, end);
+            var recent = await GetRecentAsync(reader, CommonFuncId1, start, end);
             Assert.Equal(expected.Length, recent.Length);
 
             for (int i = 0; i < expected.Length; i++)
@@ -242,11 +244,110 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
+        // Timestamp for incrementing when QuickWrite() happens. 
+        private DateTime _quickTimestamp = new DateTime(2017, 3, 6, 10, 11, 20, DateTimeKind.Utc);
+
+        // Write a function entry. Don't care about any other details.
+        async Task<Guid> QuickWriteAsync(ILogWriter writer, string functionName)
+        {
+            
+            FunctionInstanceLogItem l1 = new FunctionInstanceLogItem
+            {
+                FunctionInstanceId = Guid.NewGuid(),
+                FunctionName = functionName,
+                StartTime = _quickTimestamp,
+                EndTime = _quickTimestamp.AddMinutes(1)
+                // inferred as Running since no end time.
+            };
+
+            _quickTimestamp = _quickTimestamp.AddMinutes(2);
+
+            await writer.AddAsync(l1);
+            await writer.FlushAsync();
+
+            return l1.FunctionInstanceId;
+        }
+       
+        // Have 2 different host writers to the same storage; results should be different. 
+        // This is testing that we're handling the host ids. 
+        [Fact]
+        public async Task DifferentHosts()
+        {
+            // 1a & 1b are 2 instances (different machines) of the same host. They share. 
+            // 2 is a separate host. 
+            string host1 = "h1-1"; // includes an tricky character that requires escaping. 
+            string host2 = "h22";
+            ILogWriter writer1a = LogFactory.NewWriter(host1, "c1", this);
+            ILogWriter writer1b = LogFactory.NewWriter(host1, "c2", this);
+            ILogWriter writer2 = LogFactory.NewWriter(host2, "c3", this);
+
+            ILogReader reader1 = LogFactory.NewReader(this);
+            ILogReader reader2 = LogFactory.NewReader(this);
+
+            string Func1 = "alpha";
+
+            var f1a = await QuickWriteAsync(writer1a, Func1); // first 
+            var f1b = await QuickWriteAsync(writer1b, Func1);
+            var f1aa = await QuickWriteAsync(writer1a, Func1); // second write
+            var f2 = await QuickWriteAsync(writer2, Func1);
+
+            // Verify readers 
+            // Function definitions. Search all hosts if no host specified 
+            {
+                var segment = await reader1.GetFunctionDefinitionsAsync(null, null);
+
+                Assert.Equal(2, segment.Results.Length);
+                var allDefinitions = segment.Results;
+                
+                segment = await reader1.GetFunctionDefinitionsAsync(host1, null);
+
+                Assert.Equal(1, segment.Results.Length);
+                var host1Defs = segment.Results[0];
+                Assert.Equal(Func1, host1Defs.Name);
+                Assert.Equal(FunctionId.Build(host1, Func1), host1Defs.FunctionId);
+
+                segment = await reader1.GetFunctionDefinitionsAsync(host2, null);
+
+                Assert.Equal(1, segment.Results.Length);
+                var host2Defs = segment.Results[0];
+                Assert.Equal(Func1, host2Defs.Name);
+                Assert.Equal(FunctionId.Build(host2, Func1), host2Defs.FunctionId);
+
+                Assert.Equal(Func1, allDefinitions[0].Name);
+                Assert.Equal(Func1, allDefinitions[1].Name);
+                Assert.Equal(host1Defs.FunctionId, allDefinitions[0].FunctionId);
+                Assert.Equal(host2Defs.FunctionId, allDefinitions[1].FunctionId);
+            }            
+
+            // Recent list 
+            {
+                var segment = await reader1.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
+                {
+                    FunctionId = FunctionId.Build(host1, Func1),
+                    End = DateTime.MaxValue, 
+                }, null);
+                Guid[] guids = Array.ConvertAll(segment.Results, x => x.FunctionInstanceId);
+
+                Assert.Equal(3, guids.Length); // Only include host 1
+                Assert.Equal(f1a, guids[2]); // reverse chronological 
+                Assert.Equal(f1b, guids[1]);
+                Assert.Equal(f1aa, guids[0]);
+            }
+
+            // cross polination. Lookup across hosts. 
+            {
+                var entry = await reader2.LookupFunctionInstanceAsync(f1a);
+                Assert.NotNull(entry);
+                Assert.Equal(entry.FunctionName, Func1);
+            }
+
+        }
+
         [Fact]
         public async Task LogStart()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string Func1 = "alpha";
@@ -266,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             await writer.FlushAsync();
             // Start event should exist. 
 
-            var entries = await GetRecentAsync(reader, Func1);
+            var entries = await GetRecentAsync(reader, l1.FunctionId);
             Assert.Equal(1, entries.Length);
             Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
             Assert.Equal(entries[0].EndTime, null);
@@ -279,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             // Should overwrite the previous row. 
 
-            entries = await GetRecentAsync(reader, Func1);
+            entries = await GetRecentAsync(reader, l1.FunctionId);
             Assert.Equal(1, entries.Length);
             Assert.Equal(entries[0].Status, FunctionInstanceStatus.CompletedSuccess);
             Assert.Equal(entries[0].EndTime.Value.DateTime, l1.EndTime);
@@ -290,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task Casing()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string FuncOriginal = "UPPER-lower";
@@ -313,14 +414,14 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             // Start event should exist. 
 
 
-            var definitionSegment = await reader.GetFunctionDefinitionsAsync(null);
+            var definitionSegment = await reader.GetFunctionDefinitionsAsync(null, null);
             Assert.Equal(1, definitionSegment.Results.Length);
             Assert.Equal(FuncOriginal, definitionSegment.Results[0].Name);
 
             // Lookup various casings 
             foreach (var name in new string[] { FuncOriginal, Func2, Func3 })
             {
-                var entries = await GetRecentAsync(reader, name);
+                var entries = await GetRecentAsync(reader, l1.FunctionId);
                 Assert.Equal(1, entries.Length);
                 Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
                 Assert.Equal(entries[0].EndTime, null);
@@ -332,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         [Fact]
         public async Task LargeWritesAreTruncated()
         {
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             List<Guid> functionIds = new List<Guid>();
@@ -396,7 +497,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         [Fact]
         public async Task LargeWritesWithParametersAreTruncated()
         {
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Max table request size is 4mb. That gives roughly 40kb per row. 
@@ -446,7 +547,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task LogExactWriteAndRead()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter("c1", this);
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string Func1 = "alpha";
@@ -489,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             await writer.FlushAsync();
 
             // Now read 
-            var definitionSegment = await reader.GetFunctionDefinitionsAsync(null);
+            var definitionSegment = await reader.GetFunctionDefinitionsAsync(null, null);
             string[] functionNames = Array.ConvertAll(definitionSegment.Results, definition => definition.Name);
             Array.Sort(functionNames);
             Assert.Equal(Func1, functionNames[0]);
@@ -497,7 +598,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             // Read Func1
             {
-                var segment1 = await reader.GetAggregateStatsAsync(Func1, DateTime.MinValue, DateTime.MaxValue, null);
+                var segment1 = await reader.GetAggregateStatsAsync(l3.FunctionId, DateTime.MinValue, DateTime.MaxValue, null);
                 Assert.Null(segment1.ContinuationToken);
                 var stats1 = segment1.Results;
                 Assert.Equal(2, stats1.Length); // includes t1 and t2
@@ -512,7 +613,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 Assert.Equal(stats1[1].TotalFail, 1);
 
                 // reverse order. So l3 latest function, is listed first. 
-                var recent1 = await GetRecentAsync(reader, Func1);
+                var recent1 = await GetRecentAsync(reader, l3.FunctionId);
                 Assert.Equal(2, recent1.Length);
 
                 Assert.Equal(recent1[0].FunctionInstanceId, l3.FunctionInstanceId);
@@ -521,30 +622,30 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             // Read Func2
             {
-                var segment2 = await reader.GetAggregateStatsAsync(Func2, DateTime.MinValue, DateTime.MaxValue, null);
+                var segment2 = await reader.GetAggregateStatsAsync(l2.FunctionId, DateTime.MinValue, DateTime.MaxValue, null);
                 var stats2 = segment2.Results;
                 Assert.Equal(1, stats2.Length);
                 Assert.Equal(stats2[0].TotalPass, 1);
                 Assert.Equal(stats2[0].TotalRun, 1);
                 Assert.Equal(stats2[0].TotalFail, 0);
 
-                var recent2 = await GetRecentAsync(reader, Func2);
+                var recent2 = await GetRecentAsync(reader, l2.FunctionId);
                 Assert.Equal(1, recent2.Length);
                 Assert.Equal(recent2[0].FunctionInstanceId, l2.FunctionInstanceId);
             }
         }
 
-        static Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, string functionName)
+        static Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, FunctionId functionId)
         {
-            return GetRecentAsync(reader, functionName, DateTime.MinValue, DateTime.MaxValue);
+            return GetRecentAsync(reader, functionId, DateTime.MinValue, DateTime.MaxValue);
         }
 
-        static async Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, string functionName,
+        static async Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, FunctionId functionId,
             DateTime start, DateTime end)
         {
             var query = await reader.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
             {
-                FunctionName = functionName,
+                FunctionId = functionId,
                 Start = start,
                 End = end,
                 MaximumResults = 1000

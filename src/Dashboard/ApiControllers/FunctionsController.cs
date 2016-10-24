@@ -109,7 +109,7 @@ namespace Dashboard.ApiControllers
 
         private bool FunctionIndexHasEntry()
         {
-            var results = _functionIndexReader.Read(1, null);
+            var results = _functionIndexReader.Read(null, 1, null);
 
             if (results == null)
             {
@@ -242,7 +242,7 @@ namespace Dashboard.ApiControllers
                 return BadRequest();
             }
 
-            var segment = await _reader.GetAggregateStatsAsync(functionId, start.Value, end.Value, null);
+            var segment = await _reader.GetAggregateStatsAsync(FunctionId.Parse(functionId), start.Value, end.Value, null);
             var entities = segment.Results;
 
             var result = Array.ConvertAll(entities, entity => new
@@ -463,8 +463,9 @@ namespace Dashboard.ApiControllers
             return models.ToArray();
         }
 
+        // If host is specified, then only return definitions for that host. If null, return all hosts. 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo, string host = null)
         {
             if (pagingInfo == null)
             {
@@ -476,7 +477,7 @@ namespace Dashboard.ApiControllers
                 return BadRequest(ModelState);
             }
 
-            IResultSegment<FunctionIndexEntry> indexSegment = _functionIndexReader.Read(pagingInfo.Limit,
+            IResultSegment<FunctionIndexEntry> indexSegment = _functionIndexReader.Read(host, pagingInfo.Limit,
                 pagingInfo.ContinuationToken);
 
             var model = new FunctionStatisticsSegment();

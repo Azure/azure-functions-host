@@ -12,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Logging
     // 1 entity per function definition. 
     internal class FunctionDefinitionEntity : TableEntity, IFunctionDefinition, IEntityWithEpoch
     {
-        const string PartitionKeyFormat = TableScheme.FuncDefIndexPK;
-        const string RowKeyFormat = "{0}"; // functionName
+        const string PartitionKeyPrefix = TableScheme.FuncDefIndexPK;
+        const string RowKeyFormat = "{0}"; // FunctionId
 
         DateTime IFunctionDefinition.LastModified
         {
@@ -31,6 +31,17 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
         }
 
+        // Host-aware name. Used in other APIs. 
+        // This value is already escaped. 
+        FunctionId IFunctionDefinition.FunctionId
+        {
+            get
+            {
+                return FunctionId.Parse(this.RowKey);
+            }
+        }
+        
+
         public DateTime GetEpoch()
         {
             return TimeBucket.CommonEpoch; // Definitions span all epocs 
@@ -40,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         // and functions must be case-preserving. 
         public string OriginalName { get; set; }
 
-        public static FunctionDefinitionEntity New(string functionName)
+        public static FunctionDefinitionEntity New(FunctionId functionId, string functionName)
         {
             return new FunctionDefinitionEntity
             {
-                PartitionKey = PartitionKeyFormat,
-                RowKey = string.Format(CultureInfo.InvariantCulture, RowKeyFormat, TableScheme.NormalizeFunctionName(functionName)),
-                OriginalName = functionName
+                PartitionKey = PartitionKeyPrefix,
+                RowKey = functionId.ToString(),
+                OriginalName = functionName                
             };
         }
 

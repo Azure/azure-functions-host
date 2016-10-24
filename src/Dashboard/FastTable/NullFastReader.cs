@@ -15,12 +15,12 @@ namespace Dashboard
             throw new NotImplementedException();
         }
 
-        public Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(string functionName, DateTime startTime, DateTime endTime, string continuationToken)
+        public Task<Segment<IAggregateEntry>> GetAggregateStatsAsync(FunctionId functionId, DateTime startTime, DateTime endTime, string continuationToken)
         {
             throw new NotImplementedException();
         }
 
-        public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string continuationToken)
+        public Task<Segment<IFunctionDefinition>> GetFunctionDefinitionsAsync(string hostName, string continuationToken)
         {
             throw new NotImplementedException();
         }
