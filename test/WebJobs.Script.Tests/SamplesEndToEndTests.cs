@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // wait for completion
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("Hello C#!", TestHelpers.RemoveByteOrderMark(result));
+            Assert.Equal("Hello C#!", Utility.RemoveUtf8ByteOrderMark(result));
         }
 
         [Fact]
@@ -334,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string path = $"housewares/{id}";
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(path);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            JObject resultProduct = JObject.Parse(TestHelpers.RemoveByteOrderMark(result));
+            JObject resultProduct = JObject.Parse(Utility.RemoveUtf8ByteOrderMark(result));
             Assert.Equal(id, (string)resultProduct["id"]);
             Assert.Equal((string)product["name"], (string)resultProduct["name"]);
         }
