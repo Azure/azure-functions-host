@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
-            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);            
+            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
             EventHubClient eventHubClient;
             if (!string.IsNullOrWhiteSpace(builder.EntityPath))
             {
@@ -183,7 +183,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Home_Get_WithHomepageDisabled_Succeeds()
+        {
+            using (new TestScopedEnvironmentVariables(EnvironmentSettingNames.AzureWebJobsDisableHomepage, bool.TrueString))
+            {
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+
+                HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            }
         }
 
         [Fact]
@@ -288,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             json = await response.Content.ReadAsStringAsync();
             JArray products = JArray.Parse(json);
             Assert.Equal(2, products.Count);
-            
+
             // test a constraint violation (invalid id)
             uri = $"api/node/products/electronics/notaguid?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -920,7 +932,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     using (HttpResponseMessage response = this.HttpClient.SendAsync(request).Result)
                     {
-                        return response.StatusCode == HttpStatusCode.NoContent;
+                        return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
                     }
                 }
             }

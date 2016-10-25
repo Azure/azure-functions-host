@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             {
                 using (HttpResponseMessage response = this.HttpClient.SendAsync(request).Result)
                 {
-                    return response.StatusCode == HttpStatusCode.NoContent;
+                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
                 }
             }
         }

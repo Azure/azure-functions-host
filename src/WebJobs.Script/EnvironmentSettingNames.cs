@@ -16,5 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
+        public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
     }
 }
