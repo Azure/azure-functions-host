@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void GetFunctionSecrets_WhenNoSecretFileExists_ReturnsEmptySecretsAndDoesNotPersistsFile()
+        public void GetFunctionSecrets_WhenNoSecretFileExists_CreatesDefaultSecretAndPersistsFile()
         {
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
@@ -234,8 +234,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
 
                     Assert.NotNull(functionSecrets);
-                    Assert.False(functionSecretsExists);
-                    Assert.Equal(0, functionSecrets.Count);
+                    Assert.True(functionSecretsExists);
+                    Assert.Equal(1, functionSecrets.Count);
+                    Assert.Equal(ScriptConstants.DefaultFunctionKeyName, functionSecrets.Keys.First());
                 }
             }
             finally

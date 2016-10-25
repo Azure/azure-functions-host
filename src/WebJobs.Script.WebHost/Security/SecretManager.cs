@@ -120,8 +120,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string secretsFilePath = GetFunctionSecretsFilePath(functionName);
                 if (!TryLoadFunctionSecrets(functionName, out secrets, secretsFilePath))
                 {
-                    // initialize an empty FunctionSecrets instance
-                    secrets = new FunctionSecrets();
+                    secrets = new FunctionSecrets
+                    {
+                        Keys = new List<Key>
+                        {
+                            GenerateKey(ScriptConstants.DefaultFunctionKeyName)
+                        }
+                    };
+
+                    PersistSecrets(secrets, secretsFilePath);
                 }
 
                 // Read all secrets, which will run the keys through the appropriate readers
