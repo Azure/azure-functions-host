@@ -413,6 +413,7 @@
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="CSharpFunctionSignatureTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
+    <Compile Include="Description\DotNet\DotNetCompilationServiceFactoryTests.cs" />
     <Compile Include="Description\DotNet\FunctionAssemblyLoaderTests.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionInvokerTests.cs" />
     <Compile Include="Description\DotNet\PackageManagerTests.cs" />

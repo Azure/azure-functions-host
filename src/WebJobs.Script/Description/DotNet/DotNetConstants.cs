@@ -16,7 +16,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string RedundantPackageAssemblyReference = "AF005";
         public const string InvalidFileMetadataReferenceCode = "AF006";
         public const string InvalidEntryPointNameCompilationCode = "AF007";
-
-        public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
     }
 }
