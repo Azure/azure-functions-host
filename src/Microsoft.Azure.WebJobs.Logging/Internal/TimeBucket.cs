@@ -42,12 +42,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         public static long GetEpochNumberFromTable(CloudTable table)
         {
             long epoch;
-            epoch = LegacyTableReader.GetEpochFromTable(table);
-            if (epoch > 0)
-            {
-                return epoch;
-            }
-
+            
             string tableName = table.Name;
             if (tableName.Length < 5)
             {

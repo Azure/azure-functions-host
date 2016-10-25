@@ -102,7 +102,6 @@
     <Compile Include="IFunctionInstanceBaseEntry.cs" />
     <Compile Include="Internal\DefaultLogTableProvider.cs" />
     <Compile Include="Internal\IEntityWithEpoch.cs" />
-    <Compile Include="Internal\LegacyTableReader.cs" />
     <Compile Include="Internal\ProjectionHelper.cs" />
     <Compile Include="Internal\CloudTableInstanceCountLogger.cs" />
     <Compile Include="Internal\InstanceCountLoggerBase.cs" />

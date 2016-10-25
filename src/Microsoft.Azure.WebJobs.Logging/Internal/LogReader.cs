@@ -74,13 +74,6 @@ namespace Microsoft.Azure.WebJobs.Logging
             var instanceTable = _tableLookup.GetTableForDateTime(TimeBucket.CommonEpoch);
             var results = await GetFunctionDefinitionsHelperAsync(instanceTable, hostName);
 
-            var legacyTable = LegacyTableReader.GetLegacyTable(_tableLookup);
-            if (legacyTable != null)
-            {
-                var olderResults = await GetFunctionDefinitionsHelperAsync(legacyTable, hostName);
-                results = LegacyTableReader.Merge(results, olderResults);
-            }
-
             var segment = new Segment<IFunctionDefinition>(results);
             return segment;
         }
