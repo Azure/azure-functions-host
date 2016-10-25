@@ -18,14 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly ILogWriter _writer;
 
-        public FastLogger(string accountConnectionString)
+        public FastLogger(string hostName, string accountConnectionString)
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             var client = account.CreateCloudTableClient();
             var tableProvider = LogFactory.NewLogTableProvider(client);
                         
             string containerName = Environment.MachineName;
-            this._writer = LogFactory.NewWriter(containerName, tableProvider);
+            this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider);
         }
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))

@@ -391,7 +391,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
             if (dashboardString != null)
             {
-                var fastLogger = new FastLogger(dashboardString);
+                // hostId may be missing in local test scenarios. 
+                var hostId = config.HostConfig.HostId ?? "default";
+                var fastLogger = new FastLogger(hostId, dashboardString);
                 hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
             }
             hostConfig.DashboardConnectionString = null; // disable slow logging
