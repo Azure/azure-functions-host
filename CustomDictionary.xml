@@ -38,6 +38,7 @@
       <Word>BrokeredMessage</Word>
       <Word>ICollector</Word>
       <Word>IAsyncCollector</Word>
+      <Word>FunctionId</Word>
       <Word>WebJobs</Word>
       <Word>TextWriter</Word>
       <Word>INameResolver</Word>
@@ -83,6 +84,7 @@
     <DiscreteExceptions>
       <Term>Poco</Term>
 		<Term>WebJobs</Term>
+      <Term>FunctionId</Term>
 		<Term>ServiceBus</Term>
 		<Term>PartitionKey</Term>
 		<Term>RowKey</Term>
