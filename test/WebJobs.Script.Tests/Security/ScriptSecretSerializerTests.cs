@@ -13,27 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private ScriptSettingsManager _settingsManager = ScriptSettingsManager.Instance;
 
         [Fact]
-        public void DefaultSerializer_WhenMultiKeyFeatureIsEnabled_ReturnsV1Serializer()
+        public void DefaultSerializer_WhenMultiKeyFeatureIsNotSet_ReturnsV1Serializer()
         {
-            using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
-            {
-                Assert.Equal(typeof(ScriptSecretSerializerV1), ScriptSecretSerializer.DefaultSerializer?.GetType());
-            }
-        }
-
-        [Fact]
-        public void DefaultSerializer_WhenMultiKeyFeatureIsDisabled_ReturnsV0Serializer()
-        {
-            using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", String.Empty))
-            {
-                Assert.Equal(typeof(ScriptSecretSerializerV0), ScriptSecretSerializer.DefaultSerializer?.GetType());
-            }
-        }
-
-        [Fact]
-        public void DefaultSerializer_WhenMultiKeyFeatureIsNotSet_ReturnsV0Serializer()
-        {
-            Assert.Equal(typeof(ScriptSecretSerializerV0), ScriptSecretSerializer.DefaultSerializer?.GetType());
+            Assert.Equal(typeof(ScriptSecretSerializerV1), ScriptSecretSerializer.DefaultSerializer?.GetType());
         }
     }
 }

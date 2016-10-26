@@ -87,11 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
-                {
-                    Directory.CreateDirectory(secretsPath);
-                    string functionSecretsJson =
-                     @"{
+                Directory.CreateDirectory(secretsPath);
+                string functionSecretsJson =
+                 @"{
     'keys': [
         {
             'name': 'Key1',
@@ -105,22 +103,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
     ]
 }";
-                    File.WriteAllText(Path.Combine(secretsPath, "testfunction.json"), functionSecretsJson);
+                File.WriteAllText(Path.Combine(secretsPath, "testfunction.json"), functionSecretsJson);
 
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock();
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock();
 
-                    IDictionary<string, string> functionSecrets;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        functionSecrets = secretManager.GetFunctionSecrets("testfunction");
-                    }
-                    // Read the persisted content
-                    var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(secretsPath, "testfunction.json")));
-                    bool functionSecretsConverted = functionSecrets.Values.Zip(result.Keys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
-
-                    Assert.Equal(2, result.Keys.Count);
-                    Assert.True(functionSecretsConverted, "Function secrets were not persisted");
+                IDictionary<string, string> functionSecrets;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
+                {
+                    functionSecrets = secretManager.GetFunctionSecrets("testfunction");
                 }
+                // Read the persisted content
+                var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(secretsPath, "testfunction.json")));
+                bool functionSecretsConverted = functionSecrets.Values.Zip(result.Keys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
+
+                Assert.Equal(2, result.Keys.Count);
+                Assert.True(functionSecretsConverted, "Function secrets were not persisted");
             }
             finally
             {
@@ -134,11 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
-                {
-                    Directory.CreateDirectory(secretsPath);
-                    string hostSecretsJson =
-                        @"{
+                Directory.CreateDirectory(secretsPath);
+                string hostSecretsJson =
+                    @"{
     'masterKey': {
         'name': 'master',
         'value': '1234',
@@ -157,24 +152,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
     ]
 }";
-                    File.WriteAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName), hostSecretsJson);
+                File.WriteAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName), hostSecretsJson);
 
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock();
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock();
 
-                    HostSecretsInfo hostSecrets;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        hostSecrets = secretManager.GetHostSecrets();
-                    }
-
-                    // Read the persisted content
-                    var result = JsonConvert.DeserializeObject<HostSecrets>(File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName)));
-                    bool functionSecretsConverted = hostSecrets.FunctionKeys.Values.Zip(result.FunctionKeys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
-
-                    Assert.Equal(2, result.FunctionKeys.Count);
-                    Assert.Equal("!" + hostSecrets.MasterKey, result.MasterKey.Value);
-                    Assert.True(functionSecretsConverted, "Function secrets were not persisted");
+                HostSecretsInfo hostSecrets;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
+                {
+                    hostSecrets = secretManager.GetHostSecrets();
                 }
+
+                // Read the persisted content
+                var result = JsonConvert.DeserializeObject<HostSecrets>(File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName)));
+                bool functionSecretsConverted = hostSecrets.FunctionKeys.Values.Zip(result.FunctionKeys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
+
+                Assert.Equal(2, result.FunctionKeys.Count);
+                Assert.Equal("!" + hostSecrets.MasterKey, result.MasterKey.Value);
+                Assert.True(functionSecretsConverted, "Function secrets were not persisted");
             }
             finally
             {
@@ -188,26 +182,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                HostSecretsInfo hostSecrets;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    HostSecretsInfo hostSecrets;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        hostSecrets = secretManager.GetHostSecrets();
-                    }
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
-                    HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-
-                    Assert.NotNull(hostSecrets);
-                    Assert.NotNull(persistedSecrets);
-                    Assert.Equal(1, hostSecrets.FunctionKeys.Count);
-                    Assert.NotNull(hostSecrets.MasterKey);
-                    Assert.Equal(persistedSecrets.MasterKey.Value, hostSecrets.MasterKey);
-                    Assert.Equal(persistedSecrets.FunctionKeys.First().Value, hostSecrets.FunctionKeys.First().Value);
+                    hostSecrets = secretManager.GetHostSecrets();
                 }
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
+                HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+
+                Assert.NotNull(hostSecrets);
+                Assert.NotNull(persistedSecrets);
+                Assert.Equal(1, hostSecrets.FunctionKeys.Count);
+                Assert.NotNull(hostSecrets.MasterKey);
+                Assert.Equal(persistedSecrets.MasterKey.Value, hostSecrets.MasterKey);
+                Assert.Equal(persistedSecrets.FunctionKeys.First().Value, hostSecrets.FunctionKeys.First().Value);
             }
             finally
             {
@@ -221,23 +212,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                IDictionary<string, string> functionSecrets;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    IDictionary<string, string> functionSecrets;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        functionSecrets = secretManager.GetFunctionSecrets("TestFunction");
-                    }
-
-                    bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
-
-                    Assert.NotNull(functionSecrets);
-                    Assert.True(functionSecretsExists);
-                    Assert.Equal(1, functionSecrets.Count);
-                    Assert.Equal(ScriptConstants.DefaultFunctionKeyName, functionSecrets.Keys.First());
+                    functionSecrets = secretManager.GetFunctionSecrets("TestFunction");
                 }
+
+                bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
+
+                Assert.NotNull(functionSecrets);
+                Assert.True(functionSecretsExists);
+                Assert.Equal(1, functionSecrets.Count);
+                Assert.Equal(ScriptConstants.DefaultFunctionKeyName, functionSecrets.Keys.First());
             }
             finally
             {
@@ -251,25 +239,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                KeyOperationResult result;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    KeyOperationResult result;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        result = secretManager.AddOrUpdateFunctionSecret("TestSecret", null, "TestFunction");
-                    }
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, "testfunction.json"));
-                    FunctionSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
-
-                    Assert.Equal(OperationResult.Created, result.Result);
-                    Assert.NotNull(result.Secret);
-                    Assert.NotNull(persistedSecrets);
-                    Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
-                    Assert.Equal("TestSecret", persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
+                    result = secretManager.AddOrUpdateFunctionSecret("TestSecret", null, "TestFunction");
                 }
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, "testfunction.json"));
+                FunctionSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.NotNull(result.Secret);
+                Assert.NotNull(persistedSecrets);
+                Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
+                Assert.Equal("TestSecret", persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
             }
             finally
             {
@@ -283,25 +268,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                KeyOperationResult result;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    KeyOperationResult result;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        result = secretManager.AddOrUpdateFunctionSecret("TestSecret", "TestSecretValue", "TestFunction");
-                    }
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, "testfunction.json"));
-                    FunctionSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
-
-                    Assert.Equal(OperationResult.Created, result.Result);
-                    Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
-                    Assert.NotNull(persistedSecrets);
-                    Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
-                    Assert.Equal("TestSecret", persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
+                    result = secretManager.AddOrUpdateFunctionSecret("TestSecret", "TestSecretValue", "TestFunction");
                 }
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, "testfunction.json"));
+                FunctionSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
+                Assert.NotNull(persistedSecrets);
+                Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
+                Assert.Equal("TestSecret", persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
             }
             finally
             {
@@ -315,28 +297,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                KeyOperationResult result;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    KeyOperationResult result;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        result = secretManager.AddOrUpdateFunctionSecret("TestSecret", "TestSecretValue");
-                    }
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
-                    HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-                    Key newSecret = persistedSecrets.FunctionKeys.FirstOrDefault(k => string.Equals(k.Name, "TestSecret", StringComparison.Ordinal));
-
-                    Assert.Equal(OperationResult.Created, result.Result);
-                    Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
-                    Assert.NotNull(persistedSecrets);
-                    Assert.NotNull(newSecret);
-                    Assert.Equal(result.Secret, newSecret.Value);
-                    Assert.Equal("TestSecret", newSecret.Name, StringComparer.Ordinal);
-                    Assert.NotNull(persistedSecrets.MasterKey);
+                    result = secretManager.AddOrUpdateFunctionSecret("TestSecret", "TestSecretValue");
                 }
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
+                HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+                Key newSecret = persistedSecrets.FunctionKeys.FirstOrDefault(k => string.Equals(k.Name, "TestSecret", StringComparison.Ordinal));
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
+                Assert.NotNull(persistedSecrets);
+                Assert.NotNull(newSecret);
+                Assert.Equal(result.Secret, newSecret.Value);
+                Assert.Equal("TestSecret", newSecret.Name, StringComparer.Ordinal);
+                Assert.NotNull(persistedSecrets.MasterKey);
             }
             finally
             {
@@ -351,26 +330,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                KeyOperationResult result;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    KeyOperationResult result;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        result = secretManager.SetMasterKey(testSecret);
-                    }
-
-                    bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
-                    HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-
-                    Assert.NotNull(persistedSecrets);
-                    Assert.NotNull(persistedSecrets.MasterKey);
-                    Assert.Equal(OperationResult.Updated, result.Result);
-                    Assert.Equal(testSecret, result.Secret);
+                    result = secretManager.SetMasterKey(testSecret);
                 }
+
+                bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
+                HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+
+                Assert.NotNull(persistedSecrets);
+                Assert.NotNull(persistedSecrets.MasterKey);
+                Assert.Equal(OperationResult.Updated, result.Result);
+                Assert.Equal(testSecret, result.Secret);
             }
             finally
             {
@@ -384,26 +360,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
-                using (var variables = new TestScopedSettings(_settingsManager, "AzureWebJobsFeatureFlags", "MultiKey"))
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+                KeyOperationResult result;
+                using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
                 {
-                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                    KeyOperationResult result;
-                    using (var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object))
-                    {
-                        result = secretManager.SetMasterKey();
-                    }
-
-                    bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
-
-                    string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
-                    HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-
-                    Assert.NotNull(persistedSecrets);
-                    Assert.NotNull(persistedSecrets.MasterKey);
-                    Assert.Equal(OperationResult.Created, result.Result);
-                    Assert.Equal(result.Secret, persistedSecrets.MasterKey.Value);
+                    result = secretManager.SetMasterKey();
                 }
+
+                bool functionSecretsExists = File.Exists(Path.Combine(secretsPath, "testfunction.json"));
+
+                string secretsJson = File.ReadAllText(Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName));
+                HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+
+                Assert.NotNull(persistedSecrets);
+                Assert.NotNull(persistedSecrets.MasterKey);
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal(result.Secret, persistedSecrets.MasterKey.Value);
             }
             finally
             {
