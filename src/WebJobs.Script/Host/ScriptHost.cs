@@ -635,7 +635,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(functionName, ex.Message);
+                    AddFunctionError(functionName, Utility.FlattenException(ex, includeSource: false));
                 }
             }
 
@@ -669,7 +669,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
             if (string.IsNullOrEmpty(scriptFile))
             {
-                error = 
+                error =
                     "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
                     "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
                 return false;
@@ -830,7 +830,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(metadata.Name, ex.Message);
+                    AddFunctionError(metadata.Name, Utility.FlattenException(ex, includeSource: false));
                 }
             }
 

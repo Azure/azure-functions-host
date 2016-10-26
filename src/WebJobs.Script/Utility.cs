@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionName;
         }
 
-        public static string FlattenException(Exception ex, Func<string, string> sourceFormatter = null)
+        public static string FlattenException(Exception ex, Func<string, string> sourceFormatter = null, bool includeSource = true)
         {
             StringBuilder flattenedErrorsBuilder = new StringBuilder();
             string lastError = null;
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
             do
             {
                 StringBuilder currentErrorBuilder = new StringBuilder();
-                if (!string.IsNullOrEmpty(ex.Source))
+                if (includeSource && !string.IsNullOrEmpty(ex.Source))
                 {
                     currentErrorBuilder.AppendFormat("{0}: ", sourceFormatter(ex.Source));
                 }
