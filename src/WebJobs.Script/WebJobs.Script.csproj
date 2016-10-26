@@ -344,6 +344,7 @@
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ExtensionSharedAssemblyProvider.cs" />
+    <Compile Include="Description\DotNet\FSharp\FSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\FunctionParameter.cs" />
     <Compile Include="Description\DotNet\ICompilation.cs" />
     <Compile Include="Description\DotNet\ICompilationServiceFactory.cs" />
@@ -359,7 +360,6 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
-    <Compile Include="Description\DotNet\FSharp\FSharpCompiler.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
