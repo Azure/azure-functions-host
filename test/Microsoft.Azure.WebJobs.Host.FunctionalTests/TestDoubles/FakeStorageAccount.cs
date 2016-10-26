@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         private readonly MemoryTableStore _tableStore = new MemoryTableStore();
         private readonly CloudStorageAccount _sdkObject = new CloudStorageAccount(_credentials, _endpoint, _endpoint,
             _endpoint, _endpoint);
+        private StorageAccountType _type = StorageAccountType.GeneralPurpose;
 
         public Uri BlobEndpoint
         {
@@ -40,6 +41,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public CloudStorageAccount SdkObject
         {
             get { return _sdkObject; }
+        }
+
+        public StorageAccountType Type
+        {
+            get { return _type; }
+            set { _type = value; }
         }
 
         public IStorageBlobClient CreateBlobClient(StorageClientFactoryContext context = null)

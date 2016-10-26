@@ -47,7 +47,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _mockBlobDirectory = new Mock<IStorageBlobDirectory>(MockBehavior.Strict);
             _mockSecondaryBlobDirectory = new Mock<IStorageBlobDirectory>(MockBehavior.Strict);
             _mockStorageAccount = new Mock<IStorageAccount>(MockBehavior.Strict);
+            _mockStorageAccount.SetupGet(a => a.Type).Returns(StorageAccountType.GeneralPurpose);
             _mockSecondaryStorageAccount = new Mock<IStorageAccount>(MockBehavior.Strict);
+            _mockSecondaryStorageAccount.SetupGet(a => a.Type).Returns(StorageAccountType.GeneralPurpose);
             Mock<IStorageBlobClient> mockBlobClient = new Mock<IStorageBlobClient>(MockBehavior.Strict);
             Mock<IStorageBlobClient> mockSecondaryBlobClient = new Mock<IStorageBlobClient>(MockBehavior.Strict);
             Mock<IStorageBlobContainer> mockBlobContainer = new Mock<IStorageBlobContainer>(MockBehavior.Strict);

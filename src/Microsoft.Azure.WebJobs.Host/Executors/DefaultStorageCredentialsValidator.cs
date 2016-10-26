@@ -18,9 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
         private readonly HashSet<StorageCredentials> _validatedCredentials = new HashSet<StorageCredentials>();
-        private StorageCredentials _primaryCredentials = null;
 
-        public async Task ValidateCredentialsAsync(IStorageAccount account, bool isPrimaryAccount, CancellationToken cancellationToken)
+        public async Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
         {
             if (account == null)
             {
@@ -30,17 +29,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             StorageCredentials credentials = account.Credentials;
 
             // Avoid double-validating the same account and credentials.
-            if ((!isPrimaryAccount && _validatedCredentials.Contains(credentials)) || _primaryCredentials == credentials)
+            if (_validatedCredentials.Contains(credentials))
             {
                 return;
             }
 
-            await ValidateCredentialsAsyncCore(account, isPrimaryAccount, cancellationToken);
+            await ValidateCredentialsAsyncCore(account, cancellationToken);
             _validatedCredentials.Add(credentials);
         }
 
-        private async Task ValidateCredentialsAsyncCore(IStorageAccount account,
-            bool isPrimaryAccount, CancellationToken cancellationToken)
+        // Test that the credentials are valid and classify the account.Type as one of StorageAccountTypes
+        private async Task ValidateCredentialsAsyncCore(IStorageAccount account, CancellationToken cancellationToken)
         {
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
@@ -56,40 +55,49 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 throw;
             }
-            catch
+            catch (Exception e)
             {
-                string message = String.Format(CultureInfo.CurrentCulture,
-                    "Invalid storage account '{0}'. Please make sure your credentials are correct.",
-                    account.Credentials.AccountName);
-                throw new InvalidOperationException(message);
+                var storageException = e as StorageException;
+                if (storageException != null && storageException.RequestInformation != null &&
+                    storageException.RequestInformation.HttpStatusCode == 400 &&
+                    storageException.RequestInformation.ExtendedErrorInformation.ErrorCode == "InvalidQueryParameterValue")
+                {
+                    // Premium storage accounts do not support the GetServicePropertiesAsync call, and respond with a 400 'InvalidQueryParameterValue'.
+                    // If we see this error response classify the account as a premium account
+                    account.Type = StorageAccountType.Premium;
+                    return;
+                }
+                else
+                {
+                    // If not a recognized error, the credentials are invalid
+                    string message = String.Format(CultureInfo.CurrentCulture,
+                        "Invalid storage account '{0}'. Please make sure your credentials are correct.",
+                        account.Credentials.AccountName);
+                    throw new InvalidOperationException(message);
+                }
             }
 
-            if (isPrimaryAccount)
+            IStorageQueueClient queueClient = account.CreateQueueClient();
+            IStorageQueue queue = queueClient.GetQueueReference("name");
+            try
             {
-                // Primary storage accounts require Queues
-                IStorageQueueClient queueClient = account.CreateQueueClient();
-                IStorageQueue queue = queueClient.GetQueueReference("name");
-                try
+                await queue.ExistsAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (StorageException exception)
+            {
+                WebException webException = exception.GetBaseException() as WebException;
+                if (webException != null && webException.Status == WebExceptionStatus.NameResolutionFailure)
                 {
-                    await queue.ExistsAsync(cancellationToken);
-                    _primaryCredentials = account.Credentials;
+                    // Blob-only storage accounts do not support services other than Blob.  
+                    // If we see a name resolution failure on the queue endpoint classify as a blob-only account
+                    account.Type = StorageAccountType.BlobOnly;
+                    return;
                 }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (StorageException exception)
-                {
-                    WebException webException = exception.GetBaseException() as WebException;
-                    if (webException != null && webException.Status == WebExceptionStatus.NameResolutionFailure)
-                    {
-                        string message = String.Format(CultureInfo.CurrentCulture,
-                            "Invalid storage account '{0}'. Primary storage accounts must be general "
-                            + "purpose accounts and not restricted blob storage accounts.", account.Credentials.AccountName);
-                        throw new InvalidOperationException(message);
-                    }
-                    throw;
-                }
+                throw;
             }
         }
     }

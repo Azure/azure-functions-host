@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Reflection;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -176,7 +176,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (account != null)
             {
                 // On the first attempt, this will make a network call to verify the credentials work.
-                await _storageCredentialsValidator.ValidateCredentialsAsync(account, isPrimary, cancellationToken);
+                await _storageCredentialsValidator.ValidateCredentialsAsync(account, cancellationToken);
+
+                if (isPrimary)
+                {
+                    account.AssertTypeOneOf(StorageAccountType.GeneralPurpose);
+                }
             }
 
             return account;

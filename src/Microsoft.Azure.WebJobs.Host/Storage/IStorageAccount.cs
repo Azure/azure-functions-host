@@ -24,6 +24,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         /// <summary>Gets the underlying <see cref="CloudStorageAccount"/>.</summary>
         CloudStorageAccount SdkObject { get; }
 
+        /// <summary>Gets the type of the storage account.</summary>
+        StorageAccountType Type { get; set; }
+
         /// <summary>Creates a blob client.</summary>
         /// <returns>A blob client.</returns>
         IStorageBlobClient CreateBlobClient(StorageClientFactoryContext context = null);

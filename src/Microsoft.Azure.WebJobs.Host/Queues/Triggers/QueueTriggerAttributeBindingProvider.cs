@@ -101,6 +101,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            // requires storage account with queue support
+            account.AssertTypeOneOf(StorageAccountType.GeneralPurpose);
+
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = parameter

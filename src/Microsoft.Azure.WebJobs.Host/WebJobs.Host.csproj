@@ -417,6 +417,8 @@
     <Compile Include="Blobs\Listeners\ScanBlobScanLogHybridPollingStrategy.cs" />
     <Compile Include="Bindings\AsyncCollector\AsyncCollectorBinding.cs" />
     <Compile Include="Config\ExtensionConfigContextExtensions.cs" />
+    <Compile Include="Storage\IStorageAccountExtensions.cs" />
+    <Compile Include="Storage\StorageAccountType.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />
     <Compile Include="Bindings\ConverterManager.cs" />

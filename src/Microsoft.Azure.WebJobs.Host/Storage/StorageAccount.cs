@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 
             _sdkAccount = sdkAccount;
             _services = services;
+            Type = StorageAccountType.GeneralPurpose;
         }
 
         /// <inheritdoc />
@@ -55,6 +56,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         {
             get { return _sdkAccount; }
         }
+
+        /// <inheritdoc />
+        public StorageAccountType Type { get; set; }
 
         private StorageClientFactory ClientFactory
         {

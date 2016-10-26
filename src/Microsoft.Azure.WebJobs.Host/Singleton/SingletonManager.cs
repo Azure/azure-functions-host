@@ -330,6 +330,8 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 Task<IStorageAccount> task = _accountProvider.GetAccountAsync(accountName, CancellationToken.None);
                 IStorageAccount storageAccount = task.Result;
+                // singleton requires block blobs, cannot be premium
+                storageAccount.AssertTypeOneOf(StorageAccountType.GeneralPurpose, StorageAccountType.BlobOnly);
                 IStorageBlobClient blobClient = storageAccount.CreateBlobClient();
                 storageDirectory = blobClient.GetContainerReference(HostContainerNames.Hosts)
                                        .GetDirectoryReference(HostDirectoryNames.SingletonLocks);
