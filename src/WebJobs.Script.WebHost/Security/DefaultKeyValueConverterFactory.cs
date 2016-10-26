@@ -23,18 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _encryptionSupported = IsEncryptionSupported();
         }
 
-        private static bool IsEncryptionSupported()
-        {
-            if (WebScriptHostManager.IsAzureEnvironment)
-            {
-                // We're temporarily placing encryption behind a feature toggle until
-                // other consumers (e.g. portal) are updated to work with it.
-                // TODO: Remove this
-                return FeatureFlags.IsEnabled("SecretEncryption");
-            }
-
-            return _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
-        }
+        private static bool IsEncryptionSupported() => WebScriptHostManager.IsAzureEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
 
         public IKeyValueReader GetValueReader(Key key)
         {
