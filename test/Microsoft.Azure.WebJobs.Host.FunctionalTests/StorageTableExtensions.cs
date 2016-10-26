@@ -52,6 +52,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             table.ExecuteAsync(operation, CancellationToken.None).GetAwaiter().GetResult();
         }
 
+
+        public static void InsertOrReplace(this IStorageTable table, ITableEntity entity)
+        {
+            if (table == null)
+            {
+                throw new ArgumentNullException("table");
+            }
+
+            IStorageTableOperation operation = table.CreateInsertOrReplaceOperation(entity);
+            table.ExecuteAsync(operation, CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+
         public static TElement Retrieve<TElement>(this IStorageTable table, string partitionKey, string rowKey)
             where TElement : ITableEntity, new()
         {

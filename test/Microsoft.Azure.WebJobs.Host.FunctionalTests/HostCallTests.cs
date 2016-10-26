@@ -22,6 +22,9 @@ using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Xunit;
+using Newtonsoft.Json.Linq;
+using Moq;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -1053,6 +1056,91 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private static StorageAccount GetRealStorage()
+        {
+            // Arrange
+            Mock<IServiceProvider> servicesMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            StorageClientFactory clientFactory = new StorageClientFactory();
+            servicesMock.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
+
+            var acs = Environment.GetEnvironmentVariable("AzureWebJobsDashboard");
+            var realAccount = CloudStorageAccount.Parse(acs);
+            var account = new StorageAccount(realAccount, servicesMock.Object);
+            return account;
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToJArray_CanCall()
+        {
+            IStorageAccount account = GetRealStorage(); // Fake storage doesn't implement table filters
+                        
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.InsertOrReplace(CreateTableEntity(PartitionKey, RowKey + "1", "Value", "x1", "*"));
+            table.InsertOrReplace(CreateTableEntity(PartitionKey, RowKey + "2", "Value", "x2", "*"));
+            table.InsertOrReplace(CreateTableEntity(PartitionKey, RowKey + "3", "Value", "x3", "*"));
+            table.InsertOrReplace(CreateTableEntity(PartitionKey, RowKey + "4", "Value", "x4", "*"));
+
+            var instance = new BindTableEntityToJArrayProgram();
+            var jobActivator = new FakeActivator();
+            jobActivator.Add(instance);
+
+            var prog = TestHelpers.NewJobHost<BindTableEntityToJArrayProgram>(account, jobActivator);
+
+            // Act
+            prog.Call("Call");
+
+            // Assert
+            Assert.NotNull(instance._array);
+            Assert.Equal(2, instance._array.Count);
+            Assert.Equal("x1", instance._array[0]["Value"].ToString());
+            Assert.Equal("x3", instance._array[1]["Value"].ToString());
+        }
+
+        private class BindTableEntityToJArrayProgram
+        {
+            public JArray _array;
+                        
+            public void Call([Table(TableName, PartitionKey, Take =2, Filter = "Value ne 'x2'")] JArray array)
+            {
+                _array = array;
+            }
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToJObject_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.Insert(CreateTableEntity(PartitionKey, RowKey, "Value", "Foo"));
+
+            // Act
+            var prog = TestHelpers.NewJobHost<BindTableEntityToJObjectProgram>(account);
+
+            prog.Call("Call", new {
+                table = TableName, // Test resolution 
+                pk1 = PartitionKey,
+                rk1 = RowKey
+            });
+
+            // Assert
+            SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+        }
+
+        private class BindTableEntityToJObjectProgram
+        {
+            public static void Call([Table("{table}", "{pk1}", "{rk1}")] JObject entity)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity["Value"].ToString());
+            }
+        }
+
         [Fact]
         public void TableEntity_IfBoundToSdkTableEntity_CanCall()
         {
@@ -1283,9 +1371,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         private static ITableEntity CreateTableEntity(string partitionKey, string rowKey, string propertyName,
-            string propertyValue)
+            string propertyValue, string eTag = null)
         {
-            string eTag = null;
             return new DynamicTableEntity(partitionKey, rowKey, eTag, new Dictionary<string, EntityProperty>
             {
                 { propertyName, new EntityProperty(propertyValue) }

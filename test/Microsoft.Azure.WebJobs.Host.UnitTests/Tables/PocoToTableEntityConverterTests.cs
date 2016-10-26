@@ -947,7 +947,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 
         private static PocoToTableEntityConverter<TInput> CreateProductUnderTest<TInput>()
         {
-            PocoToTableEntityConverter<TInput> product = PocoToTableEntityConverter<TInput>.Create();
+            var product = PocoToTableEntityConverter<TInput>.Create();
             Assert.NotNull(product); // Guard
             return product;
         }

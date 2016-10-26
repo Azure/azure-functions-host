@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -24,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host
         internal static bool IsNullable(Type type)
         {
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
+        internal static bool IsJObject(Type type)
+        {
+            return type == typeof(JObject);
         }
 
         /// <summary>

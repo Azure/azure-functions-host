@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             innerProviders.Add(ruleQueueOutput);
 
             innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider, extensionTypeLocator, blobWrittenWatcherGetter));
-            innerProviders.Add(new TableAttributeBindingProvider(nameResolver, storageAccountProvider, extensions));
+            innerProviders.Add(TableAttributeBindingProvider.Build(nameResolver, converterManager, storageAccountProvider, extensions));
 
             // add any registered extension binding providers
             foreach (IBindingProvider provider in extensions.GetExtensions(typeof(IBindingProvider)))

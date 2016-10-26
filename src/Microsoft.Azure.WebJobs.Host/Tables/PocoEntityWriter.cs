@@ -51,5 +51,5 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             return TableEntityWriter.GetStatus();
         }
-    }
+    }    
 }

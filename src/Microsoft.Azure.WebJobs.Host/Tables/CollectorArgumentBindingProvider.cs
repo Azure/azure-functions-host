@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -22,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
 
             Type entityType = GetCollectorItemType(parameter.ParameterType);
-
-            if (!TableClient.ImplementsOrEqualsITableEntity(entityType))
+                        
+            if (!TableClient.ImplementsOrEqualsITableEntity(entityType) && !TypeUtility.IsJObject(entityType))
             {
                 TableClient.VerifyContainsProperty(entityType, "RowKey");
                 TableClient.VerifyContainsProperty(entityType, "PartitionKey");

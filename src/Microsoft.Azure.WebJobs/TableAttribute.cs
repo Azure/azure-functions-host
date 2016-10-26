@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public sealed class TableAttribute : Attribute
+    public class TableAttribute : Attribute
     {
         private readonly string _tableName;
         private readonly string _partitionKey;
@@ -47,6 +47,15 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Initializes a new instance of the <see cref="TableAttribute"/> class.</summary>
         /// <param name="tableName">The name of the table containing the entity.</param>
         /// <param name="partitionKey">The partition key of the entity.</param>
+        public TableAttribute(string tableName, string partitionKey)
+        {
+            _tableName = tableName;
+            _partitionKey = partitionKey;
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="TableAttribute"/> class.</summary>
+        /// <param name="tableName">The name of the table containing the entity.</param>
+        /// <param name="partitionKey">The partition key of the entity.</param>
         /// <param name="rowKey">The row key of the entity.</param>
         public TableAttribute(string tableName, string partitionKey, string rowKey)
         {
@@ -57,6 +66,7 @@ namespace Microsoft.Azure.WebJobs
 
         /// <summary>Gets the name of the table to which to bind.</summary>
         /// <remarks>When binding to a table entity, gets the name of the table containing the entity.</remarks>
+        [AutoResolve]
         public string TableName
         {
             get { return _tableName; }
@@ -64,6 +74,7 @@ namespace Microsoft.Azure.WebJobs
 
         /// <summary>When binding to a table entity, gets the partition key of the entity.</summary>
         /// <remarks>When binding to an entire table, returns <see langword="null"/>.</remarks>
+        [AutoResolve]
         public string PartitionKey
         {
             get { return _partitionKey; }
@@ -71,10 +82,28 @@ namespace Microsoft.Azure.WebJobs
 
         /// <summary>When binding to a table entity, gets the row key of the entity.</summary>
         /// <remarks>When binding to an entire table, returns <see langword="null"/>.</remarks>
+        [AutoResolve]
         public string RowKey
         {
             get { return _rowKey; }
         }
+
+        /// <summary>
+        /// Allow arbitrary table filter. RowKey should be null. 
+        /// </summary>
+        [AutoResolve]
+        public string Filter
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Used with filter. RowKey should be null. 
+        /// </summary>
+        public int Take
+        {
+            get; set;
+        }        
 
         [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         private string DebuggerDisplay
