@@ -68,14 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public static bool IsAzureEnvironment
-        {
-            get
-            {
-                return !string.IsNullOrEmpty(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
-            }
-        }
-
         public virtual bool Initialized
         {
             get

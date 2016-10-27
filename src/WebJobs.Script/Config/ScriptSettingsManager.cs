@@ -9,15 +9,19 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
 
+        protected ScriptSettingsManager()
+        {
+        }
+
         public static ScriptSettingsManager Instance
         {
             get { return _instance; }
             set { _instance = value; }
         }
 
-        protected ScriptSettingsManager()
-        {
-        }
+        public bool IsAzureEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
+
+        public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
 
         public virtual void Reset()
         {            

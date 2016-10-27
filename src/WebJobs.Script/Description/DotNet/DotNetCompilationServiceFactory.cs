@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory
     {
         private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp }.ToImmutableArray();
-
         private static OptimizationLevel? _optimizationLevel;
 
         ImmutableArray<ScriptType> ICompilationServiceFactory.SupportedScriptTypes
@@ -24,10 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private static bool IsLocal => string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId));
-
-        private static bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.RemoteDebuggingPort));
-
         internal static OptimizationLevel OptimizationLevel
         {
             get
@@ -37,7 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Get the release mode setting. If set, this will take priority over environment settings.
                     string releaseModeSetting = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.CompilationReleaseMode);
                     bool releaseMode;
-                    if (!bool.TryParse(releaseModeSetting, out releaseMode) && !IsLocal && !IsRemoteDebuggingEnabled)
+                    if (!bool.TryParse(releaseModeSetting, out releaseMode) &&
+                        ScriptSettingsManager.Instance.IsAzureEnvironment && 
+                        !ScriptSettingsManager.Instance.IsRemoteDebuggingEnabled)
                     {
                         // If the release mode setting is not set, we're running in Azure
                         // and not remote debugging, use release mode.

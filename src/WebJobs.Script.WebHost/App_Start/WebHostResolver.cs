@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void ReinitializeAppSettings()
         {
-            if (WebScriptHostManager.IsAzureEnvironment)
+            if (_settingsManager.IsAzureEnvironment)
             {
                 // the nature of this is only add or update (not remove).
                 // so there may be settings from standby site leak over.

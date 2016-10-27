@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _encryptionSupported = IsEncryptionSupported();
         }
 
-        private static bool IsEncryptionSupported() => WebScriptHostManager.IsAzureEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
+        private static bool IsEncryptionSupported() => _settingsManager.IsAzureEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
 
         public IKeyValueReader GetValueReader(Key key)
         {

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         protected void Application_Start()
         {
-            GlobalConfiguration.Configure(WebApiConfig.Register);
+            GlobalConfiguration.Configure(c => WebApiConfig.Register(c));
 
             var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
 
