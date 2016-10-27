@@ -4,23 +4,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class ScriptSecretSerializer
     {
+        private static IScriptSecretSerializer _defaultSerializer = new ScriptSecretSerializerV1();
         private static List<IScriptSecretSerializer> _secretFormatters = new List<IScriptSecretSerializer>
         {
             new ScriptSecretSerializerV0(),
-            new ScriptSecretSerializerV1()
+           _defaultSerializer
         };
 
-        internal static IScriptSecretSerializer DefaultSerializer => _secretFormatters.Last();
+        internal static IScriptSecretSerializer DefaultSerializer => _defaultSerializer;
 
         public static ScriptSecrets DeserializeSecrets(ScriptSecretsType secretsType, string secretsJson)
         {
