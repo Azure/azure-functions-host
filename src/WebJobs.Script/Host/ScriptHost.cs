@@ -158,9 +158,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal void AddFunctionError(string functionName, string error)
+        internal void AddFunctionError(string functionName, string error, bool isFunctionShortName = false)
         {
-            functionName = Utility.GetFunctionShortName(functionName);
+            functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
             Collection<string> functionErrors = new Collection<string>();
             if (!FunctionErrors.TryGetValue(functionName, out functionErrors))
@@ -601,7 +601,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         continue;
                     }
 
-                    functionName = Path.GetFileNameWithoutExtension(scriptDir);
+                    functionName = Path.GetFileName(scriptDir);
 
                     if (ScriptConfig.Functions != null &&
                         !ScriptConfig.Functions.Contains(functionName, StringComparer.OrdinalIgnoreCase))
@@ -635,7 +635,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(functionName, Utility.FlattenException(ex, includeSource: false));
+                    AddFunctionError(functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
             }
 

@@ -293,6 +293,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 
+        [Theory]
+        [InlineData("host")]
+        [InlineData("-function")]
+        [InlineData("_function")]
+        [InlineData("function test")]
+        [InlineData("function.test")]
+        [InlineData("function0.1")]
+        public void Create_InvalidFunctionNames_DoesNotCreateFunctionAndLogsFailure(string functionName)
+        {
+            string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string invalidFunctionNamePath = Path.Combine(rootPath, functionName);
+            try
+            {
+                Directory.CreateDirectory(invalidFunctionNamePath);
+
+                JObject config = new JObject();
+                config["id"] = ID;
+
+                File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
+                File.WriteAllText(Path.Combine(invalidFunctionNamePath, ScriptConstants.FunctionMetadataFileName), string.Empty);
+
+                ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
+                {
+                    RootScriptPath = rootPath
+                };
+
+                var scriptHost = ScriptHost.Create(_settingsManager, scriptConfig);
+
+                Assert.Equal(1, scriptHost.FunctionErrors.Count);
+                Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
+                Assert.Equal($"'{functionName}' is not a valid function name.", scriptHost.FunctionErrors.First().Value.First());
+            }
+            finally
+            {
+                if (Directory.Exists(rootPath))
+                {
+                    Directory.Delete(rootPath, true);
+                }
+            }
+        }
+
         [Fact]
         public void ApplyConfiguration_TopLevel()
         {
@@ -612,6 +653,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("-function")]
         [InlineData("_function")]
         [InlineData("function test")]
+        [InlineData("function.test")]
+        [InlineData("function0.1")]
         public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
