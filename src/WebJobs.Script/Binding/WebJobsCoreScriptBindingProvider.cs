@@ -56,7 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             binding = null;
 
-            if (string.Compare(context.Type, "queueTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
+            if (string.Equals(context.Type, "table", StringComparison.OrdinalIgnoreCase))
+            {
+                binding = new TableScriptBinding(context);
+            }
+            else if (string.Compare(context.Type, "queueTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(context.Type, "queue", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new QueueScriptBinding(context);
@@ -128,6 +132,84 @@ namespace Microsoft.Azure.WebJobs.Script
                 return attributes;
             }
         }
+
+        private class TableScriptBinding : ScriptBinding
+        {
+            public TableScriptBinding(ScriptBindingContext context) : base(context)
+            {
+            }
+
+            private string TableName
+            {
+                get { return Context.GetMetadataValue<string>("tableName"); }
+            }
+
+            private string PartitionKey
+            {
+                get { return Context.GetMetadataValue<string>("partitionKey"); }
+            }
+
+            private string RowKey
+            {
+                get { return Context.GetMetadataValue<string>("rowKey"); }
+            }
+
+            private string Filter
+            {
+                get { return Context.GetMetadataValue<string>("filter"); }
+            }
+
+            private int? Take
+            {
+                get { return Context.GetMetadataValue<int?>("take"); }
+            }
+
+            public override Collection<Attribute> GetAttributes()
+            {
+                Collection<Attribute> attributes = new Collection<Attribute>();
+
+                var attribute = new TableAttribute(this.TableName, this.PartitionKey, this.RowKey);
+                attribute.Filter = Filter;
+                var take = this.Take;
+                if (take.HasValue)
+                {
+                    attribute.Take = take.Value;
+                }
+                attributes.Add(attribute);
+
+                string account = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(account))
+                {
+                    attributes.Add(new StorageAccountAttribute(account));
+                }
+
+                return attributes;
+            }
+
+            public override Type DefaultType
+            {
+                get
+                {
+                    var access = this.Context.Access;
+                    if (access == FileAccess.Write)
+                    {
+                        return typeof(IAsyncCollector<JObject>);
+                    }
+                    else
+                    {
+                        if (this.PartitionKey != null && this.RowKey != null)
+                        {
+                            return typeof(JObject);
+                        }
+                        else
+                        {
+                            return typeof(JArray);
+                        }
+                    }
+                }
+            }
+        }
+
 
         private class QueueScriptBinding : ScriptBinding
         {
