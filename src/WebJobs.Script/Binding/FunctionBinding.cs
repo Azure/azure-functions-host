@@ -47,10 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     string type = function.Type.ToLowerInvariant();
                     switch (type)
                     {
-                        case "table":
-                            TableBindingMetadata tableBindingMetadata = (TableBindingMetadata)function;
-                            bindings.Add(new TableBinding(config, tableBindingMetadata, fileAccess));
-                            break;
                         case "http":
                             if (fileAccess != FileAccess.Write)
                             {

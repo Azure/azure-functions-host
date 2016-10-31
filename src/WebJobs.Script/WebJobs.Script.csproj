@@ -346,7 +346,6 @@
     <Compile Include="Binding\NullListener.cs" />
     <Compile Include="Binding\ScriptJobHostConfigurationExtensions.cs" />
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
-    <Compile Include="Binding\TableBinding.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
@@ -393,7 +392,6 @@
     <Compile Include="Description\DotNet\PackageReference.cs" />
     <Compile Include="Description\Binding\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\ScriptType.cs" />
-    <Compile Include="Description\Binding\TableBindingMetadata.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Diagnostics\FileLoggingMode.cs" />

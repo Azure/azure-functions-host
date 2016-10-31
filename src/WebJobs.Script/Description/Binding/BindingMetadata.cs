@@ -94,10 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 case "httptrigger":
                     bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                case "table":
-                    bindingMetadata = raw.ToObject<TableBindingMetadata>();
-                    break;
+                    break;             
                 default:
                     bindingMetadata = raw.ToObject<BindingMetadata>();
                     break;
