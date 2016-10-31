@@ -9,6 +9,5 @@
     },
     "tracing": {
         "fileLoggingMode": "always"
-    },
-    "functions": ["Bot", "Bot-CSharp"]
+    }
 }
