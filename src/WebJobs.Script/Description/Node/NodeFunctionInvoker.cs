@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (httpBinding != null &&
                     !string.IsNullOrEmpty(httpBinding.WebHookType))
                 {
-                    input = requestObject["body"];
+                    requestObject.TryGetValue("body", out input);
                 }
 
                 // make the entire request object available as well
