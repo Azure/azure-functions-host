@@ -649,6 +649,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task WebHookTrigger_NoContent()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/webhooktrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "payload", request }
+            };
+            await Fixture.Host.CallAsync("WebHookTrigger", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(string.Format("No content"), body);
+        }
+
+        [Fact]
         public async Task TimerTrigger()
         {
             var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
