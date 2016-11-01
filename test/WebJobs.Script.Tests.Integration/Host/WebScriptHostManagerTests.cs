@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class WebScriptHostManagerTests : IClassFixture<WebScriptHostManagerTests.Fixture>, IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private Fixture _fixture;
 
         // Some tests need their own manager that differs from the fixture.
@@ -107,8 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            ISecretManager secretManager = new SecretManager(_settingsManager, secretsDir, NullTraceWriter.Instance);
+            ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);
+            ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
+            webHostSettings.SecretsPath = _secretsDirectory.Path;
+
             ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
@@ -145,8 +150,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileLoggingMode = FileLoggingMode.Always,
                 RestartInterval = TimeSpan.FromMilliseconds(500)
             };
-            SecretManager secretManager = new SecretManager(_settingsManager, secretsDir, NullTraceWriter.Instance);
+
+            ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);
+            SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
+            webHostSettings.SecretsPath = _secretsDirectory.Path;
+
             var factoryMock = new Mock<IScriptHostFactory>();
             int count = 0;
             factoryMock.Setup(p => p.Create(_settingsManager, config)).Callback(() =>
@@ -263,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
-            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), _settingsManager, new WebHostSettings());
+            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
 
@@ -277,12 +286,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _manager.Stop();
                 _manager.Dispose();
             }
+
+            _secretsDirectory.Dispose();
         }
 
         public class Fixture : IDisposable
         {
             private readonly ScriptSettingsManager _settingsManager;
-
+            private readonly TempDirectory _secretsDirectory = new TempDirectory();
             public Fixture()
             {
                 EventGenerator = new TestSystemEventGenerator();
@@ -322,8 +333,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     FileLoggingMode = FileLoggingMode.Always
                 };
 
-                ISecretManager secretManager = new SecretManager(_settingsManager, SecretsPath, NullTraceWriter.Instance);
+                ISecretsRepository repository = new FileSystemSecretsRepository(SecretsPath);
+                ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
                 WebHostSettings webHostSettings = new WebHostSettings();
+                webHostSettings.SecretsPath = _secretsDirectory.Path;
 
                 var hostConfig = config.HostConfig;
                 var testEventGenerator = new TestSystemEventGenerator();
@@ -389,6 +402,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // occasionally get file in use errors
                 }
+
+                _secretsDirectory.Dispose();
             }
 
             private void CreateTestFunctionLogs(string logRoot, string functionName)

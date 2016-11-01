@@ -37,8 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         {
             var manager = new Mock<TestSecretManager>();
             manager.CallBase = true;
-            manager.Setup(s => s.GetFunctionSecrets(_testFunctionName, false))
-                .Returns(() => TestFunctionKeys);
+            manager.Setup(s => s.GetFunctionSecretsAsync(_testFunctionName, false))
+                .ReturnsAsync(() => TestFunctionKeys);
 
             return manager;
         }
