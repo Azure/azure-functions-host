@@ -21,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [JsonIgnore]
         protected override ICollection<Key> InnerFunctionKeys => FunctionKeys;
 
+        [JsonIgnore]
+        public override ScriptSecretsType SecretsType => ScriptSecretsType.Host;
+
         public override ScriptSecrets Refresh(IKeyValueConverterFactory factory)
         {
             var secrets = new HostSecrets

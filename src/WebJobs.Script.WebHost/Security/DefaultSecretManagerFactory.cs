@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretManagerFactory : ISecretManagerFactory
     {
-        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, string secretsPath)
-            => new SecretManager(settingsManager, secretsPath, traceWriter);
+        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ISecretsRepository secretsRepository)
+            => new SecretManager(settingsManager, secretsRepository, traceWriter);
     }
 }

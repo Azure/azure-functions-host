@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             if (!string.IsNullOrEmpty(keyValue))
             {
                 // see if the key specified is the master key
-                HostSecretsInfo hostSecrets = secretManager.GetHostSecrets();
+                HostSecretsInfo hostSecrets = secretManager.GetHostSecretsAsync().GetAwaiter().GetResult();
                 if (!string.IsNullOrEmpty(hostSecrets.MasterKey) &&
                     Key.SecretValueEquals(keyValue, hostSecrets.MasterKey))
                 {
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 // if there is a function specific key specified try to match against that
                 if (functionName != null)
                 {
-                    IDictionary<string, string> functionSecrets = secretManager.GetFunctionSecrets(functionName);
+                    IDictionary<string, string> functionSecrets = secretManager.GetFunctionSecretsAsync(functionName).GetAwaiter().GetResult();
                     if (functionSecrets != null &&
                         functionSecrets.Values.Any(s => Key.SecretValueEquals(keyValue, s)))
                     {

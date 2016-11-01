@@ -24,6 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _secretManager = secretManager;
         }
 
-        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, string secretsPath) => _secretManager ?? new SecretManager();
+        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ISecretsRepository secretsRepository) => _secretManager ?? new SecretManager();
     }
 }

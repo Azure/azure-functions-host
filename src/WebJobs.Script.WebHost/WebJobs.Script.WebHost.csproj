@@ -432,14 +432,17 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Security\DefaultSecretManagerFactory.cs" />
+    <Compile Include="Security\FileSystemSecretsRepository.cs" />
     <Compile Include="Security\FunctionSecrets.cs" />
     <Compile Include="Security\DataProtectionKeyValueConverter.cs" />
     <Compile Include="Security\HostSecretsInfo.cs" />
     <Compile Include="Security\IKeyValueWriter.cs" />
     <Compile Include="Security\ISecretManager.cs" />
     <Compile Include="Security\ISecretManagerFactory.cs" />
+    <Compile Include="Security\ISecretsRepository.cs" />
     <Compile Include="Security\KeyOperationResult.cs" />
     <Compile Include="Security\ScriptSecretsType.cs" />
+    <Compile Include="Security\SecretsChangedEventArgs.cs" />
     <Compile Include="Security\Serialization\IScriptSecretSerializer.cs" />
     <Compile Include="Security\KeyValueConverter.cs" />
     <Compile Include="Security\KeyValueConverterFactoryExtensions.cs" />

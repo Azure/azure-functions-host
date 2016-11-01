@@ -48,13 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { "2", TestHostFunctionKeyValue2 }
                 }
             };
-            _mockSecretManager.Setup(p => p.GetHostSecrets()).Returns(_hostSecrets);
+            _mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_hostSecrets);
             _functionSecrets = new Dictionary<string, string>
             {
                 { "1",  TestFunctionKeyValue1 },
                 { "2",  TestFunctionKeyValue2 }
             };
-            _mockSecretManager.Setup(p => p.GetFunctionSecrets(It.IsAny<string>(), false)).Returns(_functionSecrets);
+            _mockSecretManager.Setup(p => p.GetFunctionSecretsAsync(It.IsAny<string>(), false)).ReturnsAsync(_functionSecrets);
             mockDependencyResolver.Setup(p => p.GetService(typeof(ISecretManager))).Returns(_mockSecretManager.Object);
         }
 

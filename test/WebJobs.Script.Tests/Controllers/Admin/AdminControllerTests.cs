@@ -17,13 +17,15 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class AdminControllerTests
+    public class AdminControllerTests : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private Mock<ScriptHost> hostMock;
         private Mock<WebScriptHostManager> managerMock;
         private Collection<FunctionDescriptor> testFunctions;
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
             WebHostSettings settings = new WebHostSettings();
+            settings.SecretsPath = _secretsDirectory.Path;
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
@@ -96,6 +99,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Task.Delay(200);
 
             Assert.True(functionInvoked);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _secretsDirectory.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
         }
     }
 }

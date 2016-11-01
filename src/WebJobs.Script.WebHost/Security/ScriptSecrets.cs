@@ -23,6 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [JsonIgnore]
         protected abstract ICollection<Key> InnerFunctionKeys { get; }
 
+        [JsonIgnore]
+        public abstract ScriptSecretsType SecretsType { get; }
+
         public abstract ScriptSecrets Refresh(IKeyValueConverterFactory factory);
 
         public abstract IEnumerator<Key> GetEnumerator();
