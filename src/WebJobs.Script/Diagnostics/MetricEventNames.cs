@@ -6,6 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     public static class MetricEventNames
     {
         // host level events
+        public const string ApplicationStartLatency = "host.application.start";
         public const string HostStartupLatency = "host.startup.latency";
 
         // function level events

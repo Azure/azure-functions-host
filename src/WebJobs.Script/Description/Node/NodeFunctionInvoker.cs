@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
+        private static bool _initialized = false;
+        private static readonly object _initializationSyncRoot = new object();
 
         static NodeFunctionInvoker()
         {
@@ -44,8 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _functionTemplate = @"return require('../Content/Script/functions.js').createFunction(require('{0}'));";
             _clearRequireCacheScript = @"return require('../Content/Script/functions.js').clearRequireCache;";
             _globalInitializationScript = @"return require('../Content/Script/functions.js').globalInitialization;";
-
-            Initialize();
         }
 
         internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
@@ -109,6 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            EnsureInitialized();
+
             object input = parameters[0];
             string invocationId = context.ExecutionContext.InvocationId.ToString();
             DataType dataType = _trigger.DataType ?? DataType.String;
@@ -122,6 +124,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             object functionResult = await ScriptFunc(scriptExecutionContext);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
+        }
+
+        private static void EnsureInitialized()
+        {
+            if (!_initialized)
+            {
+                lock (_initializationSyncRoot)
+                {
+                    if (!_initialized)
+                    {
+                        Initialize();
+                    }
+                }
+            }
         }
 
         private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)

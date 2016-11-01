@@ -3,6 +3,8 @@
 
 using System;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -10,13 +12,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         protected void Application_Start()
         {
-            GlobalConfiguration.Configure(c => WebApiConfig.Register(c));
-
-            var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
-
-            if (scriptHostManager != null && !scriptHostManager.Initialized)
+            using (var metricsLogger = new WebHostMetricsLogger())
+            using (metricsLogger.LatencyEvent(MetricEventNames.ApplicationStartLatency))
             {
-                scriptHostManager.Initialize();
+                GlobalConfiguration.Configure(c => WebApiConfig.Register(c));
+
+                var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
+
+                if (scriptHostManager != null && !scriptHostManager.Initialized)
+                {
+                    scriptHostManager.Initialize();
+                }
             }
         }
 

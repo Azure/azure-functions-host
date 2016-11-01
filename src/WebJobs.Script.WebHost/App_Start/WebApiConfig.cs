@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
 using Autofac;
@@ -26,16 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             settings = settings ?? GetDefaultSettings(settingsManager);
-
-            // Delete hostingstart.html if any. Azure creates that in all sites by default
-            string hostingStart = Path.Combine(settings.ScriptPath, "hostingstart.html");
-            if (File.Exists(hostingStart))
-            {
-                File.Delete(hostingStart);
-            }
-
-            // Add necessary folders to the %PATH%
-            PrependFoldersToEnvironmentPath(settingsManager);
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
@@ -79,32 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
             config.InitializeReceiveSalesforceWebHooks();
-        }
-
-        private static void PrependFoldersToEnvironmentPath(ScriptSettingsManager settingsManager)
-        {
-            // Only do this when %HOME% is defined (normally on Azure)
-            string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            if (!string.IsNullOrEmpty(home))
-            {
-                // Create the tools folder if it doesn't exist
-                string toolsPath = Path.Combine(home, @"site\tools");
-                Directory.CreateDirectory(toolsPath);
-
-                var folders = new List<string>();
-                folders.Add(Path.Combine(home, @"site\tools"));
-
-                string path = Environment.GetEnvironmentVariable("PATH");
-                string additionalPaths = String.Join(";", folders);
-
-                // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
-                if (!path.Contains(additionalPaths))
-                {
-                    path = additionalPaths + ";" + path;
-
-                    Environment.SetEnvironmentVariable("PATH", path);
-                }
-            }
         }
 
         private static WebHostSettings GetDefaultSettings(ScriptSettingsManager settingsManager)

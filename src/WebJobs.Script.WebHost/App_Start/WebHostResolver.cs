@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
@@ -110,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _activeSecretManager = GetSecretManager(_settingsManager, settings.SecretsPath);
                     _activeReceiverManager = new WebHookReceiverManager(_activeSecretManager);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _activeSecretManager, _settingsManager, settings);
-                    
+
                     (_standbySecretManager as IDisposable)?.Dispose();
                     _standbyHostManager?.Dispose();
                     _standbyReceiverManager?.Dispose();
@@ -149,22 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static ScriptHostConfiguration GetScriptHostConfiguration(string scriptPath, string logPath)
         {
-            string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            if (!string.IsNullOrEmpty(home))
-            {
-                // Create the tools folder if it doesn't exist
-                string toolsPath = Path.Combine(home, @"site\tools");
-                Directory.CreateDirectory(toolsPath);
-            }
-
-            Directory.CreateDirectory(scriptPath);
-
-            // Delete hostingstart.html if any. Azure creates that in all sites by default
-            string hostingStart = Path.Combine(scriptPath, "hostingstart.html");
-            if (File.Exists(hostingStart))
-            {
-                File.Delete(hostingStart);
-            }
+            InitializeFileSystem(scriptPath);
 
             var scriptHostConfig = new ScriptHostConfiguration()
             {
@@ -191,6 +178,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return scriptHostConfig;
+        }
+
+        private static void InitializeFileSystem(string scriptPath)
+        {
+            if (ScriptSettingsManager.Instance.IsAzureEnvironment)
+            {
+                // When running on Azure, we kick this off on the background
+                Task.Run(() =>
+                {
+                    string home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+                    if (!string.IsNullOrEmpty(home))
+                    {
+                        // Delete hostingstart.html if any. Azure creates that in all sites by default
+                        string hostingStart = Path.Combine(scriptPath, "hostingstart.html");
+                        if (File.Exists(hostingStart))
+                        {
+                            File.Delete(hostingStart);
+                        }
+
+                        // Create the tools folder if it doesn't exist
+                        string toolsPath = Path.Combine(home, @"site\tools");
+                        Directory.CreateDirectory(toolsPath);
+
+                        var folders = new List<string>();
+                        folders.Add(Path.Combine(home, @"site\tools"));
+
+                        string path = Environment.GetEnvironmentVariable("PATH");
+                        string additionalPaths = String.Join(";", folders);
+
+                        // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
+                        if (!path.Contains(additionalPaths))
+                        {
+                            path = additionalPaths + ";" + path;
+
+                            Environment.SetEnvironmentVariable("PATH", path);
+                        }
+                    }
+                });
+            }
+            else
+            {
+                // Ensure we have our scripts directory in non-Azure scenarios
+                Directory.CreateDirectory(scriptPath);
+            }
         }
 
         private static ISecretManager GetSecretManager(ScriptSettingsManager settingsManager, string secretsPath) => new SecretManager(settingsManager, secretsPath);

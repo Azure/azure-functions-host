@@ -361,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
-            } 
+            }
         }
 
         protected override void OnInitializeConfig(ScriptHostConfiguration config)

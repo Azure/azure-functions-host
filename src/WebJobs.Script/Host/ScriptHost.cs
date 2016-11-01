@@ -269,6 +269,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 _debugModeFileWatcher.Created += OnDebugModeFileChanged;
                 _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
+                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+                Task<BlobLeaseManager> blobManagerCreation = null;
+                if (storageString == null)
+                {
+                    // Disable core storage 
+                    ScriptConfig.HostConfig.StorageConnectionString = null;
+                    blobManagerCreation = Task.FromResult<BlobLeaseManager>(null);
+                }
+                else
+                {
+                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                }
+
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
                 ScriptConfig.BindingProviders = bindingProviders;
 
@@ -305,20 +318,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // take a snapshot so we can detect function additions/removals
                 _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
 
-                var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-                if (storageString == null)
-                {
-                    // Disable core storage 
-                    ScriptConfig.HostConfig.StorageConnectionString = null;
-                }
-                else
-                {
-                    // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
-                    // and subscribe for change notifications.
-                    _blobLeaseManager = BlobLeaseManager.Create(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
-                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
-                }
-
                 List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -340,6 +339,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         // and continue
                         TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
                     }
+                }
+
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // and subscribe for change notifications.
+                _blobLeaseManager = blobManagerCreation.GetAwaiter().GetResult();
+                if (_blobLeaseManager != null)
+                {
+                    _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
                 }
 
                 // read all script functions and apply to JobHostConfiguration
