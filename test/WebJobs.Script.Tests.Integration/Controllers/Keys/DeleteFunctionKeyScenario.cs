@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         [Fact(DisplayName = "The secret manager key delete is invoked.")]
         public void FunctionKeysAreRetrievedFromSecretManager()
         {
-            _fixture.SecretManagerMock.Verify(s => s.DeleteSecret("TestKey", _fixture.TestFunctionName));
+            _fixture.SecretManagerMock.Verify(s => s.DeleteSecretAsync("TestKey", _fixture.TestFunctionName));
         }
 
         public class Fixture : KeyManagementFixture
@@ -55,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             protected override Mock<TestSecretManager> BuildSecretManager()
             {
                 var manager = base.BuildSecretManager();
-                manager.Setup(s => s.DeleteSecret("TestKey", TestFunctionName))
-                    .Returns(true);
+                manager.Setup(s => s.DeleteSecretAsync("TestKey", TestFunctionName))
+                    .ReturnsAsync(true);
 
                 return manager;
             }

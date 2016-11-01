@@ -104,8 +104,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             string secretsPath = Path.Combine(Path.GetTempPath(), @"FunctionTests\Secrets");
+            ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
             WebHostSettings webHostSettings = new WebHostSettings();
-            var secretManager = new SecretManager(SettingsManager, secretsPath, NullTraceWriter.Instance);
+            webHostSettings.SecretsPath = secretsPath;
+
+            var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance);
 
             using (var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), SettingsManager, webHostSettings))
             {

@@ -12,20 +12,22 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Moq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class WebScriptHostHandlerTests
+    public class WebScriptHostHandlerTests : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private HttpMessageInvoker _invoker;
         private Mock<WebScriptHostManager> _managerMock;
 
         public WebScriptHostHandlerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), _settingsManager, new WebHostSettings());
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
             _managerMock.SetupGet(p => p.Initialized).Returns(true);
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             mockResolver.Setup(p => p.GetService(typeof(WebScriptHostManager))).Returns(_managerMock.Object);
@@ -70,6 +72,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
             _managerMock.VerifyGet(p => p.State, Times.Exactly(5));
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _secretsDirectory.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
         }
 
         public class TestHandler : DelegatingHandler

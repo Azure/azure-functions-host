@@ -18,21 +18,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             _secretManager = secretManager;
         }
 
-        public Task<string> GetReceiverConfigAsync(string name, string id)
+        public async Task<string> GetReceiverConfigAsync(string name, string id)
         {
             // "id" will be a comma delimited string with the function name
             // and an optional client ID. We ignore the "name" parameter since 
             // we only allow a function to be mapped to a single receiver
             string[] webhookIdParts = id.Split(new[] { ',' }, 2, StringSplitOptions.RemoveEmptyEntries);
 
-            IDictionary<string, string> functionSecrets = _secretManager.GetFunctionSecrets(webhookIdParts.FirstOrDefault(), true);
+            IDictionary<string, string> functionSecrets = await _secretManager.GetFunctionSecretsAsync(webhookIdParts.FirstOrDefault(), true);
 
             string clientId = webhookIdParts.Skip(1).FirstOrDefault() ?? ScriptConstants.DefaultFunctionKeyName;
 
             string functionSecret = null;
             functionSecrets.TryGetValue(clientId, out functionSecret);
 
-            return Task.FromResult(functionSecret);
+            return functionSecret;
         }
     }
 }

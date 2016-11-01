@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.TraceWriter = systemTraceWriter;
             }
 
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, webHostSettings.SecretsPath);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, new FileSystemSecretsRepository(webHostSettings.SecretsPath));
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
@@ -396,7 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected override void OnHostStarted()
         {
             // Purge any old Function secrets
-            _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
+            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
 
             base.OnHostStarted();
         }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private ScriptSettingsManager _settingsManager = ScriptSettingsManager.Instance;
 
         [Fact]
-        public void MergedSecrets_PrioritizesFunctionSecrets()
+        public async Task MergedSecrets_PrioritizesFunctionSecrets()
         {
             using (var directory = new TempDirectory())
             {
@@ -64,9 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 File.WriteAllText(Path.Combine(directory.Path, "testfunction.json"), functionSecrets);
 
                 IDictionary<string, string> result;
-                using (var secretManager = new SecretManager(_settingsManager, directory.Path, NullTraceWriter.Instance))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance))
                 {
-                    result = secretManager.GetFunctionSecrets("testfunction", true);
+                    result = await secretManager.GetFunctionSecretsAsync("testfunction", true);
                 }
 
                 Assert.Contains("Key1", result.Keys);
@@ -79,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void GetFunctionSecrets_UpdatesStaleSecrets()
+        public async Task GetFunctionSecrets_UpdatesStaleSecrets()
         {
             using (var directory = new TempDirectory())
             {
@@ -106,9 +108,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    functionSecrets = secretManager.GetFunctionSecrets(functionName);
+                    functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
                 // Read the persisted content
                 var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
@@ -121,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void GetHostSecrets_UpdatesStaleSecrets()
+        public async Task GetHostSecrets_UpdatesStaleSecrets()
         {
             using (var directory = new TempDirectory())
             {
@@ -152,9 +155,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 HostSecretsInfo hostSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    hostSecrets = secretManager.GetHostSecrets();
+                    hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
 
                 // Read the persisted content
@@ -169,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void GetHostSecrets_WhenNoHostSecretFileExists_GeneratesSecretsAndPersistsFiles()
+        public async Task GetHostSecrets_WhenNoHostSecretFileExists_GeneratesSecretsAndPersistsFiles()
         {
             using (var directory = new TempDirectory())
             {
@@ -178,9 +182,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 HostSecretsInfo hostSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    hostSecrets = secretManager.GetHostSecrets();
+                    hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName));
@@ -197,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void GetFunctionSecrets_WhenNoSecretFileExists_CreatesDefaultSecretAndPersistsFile()
+        public async Task GetFunctionSecrets_WhenNoSecretFileExists_CreatesDefaultSecretAndPersistsFile()
         {
             using (var directory = new TempDirectory())
             {
@@ -208,9 +213,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    functionSecrets = secretManager.GetFunctionSecrets(functionName);
+                    functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
 
                 bool functionSecretsExists = File.Exists(Path.Combine(directory.Path, "testfunction.json"));
@@ -226,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void AddOrUpdateFunctionSecrets_WithFunctionNameAndNoSecret_GeneratesFunctionSecretsAndPersistsFile()
+        public async Task AddOrUpdateFunctionSecrets_WithFunctionNameAndNoSecret_GeneratesFunctionSecretsAndPersistsFile()
         {
             using (var directory = new TempDirectory())
             {
@@ -238,9 +244,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = secretManager.AddOrUpdateFunctionSecret(secretName, null, functionName);
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName);
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
@@ -257,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void AddOrUpdateFunctionSecrets_WithFunctionNameAndProvidedSecret_UsesSecretAndPersistsFile()
+        public async Task AddOrUpdateFunctionSecrets_WithFunctionNameAndProvidedSecret_UsesSecretAndPersistsFile()
         {
             using (var directory = new TempDirectory())
             {
@@ -269,9 +276,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = secretManager.AddOrUpdateFunctionSecret(secretName, "TestSecretValue", functionName);
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", functionName);
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
@@ -288,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void AddOrUpdateFunctionSecrets_WithNoFunctionNameAndProvidedSecret_UsesSecretAndPersistsHostFile()
+        public async Task AddOrUpdateFunctionSecrets_WithNoFunctionNameAndProvidedSecret_UsesSecretAndPersistsHostFile()
         {
             using (var directory = new TempDirectory())
             {
@@ -299,9 +307,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = secretManager.AddOrUpdateFunctionSecret(secretName, "TestSecretValue");
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue");
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName));
@@ -321,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void SetMasterKey_WithProvidedKey_UsesProvidedKeyAndPersistsFile()
+        public async Task SetMasterKey_WithProvidedKey_UsesProvidedKeyAndPersistsFile()
         {
             string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
             using (var directory = new TempDirectory())
@@ -332,9 +341,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = secretManager.SetMasterKey(testSecret);
+                    result = await secretManager.SetMasterKeyAsync(testSecret);
                 }
 
                 bool functionSecretsExists = File.Exists(Path.Combine(directory.Path, "testfunction.json"));
@@ -351,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void SetMasterKey_WithoutProvidedKey_GeneratesKeyAndPersistsFile()
+        public async Task SetMasterKey_WithoutProvidedKey_GeneratesKeyAndPersistsFile()
         {
             using (var directory = new TempDirectory())
             {
@@ -361,9 +371,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                using (var secretManager = new SecretManager(directory.Path, mockValueConverterFactory.Object, traceWriter))
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = secretManager.SetMasterKey();
+                    result = await secretManager.SetMasterKeyAsync();
                 }
 
                 bool functionSecretsExists = File.Exists(Path.Combine(directory.Path, "testfunction.json"));
@@ -393,7 +404,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false, false);
 
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                var secretManager = new SecretManager(secretsPath, mockValueConverterFactory.Object, traceWriter, true);
+                ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
+                var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, true);
                 bool fileCreated = File.Exists(hostSecretPath);
 
                 Assert.False(preExistingFile);

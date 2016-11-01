@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetReceiverConfigAsync_ResolvesExpectedSecret(string id, string expected)
         {
             var secretManager = new Mock<ISecretManager>();
-            secretManager.Setup(m => m.GetFunctionSecrets("testfunction", true))
-                .Returns(() => new Dictionary<string, string>
+            secretManager.Setup(m => m.GetFunctionSecretsAsync("testfunction", true))
+                .ReturnsAsync(new Dictionary<string, string>
                 {
                     { ScriptConstants.DefaultFunctionKeyName, "DefaultKey" },
                     { "Key1", "Value1" },
