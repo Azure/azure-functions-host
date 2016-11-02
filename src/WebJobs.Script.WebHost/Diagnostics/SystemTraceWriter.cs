@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private ScriptSettingsManager _settingsManager;
         private string _appName;
         private string _subscriptionId;
-        
+
         public SystemTraceWriter(TraceLevel level) : this(new EventGenerator(), ScriptSettingsManager.Instance, level)
         {
         }
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public SystemTraceWriter(IEventGenerator eventGenerator, ScriptSettingsManager settingsManager, TraceLevel level) : base(level)
         {
             _settingsManager = settingsManager;
-            _appName = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteName);
+            _appName = _settingsManager.AzureWebsiteDefaultSubdomain;
             _subscriptionId = Utility.GetSubscriptionId();
             _eventGenerator = eventGenerator;
         }

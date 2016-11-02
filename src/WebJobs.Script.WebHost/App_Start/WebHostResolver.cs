@@ -160,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileLoggingMode = FileLoggingMode.DebugOnly
             };
 
-            // If running on Azure Web App, derive the host ID from the site name
-            string hostId = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteName);
+            // If running on Azure Web App, derive the host ID from the default subdomain
+            string hostId = _settingsManager.AzureWebsiteDefaultSubdomain;
             if (!String.IsNullOrEmpty(hostId))
             {
                 // Truncate to the max host name length if needed

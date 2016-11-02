@@ -15,7 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class MetricsEventManager : IDisposable
-    {        
+    {
         private static FunctionActivityTracker instance = null;
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public MetricsEventManager(ScriptSettingsManager settingsManager, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
-            appName = GetNormalizedString(settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteName)) ?? string.Empty;
+            appName = GetNormalizedString(settingsManager.AzureWebsiteDefaultSubdomain);
             subscriptionId = Utility.GetSubscriptionId() ?? string.Empty;
 
             _eventGenerator = generator;
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 evt.Duration = DateTime.UtcNow - evt.Timestamp;
                 long latencyMS = (long)evt.Duration.TotalMilliseconds;
 
-                QueuedEvents.AddOrUpdate(evt.EventName, 
+                QueuedEvents.AddOrUpdate(evt.EventName,
                     (name) =>
                     {
                         // create the default event that will be added
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             Average = latencyMS,
                             Count = 1
                         };
-                    }, 
+                    },
                     (name, evtToUpdate) =>
                     {
                         // Aggregate into the existing event
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(eventName));
             }
 
-            QueuedEvents.AddOrUpdate(eventName, 
+            QueuedEvents.AddOrUpdate(eventName,
                 (name) =>
                 {
                     // create the default event that will be added
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         EventName = eventName.ToLowerInvariant(),
                         Count = 1
                     };
-                }, 
+                },
                 (name, evtToUpdate) =>
                 {
                     // update the existing event
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         ? SerializeBindings(function.Metadata.InputBindings)
                         : GetNormalizedString(null),
                     function.Metadata != null
-                        ? SerializeBindings(function.Metadata.OutputBindings) 
+                        ? SerializeBindings(function.Metadata.OutputBindings)
                         : GetNormalizedString(null),
                     function.Metadata.ScriptType.ToString(),
                     function.Metadata != null ? function.Metadata.IsDisabled : false);
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             while (!_etwTaskCancellationSource.Token.IsCancellationRequested)
                             {
                                 RaiseMetricsPerFunctionEvent();
-                                
+
                                 if (currentSecond >= _functionActivityFlushInterval)
                                 {
                                     RaiseFunctionMetricEvents();
@@ -300,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     },
                     _etwTaskCancellationSource.Token);
             }
-            
+
             internal bool IsActive
             {
                 get
@@ -309,12 +309,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            internal IEventGenerator MetricsEventGenerator { get; private set; }            
+            internal IEventGenerator MetricsEventGenerator { get; private set; }
 
             protected virtual void Dispose(bool disposing)
             {
                 if (disposing)
-                {                    
+                {
                     _etwTaskCancellationSource.Dispose();
                 }
             }
@@ -458,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             private class RunningFunctionInfo
-            {                
+            {
                 public RunningFunctionInfo(string name, Guid invocationId, DateTime startTime, bool success, ExecutionStage executionStage = ExecutionStage.InProgress)
                 {
                     Name = name;

@@ -8,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public static class EnvironmentSettingNames
     {
         public const string AzureWebsiteName = "WEBSITE_SITE_NAME";
+        public const string AzureWebsiteHostName = "WEBSITE_HOSTNAME";
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";

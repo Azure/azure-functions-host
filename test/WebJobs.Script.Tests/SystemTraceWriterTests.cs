@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
 
             _websiteName = "functionstest";
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, $"{_websiteName}.azurewebsites.net");
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
             _traceWriter = new SystemTraceWriter(_mockEventGenerator.Object, _settingsManager, TraceLevel.Verbose);
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Dispose()
         {
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, null);
+            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, null);
         }
     }
 }

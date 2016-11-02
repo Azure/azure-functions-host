@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
     public class ScriptSettingsManager
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
+        private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
 
         protected ScriptSettingsManager()
         {
@@ -23,8 +25,29 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
 
+        public string AzureWebsiteDefaultSubdomain
+        {
+            get
+            {
+                return _settingsCache.GetOrAdd(nameof(AzureWebsiteDefaultSubdomain), k =>
+                {
+                    string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+
+                    int? periodIndex = siteHostName?.IndexOf('.');
+
+                    if (periodIndex != null && periodIndex > 0)
+                    {
+                        return siteHostName.Substring(0, periodIndex.Value);
+                    }
+
+                    return null;
+                });
+            }
+        }
+
         public virtual void Reset()
-        {            
+        {
+            _settingsCache.Clear();
         }
 
         public virtual string GetSetting(string settingKey)
