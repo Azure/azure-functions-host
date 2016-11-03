@@ -7,6 +7,8 @@ module.exports = (context) => {
 
         end: (body) => {
             if (body !== undefined) {
+                if (Buffer.isBuffer(body) && !res.get('Content-Type'))
+                    res.type('application/octet-stream');
                 res.body = body;
             }
             context.done();

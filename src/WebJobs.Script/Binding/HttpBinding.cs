@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -16,6 +17,7 @@ using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -45,43 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             HttpStatusCode statusCode = HttpStatusCode.OK;
-            JObject headers = null;
+
             if (content is string)
             {
                 try
                 {
-                    // attempt to read the content as a JObject
-                    JObject jo = JObject.Parse((string)content);
-
-                    // if the content is json we capture that so it will be
-                    // serialized as json by WebApi below
-                    content = jo;
-
-                    // TODO: Improve this logic
-                    // Sniff the object to see if it looks like a response object
-                    // by convention
-                    JToken value = null;
-                    if (jo.TryGetValue("body", StringComparison.OrdinalIgnoreCase, out value))
-                    {
-                        content = value;
-
-                        if (value is JValue && ((JValue)value).Type == JTokenType.String)
-                        {
-                            // convert raw strings so they get serialized properly below
-                            content = (string)value;
-                        }
-
-                        if (jo.TryGetValue("headers", StringComparison.OrdinalIgnoreCase, out value) && value is JObject)
-                        {
-                            headers = (JObject)value;
-                        }
-
-                        if ((jo.TryGetValue("status", StringComparison.OrdinalIgnoreCase, out value) && value is JValue) ||
-                            (jo.TryGetValue("statusCode", StringComparison.OrdinalIgnoreCase, out value) && value is JValue))
-                        {
-                            statusCode = (HttpStatusCode)(int)value;
-                        }
-                    }
+                    // attempt to read the content as a ExpandoObject
+                    content = JsonConvert.DeserializeObject<ExpandoObject>(content as string, new ExpandoObjectConverter());
                 }
                 catch (JsonException)
                 {
@@ -89,27 +61,66 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
+            IDictionary<string, object> headers = null;
+            if (content is ExpandoObject)
+            {
+                var responseObject = content as ExpandoObject;
+                var cleanResponse = new ExpandoObject() as IDictionary<string, object>;
+
+                content = cleanResponse;
+                foreach (var pair in responseObject)
+                {
+                    // strip functions
+                    if (!(pair.Value is Delegate))
+                    {
+                        var key = pair.Key;
+                        switch(pair.Key.ToLowerInvariant())
+                        {
+                            case "body":
+                                // if there is a body, use it as content instead of cleanResponse
+                                content = pair.Value;
+                                break;
+
+                            case "headers":
+                                headers = pair.Value as IDictionary<string, object>;
+                                break;
+
+                            case "status":
+                            case "statuscode":
+                                statusCode = (HttpStatusCode)Convert.ToInt32(pair.Value);
+                                break;
+                        }
+
+                        // rebuild the responseObject without functions
+                        cleanResponse.Add(pair);
+                    }
+                }
+            }
+
+            // convert headers to lowercase (keeping this scoped so that no polluting lowercaseHeaders name)
+            {
+                IDictionary<string, object> lowercaseHeaders = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                headers?.ToList().ForEach(p => lowercaseHeaders[p.Key] = p.Value);
+                headers = lowercaseHeaders;
+            }
+
             HttpResponseMessage response = CreateResponse(request, statusCode, content, headers);
 
-            if (headers != null)
+            // apply any user specified headers
+            foreach (var header in headers)
             {
-                // apply any user specified headers
-                foreach (var header in headers)
-                {
-                    AddResponseHeader(response, header);
-                }
+                AddResponseHeader(response, header);
             }
 
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
 
-        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, JObject headers)
+        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, IDictionary<string, object> headers)
         {
-            JToken contentType = null;
+            object contentType = null;
             MediaTypeHeaderValue mediaType = null;
-            if (content != null &&
-                (headers?.TryGetValue("content-type", StringComparison.OrdinalIgnoreCase, out contentType) ?? false) &&
-                MediaTypeHeaderValue.TryParse(contentType.Value<string>(), out mediaType))
+            if (content != null && headers.TryGetValue("content-type", out contentType) &&
+                MediaTypeHeaderValue.TryParse(content as string, out mediaType))
             {
                 MediaTypeFormatter writer = request.GetConfiguration()
                     .Formatters.FindWriter(content.GetType(), mediaType);
@@ -197,7 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result != null;
         }
 
-        private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, JToken> header)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
+        private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)
         {
             if (header.Value != null)
             {
@@ -236,7 +248,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         break;
                     case "content-md5":
-                        response.Content.Headers.ContentMD5 = header.Value.Value<byte[]>();
+                        if (header.Value is byte[])
+                        {
+                            response.Content.Headers.ContentMD5 = header.Value as byte[];
+                        }
                         break;
                     case "expires":
                         if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
