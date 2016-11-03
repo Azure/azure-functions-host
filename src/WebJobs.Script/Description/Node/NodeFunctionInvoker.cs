@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     if (!_initialized)
                     {
                         Initialize();
+                        _initialized = true;
                     }
                 }
             }
