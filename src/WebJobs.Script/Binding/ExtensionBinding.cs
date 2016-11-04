@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -46,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             context.Attributes = _attributes.ToArray();
 
+            JToken json = null;
+
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
                 await BindAsyncCollectorAsync<byte[]>(context);
@@ -67,12 +70,37 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 var result = await context.Binder.BindAsync<JObject>(_attributes.ToArray());
                 if (Access == FileAccess.Read)
                 {
-                    context.Value = result;
+                    json = result;
                 }
+            }
+            else if (_binding.DefaultType == typeof(JArray))
+            {
+                JArray entityArray = await context.Binder.BindAsync<JArray>(_attributes.ToArray());
+                json = entityArray;
             }
             else
             {
                 throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");
+            }
+
+
+            if (json != null)
+            {
+                if (context.DataType == DataType.Stream)
+                {
+                    // In file-based scripting (like Python), arguments may need to be copied to the file system. 
+                    string jsonStr = json.ToString(Formatting.None);
+
+                    // We're explicitly NOT disposing the StreamWriter because
+                    // we don't want to close the underlying Stream
+                    StreamWriter sw = new StreamWriter((Stream)context.Value);
+                    await sw.WriteAsync(jsonStr);
+                    sw.Flush();
+                }
+                else
+                {
+                    context.Value = json;
+                }
             }
         }
 
