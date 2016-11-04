@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // if a return value binding was specified, copy the return value
             // into the output binding slot (by convention the last parameter)
             var returnValueBinding = Metadata.Bindings.SingleOrDefault(p => p.IsReturn);
-            if (returnValueBinding != null)
+            if (returnValueBinding != null && !(returnValueBinding is IResultProcessingBinding))
             {
                 originalParameters[originalParameters.Length - 1] = result;
             }

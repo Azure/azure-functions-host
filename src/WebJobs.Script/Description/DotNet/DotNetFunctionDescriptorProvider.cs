@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             descriptor = null;
 
             var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
-            if (returnBinding == null)
+            if (returnBinding == null || returnBinding is IResultProcessingBinding)
             {
                 return false;
             }
