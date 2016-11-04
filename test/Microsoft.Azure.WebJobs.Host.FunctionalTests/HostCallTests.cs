@@ -1089,22 +1089,54 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             var prog = TestHelpers.NewJobHost<BindTableEntityToJArrayProgram>(account, jobActivator);
 
             // Act
-            prog.Call("Call");
+            prog.Call("CallTakeFilter");
+            Assert.Equal("x1;x3;", instance._result);
 
-            // Assert
-            Assert.NotNull(instance._array);
-            Assert.Equal(2, instance._array.Count);
-            Assert.Equal("x1", instance._array[0]["Value"].ToString());
-            Assert.Equal("x3", instance._array[1]["Value"].ToString());
+            prog.Call("CallFilter");
+            Assert.Equal("x1;x3;x4;", instance._result);
+
+            prog.Call("CallTake");
+            Assert.Equal("x1;x2;x3;", instance._result);
+
+            prog.Call("Call");
+            Assert.Equal("x1;x2;x3;x4;", instance._result);
         }
 
         private class BindTableEntityToJArrayProgram
         {
-            public JArray _array;
-                        
-            public void Call([Table(TableName, PartitionKey, Take =2, Filter = "Value ne 'x2'")] JArray array)
+            public string _result;
+
+            // Helper to flatten a Jarray for quick testing. 
+            static string Flatten(JArray array)
             {
-                _array = array;
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < array.Count; i++)
+                {
+                    sb.Append(array[i]["Value"]);
+                    sb.Append(';');
+                }
+                return sb.ToString();
+            }
+
+            public void CallTakeFilter([Table(TableName, PartitionKey, Take = 2, Filter = "Value ne 'x2'")] JArray array)
+            {
+                this._result = Flatten(array);
+            }
+
+            public void CallFilter([Table(TableName, PartitionKey, Filter = "Value ne 'x2'")] JArray array)
+            {
+                this._result = Flatten(array);
+            }
+
+            public void CallTake([Table(TableName, PartitionKey, Take = 3)] JArray array)
+            {
+                this._result = Flatten(array);
+            }
+
+            // No take or filters
+            public void Call([Table(TableName, PartitionKey)] JArray array)
+            {
+                this._result = Flatten(array);
             }
         }
 

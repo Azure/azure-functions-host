@@ -135,9 +135,12 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             TableQuery tableQuery = new TableQuery
             {
-                TakeCount = attribute.Take, // Batch size for query. 
                 FilterString = finalQuery
             };
+            if (attribute.Take > 0)
+            {
+                tableQuery.TakeCount = attribute.Take;
+            }
             int countRemaining = attribute.Take;
 
             JArray entityArray = new JArray();
