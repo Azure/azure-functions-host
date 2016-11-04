@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             context.Attributes = _attributes.ToArray();
 
-            JToken json = null;
+            object inputValue = null;
 
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
@@ -70,36 +70,30 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 var result = await context.Binder.BindAsync<JObject>(_attributes.ToArray());
                 if (Access == FileAccess.Read)
                 {
-                    json = result;
+                    inputValue = result;
                 }
             }
             else if (_binding.DefaultType == typeof(JArray))
             {
                 JArray entityArray = await context.Binder.BindAsync<JArray>(_attributes.ToArray());
-                json = entityArray;
+                inputValue = entityArray;
             }
             else
             {
                 throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");
             }
 
-
-            if (json != null)
+            if (inputValue != null)
             {
                 if (context.DataType == DataType.Stream)
                 {
                     // In file-based scripting (like Python), arguments may need to be copied to the file system. 
-                    string jsonStr = json.ToString(Formatting.None);
-
-                    // We're explicitly NOT disposing the StreamWriter because
-                    // we don't want to close the underlying Stream
-                    StreamWriter sw = new StreamWriter((Stream)context.Value);
-                    await sw.WriteAsync(jsonStr);
-                    sw.Flush();
+                    var inputStream = (Stream)context.Value;
+                    ConvertValueToStream(inputValue, inputStream);
                 }
                 else
                 {
-                    context.Value = json;
+                    context.Value = inputValue;
                 }
             }
         }
