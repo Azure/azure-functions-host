@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -235,6 +236,23 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else if (type == typeof(double))
                 {
                     bytes = BitConverter.GetBytes((double)value);
+                }
+                else
+                {
+                    var jValue = value as JToken;
+                    if (jValue != null)
+                    {
+                        string json = jValue.ToString(Formatting.None);
+
+                        // Use StreamWriter to handle encoding. 
+                        // We're explicitly NOT disposing the StreamWriter because
+                        // we don't want to close the underlying Stream
+                        StreamWriter sw = new StreamWriter(stream);
+                        sw.Write(json);
+                        sw.Flush();
+
+                        return;
+                    }
                 }
 
                 using (valueStream = new MemoryStream(bytes))

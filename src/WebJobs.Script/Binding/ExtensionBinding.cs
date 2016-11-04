@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -46,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             context.Attributes = _attributes.ToArray();
 
+            object inputValue = null;
+
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
                 await BindAsyncCollectorAsync<byte[]>(context);
@@ -67,12 +70,31 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 var result = await context.Binder.BindAsync<JObject>(_attributes.ToArray());
                 if (Access == FileAccess.Read)
                 {
-                    context.Value = result;
+                    inputValue = result;
                 }
+            }
+            else if (_binding.DefaultType == typeof(JArray))
+            {
+                JArray entityArray = await context.Binder.BindAsync<JArray>(_attributes.ToArray());
+                inputValue = entityArray;
             }
             else
             {
                 throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");
+            }
+
+            if (inputValue != null)
+            {
+                if (context.DataType == DataType.Stream)
+                {
+                    // In file-based scripting (like Python), arguments may need to be copied to the file system. 
+                    var inputStream = (Stream)context.Value;
+                    ConvertValueToStream(inputValue, inputStream);
+                }
+                else
+                {
+                    context.Value = inputValue;
+                }
             }
         }
 
