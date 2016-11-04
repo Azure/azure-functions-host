@@ -53,19 +53,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 try
                 {
                     // attempt to read the content as a ExpandoObject
-                    content = JsonConvert.DeserializeObject<ExpandoObject>(content as string, new ExpandoObjectConverter());
+                    content = JsonConvert.DeserializeObject<ExpandoObject>((string)content, new ExpandoObjectConverter());
                 }
                 catch (JsonException)
                 {
                     // not a json response
                 }
             }
-
+            
             IDictionary<string, object> headers = null;
-            if (content is ExpandoObject)
+            ExpandoObject responseObject = content as ExpandoObject;
+            if (responseObject != null)
             {
-                var responseObject = content as ExpandoObject;
-                var cleanResponse = new ExpandoObject() as IDictionary<string, object>;
+                IDictionary<string, object> cleanResponse = new ExpandoObject();
 
                 content = cleanResponse;
                 foreach (var pair in responseObject)
