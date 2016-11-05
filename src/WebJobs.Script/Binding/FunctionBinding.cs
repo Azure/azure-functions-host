@@ -187,6 +187,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        internal static async Task BindJTokenAsync<T>(BindingContext context, FileAccess access)
+        {
+            var result = await context.Binder.BindAsync<T>(context.Attributes);
+
+            if (access == FileAccess.Read)
+            {
+                if (context.DataType == DataType.Stream)
+                {
+                    ConvertValueToStream(result, (Stream)context.Value);
+                }
+
+                context.Value = result;
+            }
+        }
+
         internal static async Task BindStreamAsync(BindingContext context, FileAccess access)
         {
             Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
@@ -233,22 +248,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     bytes = BitConverter.GetBytes((double)value);
                 }
-                else
+                else if (value is JToken)
                 {
-                    var jValue = value as JToken;
-                    if (jValue != null)
-                    {
-                        string json = jValue.ToString(Formatting.None);
-
-                        // Use StreamWriter to handle encoding. 
-                        // We're explicitly NOT disposing the StreamWriter because
-                        // we don't want to close the underlying Stream
-                        StreamWriter sw = new StreamWriter(stream);
-                        sw.Write(json);
-                        sw.Flush();
-
-                        return;
-                    }
+                    JToken jToken = (JToken)value;
+                    string json = jToken.ToString(Formatting.None);
+                    bytes = Encoding.UTF8.GetBytes(json);
                 }
 
                 using (valueStream = new MemoryStream(bytes))
