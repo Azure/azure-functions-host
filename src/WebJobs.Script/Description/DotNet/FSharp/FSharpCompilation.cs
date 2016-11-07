@@ -64,8 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // For F#, we always set this to true for now.
             bool hasLocalTypeReference = true;
 
-            var signature = new FunctionSignature(entryPointReference.DeclaringType.Name, entryPointReference.Name, parameters.ToImmutableArray(), hasLocalTypeReference);
-            
+            var signature = new FunctionSignature(entryPointReference.DeclaringType.Name, entryPointReference.Name,
+                parameters.ToImmutableArray(), entryPointReference.ReturnType.Name, hasLocalTypeReference);
+
             return signature;
         }
 
