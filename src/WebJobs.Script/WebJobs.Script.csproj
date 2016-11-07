@@ -430,6 +430,7 @@
     <Compile Include="DictionaryJsonConverter.cs" />
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="Diagnostics\FileTraceWriter.cs" />
+    <Compile Include="Host\ScriptHostState.cs" />
     <Compile Include="HttpMethodJsonConverter.cs" />
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />

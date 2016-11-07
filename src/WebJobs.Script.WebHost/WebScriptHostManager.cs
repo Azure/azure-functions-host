@@ -392,16 +392,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             hostConfig.DashboardConnectionString = null; // disable slow logging
         }
 
-        protected override void OnHostStarted()
+        protected override void OnHostCreated()
         {
-            base.OnHostStarted();
-
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
             InitializeHttpFunctions(Instance.Functions);
 
+            base.OnHostCreated();
+        }
+
+        protected override void OnHostStarted()
+        {
             // Purge any old Function secrets
             _secretManager.PurgeOldFiles(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
+
+            base.OnHostStarted();
         }
 
         internal void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions)

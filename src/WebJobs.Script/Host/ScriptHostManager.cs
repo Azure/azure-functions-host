@@ -50,12 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostFactory = scriptHostFactory;
         }
 
-        /// <summary>
-        /// Returns true if the <see cref="ScriptHost"/> is up and running and ready to
-        /// process requests.
-        /// </summary>
-        public virtual bool IsRunning { get; private set; }
-
         public virtual ScriptHost Instance
         {
             get
@@ -65,9 +59,27 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets the last host <see cref="Exception"/> that has occurred.
+        /// Gets or sets the current state of the host.
+        /// </summary>
+        public virtual ScriptHostState State { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the last host <see cref="Exception"/> that has occurred.
         /// </summary>
         public virtual Exception LastError { get; private set; }
+
+        /// <summary>
+        /// Returns a value indicating whether the host can accept function invoke requests.
+        /// </summary>
+        /// <remarks>
+        /// The host doesn't have to be fully started for it to allow direct function invocations
+        /// to be processed.
+        /// </remarks>
+        /// <returns>True if the host can accept invoke requests, false otherwise.</returns>
+        public bool CanInvoke()
+        {
+            return State == ScriptHostState.Created || State == ScriptHostState.Running;
+        }
 
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -78,7 +90,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptHost newInstance = null;
                 try
                 {
-                    IsRunning = false;
+                    // if we were in an error state retain that,
+                    // otherwise move to default
+                    if (State != ScriptHostState.Error)
+                    {
+                        State = ScriptHostState.Default;
+                    }
 
                     // Create a new host config, but keep the host id from existing one
                     _config.HostConfig = new JobHostConfiguration
@@ -87,8 +104,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                     OnInitializeConfig(_config);
                     newInstance = _scriptHostFactory.Create(_settingsManager, _config);
-
                     _traceWriter = newInstance.TraceWriter;
+
+                    _currentInstance = newInstance;
+                    lock (_liveInstances)
+                    {
+                        _liveInstances.Add(newInstance);
+                    }
+
+                    OnHostCreated();
 
                     if (_traceWriter != null)
                     {
@@ -101,15 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     // log any function initialization errors
                     LogErrors(newInstance);
 
-                    lock (_liveInstances)
-                    {
-                        _liveInstances.Add(newInstance);
-                    }
-                    _currentInstance = newInstance;
                     OnHostStarted();
 
-                    // only after ALL initialization is complete do we set this flag
-                    IsRunning = true;
+                    // only after ALL initialization is complete do we set the
+                    // state to Running
+                    State = ScriptHostState.Running;
                     LastError = null;
 
                     // Wait for a restart signal. This event will automatically reset.
@@ -131,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (Exception ex)
                 {
-                    IsRunning = false;
+                    State = ScriptHostState.Error;
                     LastError = ex;
 
                     // We need to keep the host running, so we catch and log any errors
@@ -221,15 +241,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 _stopEvent.Set();
                 ScriptHost[] instances = GetLiveInstancesAndClear();
 
-                Task[] tasksStop = Array.ConvertAll(instances, instance => instance.StopAsync());
+                Task[] tasksStop = Array.ConvertAll(instances, p => StopAndDisposeAsync(p));
                 await Task.WhenAll(tasksStop);
 
-                foreach (var instance in instances)
-                {
-                    instance.Dispose();
-                }
-
-                IsRunning = false;
+                State = ScriptHostState.Default;
             }
             catch
             {
@@ -240,6 +255,22 @@ namespace Microsoft.Azure.WebJobs.Script
         public void Stop()
         {
             StopAsync().GetAwaiter().GetResult();
+        }
+
+        private static async Task StopAndDisposeAsync(ScriptHost instance)
+        {
+            try
+            {
+                await instance.StopAsync();
+            }
+            catch
+            {
+                // best effort
+            }
+            finally
+            {
+                instance.Dispose();
+            }
         }
 
         private ScriptHost[] GetLiveInstancesAndClear()
@@ -256,6 +287,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void OnInitializeConfig(ScriptHostConfiguration config)
         {
+        }
+
+        protected virtual void OnHostCreated()
+        {
+            State = ScriptHostState.Created;
         }
 
         protected virtual void OnHostStarted()

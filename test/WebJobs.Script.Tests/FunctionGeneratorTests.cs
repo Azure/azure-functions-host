@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await TestHelpers.Await(() =>
                 {
-                    return manager.IsRunning;
+                    return manager.State == ScriptHostState.Running;
                 });
 
                 var request = new HttpRequestMessage(HttpMethod.Get, String.Format("http://localhost/api/httptrigger-{0}", fixture));

@@ -113,10 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
-            await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running, timeout: 10000);
 
             hostManager.Stop();
-            Assert.False(hostManager.IsRunning);
+            Assert.Equal(ScriptHostState.Default, hostManager.State);
 
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             hostManager.Stop();
-            Assert.False(hostManager.IsRunning);
+            Assert.Equal(ScriptHostState.Default, hostManager.State);
 
             // regression test: previously on multiple restarts we were recomposing
             // the writer on each restart, resulting in a nested chain of writers
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             await RunTimeoutExceptionTest(trace, handleCancellation: false);
 
-            await TestHelpers.Await(() => !_manager.IsRunning);
+            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
             Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
             Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await RunTimeoutExceptionTest(trace, handleCancellation: true);
 
             // wait a few seconds to make sure the manager doesn't die
-            await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !_manager.IsRunning, timeout: 3000));
+            await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), timeout: 3000));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
             Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var manager = new WebScriptHostManager(config, new SecretManager(), _settingsManager, new WebHostSettings());
             Task task = Task.Run(() => { manager.RunAndBlock(); });
-            await TestHelpers.Await(() => manager.IsRunning);
+            await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
 
             return manager;
         }
@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 TestHelpers.Await(() =>
                 {
-                    return HostManager.IsRunning;
+                    return HostManager.State == ScriptHostState.Running;
                 }).GetAwaiter().GetResult();
 
                 // verify startup system trace logs

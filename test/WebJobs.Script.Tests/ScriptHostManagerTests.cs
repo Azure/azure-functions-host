@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Thread t = new Thread(_ =>
                    {
                        // don't start until the manager is running
-                       TestHelpers.Await(() => manager.IsRunning).Wait();
+                       TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
 
                        try
                        {
@@ -128,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // we expect a host exception immediately
             await Task.Delay(2000);
 
-            Assert.False(hostManager.IsRunning);
+            Assert.Equal(ScriptHostState.Error, hostManager.State);
+            Assert.False(hostManager.CanInvoke());
             Assert.NotNull(hostManager.LastError);
             Assert.Equal("Kaboom!", hostManager.LastError.Message);
 
@@ -137,10 +138,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostFactory.Throw = false;
             await TestHelpers.Await(() =>
             {
-                return hostManager.IsRunning;
+                return hostManager.State == ScriptHostState.Running;
             });
 
             Assert.Null(hostManager.LastError);
+            Assert.True(hostManager.CanInvoke());
+            Assert.Equal(ScriptHostState.Running, hostManager.State);
         }
 
         [Fact]
@@ -168,10 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
-            await TestHelpers.Await(() => hostManager.IsRunning, timeout: 10000);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running, timeout: 10000);
 
             hostManager.Stop();
-            Assert.False(hostManager.IsRunning);
+            Assert.Equal(ScriptHostState.Default, hostManager.State);
 
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
