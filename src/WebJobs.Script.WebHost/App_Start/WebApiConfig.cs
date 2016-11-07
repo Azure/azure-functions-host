@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
 using Autofac;

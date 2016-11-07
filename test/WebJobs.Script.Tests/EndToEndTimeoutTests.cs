@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var scriptHostManager = new MockScriptHostManager(config);
             ThreadPool.QueueUserWorkItem((s) => scriptHostManager.RunAndBlock());
-            await TestHelpers.Await(() => scriptHostManager.IsRunning);
+            await TestHelpers.Await(() => scriptHostManager.State == ScriptHostState.Running);
 
             return scriptHostManager;
         }

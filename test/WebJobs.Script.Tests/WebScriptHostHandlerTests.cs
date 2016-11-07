@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task SendAsync_HostNotRunning_Returns503()
         {
-            _managerMock.SetupGet(p => p.IsRunning).Returns(false);
+            _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
             _managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task SendAsync_HostRunning_ReturnsOk()
         {
-            _managerMock.SetupGet(p => p.IsRunning).Returns(true);
+            _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
@@ -63,13 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task SendAsync_HostInErrorState_Returns503Immediately()
         {
-            _managerMock.SetupGet(p => p.IsRunning).Returns(false);
+            _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
             _managerMock.SetupGet(p => p.LastError).Returns(new Exception());
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            _managerMock.VerifyGet(p => p.IsRunning, Times.Exactly(2));
+            _managerMock.VerifyGet(p => p.State, Times.Exactly(5));
         }
 
         public class TestHandler : DelegatingHandler
