@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             TraceEvent traceEvent = _traceWriter.Traces[0];
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
-            Assert.Equal("Executing: 'TestJob' - Reason: 'TestReason'", traceEvent.Message);
+
+            Assert.Equal(string.Format("Executing 'TestJob' (Reason='TestReason', Id={0})", message.FunctionInstanceId), traceEvent.Message);
             Assert.Equal(3, traceEvent.Properties.Count);
             Assert.Equal(message.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
             Assert.Equal(message.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             TraceEvent traceEvent = _traceWriter.Traces[0];
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
-            Assert.Equal("Executed: 'TestJob' (Succeeded)", traceEvent.Message);
+            Assert.Equal(string.Format("Executed 'TestJob' (Succeeded, Id={0})", successMessage.FunctionInstanceId), traceEvent.Message);
             Assert.Equal(successMessage.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
             Assert.Equal(successMessage.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);
             Assert.Same(successMessage.Function, traceEvent.Properties["MS_FunctionDescriptor"]);
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             traceEvent = _traceWriter.Traces[1];
             Assert.Equal(TraceLevel.Error, traceEvent.Level);
             Assert.Equal(Host.TraceSource.Execution, traceEvent.Source);
-            Assert.Equal("Executed: 'TestJob' (Failed)", traceEvent.Message);
+            Assert.Equal(string.Format("Executed 'TestJob' (Failed, Id={0})", failureMessage.FunctionInstanceId), traceEvent.Message);
             Assert.Same(ex, traceEvent.Exception);
             Assert.Equal(failureMessage.HostInstanceId, traceEvent.Properties["MS_HostInstanceId"]);
             Assert.Equal(failureMessage.FunctionInstanceId, traceEvent.Properties["MS_FunctionInvocationId"]);

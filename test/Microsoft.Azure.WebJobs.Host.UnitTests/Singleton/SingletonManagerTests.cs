@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             TestHelpers.SetField(_singletonConfig, "_lockPeriod", TimeSpan.FromMilliseconds(500));
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
-            _nameResolver = new TestNameResolver(); 
+            _nameResolver = new TestNameResolver();
             _singletonManager = new SingletonManager(_mockAccountProvider.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, new FixedHostIdProvider(TestHostId), _nameResolver);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
@@ -166,9 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             await _singletonManager.ReleaseLockAsync(lockHandle, cancellationToken);
 
             // verify the traces
-            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Waiting for Singleton lock (testid)")));
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock acquired (testid)")));
-            Assert.Equal(renewCount, _trace.Traces.Count(p => p.ToString().Contains("Renewing Singleton lock (testid)")));
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock released (testid)")));
 
             renewCount = 0;

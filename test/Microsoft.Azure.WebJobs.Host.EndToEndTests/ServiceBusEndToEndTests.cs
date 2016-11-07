@@ -262,25 +262,25 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     string.Format("{0}.SBTopicListener1", jobContainerType.FullName),
                     string.Format("{0}.SBTopicListener2", jobContainerType.FullName),
                     "Job host started",
-                    string.Format("Executing: '{0}.SBQueue2SBQueue' - Reason: 'New ServiceBus message detected on '{1}'.'", jobContainerType.Name, startQueueName),
-                    string.Format("Executed: '{0}.SBQueue2SBQueue' (Succeeded)", jobContainerType.Name),
-                    string.Format("Executing: '{0}.SBQueue2SBTopic' - Reason: 'New ServiceBus message detected on '{1}'.'", jobContainerType.Name, secondQueueName),
-                    string.Format("Executed: '{0}.SBQueue2SBTopic' (Succeeded)", jobContainerType.Name),
-                    string.Format("Executing: '{0}.SBTopicListener1' - Reason: 'New ServiceBus message detected on '{1}'.'", jobContainerType.Name, firstTopicName),
-                    string.Format("Executed: '{0}.SBTopicListener1' (Succeeded)", jobContainerType.Name),
-                    string.Format("Executing: '{0}.SBTopicListener2' - Reason: 'New ServiceBus message detected on '{1}'.'", jobContainerType.Name, secondTopicName),
-                    string.Format("Executed: '{0}.SBTopicListener2' (Succeeded)", jobContainerType.Name),
+                    string.Format("Executing '{0}.SBQueue2SBQueue' (Reason='New ServiceBus message detected on '{1}'.', Id=", jobContainerType.Name, startQueueName),
+                    string.Format("Executed '{0}.SBQueue2SBQueue' (Succeeded, Id=", jobContainerType.Name),
+                    string.Format("Executing '{0}.SBQueue2SBTopic' (Reason='New ServiceBus message detected on '{1}'.', Id=", jobContainerType.Name, secondQueueName),
+                    string.Format("Executed '{0}.SBQueue2SBTopic' (Succeeded, Id=", jobContainerType.Name),
+                    string.Format("Executing '{0}.SBTopicListener1' (Reason='New ServiceBus message detected on '{1}'.', Id=", jobContainerType.Name, firstTopicName),
+                    string.Format("Executed '{0}.SBTopicListener1' (Succeeded, Id=", jobContainerType.Name),
+                    string.Format("Executing '{0}.SBTopicListener2' (Reason='New ServiceBus message detected on '{1}'.', Id=", jobContainerType.Name, secondTopicName),
+                    string.Format("Executed '{0}.SBTopicListener2' (Succeeded, Id=", jobContainerType.Name),
                     "Job host stopped"
                 }.OrderBy(p => p).ToArray();
 
                 bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
                 if (!hasError)
                 {
-                    Assert.Equal(
-                        string.Join(Environment.NewLine, expectedOutputLines),
-                        string.Join(Environment.NewLine, consoleOutputLines)
-                    );
-                } 
+                    for (int i = 0; i < expectedOutputLines.Length; i++)
+                    {
+                        Assert.StartsWith(expectedOutputLines[i], consoleOutputLines[i]);
+                    }
+                }
             }
         }
 

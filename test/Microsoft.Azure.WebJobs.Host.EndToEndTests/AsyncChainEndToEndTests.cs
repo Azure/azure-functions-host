@@ -107,17 +107,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.SystemParameterBindingOutput",
                     "Function 'AsyncChainEndToEndTests.DisabledJob' is disabled",
                     "Job host started",
-                    "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
-                    "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
+                    "Executing 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Reason='This function was programmatically called via the host APIs.', Id=",
+                    "Executed 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.QueueToQueueAsync' (Reason='New queue message detected on '{0}'.', Id=", firstQueueName),
+                    "Executed 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.QueueToBlobAsync' (Reason='New queue message detected on '{0}'.', Id=", secondQueueName),
+                    "Executed 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.BlobToBlobAsync' (Reason='New blob detected: {0}/Blob1', Id=", blobContainerName),
+                    "Executed 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded, Id=",
                     "Job host stopped",
-                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)",
+                    "Executing 'AsyncChainEndToEndTests.ReadResultBlob' (Reason='This function was programmatically called via the host APIs.', Id=",
+                    "Executed 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded, Id=",
                     "User TraceWriter log",
                     "Another User TextWriter log",
                     "User TextWriter log (TestParam)"
@@ -126,10 +126,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
                 if (!hasError)
                 {
-                    Assert.Equal(
-                    string.Join(Environment.NewLine, expectedOutputLines),
-                    string.Join(Environment.NewLine, consoleOutputLines)
-                    );
+                    for (int i = 0; i < expectedOutputLines.Length; i++)
+                    {
+                        Assert.StartsWith(expectedOutputLines[i], consoleOutputLines[i]);
+                    }
                 }
 
                 Console.SetOut(hold);
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Message.Contains("Error"))).Any();
                 if (!hasError)
                 {
-                    Assert.Equal(18, trace.Traces.Count);
+                    Assert.Equal(17, trace.Traces.Count);
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             foreach (var traceEvent in trace.Traces)
             {
                 var message = traceEvent.Message;
-                var startedOrEndedMessage = message.StartsWith("Executing: ") || message.StartsWith("Executed: ");
+                var startedOrEndedMessage = message.StartsWith("Executing ") || message.StartsWith("Executed ");
                 var userMessage = message.Contains("User TextWriter") || message.Contains("User TraceWriter");
 
                 if (startedOrEndedMessage || userMessage)
@@ -355,7 +355,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             TraceEvent[] traceErrors = trace.Traces.Where(p => p.Level == TraceLevel.Error).ToArray();
             Assert.Equal(3, traceErrors.Length);
             Assert.True(traceErrors[0].Message.StartsWith(string.Format("Timeout value of 00:00:01 exceeded by function 'AsyncChainEndToEndTests.{0}'", functionName)));
-            Assert.True(traceErrors[1].Message.StartsWith(string.Format("Executed: 'AsyncChainEndToEndTests.{0}' (Failed)", functionName)));
+            Assert.True(traceErrors[1].Message.StartsWith(string.Format("Executed 'AsyncChainEndToEndTests.{0}' (Failed, Id=", functionName)));
             Assert.True(traceErrors[2].Message.Trim().StartsWith("Function had errors. See Azure WebJobs SDK dashboard for details."));
         }
 
@@ -397,7 +397,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect no function output
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(5, traces.Length);
+                    Assert.Equal(4, traces.Length);
                     Assert.False(traces.Any(p => p.Message.Contains("test message")));
                 }
             }
@@ -431,13 +431,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect normal logs to be written (TraceLevel override is ignored)
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(10, traces.Length);
+                    Assert.Equal(9, traces.Length);
 
                     string output = string.Join("\r\n", traces.Select(p => p.Message));
-                    Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride'"));
-                    Assert.True(output.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride"));
-                    Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed)"));
-                    Assert.True(output.Contains("Message has reached MaxDequeueCount of 1"));
+                    Assert.Contains("Executing 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Reason='New queue message detected", output);
+                    Assert.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride", output);
+                    Assert.Contains("Executed 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed, Id=", output);
+                    Assert.Contains("Message has reached MaxDequeueCount of 1", output);
                 }
             }
             finally

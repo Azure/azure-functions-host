@@ -5,10 +5,11 @@ using System;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
         public SingletonListenerTests()
         {
-            MethodInfo methodInfo = this.GetType().GetMethod("TestJob", BindingFlags.Static|BindingFlags.NonPublic);
+            MethodInfo methodInfo = this.GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.NonPublic);
             _attribute = new SingletonAttribute();
             _config = new SingletonConfiguration
             {
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
             _mockSingletonManager.SetupGet(p => p.Config).Returns(_config);
             _mockInnerListener = new Mock<IListener>(MockBehavior.Strict);
-            _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object);
+            _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object, new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose));
             _lockId = SingletonManager.FormatLockId(methodInfo, SingletonScope.Function, TestHostId, _attribute.ScopeId) + ".Listener";
         }
 

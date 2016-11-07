@@ -491,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal("BindingErrorsProgram.Invalid", fex.MethodName);
 
             // verify that the binding error was logged
-            Assert.Equal(5, traceWriter.Traces.Count);
+            Assert.Equal(4, traceWriter.Traces.Count);
             TraceEvent traceEvent = traceWriter.Traces[0];
             Assert.Equal("Error indexing method 'BindingErrorsProgram.Invalid'", traceEvent.Message);
             Assert.Same(fex, traceEvent.Exception);
@@ -503,7 +503,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.True(traceEvent.Message.Contains("BindingErrorsProgram.Valid"));
 
             // verify that the job host was started successfully
-            traceEvent = traceWriter.Traces[4];
+            traceEvent = traceWriter.Traces[3];
             Assert.Equal("Job host started", traceEvent.Message);
 
             host.Stop();
