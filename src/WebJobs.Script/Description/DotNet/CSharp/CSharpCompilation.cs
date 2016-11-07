@@ -51,10 +51,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .Select(m => new MethodReference<IMethodSymbol>(m.Name, m.DeclaredAccessibility == Accessibility.Public, m));
 
             IMethodSymbol entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
-            bool hasLocalTypeReferences = entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
+            bool hasLocalTypeReferences = HasLocalTypeReferences(entryPointReference);
             var functionParameters = entryPointReference.Parameters.Select(p => new FunctionParameter(p.Name, GetFullTypeName(p.Type), p.IsOptional, p.RefKind));
 
-            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name, ImmutableArray.CreateRange(functionParameters.ToArray()), hasLocalTypeReferences);
+            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name,
+                ImmutableArray.CreateRange(functionParameters.ToArray()), GetFullTypeName(entryPointReference.ReturnType), hasLocalTypeReferences);
+        }
+
+        private static bool HasLocalTypeReferences(IMethodSymbol entryPointReference)
+        {
+            return IsOrUsesAssemblyType(entryPointReference.ReturnType, entryPointReference.ContainingAssembly)
+                || entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
         }
 
         private static string GetFullTypeName(ITypeSymbol type)

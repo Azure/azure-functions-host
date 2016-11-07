@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
             {
                 new FunctionParameter("input", "String", false, RefKind.None)
             };
-            FunctionSignature signature = new FunctionSignature("Test", "Test", ImmutableArray.CreateRange<FunctionParameter>(parameters), false);
+            FunctionSignature signature = new FunctionSignature("Test", "Test", ImmutableArray.CreateRange<FunctionParameter>(parameters), "Test", false);
 
             Collection<FunctionBinding> inputBindings = new Collection<FunctionBinding>()
             {
