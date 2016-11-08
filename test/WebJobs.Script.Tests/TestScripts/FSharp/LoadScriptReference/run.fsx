@@ -3,7 +3,7 @@
 
 #if !COMPILED
 open System.Runtime.InteropServices
-#I "../../../../../bin/Binaries/WebJobs.Script.Host"
+#I "../../../../../src/WebJobs.Script.Host/bin/Debug"
 #r "Microsoft.Azure.WebJobs.Host.dll"
 #r "Microsoft.Azure.WebJobs.Extensions.dll"
 #endif
