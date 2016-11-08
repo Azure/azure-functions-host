@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(trace.Replace(" ", string.Empty).Contains(messageContent.Replace(" ", string.Empty)));
         }
 
-        protected async Task TwilioReference_Invoke_Succeeds_Test(bool isDotNet)
+        protected async Task TwilioReferenceInvokeSucceedsImpl(bool isDotNet)
         {
             if (isDotNet)
             {

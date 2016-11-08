@@ -28,9 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task TwilioReference_Invoke_Succeeds()
+        public async Task TwilioReferenceInvokeSucceeds()
         {
-            await TwilioReference_Invoke_Succeeds_Test(isDotNet: true);
+            await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
         }
 
         //[Fact]
