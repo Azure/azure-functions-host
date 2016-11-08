@@ -685,11 +685,11 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
 
          // List all tables that we may have handed out. 
-        async Task<CloudTable[]> ILogTableProvider.ListTablesAsync()
+        Task<CloudTable[]> ILogTableProvider.ListTablesAsync()
         {
             var tableClient = GetTableClient();
             var tables = tableClient.ListTables(_tableNamePrefix).ToArray();
-            return tables;
+            return Task.FromResult<CloudTable[]>(tables);
         }
                 
         private CloudTableClient GetTableClient()
