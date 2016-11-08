@@ -7,7 +7,7 @@
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <SiteExtensionVersion>0.9.$(BuildNumber)</SiteExtensionVersion>
+    <SiteExtensionVersion>1.0.$(BuildNumber)</SiteExtensionVersion>
     <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
     <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
     <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
