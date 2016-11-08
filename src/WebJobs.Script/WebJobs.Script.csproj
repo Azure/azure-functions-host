@@ -350,6 +350,7 @@
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
+    <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
@@ -366,6 +367,7 @@
     <Compile Include="Description\DotNet\LocalSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\DirectSharedAssemblyProvider.cs" />
     <Compile Include="Description\FunctionInvocationContext.cs" />
+    <Compile Include="Description\FunctionLoader.cs" />
     <Compile Include="Description\PowerShell\PowerShellConstants.cs" />
     <Compile Include="Description\PowerShell\PowerShellFunctionDescriptorProvider.cs" />
     <Compile Include="Description\PowerShell\PowerShellFunctionInvoker.cs" />
@@ -383,7 +385,6 @@
     <Compile Include="Description\DotNet\DotNetFunctionInvoker.cs" />
     <Compile Include="Description\DotNet\FunctionEntryPointResolver.cs" />
     <Compile Include="Description\DotNet\FunctionMetadataResolver.cs" />
-    <Compile Include="Description\DotNet\FunctionValueLoader.cs" />
     <Compile Include="Description\DotNet\IFunctionEntryPointResolver.cs" />
     <Compile Include="Description\DotNet\IMethodReference.cs" />
     <Compile Include="Description\DotNet\MethodReference.cs" />

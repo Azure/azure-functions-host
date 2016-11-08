@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly ICompilationService _compilationService;
+        private readonly FunctionLoader<MethodInfo> _functionLoader;
         private readonly IMetricsLogger _metricsLogger;
 
         private FunctionSignature _functionSignature;
@@ -38,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Action _reloadScript;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
-        private FunctionValueLoader _functionValueLoader;
         private string[] _watchedFileTypes;
 
         private static readonly string[] AssemblyFileTypes = { ".dll", ".exe" };
@@ -62,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _resultProcessor = CreateResultProcessor();
 
-            _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
+            _functionLoader = new FunctionLoader<MethodInfo>(CreateFunctionTarget);
 
             _reloadScript = ReloadScript;
             _reloadScript = _reloadScript.Debounce();
@@ -114,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private void ReloadScript()
         {
             // Reset cached function
-            ResetFunctionValue();
+            _functionLoader.Reset();
             TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
 
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
@@ -151,23 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private void ResetFunctionValue()
-        {
-            _functionValueLoaderLock.EnterWriteLock();
-            try
-            {
-                if (_functionValueLoader != null)
-                {
-                    _functionValueLoader.Dispose();
-                }
-
-                _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
-            }
-            finally
-            {
-                _functionValueLoaderLock.ExitWriteLock();
-            }
-        }
+        internal Task<MethodInfo> GetFunctionTargetAsync() => _functionLoader.GetFunctionTargetAsync();
 
         private void RestorePackages()
         {
@@ -203,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Separate system parameters from the actual method parameters
             object[] originalParameters = parameters;
-            MethodInfo function = await GetFunctionTargetAsync();
+            MethodInfo function = await _functionLoader.GetFunctionTargetAsync();
             int actualParameterCount = function.GetParameters().Length;
             object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
             parameters = parameters.Take(actualParameterCount).ToArray();
@@ -250,36 +233,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return parameters;
-        }
-
-        internal async Task<MethodInfo> GetFunctionTargetAsync(int attemptCount = 0)
-        {
-            FunctionValueLoader currentValueLoader;
-            _functionValueLoaderLock.EnterReadLock();
-            try
-            {
-                currentValueLoader = _functionValueLoader;
-            }
-            finally
-            {
-                _functionValueLoaderLock.ExitReadLock();
-            }
-
-            try
-            {
-                return await currentValueLoader;
-            }
-            catch (OperationCanceledException)
-            {
-                // If the current task we were awaiting on was cancelled due to a
-                // cache refresh, retry, which will use the new loader
-                if (attemptCount > 2)
-                {
-                    throw;
-                }
-            }
-
-            return await GetFunctionTargetAsync(++attemptCount);
         }
 
         private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)
@@ -341,8 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
-                TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
-                TraceWriter.Trace(diagnostic.ToString(), level, PrimaryHostTraceProperties);
+                TraceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), PrimaryHostTraceProperties);
 
                 ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
 
@@ -448,6 +400,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return null;
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _functionLoader.Dispose();
+            }
+        }
+
         private Action<MethodInfo, object[], object[], object> CreateResultProcessor()
         {
             var bindings = _inputBindings.Union(_outputBindings).OfType<IResultProcessingBinding>();
@@ -471,28 +433,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return processor ?? ((_, __, ___, ____) => { /*noop*/ });
-        }
-
-        private static TraceLevel GetTraceLevelFromDiagnostic(Diagnostic diagnostic)
-        {
-            var level = TraceLevel.Off;
-            switch (diagnostic.Severity)
-            {
-                case DiagnosticSeverity.Hidden:
-                    level = TraceLevel.Verbose;
-                    break;
-                case DiagnosticSeverity.Info:
-                    level = TraceLevel.Info;
-                    break;
-                case DiagnosticSeverity.Warning:
-                    level = TraceLevel.Warning;
-                    break;
-                case DiagnosticSeverity.Error:
-                    level = TraceLevel.Error;
-                    break;
-            }
-
-            return level;
         }
     }
 }
