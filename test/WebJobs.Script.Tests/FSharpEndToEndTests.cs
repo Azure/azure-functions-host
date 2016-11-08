@@ -27,6 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ServiceBusQueueTriggerToBlobTestImpl();
         }
 
+        [Fact]
+        public async Task TwilioReference_Invoke_Succeeds()
+        {
+            await TwilioReference_Invoke_Succeeds_Test(isDotNet: true);
+        }
+
         //[Fact]
         //public async Task MobileTables()
         //{

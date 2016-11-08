@@ -30,6 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task TwilioReference_Invoke_Succeeds()
+        {
+            await TwilioReference_Invoke_Succeeds_Test(isDotNet: true);
+        }
+
+        [Fact]
         public async Task MobileTables()
         {
             await MobileTablesTest(isDotNet: true);
