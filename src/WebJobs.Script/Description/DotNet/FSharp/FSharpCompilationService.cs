@@ -83,6 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FSharpOption<Assembly> assemblyOption = null;
             string scriptFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(functionMetadata.ScriptFile));
 
+            var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
+            var dllName = Path.GetTempPath() + asmName + ".dll";
+            var pdbName = Path.ChangeExtension(dllName, "pdb");
+
             try
             {
                 var scriptFileBuilder = new StringBuilder();
@@ -153,10 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--lib:" + Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName));
                 }
 
-                // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
-                var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
-                var dllName = Path.GetTempPath() + asmName + ".dll";
-                var pdbName = Path.ChangeExtension(dllName, "pdb");
                 otherFlags.Add("--out:" + dllName);
 
                 // Get the #load closure
@@ -190,6 +190,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             finally
             {
                 File.Delete(scriptFilePath);
+                File.Delete(dllName);
+                File.Delete(pdbName);
             }
             return new FSharpCompilation(errors, assemblyOption);
         }
