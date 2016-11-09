@@ -108,7 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             JToken contentType = null;
             MediaTypeHeaderValue mediaType = null;
-            if ((headers?.TryGetValue("content-type", StringComparison.OrdinalIgnoreCase, out contentType) ?? false) &&
+            if (content != null &&
+                (headers?.TryGetValue("content-type", StringComparison.OrdinalIgnoreCase, out contentType) ?? false) &&
                 MediaTypeHeaderValue.TryParse(contentType.Value<string>(), out mediaType))
             {
                 MediaTypeFormatter writer = request.GetConfiguration()
@@ -156,6 +157,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
         {
+            if (content == null)
+            {
+                return request.CreateResponse(statusCode);
+            }
+
             var configuration = request.GetConfiguration();
             IContentNegotiator negotiator = configuration.Services.GetContentNegotiator();
             var result = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
