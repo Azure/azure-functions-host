@@ -179,6 +179,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task NugetChartingReferencesInvokeSucceeds()
+        {
+            TestHelpers.ClearFunctionLogs("NugetChartingReferences");
+
+            string testData = Guid.NewGuid().ToString();
+            string inputName = "input";
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { inputName, testData }
+            };
+            await Fixture.Host.CallAsync("NugetChartingReferences", arguments);
+
+            // make sure the input string made it all the way through
+            var logs = await TestHelpers.GetFunctionLogsAsync("NugetChartingReferences");
+            Assert.True(logs.Any(p => p.Contains(testData)));
+        }
+
+        [Fact]
         public async Task PrivateAssemblyDependenciesAreLoaded()
         {
             var request = new System.Net.Http.HttpRequestMessage();
