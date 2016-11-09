@@ -318,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
                 Method = HttpMethod.Get,
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
             request.Headers.Add("test-header", "Test Request Header");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -347,6 +347,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // validate input headers
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
+        }
+
+        [Theory]
+        [InlineData("application/json", "\"testinput\"")]
+        [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">testinput</string>")]
+        [InlineData("text/plain", "testinput")]
+        public async Task HttpTrigger_GetWithAccept_NegotiatesContent(string accept, string expectedBody)
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Get,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+
+            JObject value = new JObject()
+            {
+                { "status", "200" },
+                { "body", "testinput" }
+            };
+            JObject input = new JObject()
+            {
+                { "scenario", "echo" },
+                { "value", value }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(accept, response.Content.Headers.ContentType.MediaType);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBody, body);
         }
 
         [Fact]
@@ -396,7 +437,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptriggerpromise")),
                 Method = HttpMethod.Get,
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -632,7 +674,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testObject.ToString())
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -656,7 +699,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/webhooktrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5")),
                 Method = HttpMethod.Post,
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -666,7 +710,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            
+
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal(string.Format("No content"), body);
         }

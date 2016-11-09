@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WindowsBatchEndToEndTests : EndToEndTestsBase<WindowsBatchEndToEndTests.TestFixture>
     {
-        public WindowsBatchEndToEndTests(TestFixture fixture) 
+        public WindowsBatchEndToEndTests(TestFixture fixture)
             : base(fixture)
         {
         }
@@ -35,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testObject.ToString(Formatting.None))
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -61,7 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?value={0}", testData)),
                 Method = HttpMethod.Get
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             request.Headers.Add("test-header", "Test Request Header");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -80,10 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             request.RequestUri = new Uri(string.Format("http://localhost/api/httptrigger", testData));
             request.Headers.Clear();
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             await Fixture.Host.CallAsync("HttpTrigger", arguments);
             response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            body = await response.Content.ReadAsStringAsync();   
+            body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Please pass a value on the query string", body.Trim());
         }
 
@@ -97,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(testData)
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {

@@ -416,6 +416,7 @@
     <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
     <Compile Include="Extensions\DependencyResolverExtensions.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
+    <Compile Include="Formatting\PlaintextMediaTypeFormatter.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

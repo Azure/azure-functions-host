@@ -7,6 +7,7 @@ using System.Linq;
 using System.Management.Automation;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
@@ -73,9 +74,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage
             {
                 RequestUri = new Uri("http://localhost/api/products/produce/789?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
-                Method = HttpMethod.Get
+                Method = HttpMethod.Get,
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            request.SetConfiguration(Fixture.RequestConfiguration);
 
             var routeData = new Dictionary<string, object>
             {

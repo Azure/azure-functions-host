@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             using (metricsLogger.LatencyEvent(MetricEventNames.ApplicationStartLatency))
             {
                 GlobalConfiguration.Configure(c => WebApiConfig.Register(c));
+                GlobalConfiguration.Configuration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
                 var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
 

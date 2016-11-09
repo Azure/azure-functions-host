@@ -4,9 +4,11 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -41,6 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileLoggingMode = FileLoggingMode.Always
             };
 
+            RequestConfiguration = new HttpConfiguration();
+            RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
+
             // Reset the timer logs first, since one of the tests will
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
@@ -71,6 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public ScriptHost Host { get; private set; }
 
         public string FixtureId { get; private set; }
+
+        public HttpConfiguration RequestConfiguration { get; }
 
         public CloudQueue GetNewQueue(string queueName)
         {

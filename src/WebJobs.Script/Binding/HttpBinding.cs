@@ -12,6 +12,8 @@ using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using System.Web.Http;
+using System.Web.Http.Results;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
-        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) : 
+        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
         }
@@ -88,21 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            HttpResponseMessage response = null;
-            if (content is string)
-            {
-                // for raw strings, we compose the content ourselves, otherwise WebApi
-                // will serialize it as JSON and add quotes/double quotes to the string
-                response = new HttpResponseMessage(statusCode)
-                {
-                    Content = new StringContent((string)content)
-                };
-            }
-            else
-            {
-                // let WebApi do its default serialization and content negotiation
-                response = request.CreateResponse(statusCode, content);
-            }
+            HttpResponseMessage response = CreateResponse(request, statusCode, content, headers);
 
             if (headers != null)
             {
@@ -115,7 +103,69 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
-        
+
+        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, JObject headers)
+        {
+            JToken contentType = null;
+            MediaTypeHeaderValue mediaType = null;
+            if ((headers?.TryGetValue("content-type", StringComparison.OrdinalIgnoreCase, out contentType) ?? false) &&
+                MediaTypeHeaderValue.TryParse(contentType.Value<string>(), out mediaType))
+            {
+                MediaTypeFormatter writer = request.GetConfiguration()
+                    .Formatters.FindWriter(content.GetType(), mediaType);
+
+                if (writer != null)
+                {
+                    return new HttpResponseMessage(statusCode)
+                    {
+                        Content = new ObjectContent(content.GetType(), content, writer, mediaType)
+                    };
+                }
+
+                HttpContent resultContent = CreateResultContent(content, mediaType.MediaType);
+
+                if (resultContent != null)
+                {
+                    return new HttpResponseMessage(statusCode)
+                    {
+                        Content = resultContent
+                    };
+                }
+            }
+
+            return CreateNegotiatedResponse(request, statusCode, content);
+        }
+
+        private static HttpContent CreateResultContent(object content, string mediaType)
+        {
+            if (content is string)
+            {
+                return new StringContent((string)content, null, mediaType);
+            }
+            else if (content is byte[])
+            {
+                return new ByteArrayContent((byte[])content);
+            }
+            else if (content is Stream)
+            {
+                return new StreamContent((Stream)content);
+            }
+
+            return null;
+        }
+
+        private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
+        {
+            var configuration = request.GetConfiguration();
+            IContentNegotiator negotiator = configuration.Services.GetContentNegotiator();
+            var result = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
+
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new ObjectContent(content.GetType(), content, result.Formatter, result.MediaType)
+            };
+        }
+
         public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
         {
             if (result == null)

@@ -313,7 +313,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptHost[] instances = GetLiveInstancesAndClear();
                 foreach (var instance in instances)
                 {
-                    instance.Dispose();
+                    try
+                    {
+                        instance.Dispose();
+                    }
+                    catch (Exception exc) when (!exc.IsFatal())
+                    {
+                        // Best effort
+                    }
                 }
 
                 _stopEvent.Dispose();

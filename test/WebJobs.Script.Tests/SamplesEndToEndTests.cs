@@ -270,6 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -287,6 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionKey = "82fprgh77jlbhcma3yr1zen8uv9yb0i7dwze3np2";
             string uri = $"api/node/products/electronics/{id}?code={functionKey}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -298,6 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // test optional route param (id)
             uri = $"api/node/products/electronics?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             json = await response.Content.ReadAsStringAsync();
@@ -307,12 +310,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // test a constraint violation (invalid id)
             uri = $"api/node/products/electronics/notaguid?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // test a constraint violation (invalid category)
             uri = $"api/node/products/999/{id}?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
@@ -404,12 +409,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // first try with function key only - expect 404
             string uri = "api/httptrigger-disabled?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // now try with admin key
             uri = "api/httptrigger-disabled?code=t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
@@ -421,6 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string uri = "api/httptrigger-powershell?code=N5rUeecvsqN1Q1lDciR7P8kn3KkQtnNJVlK7H5bev0jO7r5DbAZgvA==&name=testuser";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -434,6 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string uri = "api/httptrigger-powershell-modules?code=8CTs65hqBcX3DVddZOGkPoksSaIDRck9byv1ATWbqJuOb9h8MrVZzA==&name=testuser";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -869,6 +878,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public TestFixture()
             {
                 _config = new HttpConfiguration();
+                _config.Formatters.Add(new PlaintextMediaTypeFormatter());
+
                 _settingsManager = ScriptSettingsManager.Instance;
                 HostSettings = new WebHostSettings
                 {
