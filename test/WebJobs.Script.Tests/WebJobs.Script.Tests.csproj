@@ -589,6 +589,12 @@
     <None Include="TestScripts\CSharp\DocumentDBIn\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\HttpTrigger-Dynamic\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\HttpTrigger-Dynamic\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\CSharp\LoadScriptReference\class.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

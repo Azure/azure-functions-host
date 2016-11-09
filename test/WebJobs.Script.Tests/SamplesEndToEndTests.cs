@@ -469,6 +469,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GenericWebHook_CSharp_Dynamic_Post_Succeeds()
+        {
+            string uri = "api/webhook-generic-csharp-dynamic?code=88adV34UZhaydCLOjMzbMgUtXh3stBnL8LFcL9R17DL8HAY8PVhpZA==";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent("{ 'Value': 'Foobar' }");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("\"Value: Foobar\"", body);
+        }
+
+        [Fact]
         public async Task AzureWebHook_CSharp_Post_Succeeds()
         {
             string uri = "api/webhook-azure-csharp?code=yKjiimZjC1FQoGlaIj8TUfGltnPE/f2LhgZNq6Fw9/XfAOGHmSgUlQ==";

@@ -37,10 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return Task.FromResult<ITriggerBinding>(null);
             }
 
-            // Can bind to user types, HttpRequestMessage and all the Read
+            // Can bind to user types, HttpRequestMessage, object (for dynamic binding support) and all the Read
             // Types supported by StreamValueBinder
             IEnumerable<Type> supportedTypes = StreamValueBinder.GetSupportedTypes(FileAccess.Read)
-                .Union(new Type[] { typeof(HttpRequestMessage) });
+                .Union(new Type[] { typeof(HttpRequestMessage), typeof(object) });
             bool isSupportedTypeBinding = ValueBinder.MatchParameterType(parameter, supportedTypes);
             bool isUserTypeBinding = !isSupportedTypeBinding && Utility.IsValidUserType(parameter.ParameterType);
             if (!isSupportedTypeBinding && !isUserTypeBinding)
@@ -312,6 +312,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     if (_parameter.ParameterType == typeof(HttpRequestMessage))
                     {
                         return _request;
+                    }
+                    else if (_parameter.ParameterType == typeof(object))
+                    {
+                        // for dynamic, we read as an object, which will actually return
+                        // a JObject which is dynamic
+                        return _request.Content.ReadAsAsync<object>().GetAwaiter().GetResult();
                     }
 
                     return base.GetValue();
