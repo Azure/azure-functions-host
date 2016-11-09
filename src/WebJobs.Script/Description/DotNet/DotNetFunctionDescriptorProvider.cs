@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
 
                 // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequestMessage,
-                // add it as a system parameter
+                // add it as a system parameter so it is accessible later in the pipeline.
                 if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 &&
                     !descriptors.Any(p => p.Type == typeof(HttpRequestMessage)))
                 {

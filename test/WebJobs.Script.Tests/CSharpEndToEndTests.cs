@@ -5,8 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -246,6 +249,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Post_Dynamic()
+        {
+            var input = new JObject
+            {
+                { "name", "Mathew Charles" },
+                { "location", "Seattle" }
+            };
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-dynamic")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(input.ToString())
+            };
+            request.SetConfiguration(new HttpConfiguration());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", request },
+                { ScriptConstants.SystemTriggerParameterName, request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Dynamic", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("Name: Mathew Charles, Location: Seattle", body);
         }
 
         public class TestFixture : EndToEndTestFixture

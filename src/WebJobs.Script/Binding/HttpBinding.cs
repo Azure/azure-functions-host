@@ -13,7 +13,6 @@ using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using System.Web.Http;
-using System.Web.Http.Results;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
