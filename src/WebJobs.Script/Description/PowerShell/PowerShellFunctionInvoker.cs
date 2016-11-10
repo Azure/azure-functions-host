@@ -263,27 +263,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string functionFolder = Path.Combine(rootScriptPath, functionName);
             string rootModuleDirectory = Path.Combine(rootScriptPath, PowerShellConstants.ModulesFolderName);
             string moduleDirectory = Path.Combine(functionFolder, PowerShellConstants.ModulesFolderName);
-            if (Directory.Exists(moduleDirectory))
-            {
-                modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesManifestFileExtensionPattern));
-                modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
-                modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesScriptFileExtensionPattern));
-            }
-
-            if (Directory.Exists(rootModuleDirectory))
-            {
-                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
-                    PowerShellConstants.ModulesManifestFileExtensionPattern));
-                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
-                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
-                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
-                    PowerShellConstants.ModulesScriptFileExtensionPattern));
-            }
-
+            modulePaths.AddRange(AddToModulePaths(rootModuleDirectory));
+            modulePaths.AddRange(AddToModulePaths(moduleDirectory));
             return modulePaths;
+        }
+
+        internal static List<string> AddToModulePaths(string directory)
+        {
+            List<string> paths = new List<string>();
+            if (Directory.Exists(directory))
+            {
+                paths.AddRange(Directory.GetFiles(directory,
+                    PowerShellConstants.ModulesManifestFileExtensionPattern));
+                paths.AddRange(Directory.GetFiles(directory,
+                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
+                paths.AddRange(Directory.GetFiles(directory,
+                    PowerShellConstants.ModulesScriptFileExtensionPattern));
+            }
+            return paths;
         }
     }
 }
