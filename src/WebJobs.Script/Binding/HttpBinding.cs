@@ -156,19 +156,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
         {
+            HttpResponseMessage result = request.CreateResponse(statusCode);
+
             if (content == null)
             {
-                return request.CreateResponse(statusCode);
+                return result;
             }
 
             var configuration = request.GetConfiguration();
             IContentNegotiator negotiator = configuration.Services.GetContentNegotiator();
-            var result = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
+            var negotiationResult = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
 
-            return new HttpResponseMessage(statusCode)
-            {
-                Content = new ObjectContent(content.GetType(), content, result.Formatter, result.MediaType)
-            };
+            result.Content = new ObjectContent(content.GetType(), content, negotiationResult.Formatter, negotiationResult.MediaType);
+
+            return result;
         }
 
         public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
@@ -184,8 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 HttpResponseMessage response = result as HttpResponseMessage;
                 if (response == null)
                 {
-                    response = request.CreateResponse(HttpStatusCode.OK);
-                    response.Content = new ObjectContent(result.GetType(), result, new JsonMediaTypeFormatter());
+                    response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
                 }
 
                 request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
