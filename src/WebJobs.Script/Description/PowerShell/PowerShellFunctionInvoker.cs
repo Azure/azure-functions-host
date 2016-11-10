@@ -266,6 +266,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string[] searchDirectories = new string[] { rootModuleDirectory, moduleDirectory };
             modulePaths.AddRange(AddToModulePaths(searchDirectories));
 
+            if (Directory.Exists(rootModuleDirectory))
+            {
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
+                    PowerShellConstants.ModulesManifestFileExtensionPattern));
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
+                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
+                    PowerShellConstants.ModulesScriptFileExtensionPattern));
+            }
+
             return modulePaths;
         }
 
