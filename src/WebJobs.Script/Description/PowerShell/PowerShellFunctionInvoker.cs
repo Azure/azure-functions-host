@@ -261,6 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             List<string> modulePaths = new List<string>();
             string functionFolder = Path.Combine(rootScriptPath, functionName);
+            string rootModuleDirectory = Path.Combine(rootScriptPath, PowerShellConstants.ModulesFolderName);
             string moduleDirectory = Path.Combine(functionFolder, PowerShellConstants.ModulesFolderName);
             if (Directory.Exists(moduleDirectory))
             {
@@ -269,6 +270,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
                     PowerShellConstants.ModulesBinaryFileExtensionPattern));
                 modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
+                    PowerShellConstants.ModulesScriptFileExtensionPattern));
+            }
+
+            if (Directory.Exists(rootModuleDirectory))
+            {
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
+                    PowerShellConstants.ModulesManifestFileExtensionPattern));
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
+                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
+                modulePaths.AddRange(Directory.GetFiles(rootModuleDirectory,
                     PowerShellConstants.ModulesScriptFileExtensionPattern));
             }
 
