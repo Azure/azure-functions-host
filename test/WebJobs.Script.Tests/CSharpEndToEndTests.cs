@@ -266,7 +266,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Method = HttpMethod.Post,
                 Content = new StringContent(input.ToString())
             };
-            request.SetConfiguration(new HttpConfiguration());
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -281,6 +282,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Name: Mathew Charles, Location: Seattle", body);
+        }
+
+        [Theory]
+        [InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
+        [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]
+        [InlineData("text/plain", "Name: Fabio Cavalcante, Location: Seattle")]
+        public async Task HttpTrigger_GetWithAccept_NegotiatesContent(string accept, string expectedBody)
+        {
+            var input = new JObject
+            {
+                { "name", "Fabio Cavalcante" },
+                { "location", "Seattle" }
+            };
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-dynamic")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(input.ToString())
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", request },
+                { ScriptConstants.SystemTriggerParameterName, request }
+            };
+
+            await Fixture.Host.CallAsync("HttpTrigger-Dynamic", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(accept, response.Content.Headers.ContentType.MediaType);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBody, body);
         }
 
         public class TestFixture : EndToEndTestFixture
