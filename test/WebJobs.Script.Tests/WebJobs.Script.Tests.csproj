@@ -679,6 +679,9 @@
     <None Include="TestScripts\CSharp\AssembliesFromSharedLocation\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\TwilioReference\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Empty\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -832,6 +835,12 @@
     <Content Include="TestScripts\FSharp\PrivateAssemblyReference\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="TestScripts\FSharp\TwilioReference\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FSharp\NugetChartingReferences\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Content Include="TestScripts\Node\ApiHubTableEntityIn\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
