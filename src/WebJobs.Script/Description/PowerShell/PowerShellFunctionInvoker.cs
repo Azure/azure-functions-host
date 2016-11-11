@@ -263,22 +263,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string functionFolder = Path.Combine(rootScriptPath, functionName);
             string rootModuleDirectory = Path.Combine(rootScriptPath, PowerShellConstants.ModulesFolderName);
             string moduleDirectory = Path.Combine(functionFolder, PowerShellConstants.ModulesFolderName);
-            modulePaths.AddRange(AddToModulePaths(rootModuleDirectory));
-            modulePaths.AddRange(AddToModulePaths(moduleDirectory));
+            string[] searchDirectories = new string[] { rootModuleDirectory, moduleDirectory };
+            modulePaths.AddRange(AddToModulePaths(searchDirectories));
+
             return modulePaths;
         }
 
-        internal static List<string> AddToModulePaths(string directory)
+        internal static List<string> AddToModulePaths(string[] directories)
         {
             List<string> paths = new List<string>();
-            if (Directory.Exists(directory))
+            for (int i = 0; i < directories.Length; i++)
             {
-                paths.AddRange(Directory.GetFiles(directory,
-                    PowerShellConstants.ModulesManifestFileExtensionPattern));
-                paths.AddRange(Directory.GetFiles(directory,
-                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
-                paths.AddRange(Directory.GetFiles(directory,
-                    PowerShellConstants.ModulesScriptFileExtensionPattern));
+                string currentDirectory = directories[i];
+                if (Directory.Exists(currentDirectory))
+                {
+                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                        PowerShellConstants.ModulesManifestFileExtensionPattern));
+                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                        PowerShellConstants.ModulesBinaryFileExtensionPattern));
+                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                        PowerShellConstants.ModulesScriptFileExtensionPattern));
+                }
             }
             return paths;
         }
