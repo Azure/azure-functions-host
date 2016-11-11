@@ -1,4 +1,4 @@
-﻿//#r "Twilio.Api"
+//#r "Twilio.Api"
 
 using System;
 using Microsoft.Azure.WebJobs.Host;
