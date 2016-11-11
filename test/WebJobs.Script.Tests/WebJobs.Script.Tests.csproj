@@ -835,10 +835,10 @@
     <Content Include="TestScripts\FSharp\PrivateAssemblyReference\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Include="TestScripts\FSharp\TwilioReference\run.csx">
+    <None Include="TestScripts\FSharp\TwilioReference\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\FSharp\NugetChartingReferences\run.csx">
+    <None Include="TestScripts\FSharp\NugetChartingReferences\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <Content Include="TestScripts\Node\ApiHubTableEntityIn\index.js">
