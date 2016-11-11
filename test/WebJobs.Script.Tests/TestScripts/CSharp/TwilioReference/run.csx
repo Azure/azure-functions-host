@@ -1,8 +1,8 @@
-﻿#r "Twilio.Api"
+﻿//#r "Twilio.Api"
 
 using System;
 using Microsoft.Azure.WebJobs.Host;
-using Twilio;
+//using Twilio;
 
 public static void Run(string input, TraceWriter log)
 {
