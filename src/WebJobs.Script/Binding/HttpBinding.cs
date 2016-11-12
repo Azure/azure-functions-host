@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             object content = context.Value;
             if (content is Stream)
             {
+                // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                // will be a Stream which we need to convert
                 using (StreamReader streamReader = new StreamReader((Stream)content))
                 {
                     content = await streamReader.ReadToEndAsync();

@@ -44,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string testHeader = "TEST-HEADER";
             string testHeaderValue = "Test Request Header";
             string expectedResponseHeaderValue = "Test Response Header";
+            string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
+            string testHeader2 = "foo,bar,baz";
 
             HttpRequestMessage request = new HttpRequestMessage
             {
@@ -52,6 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             request.SetConfiguration(new HttpConfiguration());
             request.Headers.Add(testHeader, testHeaderValue);
+            request.Headers.Add("test-header", "Test Request Header");
+            request.Headers.Add("User-Agent", userAgent);
+            request.Headers.Add("custom-1", testHeader2);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -62,10 +67,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            string result = await response.Content.ReadAsStringAsync();
-            JObject resultObject = JObject.Parse(result);
-            Assert.Equal(expectedResponseHeaderValue, (string)resultObject["headers"][testHeader]);
-            Assert.Equal(testData, (string)resultObject["reqBody"]);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            var result = JObject.Parse(responseContent);
+            Assert.Equal(expectedResponseHeaderValue, (string)result["headers"][testHeader]);
+
+            result = (JObject)result["result"];
+            Assert.Equal(userAgent, (string)result["user-agent"]);
+            Assert.Equal(testHeader2, (string)result["custom-1"]);
+            Assert.Equal(testData, (string)result["message"]);
         }
 
         [Fact]
