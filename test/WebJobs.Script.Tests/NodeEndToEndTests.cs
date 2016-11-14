@@ -320,6 +320,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             request.SetConfiguration(Fixture.RequestConfiguration);
             request.Headers.Add("test-header", "Test Request Header");
+            string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
+            request.Headers.Add("user-agent", userAgent);
+            string customHeader = "foo,bar,baz";
+            request.Headers.Add("custom-1", customHeader);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -347,6 +351,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // validate input headers
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
+            Assert.Equal(userAgent, reqHeaders["user-agent"]);
+            Assert.Equal(customHeader, reqHeaders["custom-1"]);
         }
 
         [Theory]
