@@ -15,6 +15,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebApiConfig
     {
+        public static void Initialize(HttpConfiguration config)
+        {
+            Register(config);
+
+            var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
+            if (scriptHostManager != null && !scriptHostManager.Initialized)
+            {
+                scriptHostManager.Initialize();
+            }
+        }
+
         public static void Register(HttpConfiguration config, ScriptSettingsManager settingsManager = null,
             WebHostSettings settings = null, Action<ContainerBuilder, WebHostSettings> dependencyCallback = null)
         {
@@ -35,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
-
+            config.Formatters.Add(new PlaintextMediaTypeFormatter());
             config.MessageHandlers.Add(new WebScriptHostHandler(config));
 
             // Web API configuration and services
