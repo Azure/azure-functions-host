@@ -97,12 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            // convert headers to lowercase (keeping this scoped so that no polluting lowercaseHeaders name)
-            {
-                IDictionary<string, object> lowercaseHeaders = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                headers?.ToList().ForEach(p => lowercaseHeaders[p.Key] = p.Value);
-                headers = lowercaseHeaders;
-            }
+            headers = ConvertKeysToLowercase(headers);
 
             HttpResponseMessage response = CreateResponse(request, statusCode, content, headers);
 
@@ -115,12 +110,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
 
+        private static IDictionary<string, object> ConvertKeysToLowercase(IDictionary<string, object> headers)
+        {
+            IDictionary<string, object> lowercaseHeaders = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            headers?.ToList().ForEach(p => lowercaseHeaders[p.Key] = p.Value);
+            return lowercaseHeaders;
+        }
+
         private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, IDictionary<string, object> headers)
         {
             object contentType = null;
             MediaTypeHeaderValue mediaType = null;
+
             if (content != null && headers.TryGetValue("content-type", out contentType) &&
-                MediaTypeHeaderValue.TryParse(content as string, out mediaType))
+                MediaTypeHeaderValue.TryParse(contentType as string, out mediaType))
             {
                 MediaTypeFormatter writer = request.GetConfiguration()
                     .Formatters.FindWriter(content.GetType(), mediaType);
@@ -208,7 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result != null;
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)
         {
             if (header.Value != null)

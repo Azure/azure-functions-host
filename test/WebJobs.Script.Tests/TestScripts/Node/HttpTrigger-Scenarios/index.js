@@ -13,10 +13,6 @@ module.exports = function (context, req) {
             context.res.send(Buffer.from('0001', 'hex'));
             break;
 
-        case 'rawstring':
-            context.res.send('raw');
-            break;
-
         default: 
             context.sendStatus(400);
             break;

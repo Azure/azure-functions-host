@@ -518,35 +518,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HttpTrigger_Scenarios_RawString()
-        {
-            HttpRequestMessage request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
-                Method = HttpMethod.Post,
-            };
-            request.SetConfiguration(new HttpConfiguration());
-
-            JObject input = new JObject()
-            {
-                { "scenario", "rawstring" },
-            };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "req", request }
-            };
-            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
-
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("raw", await response.Content.ReadAsStringAsync());
-        }
-
-        [Fact]
         public async Task HttpTrigger_Scenarios_Buffer()
         {
             HttpRequestMessage request = new HttpRequestMessage
