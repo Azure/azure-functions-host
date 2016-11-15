@@ -7,7 +7,7 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "encrypt", Context = Context.Settings)]
+    [Action(Name = "encrypt", Context = Context.Settings, HelpText = "Encrypt the local settings file")]
     class EncryptSettingsAction : BaseAction
     {
         private readonly ISecretsManager _secretsManager;

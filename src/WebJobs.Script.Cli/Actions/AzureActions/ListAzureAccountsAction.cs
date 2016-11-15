@@ -5,8 +5,8 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Account)]
-    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Subscriptions)]
+    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Account, HelpText = "List subscriptions for the logged in user")]
+    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Subscriptions, HelpText = "List subscriptions for the logged in user")]
     class ListAzureAccountsAction : BaseAzureAccountAction
     {
         public ListAzureAccountsAction(IArmManager armManager, ISettings settings)

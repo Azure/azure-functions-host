@@ -5,7 +5,7 @@ using WebJobs.Script.Cli.Arm;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "portal", Context = Context.Azure, HelpText = "Launch default browser with link to the function app in https://portal.azure.com")]
+    [Action(Name = "portal", Context = Context.Azure, HelpText = "Launch default browser with link to the current app in https://portal.azure.com")]
     class PortalAction : BaseFunctionAppAction
     {
         private readonly IArmManager _armManager;
