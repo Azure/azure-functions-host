@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             Register(config, settingsManager, settings, dependencyCallback);
 
-            var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
+            var scriptHostManager = config.DependencyResolver.GetService<WebScriptHostManager>();
             if (scriptHostManager != null && !scriptHostManager.Initialized)
             {
                 scriptHostManager.Initialize();
