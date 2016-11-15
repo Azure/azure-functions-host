@@ -8,8 +8,8 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "set", Context = Context.Azure, SubContext = Context.Account)]
-    [Action(Name = "set", Context = Context.Azure, SubContext = Context.Subscriptions)]
+    [Action(Name = "set", Context = Context.Azure, SubContext = Context.Account, HelpText = "Set the active subscription")]
+    [Action(Name = "set", Context = Context.Azure, SubContext = Context.Subscriptions, HelpText = "Set the active subscription")]
     class SetAzureAccountAction : BaseAzureAccountAction
     {
         private string _subscription { get; set; }

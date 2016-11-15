@@ -7,7 +7,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "list", Context = Context.Azure, SubContext = Context.FunctionApp)]
+    [Action(Name = "list", Context = Context.Azure, SubContext = Context.FunctionApp, HelpText = "List all Function Apps in the selected Azure subscription")]
     class ListFunctionAppsAction : BaseAction
     {
         private readonly IArmManager _armManager;

@@ -6,7 +6,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "get-publish-username", Context = Context.Azure)]
+    [Action(Name = "get-publish-username", Context = Context.Azure, HelpText = "Get the source control publishing username for all Function Apps in Azure")]
     class GetPublishUserNameAction : BaseAction
     {
         private readonly IArmManager _armManager;

@@ -4,7 +4,7 @@ using WebJobs.Script.Cli.Arm;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "logout", Context = Context.Azure)]
+    [Action(Name = "logout", Context = Context.Azure, HelpText = "Log out of Azure account")]
     class LogoutAction : BaseAction
     {
         private readonly IArmManager _armManager;

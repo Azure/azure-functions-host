@@ -6,8 +6,8 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "delete", Context = Context.Settings)]
-    [Action(Name = "remove", Context = Context.Settings)]
+    [Action(Name = "delete", Context = Context.Settings, HelpText = "Remove a local setting")]
+    [Action(Name = "remove", Context = Context.Settings, HelpText = "Remove a local setting")]
     class DeleteSettingAction : BaseAction
     {
         private readonly ISecretsManager _secretsManager;

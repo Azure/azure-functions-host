@@ -7,7 +7,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Storage)]
+    [Action(Name = "list", Context = Context.Azure, SubContext = Context.Storage, HelpText = "List all Storage Accounts in the selected Azure subscription")]
     class ListStorageAction : BaseAction
     {
         private readonly IArmManager _armManager;

@@ -7,10 +7,10 @@ using WebJobs.Script.Cli.Common;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "init")]
-    [Action(Name = "create")]
-    [Action(Name = "init", Context = Context.FunctionApp)]
-    [Action(Name = "create", Context = Context.FunctionApp)]
+    [Action(Name = "init", HelpText = "Create a new Function App in the current folder. Initializes git repo.")]
+    [Action(Name = "create", HelpText = "Create a new Function App in the current folder. Initializes git repo.")]
+    [Action(Name = "init", Context = Context.FunctionApp, HelpText = "Create a new Function App in the current folder. Initializes git repo.")]
+    [Action(Name = "create", Context = Context.FunctionApp, HelpText = "Create a new Function App in the current folder. Initializes git repo.")]
     class InitAction : BaseAction
     {
         public SourceControl SourceControl { get; set; } = SourceControl.Git;

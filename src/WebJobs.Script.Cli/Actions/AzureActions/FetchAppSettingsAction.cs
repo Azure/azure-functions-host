@@ -7,8 +7,8 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "fetch-app-settings", Context = Context.Azure, SubContext = Context.FunctionApp)]
-    [Action(Name = "fetch", Context = Context.Azure, SubContext = Context.FunctionApp)]
+    [Action(Name = "fetch-app-settings", Context = Context.Azure, SubContext = Context.FunctionApp, HelpText = "Retrieve App Settings from your Azure-hosted Function App and store locally")]
+    [Action(Name = "fetch", Context = Context.Azure, SubContext = Context.FunctionApp, HelpText = "Retrieve App Settings from your Azure-hosted Function App and store locally")]
     class FetchAppSettingsAction : BaseFunctionAppAction
     {
         private readonly IArmManager _armManager;
