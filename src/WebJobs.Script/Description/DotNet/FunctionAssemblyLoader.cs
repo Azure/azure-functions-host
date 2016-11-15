@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class FunctionAssemblyLoader : IDisposable
     {
         // Prefix that uniquely identifies our assemblies
-        // i.e.: "ƒ-<functionname>"
+        // i.e.: "f-<functionname>"
         public const string AssemblyPrefix = "f-";
         public const string AssemblySeparator = "__";
 
