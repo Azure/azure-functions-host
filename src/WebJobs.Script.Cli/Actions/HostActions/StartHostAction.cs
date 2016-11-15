@@ -3,15 +3,23 @@
 
 using System;
 using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.ServiceModel;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.SelfHost;
 using Colors.Net;
 using Fclp;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
+using Newtonsoft.Json.Linq;
 using WebJobs.Script.Cli.Common;
+using WebJobs.Script.Cli.Extensions;
 using WebJobs.Script.Cli.Helpers;
+using WebJobs.Script.Cli.Interfaces;
+using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.HostActions
 {
@@ -64,8 +72,43 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 await httpServer.OpenAsync();
                 ColoredConsole.WriteLine($"Listening on {baseAddress}");
                 ColoredConsole.WriteLine("Hit CTRL-C to exit...");
+                await PostHostStartActions(baseAddress);
                 await Task.Delay(-1);
                 await httpServer.CloseAsync();
+            }
+        }
+
+        private async Task PostHostStartActions(Uri server)
+        {
+            try
+            {
+                while (!await server.IsServerRunningAsync())
+                {
+                    await Task.Delay(500);
+                }
+
+                using (var client = new HttpClient() { BaseAddress = server })
+                {
+                    var functionsResponse = await client.GetAsync("admin/functions");
+                    var hostConfigResponse = await client.GetAsync("admin/functions/config");
+                    var functions = await functionsResponse.Content.ReadAsAsync<FunctionEnvelope[]>();
+                    var httpFunctions = functions.Where(f => f.Config?["bindings"]?.Any(b => b["type"].ToString() == "httpTrigger") == true);
+                    var hostConfig = await hostConfigResponse.Content.ReadAsAsync<JObject>();
+                    foreach (var function in httpFunctions)
+                    {
+                        var httpRoute = function.Config["bindings"]?.FirstOrDefault(b => b["type"].ToString() == "httpTrigger")?["route"]?.ToString();
+                        httpRoute = httpRoute ?? function.Name;
+                        var hostRoutePrefix = hostConfig?["http"]?["routePrefix"]?.ToString() ?? "api/";
+                        hostRoutePrefix = string.IsNullOrEmpty(hostRoutePrefix) || hostRoutePrefix.EndsWith("/")
+                            ? hostRoutePrefix
+                            : $"{hostRoutePrefix}/";
+                        ColoredConsole.WriteLine($"{TitleColor($"Http Function {function.Name}:")} {server.ToString()}{hostRoutePrefix}{httpRoute}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ColoredConsole.Error.WriteLine(ErrorColor($"Unable to retrieve functions list: {ex.Message}"));
             }
         }
 
@@ -90,7 +133,7 @@ namespace WebJobs.Script.Cli.Actions.HostActions
             fsWatcher.EnableRaisingEvents = true;
         }
 
-        private string Setup()
+        private Uri Setup()
         {
             if (!SecurityHelpers.IsUrlAclConfigured("http", Port))
             {
@@ -103,7 +146,7 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 }
             }
 
-            return $"http://localhost:{Port}";
+            return new Uri($"http://localhost:{Port}");
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
