@@ -178,12 +178,16 @@ namespace WebJobs.Script.Cli.Actions.LocalActions
                     var content = await contentTask;
                     if (!response.IsSuccessStatusCode)
                     {
-                        var exception = JsonConvert.DeserializeObject<JObject>(content);
-                        if (exception?["InnerException"]?["ExceptionMessage"]?.ToString() == "Script compilation failed.")
+                        try
                         {
-                            ColoredConsole.Error.WriteLine(ErrorColor("Script compilation failed."));
-                            return;
+                            var exception = JsonConvert.DeserializeObject<JObject>(content);
+                            if (exception?["InnerException"]?["ExceptionMessage"]?.ToString() == "Script compilation failed.")
+                            {
+                                ColoredConsole.Error.WriteLine(ErrorColor("Script compilation failed."));
+                                return;
+                            }
                         }
+                        catch { }
                     }
                     ColoredConsole.WriteLine(await contentTask);
                 }
