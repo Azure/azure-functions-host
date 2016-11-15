@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using WebJobs.Script.Cli.Extensions;
 using WebJobs.Script.Cli.Helpers;
 using WebJobs.Script.Cli.Interfaces;
@@ -171,9 +172,19 @@ namespace WebJobs.Script.Cli.Actions.LocalActions
                     : await client.PostAsync($"admin/functions/{FunctionName}", new StringContent(adminInvocation, Encoding.UTF8, "application/json"));
 
                 ColoredConsole.WriteLine($"{TitleColor($"Response Status Code:")} {response.StatusCode}");
-                var contentTask = response?.Content?.ReadAsStringAsync();
+                var contentTask = response.Content?.ReadAsStringAsync();
                 if (contentTask != null)
                 {
+                    var content = await contentTask;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var exception = JsonConvert.DeserializeObject<JObject>(content);
+                        if (exception?["InnerException"]?["ExceptionMessage"]?.ToString() == "Script compilation failed.")
+                        {
+                            ColoredConsole.Error.WriteLine(ErrorColor("Script compilation failed."));
+                            return;
+                        }
+                    }
                     ColoredConsole.WriteLine(await contentTask);
                 }
             }
