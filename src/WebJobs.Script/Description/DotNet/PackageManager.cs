@@ -39,15 +39,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             var tcs = new TaskCompletionSource<bool>();
 
+            string functionDirectory = null;
+            string projectPath = null;
+            string nugetHome = null;
+            string nugetFilePath = null;
+
             try
             {
-                string functionDirectory = Path.GetDirectoryName(_functionMetadata.ScriptFile);
-                string projectPath = Path.Combine(functionDirectory, DotNetConstants.ProjectFileName);
-                string nugetHome = GetNugetPackagesPath();
+                functionDirectory = Path.GetDirectoryName(_functionMetadata.ScriptFile);
+                projectPath = Path.Combine(functionDirectory, DotNetConstants.ProjectFileName);
+                nugetHome = GetNugetPackagesPath();
+                nugetFilePath = ResolveNuGetPath();
 
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = ResolveNuGetPath(),
+                    FileName = nugetFilePath,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
@@ -77,6 +83,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception exc)
             {
+                _traceWriter.Error($@"NuGet restore failed with message: '{exc.Message}'
+Function directory: {functionDirectory}
+Project path: {projectPath}
+Packages path: {nugetHome},
+Nuget client path: {nugetFilePath}");
+
                 tcs.SetException(exc);
             }
 
