@@ -1,121 +1,152 @@
-Install:
+![Azure Functions Logo](assets/azure-functions-logo-color-raster.png)
 
-```bash
-> npm i -g azure-functions-cli
+# Azure Functions CLI
+
+The Azure Functions CLI provides a local development experience for creating, developing, testing, running, and debugging Azure Functions. 
+
+## Installing
+
+**NOTE**: This package only currently works on Windows and must be installed globally, since the underlying Functions Host is not yet cross-platform. You can upvote this GitHub issue if you're interested in running on other platforms: [make the Azure Functions CLI cross platform](https://github.com/Azure/azure-webjobs-sdk-script/issues/509).
+
+Make sure you're using a Node version 6.x LTS or later, as the Yeoman dependency requires this.
+
+To install:
+
+```
+npm i -g azure-functions-cli
 ```
 
-Local -> Azure:
+### Aliases
 
-```bash
-> mkdir functions
-> cd functions
-> func init
-> func new # launches yoeman generator (assume functionName=HttpCSharp)
->  func run HttpCSharp -f file.json
-> git commit -am "First function"
-> func new functionapp MyNewAwesomeFunctionApp -l WestUS
-> func list functionapps # displays the git url for the function app
-> func user # lets me reset publishing user.
->  git push https://MyNewAwesomeFunctionApp.scm.azurewebsites.net/ master
-> func open MyNewAwesomeFunctionApp # launches default web browser with deep link to portal
+The package sets up the following global aliases:
+
+```
+func
+azfun
+azure-functions
 ```
 
-Azure -> Local:
+## Commands
 
-```bash
-> func login
-> func list functionapps # displays a list of function apps
-> func switch-tenants # displays a list of tenants
-> func switch-tenants <tenantId> 
-> func list functionapps
-> git clone https://MyNewAwesomeFunctionApp.scm.azurewebsites.net
-> cd MyNewAwesomeFunctionApp
-> func run FunctionName # then you go in the portal and switch to local
+The CLI commands have the following basic structure:
+
+```
+func [context] [context] <action> [-/--options]
 ```
 
-```bash
-> func help
-Azure Functions CLI 0.1
-Usage: func [verb] [Options]
+### Contexts
 
-   config          get and set global cli config options
-   fetch           fetches function app secrets
-   login           Clears login cache and prompts for a new login
-   logout          Clears login cache
-   open            Launch default browser with link to the function app in https://portal.azure.com
-   switch-tenants  List and switch current tenant for the Cli
-   init            Creates .gitignore, and host.json. Runs git init .
-   set             Not yet Implemented
-   new             Handle creating a new function or function app
-   run             Run the specified function locally
-   user            Helps manage publishing username
-   web             Launches a Functions server endpoint locally
-   list            Lists function apps in current tenant. See switch-tenant command
-
-
-Tip: run func init to get started.
+```
+azure        For Azure login and working with Function Apps on Azure
+function     For local function settings and actions
+functionapp  For local function app settings and actions
+host         For local Functions host settings and actions
+settings     For local settings for your Functions host
 ```
 
-```bash
->  azf help new
-Azure Functions CLI 0.1
-Usage: func new [function/functionApp] <functionAppName> [Options]
+### Top-level actions
 
-   <newOption>          [Function/FunctionApp/StorageAccount/Secret]
-   <functionAppName>    (Required)
-   -s/--subscription    Subscription to create function app in
-   -l/--location        Geographical location for your function app
-
-Tip: run func init to get started.
+```
+func init    Create a new Function App in the current folder. Initializes git repo.
+func run     Run a function directly
 ```
 
-```bash
->  func help run
-Azure Functions CLI 0.1
-Usage: func run <functionName> [Options]
+### Azure actions
 
-   <functionName>    (Required)
-   -t/--timeout      Time to wait until Functions Server is ready in Seconds
-   -c/--content      In line content to use
-   -f/--file         File name to use as content
-   -d/--debug        Attach a debugger to the host process before running the function.
+Actions in the "azure" context require logging in to Azure.
 
-Tip: run func init to get started.
+```
+func azure
+
+Usage: func azure [context] <action> [-/--options]
+
+Contexts:
+account        For Azure account and subscriptions settings and actions
+functionapp    For Azure Function App settings and actions
+storage        For Azure Storage settings and actions
+subscriptions  For Azure account and subscriptions settings and actions
+
+Actions:
+get-publish-username  Get the source control publishing username for a Function App in Azure
+set-publish-password  Set the source control publishing password for a Function App in Azure
+login                 Log in to an Azure account. Can also do "func azure login"
+logout                Log out of Azure account. Can also do "func azure logout"
+portal                Launch default browser with link to the current app in https://portal.azure.com
 ```
 
+```
+func azure account
+Usage: func azure account <action> [-/--options]
 
-```bash
->  func help list
-Azure Functions CLI 0.1
-Usage: func list FunctionApps [Options]
-
-Usage: func list Secrets [Options]
-
-   -a/--show    Display the secret value
-
-Usage: func list StorageAccounts [Options]
-
-Usage: func list Tenants [Options]
-
-Tip: run func init to get started.
+Actions:
+set <subscriptionId> Set the active subscription 
+list  List subscriptions for the logged in user
 ```
 
+```
+func azure functionapp
+Usage: func azure functionapp <action> [-/--options]
 
-```bash
->  func help user
-Azure Functions CLI 0.1
-Usage: func user <userName> [Options]
-
-   <userName>    (Required)
-
-Tip: run func init to get started.
+Actions:
+create              Create a new Function App in Azure with default settings
+enable-git-repo     Enable git repository on your Azure-hosted Function App
+fetch-app-settings  Retrieve App Settings from your Azure-hosted Function App and store locally. Alias: fetch
+list                List all Function Apps in the selected Azure subscription
 ```
 
-```bash
->  func help config
-Azure Functions CLI 0.1
-Usage: func config <name> <value> [Options]
+The `func azure storage list` command will show storage accounts in the selected subscription. You can then set up a connection string locally with this storage account name using `func settings add-storage-account`.  
 
-   <name>     (Required)
-   <value>    (Required)
 ```
+func azure storage
+Usage: func Azure Storage <action> [-/--options]
+
+Actions:
+list  List all Storage Accounts in the selected Azure subscription
+```
+
+### Local actions
+
+Actions that are not in the "azure" context operate on the local environment. For instance, `func settings list` will show the app settings for the current function app.
+
+```
+func settings
+Usage: func settings [context] <action> [-/--options]
+
+Actions:
+add                  Add new local app setting to appsettings.json
+add-storage-account  Add a local app setting using the value from an Azure Storage account. Requires Azure login.
+decrypt              Decrypt the local settings file
+delete               Remove a local setting
+encrypt              Encrypt the local settings file
+list                 List local settings
+```
+
+```
+func function
+Usage: func function [context] <action> [-/--options]
+
+Actions:
+create  Create a new Function from a template, using the Yeoman generator
+run     Run a function directly 
+```
+
+For consistency, the `func init` command can also be invoked via `func function app init`. 
+
+```
+func functionapp init              
+```
+
+## License
+
+This project is under the benevolent umbrella of the [.NET Foundation](http://www.dotnetfoundation.org/) and is licensed under [the MIT License](LICENSE.txt)
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Contact Us
+
+For questions on Azure Functions or the CLI, you can ask questions here:
+
+- [Azure Functions MSDN Forum](https://social.msdn.microsoft.com/Forums/azure/en-US/home?forum=AzureFunctions)
+- [Azure-Functions tag on StackOverflow](http://stackoverflow.com/questions/tagged/azure-functions)
+
+To file bugs, post an issue with the prefix "CLI:" in the [Azure Functions Script repo on GitHub](https://github.com/Azure/azure-webjobs-sdk-script/issues).
