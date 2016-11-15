@@ -57,7 +57,7 @@ namespace WebJobs.Script.Cli.Actions.HostActions
             var settings = SelfHostWebHostSettingsFactory.Create(NodeDebugPort);
             Environment.SetEnvironmentVariable("EDGE_NODE_PARAMS", $"--debug={settings.NodeDebugPort}", EnvironmentVariableTarget.Process);
 
-            WebApiConfig.Register(config, settings: settings);
+            WebApiConfig.Initialize(config, settings: settings);
 
             using (var httpServer = new HttpSelfHostServer(config))
             {
