@@ -18,8 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class FunctionAssemblyLoader : IDisposable
     {
         // Prefix that uniquely identifies our assemblies
-        // i.e.: "ƒ-<functionname>"
-        public const string AssemblyPrefix = "\u0192-";
+        // i.e.: "f-<functionname>"
+        public const string AssemblyPrefix = "f-";
+        public const string AssemblySeparator = "__";
 
         private readonly ConcurrentDictionary<string, FunctionAssemblyLoadContext> _functionContexts = new ConcurrentDictionary<string, FunctionAssemblyLoadContext>();
         private readonly Regex _functionNameFromAssemblyRegex;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _rootScriptUri = new Uri(rootScriptPath, UriKind.RelativeOrAbsolute);
             AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
-            _functionNameFromAssemblyRegex = new Regex(string.Format(CultureInfo.InvariantCulture, "^{0}(?<name>.*?)#", AssemblyPrefix), RegexOptions.Compiled);
+            _functionNameFromAssemblyRegex = new Regex(string.Format(CultureInfo.InvariantCulture, "^{0}(?<name>.*?){1}", AssemblyPrefix, AssemblySeparator), RegexOptions.Compiled);
         }
 
         public void Dispose()
@@ -51,22 +52,33 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionAssemblyLoadContext context = GetFunctionContext(args.RequestingAssembly);
             Assembly result = null;
 
-            if (context != null)
+            try
             {
-                result = context.ResolveAssembly(args.Name);
-            }
-
-            // If we were unable to resolve the assembly, apply the current App Domain policy and attempt to load it.
-            // This allows us to correctly handle retargetable assemblies, redirects, etc.
-            if (result == null)
-            {
-                string assemblyName = ((AppDomain)sender).ApplyPolicy(args.Name);
-
-                // If after applying the current policy, we now have a different target assembly name, attempt to load that 
-                // assembly
-                if (string.Compare(assemblyName, args.Name) != 0)
+                if (context != null)
                 {
-                    result = Assembly.Load(assemblyName);
+                    result = context.ResolveAssembly(args.Name);
+                }
+
+                // If we were unable to resolve the assembly, apply the current App Domain policy and attempt to load it.
+                // This allows us to correctly handle retargetable assemblies, redirects, etc.
+                if (result == null)
+                {
+                    string assemblyName = ((AppDomain)sender).ApplyPolicy(args.Name);
+
+                    // If after applying the current policy, we now have a different target assembly name, attempt to load that 
+                    // assembly
+                    if (string.Compare(assemblyName, args.Name) != 0)
+                    {
+                        result = Assembly.Load(assemblyName);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                if (context != null)
+                {
+                    context.TraceWriter.Warning(string.Format(CultureInfo.InvariantCulture,
+                        "Exception during runtime resolution of assembly '{0}': '{1}'", args.Name, e.ToString()));
                 }
             }
 
@@ -165,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
         {
-            return AssemblyPrefix + metadata.Name + "#" + suffix;
+            return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
 
         public string GetFunctionNameFromAssembly(Assembly assembly)

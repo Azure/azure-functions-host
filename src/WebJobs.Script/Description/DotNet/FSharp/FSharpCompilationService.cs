@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -25,11 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly OptimizationLevel _optimizationLevel;
+        private readonly Regex _hashRRegex;
 
         public FSharpCompiler(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
         {
             _metadataResolver = metadataResolver;
             _optimizationLevel = optimizationLevel;
+            _hashRRegex = new Regex(@"^\s*#r\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
         public string Language
@@ -50,8 +53,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {
-            // First use the C# compiler to resolve references, to get consistenct with the C# Azure Functions programming model
-            Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create("using System;", options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
+            // First use the C# compiler to resolve references, to get consistency with the C# Azure Functions programming model
+            // Add the #r statements from the .fsx file to the resolver source
+            string scriptSource = GetFunctionSource(functionMetadata);
+            var resolverSourceBuilder = new StringBuilder();
+
+            using (StringReader sr = new StringReader(scriptSource))
+            {
+                string line;
+
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (_hashRRegex.IsMatch(line))
+                    {
+                        resolverSourceBuilder.AppendLine(line);
+                    }
+                }
+            }
+
+            resolverSourceBuilder.AppendLine("using System;");
+            var resolverSource = resolverSourceBuilder.ToString();
+
+            Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create(resolverSource, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
             Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices(msbuildEnabled: FSharpOption<bool>.Some(false));
@@ -59,6 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FSharpErrorInfo[] errors = null;
             FSharpOption<Assembly> assemblyOption = null;
             string scriptFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(functionMetadata.ScriptFile));
+
+            var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
+            var dllName = Path.GetTempPath() + asmName + ".dll";
+            var pdbName = Path.ChangeExtension(dllName, "pdb");
 
             try
             {
@@ -77,7 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 scriptFileBuilder.AppendLine("# 0 @\"" + functionMetadata.ScriptFile + "\"");
 
                 // Add our original script
-                string scriptSource = GetFunctionSource(functionMetadata);
                 scriptFileBuilder.AppendLine(scriptSource);
 
                 File.WriteAllText(scriptFilePath, scriptFileBuilder.ToString());
@@ -131,8 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--lib:" + Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName));
                 }
 
-                // This output DLL isn't actually written by FSharp.Compiler.Service when CompileToDynamicAssembly is called
-                otherFlags.Add("--out:" + Path.ChangeExtension(Path.GetTempFileName(), "dll"));
+                otherFlags.Add("--out:" + dllName);
 
                 // Get the #load closure
                 FSharpChecker checker = FSharpChecker.Create(null, null, null, msbuildEnabled: FSharpOption<bool>.Some(false));
@@ -149,18 +174,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // Add the (adjusted) script file itself
                 otherFlags.Add(scriptFilePath);
 
-                // Make the output streams (unused)
-                var outStreams = FSharpOption<Tuple<TextWriter, TextWriter>>.Some(new Tuple<TextWriter, TextWriter>(Console.Out, Console.Error));
-
-                // Compile the script to a dynamic assembly
-                var result = compiler.CompileToDynamicAssembly(otherFlags: otherFlags.ToArray(), execute: outStreams);
-
+                // Compile the script to a static assembly
+                var result = compiler.Compile(otherFlags.ToArray());
                 errors = result.Item1;
-                assemblyOption = result.Item3;
+                var code = result.Item2;
+
+                if (code == 0)
+                {
+                    var assemblyBytes = File.ReadAllBytes(dllName);
+                    var pdbBytes = File.ReadAllBytes(pdbName);
+                    var assembly = Assembly.Load(assemblyBytes, pdbBytes);
+                    assemblyOption = FSharpOption<Assembly>.Some(assembly);
+                }
             }
             finally
             {
                 File.Delete(scriptFilePath);
+                File.Delete(dllName);
+                File.Delete(pdbName);
             }
             return new FSharpCompilation(errors, assemblyOption);
         }
