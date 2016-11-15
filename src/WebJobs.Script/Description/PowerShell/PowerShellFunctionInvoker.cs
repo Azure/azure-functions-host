@@ -268,7 +268,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return modulePaths;
         }
 
-
         internal static List<string> AddToModulePaths(string[] directories)
         {
             List<string> paths = new List<string>();
