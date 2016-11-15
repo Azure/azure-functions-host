@@ -207,7 +207,6 @@
     <Compile Include="Common\ProcessManager.cs" />
     <Compile Include="Common\SecretsManager.cs" />
     <Compile Include="ConsoleApp.cs" />
-    <Compile Include="ConsoleAppUtilities.cs" />
     <Compile Include="Context.cs" />
     <Compile Include="Extensions\FunctionStatusExtensions.cs" />
     <Compile Include="Extensions\GenericExtensions.cs" />

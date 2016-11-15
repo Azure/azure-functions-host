@@ -9,6 +9,7 @@ namespace WebJobs.Script.Cli.Common
         public const string FunctionsStorageAccountNamePrefix = "AzureFunctions";
         public const string StorageAccountArmType = "Microsoft.Storage/storageAccounts";
         public const string FunctionAppArmKind = "functionapp";
+        public const string CliVersion = "1.0.0-beta.5";
 
         public static class Errors
         {

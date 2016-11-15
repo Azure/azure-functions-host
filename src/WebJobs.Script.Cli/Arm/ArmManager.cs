@@ -68,8 +68,7 @@ namespace WebJobs.Script.Cli.Arm
                                     { "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING", connectionString },
                                     { "WEBSITE_CONTENTSHARE", storageAccount.StorageAccountName.ToLowerInvariant() },
                                     { $"{storageAccount.StorageAccountName}_STORAGE", connectionString },
-                                    { "AZUREJOBS_EXTENSION_VERSION", "beta" },
-                                    { "WEBSITE_NODE_DEFAULT_VERSION", "4.1.2" }
+                                    { "WEBSITE_NODE_DEFAULT_VERSION", "6.5.0" }
                                 }
                                 .Select(e => new { name = e.Key, value = e.Value})
                             },
