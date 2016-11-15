@@ -1,4 +1,4 @@
-![Azure Functions Logo](assets/azure-functions-logo-color-raster.png)
+![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-webjobs-sdk-script/rename-cli/src/WebJobs.Script.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
 # Azure Functions CLI
 

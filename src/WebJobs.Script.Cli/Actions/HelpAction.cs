@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Colors.Net;
 using Fclp;
 using Microsoft.Azure.WebJobs.Script;
+using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions
@@ -108,7 +109,7 @@ namespace WebJobs.Script.Cli.Actions
                 .Distinct()
                 .OrderBy(c => c.ToLowerCaseString());
             ColoredConsole
-                .WriteLine($"Azure Functions Cli ({typeof(Program).Assembly.GetName().Version})")
+                .WriteLine($"Azure Functions Cli ({Constants.CliVersion})")
                 .WriteLine($"Function Runtime Version: {ScriptHost.Version}")
                 .WriteLine("Usage: func [context] [context] <action> [-/--options]")
                 .WriteLine();
