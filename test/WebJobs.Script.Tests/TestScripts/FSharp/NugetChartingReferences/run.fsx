@@ -1,17 +1,3 @@
-//----------------------------------------------------------------------------------------
-// This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
-
-#if !COMPILED
-#I "../../../../../src/WebJobs.Script.Host/bin/Debug"
-#r "Microsoft.Azure.WebJobs.Host.dll"
-#r "System.Web.Http.dll"
-#r "System.Net.Http.dll"
-#r "System.IO"
-#endif
-
-//----------------------------------------------------------------------------------------
-// This is the implementation of the function 
-
 #r "System.Data.dll"
 #r "Google.DataTable.Net.Wrapper.dll"
 #r "XPlot.GoogleCharts.dll"

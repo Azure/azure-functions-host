@@ -1,17 +1,4 @@
-﻿//----------------------------------------------------------------------------------------
-// This prelude allows scripts to be edited in Visual Studio or another F# editing environment 
-
-#if !COMPILED
-open System.Runtime.InteropServices
-#I "../../../../../src/WebJobs.Script.Host/bin/Debug"
-#r "Microsoft.Azure.WebJobs.Host.dll"
-#r "Microsoft.Azure.WebJobs.Extensions.dll"
-#endif
-
-//----------------------------------------------------------------------------------------
-// This is the implementation of the function 
-
-#r "System.Threading.Tasks"
+﻿#r "System.Threading.Tasks"
 #r "System.Net.Http"
 
 #load "class.fs"
