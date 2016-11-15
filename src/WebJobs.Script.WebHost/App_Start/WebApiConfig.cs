@@ -15,9 +15,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebApiConfig
     {
-        public static void Initialize(HttpConfiguration config)
+        public static void Initialize(HttpConfiguration config, ScriptSettingsManager settingsManager = null,
+            WebHostSettings settings = null, Action<ContainerBuilder, WebHostSettings> dependencyCallback = null)
         {
-            Register(config);
+            Register(config, settingsManager, settings, dependencyCallback);
 
             var scriptHostManager = GlobalConfiguration.Configuration.DependencyResolver.GetService<WebScriptHostManager>();
             if (scriptHostManager != null && !scriptHostManager.Initialized)
