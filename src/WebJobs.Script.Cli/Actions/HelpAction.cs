@@ -48,7 +48,7 @@ namespace WebJobs.Script.Cli.Actions
 
                 if (!string.IsNullOrEmpty(_subContext) && !Enum.TryParse(_subContext, true, out subContext))
                 {
-                    ColoredConsole.Error.WriteLine($"Error: unknown argument {_subContext} in {context.ToString()} Context");
+                    ColoredConsole.Error.WriteLine($"Error: unknown argument {_subContext} in {context.ToLowerCaseString()} Context");
                     return Task.CompletedTask;
                 }
 
@@ -70,7 +70,7 @@ namespace WebJobs.Script.Cli.Actions
             if (subContext == Context.None)
             {
                 ColoredConsole
-                .WriteLine($"Usage: func {context.ToString()} [context] <action> [-/--options]")
+                .WriteLine($"Usage: func {context.ToLowerCaseString()} [context] <action> [-/--options]")
                 .WriteLine();
                 var contexts = _actionTypes
                     .Where(a => a.Contexts.Contains(context))
@@ -78,13 +78,13 @@ namespace WebJobs.Script.Cli.Actions
                     .SelectMany(c => c)
                     .Where(c => c != Context.None)
                     .Distinct()
-                    .OrderBy(c => c.ToString());
+                    .OrderBy(c => c.ToLowerCaseString());
                 DisplayContextsHelp(contexts);
             }
             else
             {
                 ColoredConsole
-                .WriteLine($"Usage: func {context.ToString()} {subContext.ToString()} <action> [-/--options]")
+                .WriteLine($"Usage: func {context.ToLowerCaseString()} {subContext.ToLowerCaseString()} <action> [-/--options]")
                 .WriteLine();
             }
 
@@ -106,7 +106,7 @@ namespace WebJobs.Script.Cli.Actions
                 .SelectMany(c => c)
                 .Where(c => c != Context.None)
                 .Distinct()
-                .OrderBy(c => c.ToString());
+                .OrderBy(c => c.ToLowerCaseString());
             ColoredConsole
                 .WriteLine($"Azure Functions Cli ({typeof(Program).Assembly.GetName().Version})")
                 .WriteLine($"Function Runtime Version: {ScriptHost.Version}")
@@ -121,11 +121,11 @@ namespace WebJobs.Script.Cli.Actions
         {
             if (contexts.Any())
             {
-                var longestName = contexts.Select(c => c.ToString()).Max(n => n.Length);
+                var longestName = contexts.Select(c => c.ToLowerCaseString()).Max(n => n.Length);
                 ColoredConsole.WriteLine("Contexts:");
                 foreach (var context in contexts)
                 {
-                    ColoredConsole.WriteLine(string.Format($"{{0, {-longestName}}}  {{1}}", context.ToString(), GetDescriptionOfContext(context)));
+                    ColoredConsole.WriteLine(string.Format($"{{0, {-longestName}}}  {{1}}", context.ToLowerCaseString(), GetDescriptionOfContext(context)));
                 }
                 ColoredConsole.WriteLine();
             }

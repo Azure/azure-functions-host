@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 namespace WebJobs.Script.Cli
 {
-    enum Context
+    internal enum Context
     {
         None,
 
@@ -30,5 +30,13 @@ namespace WebJobs.Script.Cli
 
         [Description("For local settings for your Functions host")]
         Settings
+    }
+
+    internal static class ContextEnumExtensions
+    {
+        public static string ToLowerCaseString(this Context context)
+        {
+            return context.ToString().ToLowerInvariant();
+        }
     }
 }
