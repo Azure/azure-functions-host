@@ -7,7 +7,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "list", Context = Context.Settings)]
+    [Action(Name = "list", Context = Context.Settings, HelpText = "List local settings")]
     class ListSettingsAction : BaseAction
     {
         private readonly ISecretsManager _secretsManager;

@@ -7,7 +7,7 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "login", Context = Context.Azure)]
+    [Action(Name = "login", Context = Context.Azure, HelpText = "Log in to an Azure account")]
     class LoginAction : BaseAzureAccountAction
     {
         public LoginAction(IArmManager armManager, ISettings settings)

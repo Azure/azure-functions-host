@@ -8,7 +8,7 @@ using WebJobs.Script.Cli.Interfaces;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "add", Context = Context.Settings)]
+    [Action(Name = "add", Context = Context.Settings, HelpText = "Add new local app setting to appsettings.json")]
     class AddSettingAction : BaseAction
     {
         private readonly ISecretsManager _secretsManager;

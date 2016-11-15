@@ -17,8 +17,8 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "run", Context = Context.Function)]
-    [Action(Name = "run")]
+    [Action(Name = "run", Context = Context.Function, HelpText = "Run a function directly")]
+    [Action(Name = "run", HelpText = "Run a function directly")]
     class RunFunctionAction : BaseAction
     {
         private readonly IFunctionsLocalServer _scriptServer;

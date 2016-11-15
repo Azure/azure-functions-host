@@ -6,8 +6,8 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
-    [Action(Name = "set-publish-password", Context = Context.Azure)]
-    [Action(Name = "set-publish-username", Context = Context.Azure)]
+    [Action(Name = "set-publish-password", Context = Context.Azure, HelpText = "Set the source control publishing password for all Function Apps in Azure")]
+    [Action(Name = "set-publish-username", Context = Context.Azure, HelpText = "Set the source control publishing username and password for all Function Apps in Azure")]
     class SetPublishPasswordAction : BasePublishUserAction
     {
         private IArmManager _armManager;
