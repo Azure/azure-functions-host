@@ -208,6 +208,7 @@
     <Compile Include="Common\SecretsManager.cs" />
     <Compile Include="ConsoleApp.cs" />
     <Compile Include="Context.cs" />
+    <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Extensions\FunctionStatusExtensions.cs" />
     <Compile Include="Extensions\GenericExtensions.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />

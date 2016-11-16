@@ -22,5 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         [JsonProperty("nodeDebugPort")]
         public int NodeDebugPort { get; set; }
+
+        [JsonIgnore]
+        public TraceWriter TraceWriter { get; set; }
     }
 }
