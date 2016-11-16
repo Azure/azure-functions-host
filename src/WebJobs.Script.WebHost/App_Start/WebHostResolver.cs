@@ -137,15 +137,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static ScriptHostConfiguration GetScriptHostConfiguration(string scriptPath, string logPath)
+        private static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
         {
-            InitializeFileSystem(scriptPath);
+            InitializeFileSystem(settings.ScriptPath);
 
             var scriptHostConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = scriptPath,
-                RootLogPath = logPath,
-                FileLoggingMode = FileLoggingMode.DebugOnly
+                RootScriptPath = settings.ScriptPath,
+                RootLogPath = settings.LogPath,
+                FileLoggingMode = FileLoggingMode.DebugOnly,
+                TraceWriter = settings.TraceWriter
             };
 
             // If running on Azure Web App, derive the host ID from the default subdomain
