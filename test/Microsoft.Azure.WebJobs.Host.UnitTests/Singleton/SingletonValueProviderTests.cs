@@ -73,8 +73,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.ScopeId, TestInstanceId, _attribute, mockSingletonManager.Object);
             SingletonLock localSingletonLock = (SingletonLock)localValueProvider.GetValue();
 
-            DateTime startTime = DateTime.Now;
-            DateTime endTime = startTime + TimeSpan.FromSeconds(2);
+            // set start time before _minimumWaitForFirstOwnerCheck in SingletonValueProvider
+            DateTime startTime = DateTime.UtcNow - TimeSpan.FromSeconds(11);
+            DateTime endTime = DateTime.UtcNow + TimeSpan.FromSeconds(2);
             DateTime releaseTime = endTime + TimeSpan.FromSeconds(1);
 
             // before lock is called

@@ -1,0 +1,9 @@
+build_script:
+  - msbuild WebJobs.proj /t:BuildTestBinaries /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:OutputPath=c:\projects\azure-webjobs-sdk\bin
+
+test_script:
+  - vstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.FunctionalTests.dll bin/Microsoft.Azure.WebJobs.ServiceBus.UnitTests.dll bin/Dashboard.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.EndToEndTests.dll
+
+# if you need to rdp into build machine to investigate
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

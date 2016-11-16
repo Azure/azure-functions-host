@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Starts the host.</summary>
         public void Start()
         {
-            StartAsync().GetAwaiter().GetResult();
+            Task.Run(() => StartAsync()).GetAwaiter().GetResult();
         }
 
         /// <summary>Starts the host.</summary>
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Stops the host.</summary>
         public void Stop()
         {
-            StopAsync().GetAwaiter().GetResult();
+            Task.Run(() => StopAsync()).GetAwaiter().GetResult();
         }
 
         /// <summary>Stops the host.</summary>
@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs
         /// <param name="method">The job method to call.</param>
         public void Call(MethodInfo method)
         {
-            CallAsync(method).GetAwaiter().GetResult();
+            Task.Run(() => CallAsync(method)).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs
         /// </param>
         public void Call(MethodInfo method, object arguments)
         {
-            CallAsync(method, arguments).GetAwaiter().GetResult();
+            Task.Run(() => CallAsync(method, arguments)).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>
@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs
         /// In addition to parameter values, these may also include binding data values. </param>
         public void Call(MethodInfo method, IDictionary<string, object> arguments)
         {
-            CallAsync(method, arguments).GetAwaiter().GetResult();
+            Task.Run(() => CallAsync(method, arguments)).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>

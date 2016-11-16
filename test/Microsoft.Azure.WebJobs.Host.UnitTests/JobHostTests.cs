@@ -661,7 +661,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 {
                     fex.Handled = true;
                     Errors.Add(fex);
-                } 
+                }
             }
         }
     }

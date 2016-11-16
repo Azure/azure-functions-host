@@ -141,6 +141,21 @@
     <xunit Assemblies="@(UnitTestAssemblies)"/>
   </Target>
 
+  <Target Name="BuildTestBinaries" DependsOnTargets="EnableSkipStrongNames;RestorePackages">
+    <ItemGroup>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.UnitTests\WebJobs.Host.UnitTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.FunctionalTests\WebJobs.Host.FunctionalTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.ServiceBus.UnitTests\WebJobs.ServiceBus.UnitTests.csproj"/>
+        <TestBinaries Include="test\Dashboard.UnitTests\Dashboard.UnitTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.EndToEndTests\WebJobs.Host.EndToEndTests.csproj"/>
+    </ItemGroup>
+
+    <MSBuild Projects="@(TestBinaries)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+    </MSBuild>
+  </Target>
+
   <Target Name="FunctionalTest" DependsOnTargets="UnitTest">
     <ItemGroup>
       <FunctionalTestProjects Include="test\Microsoft.Azure.WebJobs.Host.EndToEndTests\WebJobs.Host.EndToEndTests.csproj"/>

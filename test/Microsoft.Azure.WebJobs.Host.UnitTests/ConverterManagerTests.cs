@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Newtonsoft.Json.Linq;
 using System.Threading;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -67,12 +68,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var value = new Other { Value2 = "abc" };
             Wrapper x1 = func(value, null, testContext);
+            // strip whitespace
+            string val = Regex.Replace(x1.Value, @"\s", "");
+            string expected = String.Format("{{\"Value2\":\"abc\",\"$\":\"{0}\"}}", instance);
 
-            Assert.Equal(@"{
-  ""Value2"": ""abc"",
-  ""$"": """ + instance.ToString() + @"""
-}", x1.Value);
-
+            Assert.Equal(expected, val);
     }
 
         // Explicit converters take precedence. 

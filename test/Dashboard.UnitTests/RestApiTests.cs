@@ -166,7 +166,7 @@ namespace Dashboard.UnitTests
                 ILogWriter writer = LogFactory.NewWriter(HostName, "c1", provider);
 
                 string Func1 = "alpha";
-                var time = new DateTime(2010, 3, 6, 10, 11, 20);
+                var time = new DateTime(2010, 3, 6, 18, 11, 20, DateTimeKind.Utc);
 
                 List<FunctionInstanceLogItem> list = new List<FunctionInstanceLogItem>();
                 list.Add(new FunctionInstanceLogItem
