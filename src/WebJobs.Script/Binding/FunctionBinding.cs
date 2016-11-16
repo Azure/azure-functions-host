@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             else
             {
                 // Read the value into the context Value converting based on data type
-                object converted = context.Value ?? new MemoryStream();
+                object converted = context.Value;
                 ConvertStreamToValue(stream, context.DataType, ref converted);
                 context.Value = converted;
             }
@@ -287,8 +287,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 case DataType.Stream:
                     // when the target value is a Stream, we copy the value
                     // into the Stream passed in
-                    Stream targetStream = converted as Stream;
-                    stream.CopyTo(targetStream);
+                    if (converted != null)
+                    {
+                        Stream targetStream = converted as Stream;
+                        stream.CopyTo(targetStream);
+                    }
                     break;
             }
         }
