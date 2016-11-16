@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.TimeoutJob_Throw_NoToken",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.RandGuidOutput",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.SystemParameterBindingOutput",
                     "Function 'AsyncChainEndToEndTests.DisabledJob' is disabled",
                     "Job host started",
                     "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
@@ -154,11 +154,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
-                Assert.Equal(17, storageClientFactory.TotalBlobClientCount);
+                Assert.Equal(19, storageClientFactory.TotalBlobClientCount);
                 Assert.Equal(11, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
-                Assert.Equal(6, storageClientFactory.ParameterBlobClientCount);
+                Assert.Equal(8, storageClientFactory.ParameterBlobClientCount);
                 Assert.Equal(7, storageClientFactory.ParameterQueueClientCount);
                 Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
-        public void RandGuidOutput_GeneratesRandomIDs()
+        public void SystemParameterBindingOutput_GeneratesExpectedBlobs()
         {
             JobHost host = new JobHost(_hostConfig);
 
@@ -281,15 +281,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 }
             }
 
-            MethodInfo methodInfo = GetType().GetMethod("RandGuidOutput");
-            for (int i = 0; i < 3; i++)
+            MethodInfo methodInfo = GetType().GetMethod("SystemParameterBindingOutput");
+            var arguments = new Dictionary<string, object>
             {
-                var arguments = new Dictionary<string, object>
-                {
-                    { "input", i.ToString() }
-                };
-                host.Call(methodInfo, arguments);
-            }
+                { "input", "Test Value" }
+            };
+            host.Call(methodInfo, arguments);
 
             // We expect 3 separate blobs to have been written
             var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
@@ -297,8 +294,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             foreach (var blob in blobs)
             {
                 string content = blob.DownloadText(Encoding.UTF8);
-                int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
-                Assert.True(blobInt >= 0 && blobInt <= 3);
+                Assert.Equal("Test Value", content.Trim(new char[] { '\uFEFF', '\u200B' }));
             }
         }
 
@@ -469,11 +465,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [NoAutomaticTrigger]
-        public static void RandGuidOutput(
+        public static void SystemParameterBindingOutput(
             [QueueTrigger("test")] string input,
-            [Blob("test-output/{rand-guid}")] out string blob)
+            [Blob("test-output/{rand-guid}")] out string blob,
+            [Blob("test-output/{rand-guid:N}")] out string blob2,
+            [Blob("test-output/{datetime:yyyy-mm-dd}:{rand-guid:N}")] out string blob3)
         {
-            blob = input;
+            blob = blob2 = blob3 = input;
         }
 
         [Disable("Disable_DisabledJob")]

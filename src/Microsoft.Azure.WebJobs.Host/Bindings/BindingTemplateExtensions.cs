@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 foreach (string parameterName in parameterNames)
                 {
-                    if (BindingTemplate.IsSystemBindingParameter(parameterName))
+                    if (BindingParameterResolver.IsSystemParameter(parameterName))
                     {
                         continue;
                     }

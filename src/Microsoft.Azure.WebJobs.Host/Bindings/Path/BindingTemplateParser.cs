@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         private static bool IsValidIdentifier(string identifier)
         {
             // built-in sysetem identifiers are valid
-            if (BindingTemplate.IsSystemBindingParameter(identifier))
+            if (BindingParameterResolver.IsSystemParameter(identifier))
             {
                 return true;
             }
