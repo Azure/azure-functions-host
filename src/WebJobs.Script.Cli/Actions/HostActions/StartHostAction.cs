@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -11,14 +12,12 @@ using System.Web.Http;
 using System.Web.Http.SelfHost;
 using Colors.Net;
 using Fclp;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Extensions;
 using WebJobs.Script.Cli.Helpers;
-using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.HostActions
@@ -29,10 +28,13 @@ namespace WebJobs.Script.Cli.Actions.HostActions
         private FileSystemWatcher fsWatcher;
         const int DefaultPort = 7071;
         const int DefaultNodeDebugPort = 5858;
+        const TraceLevel DefaultDebugLevel = TraceLevel.Info;
 
         public int Port { get; set; }
 
         public int NodeDebugPort { get; set; }
+
+        public TraceLevel ConsoleTraceLevel { get; set; }
 
         public override ICommandLineParserResult ParseArgs(string[] args)
         {
@@ -48,6 +50,12 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 .SetDefault(DefaultNodeDebugPort)
                 .Callback(p => NodeDebugPort = p);
 
+            Parser
+                .Setup<TraceLevel>('d', "debugLevel")
+                .WithDescription($"Console trace level (off, verbose, info, warning or error). Default: {DefaultDebugLevel}")
+                .SetDefault(DefaultDebugLevel)
+                .Callback(p => ConsoleTraceLevel = p);
+
             return Parser.Parse(args);
         }
 
@@ -62,19 +70,30 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 TransferMode = TransferMode.Streamed
             };
 
-            var settings = SelfHostWebHostSettingsFactory.Create(NodeDebugPort);
+            var settings = SelfHostWebHostSettingsFactory.Create(NodeDebugPort, ConsoleTraceLevel);
+
             Environment.SetEnvironmentVariable("EDGE_NODE_PARAMS", $"--debug={settings.NodeDebugPort}", EnvironmentVariableTarget.Process);
 
             WebApiConfig.Initialize(config, settings: settings);
-
             using (var httpServer = new HttpSelfHostServer(config))
             {
                 await httpServer.OpenAsync();
                 ColoredConsole.WriteLine($"Listening on {baseAddress}");
                 ColoredConsole.WriteLine("Hit CTRL-C to exit...");
                 await PostHostStartActions(baseAddress);
+                DisableCoreLogging(config);
                 await Task.Delay(-1);
                 await httpServer.CloseAsync();
+            }
+        }
+
+        private static void DisableCoreLogging(HttpSelfHostConfiguration config)
+        {
+            WebScriptHostManager hostManager = config.DependencyResolver.GetService<WebScriptHostManager>();
+
+            if (hostManager != null)
+            {
+                hostManager.Instance.ScriptConfig.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
             }
         }
 

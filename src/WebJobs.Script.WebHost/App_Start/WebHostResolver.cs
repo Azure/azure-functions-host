@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         ReinitializeAppSettings();
                     }
 
-                    _activeScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
                     _activeSecretManager = GetSecretManager(_settingsManager, settings.SecretsPath);
                     _activeReceiverManager = new WebHookReceiverManager(_activeSecretManager);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _activeSecretManager, _settingsManager, settings);
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
                     _standbySecretManager = GetSecretManager(_settingsManager, settings.SecretsPath);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbySecretManager);
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _standbySecretManager, _settingsManager, settings);
@@ -149,15 +149,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static ScriptHostConfiguration GetScriptHostConfiguration(string scriptPath, string logPath)
+        private static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
         {
-            InitializeFileSystem(scriptPath);
+            InitializeFileSystem(settings.ScriptPath);
 
             var scriptHostConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = scriptPath,
-                RootLogPath = logPath,
-                FileLoggingMode = FileLoggingMode.DebugOnly
+                RootScriptPath = settings.ScriptPath,
+                RootLogPath = settings.LogPath,
+                FileLoggingMode = FileLoggingMode.DebugOnly,
+                TraceWriter = settings.TraceWriter
             };
 
             // If running on Azure Web App, derive the host ID from the default subdomain
