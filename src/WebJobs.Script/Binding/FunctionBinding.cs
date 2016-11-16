@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             else
             {
                 // Read the value into the context Value converting based on data type
-                object converted = null;
+                object converted = context.Value ?? new MemoryStream();
                 ConvertStreamToValue(stream, context.DataType, ref converted);
                 context.Value = converted;
             }
