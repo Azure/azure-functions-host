@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValueBindingContext context = new ValueBindingContext(functionContext, CancellationToken.None);
             ITriggerData triggerData = await binding.BindAsync(request, context);
 
-            Assert.Equal(5, triggerData.BindingData.Count);
+            Assert.Equal(6, triggerData.BindingData.Count);
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
             Assert.Equal("(425) 555-6666", triggerData.BindingData["Phone"]);
@@ -284,12 +284,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static void ApplyBindingData_Succeeds()
         {
             TestPocoEx poco = new TestPocoEx();
+            Dictionary<string, string> properties = new Dictionary<string, string>
+            {
+                { "A", "123" },
+                { "B", "456" },
+                { "c", "789" }
+            };
             Dictionary<string, object> bindingData = new Dictionary<string, object>()
             {
                 { "name", "Ted" },
                 { "Location", "Seattle" },
                 { "Age", "25" },
-                { "Readonly", "Test" }
+                { "Readonly", "Test" },
+                { "Properties", properties }
             };
 
             HttpTriggerAttributeBindingProvider.HttpTriggerBinding.ApplyBindingData(poco, bindingData);
@@ -298,6 +305,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Seattle", poco.Location);
             Assert.Equal(25, poco.Age);  // verifies string was converted
             Assert.Null(poco.Readonly);
+            Assert.Equal(3, poco.Properties.Count);
+            foreach (var pair in properties)
+            {
+                Assert.Equal(pair.Value, poco.Properties[pair.Key]);
+            }
         }
 
         public void TestPocoFunction(TestPoco poco)

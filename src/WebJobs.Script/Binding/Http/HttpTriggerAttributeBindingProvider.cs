@@ -201,14 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         propertyHelper.Property.CanWrite)
                     {
                         object value = pair.Value;
-                        Type targetType = propertyHelper.Property.PropertyType;
-                        if (value != null && value.GetType() != targetType)
-                        {
-                            // if the type is nullable, we only need to convert to the
-                            // correct underlying type
-                            targetType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-                            value = Convert.ChangeType(value, targetType);
-                        }
+                        value = ConvertValueIfNecessary(value, propertyHelper.Property.PropertyType);
                         propertyHelper.SetValue(target, value);
                     }
                 }
@@ -249,15 +242,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         // necessary conversion
                         value = pair.Value;
                         Type type = null;
-                        if (value != null && 
-                            bindingDataContract != null && 
-                            bindingDataContract.TryGetValue(pair.Key, out type) &&
-                            value.GetType() != type)
+                        if (bindingDataContract != null && 
+                            bindingDataContract.TryGetValue(pair.Key, out type))
                         {
-                            // if the type is nullable, we only need to convert to the
-                            // correct underlying type
-                            type = Nullable.GetUnderlyingType(type) ?? type;
-                            value = Convert.ChangeType(value, type);
+                            value = ConvertValueIfNecessary(value, type);
                         }
 
                         bindingData[pair.Key] = value;
@@ -288,6 +276,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
 
                 return new SimpleValueProvider(_parameter.ParameterType, value, invokeString);
+            }
+
+            private static object ConvertValueIfNecessary(object value, Type targetType)
+            {
+                if (value != null && !targetType.IsAssignableFrom(value.GetType()))
+                {
+                    // if the type is nullable, we only need to convert to the
+                    // correct underlying type
+                    targetType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+                    value = Convert.ChangeType(value, targetType);
+                }
+
+                return value;
             }
 
             /// <summary>
