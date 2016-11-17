@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -32,7 +34,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             }
             else
             {
-                return input.GetBody<byte[]>();
+                try
+                {
+                    return input.GetBody<byte[]>();
+                }
+                catch (SerializationException exception)
+                {
+                    // If we fail to deserialize here, it is because the message body was serialized using something other than the default 
+                    // DataContractSerializer with a binary XmlDictionaryWriter.
+                    string contentType = input.ContentType ?? "null";
+                    string msg = $"The BrokeredMessage with ContentType '{contentType}' failed to deserialize to a byte[] with the message: '{exception.Message}'";
+
+                    throw new InvalidOperationException(msg, exception);
+                }
             }
         }
     }
