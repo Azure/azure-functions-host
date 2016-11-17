@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string Phone { get; set; }
 
         public string Readonly { get; }
+
+        public IDictionary<string, string> Properties { get; set; }
     }
 
     public class UtilityTests
