@@ -271,18 +271,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static List<string> AddToModulePaths(string[] directories)
         {
             List<string> paths = new List<string>();
-            for (int i = 0; i < directories.Length; i++)
+            foreach (string directory in directories)
             {
-                string currentDirectory = directories[i];
-                if (Directory.Exists(currentDirectory))
+                if (Directory.Exists(directory))
                 {
-                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                    paths.AddRange(Directory.GetFiles(directory,
                         PowerShellConstants.ModulesManifestFileExtensionPattern,
                         SearchOption.AllDirectories));
-                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                    paths.AddRange(Directory.GetFiles(directory,
                         PowerShellConstants.ModulesBinaryFileExtensionPattern,
                         SearchOption.AllDirectories));
-                    paths.AddRange(Directory.GetFiles(currentDirectory,
+                    paths.AddRange(Directory.GetFiles(directory,
                         PowerShellConstants.ModulesScriptFileExtensionPattern,
                         SearchOption.AllDirectories));
                 }
