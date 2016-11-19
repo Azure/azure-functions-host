@@ -1,9 +1,4 @@
-﻿using System;
-using System.Net;
-using System.Net.Http;
-using Microsoft.Azure.WebJobs.Host;
-
-public class BotMessage
+﻿public class BotMessage
 {
     public string Source { get; set; }
     public string Message { get; set; }

@@ -1,7 +1,4 @@
-﻿
-using System;
-
-public class TestInput
+﻿public class TestInput
 {
     public int Id { get; set; }
     public string Value { get; set; }

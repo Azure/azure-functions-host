@@ -1,6 +1,4 @@
-﻿using System;
-
-public static Item Run(string input)
+﻿public static Item Run(string input)
 {
     return new Item
     {

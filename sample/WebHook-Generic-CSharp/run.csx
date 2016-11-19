@@ -1,7 +1,5 @@
 ﻿#r "Newtonsoft.Json"
 
-using System;
-using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 

@@ -1,10 +1,5 @@
 ﻿#r "Newtonsoft.Json"
 
-using System;
-using System.Net;
-using System.Net.Http;
-using Microsoft.Azure.WebJobs.Host;
-
 public class ProductInfo
 {
     public string Category { get; set; }

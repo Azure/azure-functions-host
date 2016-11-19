@@ -1,9 +1,6 @@
 ﻿#r "System.Runtime.Serialization"
 
-using System;
 using System.Net;
-using System.Net.Http;
-using Microsoft.Azure.WebJobs.Host;
 using System.Runtime.Serialization;
 
 // DataContract attributes exist to demonstrate that

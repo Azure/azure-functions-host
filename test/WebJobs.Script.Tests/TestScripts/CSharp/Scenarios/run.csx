@@ -1,8 +1,5 @@
 #r "Newtonsoft.Json"
 
-using System;
-using Microsoft.Azure.WebJobs.Host;
-
 public static void Run(ScenarioInput input, out string blob, TraceWriter log)
 {
     blob = null;
