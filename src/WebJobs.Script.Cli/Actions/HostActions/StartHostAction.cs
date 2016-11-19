@@ -72,6 +72,12 @@ namespace WebJobs.Script.Cli.Actions.HostActions
 
             var settings = SelfHostWebHostSettingsFactory.Create(NodeDebugPort, ConsoleTraceLevel);
 
+            // We want to prevent any Console writers added by the core WebJobs SDK
+            // from writing to console, so we set our output to the original console TextWriter
+            // and replace it with a Null TextWriter
+            ColoredConsole.Out = new ColoredConsoleWriter(Console.Out);
+            Console.SetOut(TextWriter.Null);
+
             Environment.SetEnvironmentVariable("EDGE_NODE_PARAMS", $"--debug={settings.NodeDebugPort}", EnvironmentVariableTarget.Process);
 
             WebApiConfig.Initialize(config, settings: settings);
