@@ -360,6 +360,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task SharedDirectory_Node_ReloadsOnFileChange()
+        {
+            string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+            string initialTimestamp = response.Headers.GetValues("Shared-Module").First();
+
+            // make the request again and verify the timestamp is the same
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await _fixture.HttpClient.SendAsync(request);
+            string timestamp = response.Headers.GetValues("Shared-Module").First();
+            Assert.Equal(initialTimestamp, timestamp);
+
+            // now "touch" a file in the shared directory to trigger a restart
+            string sharedModulePath = Path.Combine(_fixture.HostSettings.ScriptPath, "Shared\\test.js");
+            File.SetLastWriteTimeUtc(sharedModulePath, DateTime.UtcNow);
+
+            // wait for the module to be reloaded
+            await TestHelpers.Await(() =>
+            {
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                response = _fixture.HttpClient.SendAsync(request).GetAwaiter().GetResult();
+                timestamp = response.Headers.GetValues("Shared-Module").First();
+                return initialTimestamp != timestamp;
+            }, timeout: 5000, pollingInterval: 1000);
+            Assert.NotEqual(initialTimestamp, timestamp);
+
+            initialTimestamp = timestamp;
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await _fixture.HttpClient.SendAsync(request);
+            timestamp = response.Headers.GetValues("Shared-Module").First();
+            Assert.Equal(initialTimestamp, timestamp);
+        }
+
+        [Fact]
         public async Task HttpTrigger_CSharp_CustomRoute_ReturnsExpectedResponse()
         {
             TestHelpers.ClearFunctionLogs("HttpTrigger-CSharp-CustomRoute");

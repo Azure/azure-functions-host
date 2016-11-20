@@ -257,6 +257,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return value;
         }
 
+        internal static void OnHostRestart()
+        {
+            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
+        }
+
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
             if (_scriptFunc == null)

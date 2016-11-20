@@ -310,9 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
                     TraceWriter.Info("Host configuration has changed. Signaling restart.");
-
-                    // signal host restart
-                    _restartEvent.Set();
+                    RestartHost();
                 };
                 _restart = _restart.Debounce(500);
 
@@ -405,6 +403,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return customAttributes;
+        }
+
+        private void RestartHost()
+        {
+            // signal host restart
+            _restartEvent.Set();
+
+            // whenever we're restarting the host, we want to let the Node
+            // invoker know so it can clear the require cache, etc.
+            NodeFunctionInvoker.OnHostRestart();
         }
 
         /// <summary>
