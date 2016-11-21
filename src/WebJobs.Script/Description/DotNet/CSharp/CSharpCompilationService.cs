@@ -63,10 +63,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (File.Exists(functionMetadata.ScriptFile))
             {
-                code = File.ReadAllText(functionMetadata.ScriptFile);
+                // We use ReadAllBytes here to make sure we preserve the BOM, if present.
+                var codeBytes = File.ReadAllBytes(functionMetadata.ScriptFile);
+                code = Encoding.UTF8.GetString(codeBytes);
             }
 
-            return Utility.RemoveUtf8ByteOrderMark(code ?? string.Empty);
+            return code ?? string.Empty;
         }
 
         private Compilation GetScriptCompilation(Script<object> script, FunctionMetadata functionMetadata)
