@@ -28,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -284,6 +285,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
+
+
+                { // $$$
+                    var awesome = new GeneralScriptBindingProvider(ScriptConfig.HostConfig, hostConfig, TraceWriter);
+                    awesome.AddAssembly(typeof(ServiceBus.EventHubConfiguration).Assembly).Wait();
+                    awesome.AddExtension(typeof(CoreExtensionBase)).Wait();
+                    awesome.FinishAddsAsync().Wait(); // adds [Queue] and builtins
+                    
+                    bindingProviders.Add(awesome);
+                }
+
                 ScriptConfig.BindingProviders = bindingProviders;
 
                 TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
@@ -513,10 +525,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // Register our built in extensions
             var bindingProviderTypes = new Collection<Type>()
             {
-                // binding providers defined in this assembly
-                typeof(WebJobsCoreScriptBindingProvider),
-                typeof(ServiceBusScriptBindingProvider),
-
                 // binding providers defined in known extension assemblies
                 typeof(CoreExtensionsScriptBindingProvider),
                 typeof(ApiHubScriptBindingProvider),

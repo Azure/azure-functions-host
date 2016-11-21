@@ -109,3 +109,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Description.FunctionLoader`1.#Reset()")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Binding.HttpBinding.#CreateResponse(System.Net.Http.HttpRequestMessage,System.Net.HttpStatusCode,System.Object,Newtonsoft.Json.Linq.JObject)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Binding.HttpBinding.#CreateNegotiatedResponse(System.Net.Http.HttpRequestMessage,System.Net.HttpStatusCode,System.Object)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Scope = "type", Target = "Microsoft.Azure.WebJobs.Script.Binding.HttpTriggerAttribute+HttpTriggerAttributeMetadata")]
+

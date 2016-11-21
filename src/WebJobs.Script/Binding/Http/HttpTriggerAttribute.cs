@@ -13,5 +13,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         public string RouteTemplate { get; set; }
+
+        // Handle "Route" vs. "RouteTemplate" naming mismatch. 
+        // We could get rid of these if the names matched. 
+        private class HttpTriggerAttributeMetadata : AttributeMetadata
+        {
+            public string Route { get; set; }
+
+            public override Attribute GetAttribute()
+            {
+                return new HttpTriggerAttribute
+                {
+                    RouteTemplate = this.Route
+                };
+            }
+        }
     }
 }
