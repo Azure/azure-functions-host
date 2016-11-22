@@ -524,6 +524,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_Scenarios_SinglePropertyObject_SerializesExpectedXml()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+
+            JObject input = new JObject()
+            {
+                { "scenario", "xmlobjectsingleproperty" }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/xml", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("<?xml version=\"1.0\" encoding=\"utf-8\"?><name>Fabio</name>", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Scenarios_ObjectWithoutRootProperty_SerializesExpectedXml()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+
+            JObject input = new JObject()
+            {
+                { "scenario", "xmlobjectmultipleproperties" }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/xml", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("<?xml version=\"1.0\" encoding=\"utf-8\"?><response><name>Fabio</name><lastname>Cavalcante</lastname></response>", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
         public async Task HttpTrigger_Post_PlainText()
         {
             string testData = Guid.NewGuid().ToString();

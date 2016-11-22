@@ -47,10 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
-            config.Formatters.Add(new PlaintextMediaTypeFormatter());
-            config.MessageHandlers.Add(new WebScriptHostHandler(config));
 
-            // Web API configuration and services
+            // Add our media type formatters
+            config.Formatters.Add(new PlaintextMediaTypeFormatter());
+            config.Formatters.Add(new JsonXmlMediaTypeFormatter());
+
+            config.MessageHandlers.Add(new WebScriptHostHandler(config));
 
             // Web API routes
             config.MapHttpAttributeRoutes();
