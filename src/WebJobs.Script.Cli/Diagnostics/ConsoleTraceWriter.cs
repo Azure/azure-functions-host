@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics;
+using System.IO;
 using Colors.Net;
 using Colors.Net.StringColorExtensions;
 using Microsoft.Azure.WebJobs.Host;
@@ -13,6 +15,11 @@ namespace WebJobs.Script.Cli.Diagnostics
     {
         public ConsoleTraceWriter(TraceLevel level) : base(level)
         {
+            // We want to prevent any Console writers added by the core WebJobs SDK
+            // from writing to console, so we set our output to the original console TextWriter
+            // and replace it with a Null TextWriter
+            ColoredConsole.Out = new ColoredConsoleWriter(Console.Out);
+            Console.SetOut(TextWriter.Null);
         }
 
         public override void Trace(TraceEvent traceEvent)
