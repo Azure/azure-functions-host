@@ -3,14 +3,18 @@
 module.exports = function (context, req) {
     var scenario = req.body.scenario;
 
-    if (scenario == "echo") {
-        context.res = req.body.value;
-    }
-    else {
-        context.res = {
-            status: 400
-        };
-    }
+    switch (scenario) {
+        case 'echo':
+            context.res = req.body.value;
+            context.done();
+            break;
+        
+        case 'buffer':
+            context.res.send(Buffer.from('0001', 'hex'));
+            break;
 
-    context.done();
+        default: 
+            context.sendStatus(400);
+            break;
+    }
 }

@@ -226,7 +226,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // apply the value to the binding
                 if (haveValue && value != null)
                 {
-                    value = ConvertBindingValue(value);
+                    if (!binding.Metadata.Type.Equals("http", StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = ConvertBindingValue(value);
+                    }
 
                     BindingContext bindingContext = new BindingContext
                     {

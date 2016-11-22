@@ -4,22 +4,37 @@
 module.exports = (context) => {
     var res = {
         headers: {},
+        
+        // node httpResponse methods
+        setHeader: (field, val) => {
+            res.headers[field.toLowerCase()] = val;
+        },
+
+        getHeader: (field) => {
+            return res.headers[field.toLowerCase()];
+        },
+
+        removeHeader: (field) => {
+            delete res.headers[field.toLowerCase()];
+        },
 
         end: (body) => {
             if (body !== undefined) {
                 res.body = body;
             }
+            setContentType(res);
             context.done();
             return res;
         },
 
+        // express methods
         status: (statusCode) => {
             res.statusCode = statusCode;
             return res;
         },
 
         set: (field, val) => {
-            res.headers[field] = val;
+            res.setHeader(field, val);
             return res;
         },
 
@@ -29,7 +44,7 @@ module.exports = (context) => {
         },
 
         type: (type) => {
-            return res.set('Content-Type', type);
+            return res.set('content-type', type);
         },
 
         json: (body) => {
@@ -38,7 +53,7 @@ module.exports = (context) => {
         },
 
         get: (field) => {
-            return res.headers[field]
+            return res.getHeader(field);
         }
     };
 
@@ -47,3 +62,16 @@ module.exports = (context) => {
 
     return res;
 };
+
+function setContentType(res) {
+    if (res.body !== undefined) {
+        if (res.get('content-type')) {
+            // use user defined content type, if exists
+            return;
+        }
+
+        if (Buffer.isBuffer(res.body)) {
+            res.type('application/octet-stream');
+        }
+    }
+}
