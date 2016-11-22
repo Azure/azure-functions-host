@@ -37,6 +37,11 @@ module.exports = (context) => {
                 .send(body);
         },
 
+        raw: (body) => {
+            res.isRaw = true;
+            return res.send(body);
+        },
+
         get: (field) => {
             return res.headers[field]
         }
