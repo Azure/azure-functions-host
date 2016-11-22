@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
+            RequestConfiguration.Formatters.Add(new JsonXmlMediaTypeFormatter());
 
             // Reset the timer logs first, since one of the tests will
             // be checking them
