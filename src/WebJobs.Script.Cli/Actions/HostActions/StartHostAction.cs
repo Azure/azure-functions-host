@@ -97,7 +97,7 @@ namespace WebJobs.Script.Cli.Actions.HostActions
             }
         }
 
-        private async Task PostHostStartActions(Uri server)
+        private static async Task PostHostStartActions(Uri server)
         {
             try
             {
