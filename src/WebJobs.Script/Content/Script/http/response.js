@@ -4,6 +4,7 @@
 module.exports = (context) => {
     var res = {
         headers: {},
+        body: undefined,
 
         end: (body) => {
             if (body !== undefined) {
