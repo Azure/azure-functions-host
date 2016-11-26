@@ -1,8 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
-
-public static async Task<Item> Run(string input, TraceWriter log)
+﻿public static async Task<Item> Run(string input, TraceWriter log)
 {
     var item = new Item
     {

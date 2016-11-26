@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
@@ -15,6 +16,7 @@ using Microsoft.FSharp.Compiler;
 using Microsoft.FSharp.Compiler.SimpleSourceCodeServices;
 using Microsoft.FSharp.Compiler.SourceCodeServices;
 using Microsoft.FSharp.Core;
+using static Microsoft.Azure.WebJobs.Script.FileUtility;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -182,17 +184,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (code == 0)
                 {
                     var assemblyBytes = File.ReadAllBytes(dllName);
-                    var pdbBytes = File.ReadAllBytes(pdbName);
+                    byte[] pdbBytes = null;
+                    if (File.Exists(pdbName))
+                    {
+                        pdbBytes = File.ReadAllBytes(pdbName);
+                    }
                     var assembly = Assembly.Load(assemblyBytes, pdbBytes);
                     assemblyOption = FSharpOption<Assembly>.Some(assembly);
                 }
             }
             finally
             {
-                File.Delete(scriptFilePath);
-                File.Delete(dllName);
-                File.Delete(pdbName);
+                Task.WhenAll(DeleteIfExistsAsync(scriptFilePath), DeleteIfExistsAsync(dllName), DeleteIfExistsAsync(pdbName))
+                .ContinueWith(t => t.Exception.Handle(e =>
+                {
+                    // TODO: Trace
+                    return true;
+                }), TaskContinuationOptions.OnlyOnFaulted);
             }
+
             return new FSharpCompilation(errors, assemblyOption);
         }
 

@@ -356,6 +356,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("application/json", "{\"name\": \"test\" }", "rawresponse")]
+        [InlineData("application/json", 1, "rawresponse")]
+        [InlineData("application/xml", "<root>XML payload</string>", "rawresponse")]
+        [InlineData("text/plain", "plain text input", "rawresponse")]
+        [InlineData("text/plain", "{\"name\": \"test\" }", "rawresponsenocontenttype")]
+        [InlineData("text/plain", "{\"name\": 1 }", "rawresponsenocontenttype")]
+        [InlineData("text/plain", "<root>XML payload</string>", "rawresponsenocontenttype")]
+        [InlineData("text/plain", "plain text input", "rawresponsenocontenttype")]
+        public async Task HttpTrigger_WithRawResponse_ReturnsContent(string expectedContentType, object body, string scenario)
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Get,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+
+            JObject input = new JObject()
+            {
+                { "scenario", scenario },
+                { "value", JToken.FromObject(body) },
+                { "contenttype", expectedContentType }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(expectedContentType, response.Content.Headers.ContentType.MediaType);
+
+            object responseBody = await response.Content.ReadAsStringAsync();
+            Assert.Equal(body.ToString(), responseBody);
+        }
+
+        [Theory]
         [InlineData("application/json", "\"testinput\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">testinput</string>")]
         [InlineData("text/plain", "testinput")]
@@ -433,6 +474,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // validate input headers
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
+        }
+
+        [Fact]
+        public async Task HttpTriggerExpressApi_SendStatus()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                Method = HttpMethod.Get
+            };
+            request.SetConfiguration(new HttpConfiguration());
+            request.Headers.Add("scenario", "sendStatus");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "request", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerExpressApi", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         [Fact]

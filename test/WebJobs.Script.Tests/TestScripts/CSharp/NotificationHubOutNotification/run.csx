@@ -1,7 +1,5 @@
 ﻿#r "Microsoft.Azure.NotificationHubs"
 
-using System;
-using System.Collections.Generic;
 using Microsoft.Azure.NotificationHubs;
 
 public static void Run(string input, out Notification notification)

@@ -1,6 +1,5 @@
 ﻿#r "Microsoft.Azure.ApiHub.Sdk"
 
-using System;
 using Microsoft.Azure.ApiHub;
 
 public class SampleEntity

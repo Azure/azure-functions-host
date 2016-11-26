@@ -4,6 +4,7 @@
 module.exports = (context) => {
     var res = {
         headers: {},
+        body: undefined,
 
         end: (body) => {
             if (body !== undefined) {
@@ -35,6 +36,11 @@ module.exports = (context) => {
         json: (body) => {
             return res.type('application/json')
                 .send(body);
+        },
+
+        raw: (body) => {
+            res.isRaw = true;
+            return res.send(body);
         },
 
         get: (field) => {

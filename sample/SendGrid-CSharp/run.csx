@@ -1,9 +1,7 @@
 #r "SendGrid"
 #load "..\Shared\Order.csx"
 
-using System;
 using SendGrid.Helpers.Mail;
-using Microsoft.Azure.WebJobs.Host;
 
 public static Mail Run(Order order, TraceWriter log)
 {

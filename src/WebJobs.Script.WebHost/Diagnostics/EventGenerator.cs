@@ -9,32 +9,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class EventGenerator : IEventGenerator
     {
+        private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
+
         public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
         {
+            string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             switch (level)
             {
                 case TraceLevel.Verbose:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt"));
+                    FunctionsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Info:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt"));
+                    FunctionsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Warning:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt"));
+                    FunctionsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Error:
                     if (string.IsNullOrEmpty(details) && exception != null)
                     {
                         details = exception.ToString();
                     }
-                    FunctionsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt"));
+                    FunctionsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
             }
         }
 
-        public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+        public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
         {
-            FunctionsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff tt"));
+            FunctionsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
@@ -85,47 +88,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventCreatedAt)
+            public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65520, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventCreatedAt);
+                    WriteEvent(65520, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventCreatedAt)
+            public void RaiseFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65521, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventCreatedAt);
+                    WriteEvent(65521, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventCreatedAt)
+            public void RaiseFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65522, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventCreatedAt);
+                    WriteEvent(65522, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventCreatedAt)
+            public void RaiseFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65523, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventCreatedAt);
+                    WriteEvent(65523, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, string hostVersion, string eventCreatedAt)
+            public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65524, subscriptionId, appName, eventName, average, minimum, maximum, count, hostVersion, eventCreatedAt);
+                    WriteEvent(65524, subscriptionId, appName, eventName, average, minimum, maximum, count, hostVersion, eventTimestamp);
                 }
             }
         }

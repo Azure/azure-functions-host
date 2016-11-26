@@ -57,8 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<long>(),
-                    It.IsAny<long>()))
-                .Callback((string subscriptionId, string appName, string eventName, long average, long min, long max, long count) =>
+                    It.IsAny<long>(),
+                    It.IsAny<DateTime>()))
+                .Callback((string subscriptionId, string appName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp) =>
                 {
                     var evt = new SystemMetricEvent
                     {

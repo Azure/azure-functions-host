@@ -1,12 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Host;
-
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+﻿public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
     var queryParams = req.GetQueryNameValuePairs()
         .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);

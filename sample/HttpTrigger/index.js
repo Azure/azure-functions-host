@@ -1,4 +1,6 @@
-﻿module.exports = function (context, req) {
+﻿var test = require('../Shared/test');
+
+module.exports = function (context, req) {
     context.log('Node.js HTTP trigger function processed a request. Name=%s', req.query.name);
 
     var headerValue = req.headers['test-header'];
@@ -19,9 +21,10 @@
     else {
         res = {
             status: 200,
-            body: "Hello " + req.query.name,
+            body: test.greeting(req.query.name),
             headers: {
-                'Content-Type': 'text/plain'
+                'Content-Type': 'text/plain',
+                'Shared-Module': test.timestamp
             }
         };
     }

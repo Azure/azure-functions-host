@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
+﻿using System.Threading;
 
 public static async Task Run(string input, TraceWriter log, CancellationToken token)
 {

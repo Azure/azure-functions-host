@@ -419,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
 
-                public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+                public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
                 {
                     throw new NotImplementedException();
                 }
