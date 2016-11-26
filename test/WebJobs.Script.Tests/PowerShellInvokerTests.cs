@@ -122,6 +122,8 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
 
             public string[] TestModules { get; private set; }
 
+            public string[] RootTestModules { get; private set; }
+
             public string TestModulesRoot { get; private set; }
 
             public List<string> TestModulesPath { get; set; }
