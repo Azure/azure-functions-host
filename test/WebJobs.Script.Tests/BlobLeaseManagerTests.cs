@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -235,53 +236,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var blobMock = new Mock<ICloudBlob>();
             blobMock.Setup(b => b.AcquireLeaseAsync(It.IsAny<TimeSpan>(), It.IsAny<string>()))
-                .Returns(() => Task.FromResult(hostId));
-
-            blobMock.Setup(b => b.RenewLeaseAsync(It.IsAny<AccessCondition>()))
-                .Returns(() => Task.Delay(10).ContinueWith(t => renewResetEvent.Set()));
+                .Returns(() => Task.FromResult(hostId));            
 
             using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
 
                 // Make sure we have enough time to trace the renewal
-                await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
+                await TestHelpers.Await(() => traceWriter.Traces.Count == 1, 5000, 500);
             }
 
             TraceEvent acquisitionEvent = traceWriter.Traces.First();
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
-
-            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
-            Assert.Contains("Host lock lease renewed.", renewalEvent.Message);
-            Assert.Equal(TraceLevel.Verbose, renewalEvent.Level);
-        }
-
-        [Fact]
-        public async Task TraceOutputsMessagesWhenLeaseAcquisitionFails()
-        {
-            string hostId = Guid.NewGuid().ToString();
-            string instanceId = Guid.NewGuid().ToString();
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            var acquisitionResetEvent = new ManualResetEventSlim();
-
-            var blobMock = new Mock<ICloudBlob>();
-            blobMock.Setup(b => b.AcquireLeaseAsync(It.IsAny<TimeSpan>(), It.IsAny<string>()))
-                .Returns(() => Task.FromException<string>(new StorageException(new RequestResult { HttpStatusCode = 409 }, "test", null)))
-                .Callback(() => acquisitionResetEvent.Set());
-
-            using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(10), hostId, instanceId, traceWriter))
-            {
-                acquisitionResetEvent.Wait(TimeSpan.FromSeconds(5));
-            }
-
-            // Make sure we have enough time to trace the renewal
-            await TestHelpers.Await(() => traceWriter.Traces.Count == 1, 5000, 500);
-
-            TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host instance '{instanceId}' failed to acquire host lock lease: Another host has an active lease.", acquisitionEvent.Message);
-            Assert.Equal(TraceLevel.Verbose, acquisitionEvent.Level);
-        }
+        }      
 
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseRenewalFails()
@@ -310,8 +278,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
 
-            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
-            Assert.Contains("Failed to renew host lock lease", renewalEvent.Message);
+            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();            
+            string pattern = @"Failed to renew host lock lease: Another host has acquired the lease. The last successful renewal completed at (.+) \([0-9]+ milliseconds ago\) with a duration of [0-9]+ milliseconds.";
+            Assert.True(Regex.IsMatch(renewalEvent.Message, pattern), $"Expected trace event {pattern} not found.");            
             Assert.Equal(TraceLevel.Info, renewalEvent.Level);
         }
 

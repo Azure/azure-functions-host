@@ -1,7 +1,4 @@
-﻿using System;
-using Microsoft.Azure.WebJobs.Host;
-
-public static string Run(WorkItem input, TraceWriter log)
+﻿public static string Run(WorkItem input, TraceWriter log)
 {
     string json = string.Format("{{ \"id\": \"{0}\" }}", input.Id);
 

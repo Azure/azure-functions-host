@@ -1,6 +1,4 @@
-﻿using System;
-
-public static object Run(string input)
+﻿public static object Run(string input)
 {
     return new
     {

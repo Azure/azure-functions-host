@@ -1,5 +1,4 @@
 ﻿using System.Threading;
-using Microsoft.Azure.WebJobs.Host;
 
 public static void Run(string inputData, TraceWriter log)
 {

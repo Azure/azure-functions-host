@@ -1,9 +1,6 @@
 ﻿#r "System.Threading.Tasks"
 #r "..\..\..\Microsoft.WindowsAzure.Mobile.dll"
 
-using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.MobileServices;
 
 public static async Task Run(string input, IMobileServiceTable<Item> table)

@@ -9,53 +9,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class EventGenerator : IEventGenerator
     {
+        private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
+
         public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
         {
+            string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             switch (level)
             {
                 case TraceLevel.Verbose:
-                    Events.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    FunctionsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Info:
-                    Events.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    FunctionsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Warning:
-                    Events.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    FunctionsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Error:
                     if (string.IsNullOrEmpty(details) && exception != null)
                     {
                         details = exception.ToString();
                     }
-                    Events.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary);
+                    FunctionsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
             }
         }
 
-        public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+        public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
         {
-            Events.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count);
+            FunctionsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
         {
-            Events.Instance.LogFunctionExecutionAggregateEvent(siteName, functionName, (ulong)executionTimeInMs, (ulong)functionStartedCount, (ulong)functionCompletedCount, (ulong)functionFailedCount);
+            FunctionsEventSource.Instance.LogFunctionExecutionAggregateEvent(siteName, functionName, (ulong)executionTimeInMs, (ulong)functionStartedCount, (ulong)functionCompletedCount, (ulong)functionFailedCount);
         }
 
         public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
         {
-            Events.Instance.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
+            FunctionsEventSource.Instance.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
         }
 
         public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            Events.Instance.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, (ulong)executionTimeSpan, success);
+            FunctionsEventSource.Instance.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, (ulong)executionTimeSpan, success);
         }
 
         [EventSource(Guid = "08D0D743-5C24-43F9-9723-98277CEA5F9B")]
-        public sealed class Events : EventSource
+        public class FunctionsEventSource : EventSource
         {
-            internal static readonly Events Instance = new Events();
+            internal static readonly FunctionsEventSource Instance = new FunctionsEventSource();
 
             [Event(57907, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
             public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, ulong executionTimeInMs, ulong functionStartedCount, ulong functionCompletedCount, ulong functionFailedCount)
@@ -85,47 +88,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+            public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65520, subscriptionId, appName, functionName, eventName, source, details, summary);
+                    WriteEvent(65520, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+            public void RaiseFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65521, subscriptionId, appName, functionName, eventName, source, details, summary);
+                    WriteEvent(65521, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+            public void RaiseFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65522, subscriptionId, appName, functionName, eventName, source, details, summary);
+                    WriteEvent(65522, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+            public void RaiseFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65523, subscriptionId, appName, functionName, eventName, source, details, summary);
+                    WriteEvent(65523, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
                 }
             }
 
             [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count)
+            public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, string hostVersion, string eventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65524, subscriptionId, appName, eventName, average, minimum, maximum, count);
+                    WriteEvent(65524, subscriptionId, appName, eventName, average, minimum, maximum, count, hostVersion, eventTimestamp);
                 }
             }
         }

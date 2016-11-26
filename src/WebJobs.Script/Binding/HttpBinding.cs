@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             object content = context.Value;
             if (content is Stream)
             {
+                // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                // will be a Stream which we need to convert
                 using (StreamReader streamReader = new StreamReader((Stream)content))
                 {
                     content = await streamReader.ReadToEndAsync();
@@ -46,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             HttpStatusCode statusCode = HttpStatusCode.OK;
             JObject headers = null;
+            bool isRawResponse = false;
             if (content is string)
             {
                 try
@@ -81,6 +84,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         {
                             statusCode = (HttpStatusCode)(int)value;
                         }
+
+                        if ((jo.TryGetValue("isRaw", StringComparison.OrdinalIgnoreCase, out value) && value is JValue) &&
+                            value.Type == JTokenType.Boolean)
+                        {
+                            isRawResponse = (bool)value;
+                        }
                     }
                 }
                 catch (JsonException)
@@ -89,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            HttpResponseMessage response = CreateResponse(request, statusCode, content, headers);
+            HttpResponseMessage response = CreateResponse(request, statusCode, content, headers, isRawResponse);
 
             if (headers != null)
             {
@@ -103,8 +112,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
 
-        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, JObject headers)
+        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, JObject headers, bool isRawResponse)
         {
+            if (isRawResponse)
+            {
+                // We only write the response through one of the formatters if 
+                // the function hasn't indicated that it wants to write the raw response
+                return new HttpResponseMessage(statusCode) { Content = CreateResultContent(content) };
+            }
+
             JToken contentType = null;
             MediaTypeHeaderValue mediaType = null;
             if (content != null &&
@@ -136,13 +152,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return CreateNegotiatedResponse(request, statusCode, content);
         }
 
-        private static HttpContent CreateResultContent(object content, string mediaType)
+        private static HttpContent CreateResultContent(object content, string mediaType = null)
         {
-            if (content is string)
-            {
-                return new StringContent((string)content, null, mediaType);
-            }
-            else if (content is byte[])
+            if (content is byte[])
             {
                 return new ByteArrayContent((byte[])content);
             }
@@ -151,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new StreamContent((Stream)content);
             }
 
-            return null;
+            return new StringContent(content?.ToString() ?? string.Empty, null, mediaType);
         }
 
         private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)

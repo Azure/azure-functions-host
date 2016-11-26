@@ -1,7 +1,6 @@
 ﻿#load "Class.csx"
 
 using System.Net;
-using System.Diagnostics;
 
 public static Task<HttpResponseMessage> Run(HttpRequestMessage req)
 {

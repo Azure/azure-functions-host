@@ -353,6 +353,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C9FCBC
 	ProjectSection(SolutionItems) = preProject
 		sample\Shared\Message.csx = sample\Shared\Message.csx
 		sample\Shared\Order.csx = sample\Shared\Order.csx
+		sample\Shared\test.js = sample\Shared\test.js
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManualTrigger-CSharp", "ManualTrigger-CSharp", "{EB3A602B-4B32-4742-B4A2-39445BD2FBE3}"

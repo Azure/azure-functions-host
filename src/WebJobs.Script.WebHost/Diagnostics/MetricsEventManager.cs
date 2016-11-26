@@ -251,7 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     metricEvent.Average,
                     metricEvent.Minimum,
                     metricEvent.Maximum,
-                    metricEvent.Count);
+                    metricEvent.Count,
+                    metricEvent.Timestamp);
             }
         }
 

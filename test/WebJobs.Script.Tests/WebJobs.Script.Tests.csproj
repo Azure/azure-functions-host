@@ -52,11 +52,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNetCore.Cryptography.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
@@ -104,7 +104,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -140,15 +140,15 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta1-10532\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2-10593\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebSites.DataProtection, Version=0.1.6.0, Culture=neutral, processorArchitecture=MSIL">
@@ -439,6 +439,7 @@
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
     <Compile Include="ExtensionSharedAssemblyProviderTests.cs" />
+    <Compile Include="Extensions\HttpRequestMessageExtensions.cs" />
     <Compile Include="FeatureFlagsTests.cs" />
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
@@ -685,6 +686,12 @@
     <None Include="TestScripts\CSharp\AssembliesFromSharedLocation\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\TwilioReference\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\TwilioReference\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Empty\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -838,6 +845,12 @@
     <Content Include="TestScripts\FSharp\PrivateAssemblyReference\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="TestScripts\FSharp\TwilioReference\run.fsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\FSharp\TwilioReference\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Content Include="TestScripts\Node\ApiHubTableEntityIn\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -982,6 +995,9 @@
     <None Include="TestScripts\Node\WebHookTrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Php\BlobTriggerToBlob\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Php\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1060,6 +1076,9 @@
     <None Include="TestScripts\Python\TimeoutSync\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="TestScripts\Php\BlobTriggerToBlob\run.php">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="TestScripts\Python\TimeoutSync\run.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

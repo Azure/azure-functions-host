@@ -257,6 +257,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return value;
         }
 
+        internal static void OnHostRestart()
+        {
+            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
+        }
+
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
             if (_scriptFunc == null)
@@ -448,13 +453,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             requestObject["method"] = request.Method.ToString().ToUpperInvariant();
             requestObject["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            foreach (var header in request.Headers)
-            {
-                // since HTTP headers are case insensitive, we lower-case the keys
-                // as does Node.js request object
-                headers.Add(header.Key.ToLowerInvariant(), header.Value.First());
-            }
+            // since HTTP headers are case insensitive, we lower-case the keys
+            // as does Node.js request object
+            var headers = request.GetRawHeaders().ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value);
             requestObject["headers"] = headers;
 
             // if the request includes a body, add it to the request object 

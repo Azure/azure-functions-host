@@ -1,8 +1,6 @@
 ﻿#r "Newtonsoft.Json"
 #r "Microsoft.ServiceBus"
 
-using System;
-using System.IO;
 using Newtonsoft.Json;
 using Microsoft.ServiceBus.Messaging;
 

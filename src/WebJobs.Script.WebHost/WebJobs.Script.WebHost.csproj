@@ -56,67 +56,67 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Azure, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Azure.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Azure.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Azure.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Azure.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Bitbucket, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Bitbucket.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Dropbox, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Dropbox.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Dropbox.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Dropbox.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Dropbox.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.DynamicsCRM.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Generic, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Generic.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Generic.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Generic.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Generic.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.GitHub, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.GitHub.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.GitHub.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.GitHub.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.GitHub.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Instagram, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Instagram.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Instagram.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Instagram.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Instagram.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.MailChimp, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.MailChimp.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.MailChimp.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.MailChimp.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.MailChimp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Pusher, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Pusher.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Pusher.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Pusher.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Pusher.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Salesforce, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Salesforce.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Salesforce.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Salesforce.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Salesforce.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Slack, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Slack.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Slack.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Slack.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Slack.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Stripe, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Stripe.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Stripe.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Stripe.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Stripe.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.Trello, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Trello.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Trello.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.Trello.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.Trello.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Receivers.WordPress, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.WordPress.1.2.0-rc1c\lib\net45\Microsoft.AspNet.WebHooks.Receivers.WordPress.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Receivers.WordPress.1.2.0-rc2\lib\net45\Microsoft.AspNet.WebHooks.Receivers.WordPress.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AspNetCore.Cryptography.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
@@ -168,7 +168,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -204,19 +204,19 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Logging, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.Logging.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta1-10532\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2-10593\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.0-beta2-10472\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebSites.DataProtection, Version=0.1.6.0, Culture=neutral, processorArchitecture=MSIL">

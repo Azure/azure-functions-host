@@ -167,10 +167,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     environmentVariables[varName] = queryParam.Value;
                 }
 
-                foreach (var header in request.Headers)
+                var headers = request.GetRawHeaders();
+                foreach (var header in headers)
                 {
                     string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
-                    environmentVariables[varName] = header.Value.First();
+                    environmentVariables[varName] = header.Value;
                 }
 
                 object value = null;
