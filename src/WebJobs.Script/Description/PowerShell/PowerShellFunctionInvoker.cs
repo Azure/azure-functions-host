@@ -263,12 +263,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string functionFolder = Path.Combine(rootScriptPath, functionName);
             string rootModuleDirectory = Path.Combine(rootScriptPath, PowerShellConstants.ModulesFolderName);
             string moduleDirectory = Path.Combine(functionFolder, PowerShellConstants.ModulesFolderName);
-            string[] searchDirectories = new string[] { rootModuleDirectory, moduleDirectory };
-            modulePaths.AddRange(AddToModulePaths(searchDirectories));
+            modulePaths.AddRange(AddToModulePaths(rootModuleDirectory, moduleDirectory));
             return modulePaths;
         }
 
-        internal static List<string> AddToModulePaths(string[] directories)
+        internal static List<string> AddToModulePaths(params string[] directories)
         {
             List<string> paths = new List<string>();
             foreach (string directory in directories)
