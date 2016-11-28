@@ -406,7 +406,6 @@
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
-    <Compile Include="ExpandoObjectJsonConverter.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Extensions\FileUtility.cs" />
     <Compile Include="Extensions\HttpRequestMessageExtensions.cs" />

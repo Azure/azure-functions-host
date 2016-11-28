@@ -2,12 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var result = FunctionBinding.ReadAsCollection(ms).Cast<JObject>().ToArray();
+            var result = FunctionBinding.ReadAsEnumerable(ms).Cast<JObject>().ToArray();
 
             Assert.Equal(3, result.Length);
             for (int i = 0; i < 3; i++)
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var result = FunctionBinding.ReadAsCollection(ms).Cast<JObject>().ToArray();
+            var result = FunctionBinding.ReadAsEnumerable(ms).Cast<JObject>().ToArray();
 
             Assert.Equal(1, result.Length);
             jsonObject = (JObject)result[0];
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             MemoryStream ms = new MemoryStream(bytes);
 
-            var collection = FunctionBinding.ReadAsCollection(ms).Cast<JValue>().ToArray();
+            var collection = FunctionBinding.ReadAsEnumerable(ms).Cast<JValue>().ToArray();
 
             Assert.Equal(3, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             byte[] bytes = Encoding.UTF8.GetBytes("Value1");
             MemoryStream ms = new MemoryStream(bytes);
 
-            var collection = FunctionBinding.ReadAsCollection(ms).Cast<string>().ToArray();
+            var collection = FunctionBinding.ReadAsEnumerable(ms).Cast<string>().ToArray();
 
             Assert.Equal(1, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);
@@ -167,12 +167,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             writer.Flush();
             ms.Position = 0;
 
-            var collection = FunctionBinding.ReadAsCollection(ms).Cast<JValue>().ToArray();
+            var collection = FunctionBinding.ReadAsEnumerable(ms).Cast<JValue>().ToArray();
 
             Assert.Equal(3, collection.Length);
             Assert.Equal("Value1", (string)collection[0]);
             Assert.Equal("Value2", (string)collection[1]);
             Assert.Equal("Value3", (string)collection[2]);
+        }
+
+        [Fact]
+        public void ToJObject_ReturnsExpectedResult()
+        {
+            dynamic child = new ExpandoObject();
+            child.Name = "Mary";
+            child.Location = "Seattle";
+            child.Age = 5;
+
+            dynamic parent = new ExpandoObject();
+            parent.Name = "Bob";
+            parent.Location = "Seattle";
+            parent.Age = 40;
+            parent.Children = new object[] { child };
+
+            JObject resultParent = FunctionBinding.ToJObject(parent);
+
+            Assert.Equal(resultParent["Name"], parent.Name);
+            Assert.Equal(resultParent["Location"], parent.Location);
+            Assert.Equal(resultParent["Age"], parent.Age);
+
+            var children = (JArray)resultParent["Children"];
+            Assert.Equal(1, children.Count);
+            var resultChild = (JObject)children[0];
+            Assert.Equal(resultChild["Name"], child.Name);
+            Assert.Equal(resultChild["Location"], child.Location);
+            Assert.Equal(resultChild["Age"], child.Age);
         }
     }
 }

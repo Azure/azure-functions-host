@@ -6,6 +6,10 @@ module.exports = function (context, req) {
     if (scenario == "echo") {
         context.res = req.body.value;
     }
+    else if (scenario == "buffer")
+    {
+        context.res.send(Buffer.from('0001', 'hex'));
+    }
     else if (scenario == "rawresponse") {
         context.res = {
             status: 200,
