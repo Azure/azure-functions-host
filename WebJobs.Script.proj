@@ -178,7 +178,7 @@
     <BuildConfiguration Condition=" $(Configuration) != '' ">$(Configuration)</BuildConfiguration>
   </PropertyGroup>
 
-  <Target Name="MochaTest" DependsOnTargets="Build" AfterTargets="UnitTest">
+  <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
     <Exec Command="npm i mocha chai $(AppveyorModules)" />
     <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
   </Target>
