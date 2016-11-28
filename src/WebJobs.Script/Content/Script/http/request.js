@@ -3,6 +3,6 @@
 
 module.exports = (context) => {
     var req = context.req;
-    req.get = (field) => req.headers[field];
+    req.get = (field) => req.headers[field.toLowerCase()];
     return req;
 };
