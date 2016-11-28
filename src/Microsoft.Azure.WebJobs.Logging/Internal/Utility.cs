@@ -198,5 +198,63 @@ namespace Microsoft.Azure.WebJobs.Logging
             await table.SafeCreateAsync();  
             return await table.ExecuteAsync(operation);
         }
+
+        // Limit of 100 per batch. 
+        // Parallel uploads. 
+        public static async Task WriteBatchAsync<T>(this ILogTableProvider logTableProvider, IEnumerable<T> e1) where T : TableEntity, IEntityWithEpoch
+        {
+            HashSet<string> rowKeys = new HashSet<string>();
+
+            int batchSize = 90;
+
+            // Batches must be within a single table partition, so Key is "tableName + ParitionKey". 
+            var batches = new Dictionary<string, Tuple<CloudTable, TableBatchOperation>>();
+
+            List<Task> t = new List<Task>();
+
+            foreach (var e in e1)
+            {
+                if (!rowKeys.Add(e.RowKey))
+                {
+                    // Already present
+                }
+
+                var epoch = e.GetEpoch();
+                var instanceTable = logTableProvider.GetTableForDateTime(epoch);
+
+                string key = instanceTable.Name + "/" + e.PartitionKey;
+                                
+                Tuple<CloudTable, TableBatchOperation> tuple;
+                if (!batches.TryGetValue(key, out tuple))
+                {
+                    tuple = Tuple.Create(instanceTable, new TableBatchOperation());
+                    batches[key] = tuple;
+                }
+                TableBatchOperation batch = tuple.Item2;
+
+                batch.InsertOrMerge(e);
+                if (batch.Count >= batchSize)
+                {
+                    Task tUpload = instanceTable.SafeExecuteAsync(batch);
+                    t.Add(tUpload);
+
+                    batches.Remove(key);
+                }
+            }
+
+            // Flush remaining
+            foreach (var tuple in batches.Values)
+            {
+                var instanceTable = tuple.Item1;
+                var batch = tuple.Item2;
+                if (batch.Count > 0)
+                {
+                    Task tUpload = instanceTable.SafeExecuteAsync(batch);
+                    t.Add(tUpload);
+                }
+            }
+
+            await Task.WhenAll(t);
+        }
     }
 }

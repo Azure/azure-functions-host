@@ -59,7 +59,7 @@ namespace Dashboard.UnitTests.RestProtocol
         public string childGuid { get; set; }
     }
 
-        public class InvocationLogViewModel
+    public class InvocationLogViewModel
     {
         public string id { get; set; }
         public string functionId { get; set; }
@@ -67,9 +67,14 @@ namespace Dashboard.UnitTests.RestProtocol
         public string functionFullName { get; set; }
         public string functionDisplayTitle { get; set; }
         public string status { get; set; }
+
+        // Semantics of this change depending on status. 
+        // If Running, it's STartTime. 
+        // If completed, it's end time.
         public string whenUtc { get; set; }
 
-        public double duration { get; set; }
+        // Null if not completed yet. 
+        public double? duration { get; set; }
 
         public string exceptionMessage { get; set; }
         public string exceptionType { get; set; }

@@ -189,7 +189,7 @@ namespace Dashboard.Data
             string continuationToken2 = null;
             if (available > maximumResults)
             {
-                var lastDate = entityValues[entityValues.Length - 1].StartTime.DateTime;
+                var lastDate = entityValues[entityValues.Length - 1].StartTime;
                 lastDate.AddTicks(-1); // Descending timescale. 
                 continuationToken2 = ToContinuationToken(lastDate);
             }

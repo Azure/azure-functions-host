@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Capture each individual function instance. 
     // This has full fidelity to the FunctionInstanceLogItem and can rehydrate it. 
     // 1 entity per Function-Instance. 
-    internal class InstanceTableEntity : TableEntity, IEntityWithEpoch
+    internal class InstanceTableEntity : TableEntity, IEntityWithEpoch, IFunctionInstanceBaseEntry
     {
         const string PartitionKeyFormat = TableScheme.InstancePK;
         const string RowKeyFormat = "{0}"; // functionInstanceId
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             if (item.Arguments != null)
             {
                 argumentJson = JsonConvert.SerializeObject(item.Arguments);
-            } 
+            }
 
             return new InstanceTableEntity
             {
@@ -36,9 +36,8 @@ namespace Microsoft.Azure.WebJobs.Logging
                 FunctionName = item.FunctionName,
                 TriggerReason = item.TriggerReason,
                 StartTime = item.StartTime,
+                FunctionInstanceHeartbeatExpiry = item.FunctionInstanceHeartbeatExpiry,
                 EndTime = item.EndTime,
-
-                RawStatus = item.Status.ToString(),
 
                 LogOutput = item.LogOutput,
 
@@ -51,13 +50,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         {
             return new FunctionInstanceLogItem
             {
-                FunctionInstanceId = Guid.Parse(this.RowKey),
+                FunctionInstanceId = ((IFunctionInstanceBaseEntry) this).FunctionInstanceId,
                 ParentId =  this.ParentId,
                 FunctionName = this.FunctionName,
                 TriggerReason = this.TriggerReason,
-                StartTime = this.StartTime.DateTime,
-                EndTime = (this.EndTime.HasValue) ? this.EndTime.Value.DateTime : (DateTime?) null,
-                Status = this.GetStatus(),
+                StartTime = this.StartTime,
+                EndTime = this.EndTime,
+                FunctionInstanceHeartbeatExpiry = this.FunctionInstanceHeartbeatExpiry,
                 ErrorDetails = this.ErrorDetails,
                 LogOutput = this.LogOutput,
                 Arguments = this.GetArguments()
@@ -66,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public DateTime GetEpoch()
         {
-            return this.StartTime.UtcDateTime; 
+            return this.StartTime; 
         }
 
         internal static TableOperation GetRetrieveOperation(Guid functionInstanceId)
@@ -90,9 +89,14 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public string TriggerReason { get; set; }
 
-        public DateTimeOffset StartTime { get; set; }
+        public DateTime StartTime { get; set; }
 
-        public DateTimeOffset? EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
+
+        // Last heart beat. When EndTime is missing, this lets us guess if the function is still alive. 
+        // Whereas Start and End are written very determinsitically in the lifecycle, 
+        // heartbeat is special because it's written at potentially random times by a background poller thread. 
+        public DateTime? FunctionInstanceHeartbeatExpiry { get; set; }
 
         public string ErrorDetails { get; set; }
 
@@ -112,17 +116,22 @@ namespace Microsoft.Azure.WebJobs.Logging
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(this.ArgumentsJson);
         }
 
-        public string RawStatus { get; set; }
         public Guid? ParentId { get; private set; }
 
-        private FunctionInstanceStatus GetStatus()
+        Guid IFunctionInstanceBaseEntry.FunctionInstanceId
         {
-            FunctionInstanceStatus e;
-            if (!Enum.TryParse<FunctionInstanceStatus>(this.RawStatus, out e))
+            get
             {
-                return FunctionInstanceStatus.Unknown;
+                return Guid.Parse(this.RowKey);
             }
-            return e;
+        }
+
+        bool IFunctionInstanceBaseEntry.HasError
+        {
+            get
+            {
+                return this.ErrorDetails != null;
+            }
         }
     }
 }

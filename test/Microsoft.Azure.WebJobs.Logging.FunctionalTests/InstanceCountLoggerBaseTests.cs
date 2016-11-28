@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
         }
 
         // Pure in-memory logger. 
-        public class TestLogger : InstanceCountLoggerBase
+        internal class TestLogger : InstanceCountLoggerBase
         {
             // Record WriteEntry results. Map Ticks --> value at that time. 
             public Dictionary<long, int> _dict = new Dictionary<long, int>();
@@ -194,12 +194,25 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
             // Events to handshake between Poll() from test thread and WriteEntry() on background thread.
             private readonly AutoResetEvent _eventPollReady = new AutoResetEvent(false);
             private readonly AutoResetEvent _eventFinishedWrite = new AutoResetEvent(false);
+
+            // Map of "last heartbeat". HeartbeatEntity.RowKey --> heartbeat value. 
+            private Dictionary<string, long> _heartbeats = new Dictionary<string, long>();
+
             public long _newTicks;
 
             public int _totalActive;
 
             public TestLogger()
             {                
+            }
+
+            // For testing conveneince, get _heartbeats in an easily-comparable form
+            public string GetHeartbeatSummary()
+            {
+                return string.Join(";",
+                    from kv in _heartbeats
+                    orderby kv.Key
+                    select string.Format("{0}={1}", kv.Key, kv.Value));
             }
 
             // Callback from background Poller thread. 

@@ -28,14 +28,9 @@ namespace Dashboard.ViewModels
                 ExecutingJobRunId = new WebJobRunIdentifierViewModel((WebJobType)Enum.Parse(typeof(WebJobType),
                     snapshot.WebJobType), snapshot.WebJobName, snapshot.WebJobRunId);
             }
-            if (heartbeatIsValid.HasValue)
-            {
-                Status = snapshot.GetStatusWithHeartbeat(heartbeatIsValid.Value);
-            }
-            else
-            {
-                Status = snapshot.GetStatusWithoutHeartbeat();
-            }
+
+            Status = snapshot.GetStatusWithHeartbeat(heartbeatIsValid);
+            
             switch (Status)
             {
                 case FunctionInstanceStatus.Running:

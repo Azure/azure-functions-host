@@ -41,15 +41,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         object _lock = new object();
 
         // Track for batching. 
-        EntityCollection<InstanceTableEntity> _instances = new EntityCollection<InstanceTableEntity>();
-        EntityCollection<RecentPerFuncEntity> _recents = new EntityCollection<RecentPerFuncEntity>();
         EntityCollection<FunctionDefinitionEntity> _funcDefs = new EntityCollection<FunctionDefinitionEntity>();
 
         EntityCollection<TimelineAggregateEntity> _timespan = new EntityCollection<TimelineAggregateEntity>();
 
         // Container is common shared across all log writer instances 
         static ContainerActiveLogger _container;
-        CloudTableInstanceCountLogger _instanceLogger;
+        private CloudTableInstanceCountLogger _instanceLogger;
 
         public LogWriter(string hostName, string machineName, ILogTableProvider logTableProvider)
         {
@@ -134,51 +132,60 @@ namespace Microsoft.Azure.WebJobs.Logging
             return 1;
         }
 
-        public async Task AddAsync(FunctionInstanceLogItem item, CancellationToken cancellationToken = default(CancellationToken))
+        // Tracks currently executing functions.
+        // FunctionInstanceId --> function 
+        Dictionary<Guid, FunctionInstanceLogItem> _activeFuncs = new Dictionary<Guid, FunctionInstanceLogItem>();
+        HashSet<Guid> _completedFunctions = new HashSet<Guid>();
+
+        public Task AddAsync(FunctionInstanceLogItem item, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (item == null)
+            {
+                throw new ArgumentNullException("item");
+            }
             item.Validate();
             item.FunctionId = FunctionId.Build(this._hostName, item.FunctionName);
 
+            // Both Start and Completed log here. Completed will overwrite a Start entry. 
+            lock (_lock)
             {
-                lock(_lock)
+                _activeFuncs[item.FunctionInstanceId] = item;          
+            }
+
+            lock (_lock)
+            {
+                StartBackgroundFlusher();
+                if (_container == null)
                 {
-                    StartBackgroundFlusher();
-                    if (_container == null)
-                    {                        
-                        _container = new ContainerActiveLogger(_machineName, _logTableProvider);
-                    }
-                    if (_instanceLogger == null)
-                    {
-                        int size = GetContainerSize();                        
-                        _instanceLogger = new CloudTableInstanceCountLogger(_machineName, _logTableProvider, size);
-                    }
+                    _container = new ContainerActiveLogger(_machineName, _logTableProvider);
                 }
-                if (item.IsCompleted())
+                if (_instanceLogger == null)
                 {
-                    _container.Decrement(item.FunctionInstanceId);
-                    _instanceLogger.Decrement(item.FunctionInstanceId);
-                }
-                else
-                {
-                    _container.Increment(item.FunctionInstanceId);
-                    _instanceLogger.Increment(item.FunctionInstanceId);
+                    int size = GetContainerSize();
+                    _instanceLogger = new CloudTableInstanceCountLogger(_machineName, _logTableProvider, size);
                 }
             }
 
+            if (item.IsCompleted())
+            {
+                _container.Decrement(item.FunctionInstanceId);
+                _instanceLogger.Decrement(item.FunctionInstanceId);
+
+                _completedFunctions.Add(item.FunctionInstanceId);
+            }
+            else
+            {
+                _container.Increment(item.FunctionInstanceId);
+                _instanceLogger.Increment(item.FunctionInstanceId);
+            }
+            
             lock (_lock)
             {
                 if (_seenFunctions.Add(item.FunctionName))
                 {
                     _funcDefs.Add(FunctionDefinitionEntity.New(item.FunctionId, item.FunctionName));
                 }
-            }
-                   
-            // Both Start and Completed log here. Completed will overwrite a Start entry. 
-            lock (_lock)
-            {
-                _instances.Add(InstanceTableEntity.New(item));
-                _recents.Add(RecentPerFuncEntity.New(_machineName, item));
-            }
+            }                   
 
             if (item.IsCompleted())
             {
@@ -203,10 +210,8 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }           
             }
 
-            // Flush every 100 items, maximize with tables. 
-            Task t1 = FlushIntancesAsync(false);
-            Task t2 = FlushTimelineAggregateAsync();
-            await Task.WhenAll(t1, t2);
+            // Results will get written on a background thread            
+            return Task.FromResult(0);
         }
 
         // Could flush on a timer. 
@@ -238,34 +243,52 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
         }
 
+
+        private FunctionInstanceLogItem[] Update()
+        {
+            FunctionInstanceLogItem[] items;
+            lock (_lock)
+            {
+                items = _activeFuncs.Values.ToArray();
+            }
+            foreach (var item in items)
+            {
+                item.Refresh(_flushInterval);
+            }
+            return items;
+        }
+
         // Could flush on a timer. 
         private async Task FlushIntancesAsync(bool always)
         {
-            InstanceTableEntity[] instances;
-            RecentPerFuncEntity[] recentInvokes;
+            // Before writing, give items a chance to refresh 
+            var itemsSnapshot = Update();
+
+            // Write entries
+            var instances = Array.ConvertAll(itemsSnapshot, item => InstanceTableEntity.New(item));
+            var recentInvokes = Array.ConvertAll(itemsSnapshot, item => RecentPerFuncEntity.New(_machineName, item));
+
             FunctionDefinitionEntity[] functionDefinitions;
 
             lock (_lock)
             {
-                if (!always)
-                {
-                    if (_instances.Count < 90)
-                    {
-                        return;
-                    } 
-                }
-
-                instances = _instances.ToArray();
-                recentInvokes = _recents.ToArray();
-                functionDefinitions = _funcDefs.ToArray();
-                _instances.Clear();
-                _recents.Clear();
+                functionDefinitions = _funcDefs.ToArray();                
                 _funcDefs.Clear();
             }
             Task t1 = WriteBatchAsync(instances);
             Task t2 = WriteBatchAsync(recentInvokes);
             Task t3 = WriteBatchAsync(functionDefinitions);
             await Task.WhenAll(t1, t2, t3);
+
+            // After we write to table, remove all completed functions. 
+            lock (_lock)
+            {
+                foreach (var completedId in _completedFunctions)
+                {
+                    _activeFuncs.Remove(completedId);
+                }
+                _completedFunctions.Clear();
+            }
         }
 
         private async Task FlushCoreAsync()
@@ -308,59 +331,9 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // Limit of 100 per batch. 
         // Parallel uploads. 
-        private async Task WriteBatchAsync<T>(IEnumerable<T> e1) where T : TableEntity, IEntityWithEpoch
-        {            
-            HashSet<string> rowKeys = new HashSet<string>();
-
-            int batchSize = 90;
-
-            Dictionary<string, TableBatchOperation> batches = new Dictionary<string, TableBatchOperation>();
-            Dictionary<string, CloudTable> tables = new Dictionary<string, CloudTable>();
-            
-            List<Task> t = new List<Task>();
-
-            foreach (var e in e1)
-            {
-                if (!rowKeys.Add(e.RowKey))
-                {
-                    // Already present
-                }
-
-                var epoch = e.GetEpoch();
-                var instanceTable = this._logTableProvider.GetTableForDateTime(epoch);
-                TableBatchOperation batch;
-                if (!batches.TryGetValue(instanceTable.Name, out batch))
-                {
-                    tables[instanceTable.Name] = instanceTable;
-                    batch = new TableBatchOperation();
-                    batches[instanceTable.Name] = batch;
-                }
-
-                batch.InsertOrReplace(e);
-                if (batch.Count >= batchSize)
-                {
-                    Task tUpload = instanceTable.SafeExecuteAsync(batch);
-                    t.Add(tUpload);
-
-                    batch = new TableBatchOperation();
-                    batches[instanceTable.Name] = batch;
-                }
-            }
-
-            foreach (var kv in batches)
-            {
-                var tableName = kv.Key;
-                var instanceTable = tables[tableName];
-                var batch = kv.Value;
-                if (batch.Count > 0)
-                {
-                    Task tUpload = instanceTable.SafeExecuteAsync(batch);
-                    t.Add(tUpload);
-                }
-            }
-
-
-            await Task.WhenAll(t);
+        private Task WriteBatchAsync<T>(IEnumerable<T> e1) where T : TableEntity, IEntityWithEpoch
+        {
+            return this._logTableProvider.WriteBatchAsync(e1);       
         }
 
         // Collection where adding in the same RowKey replaces a previous entry with that key. 
