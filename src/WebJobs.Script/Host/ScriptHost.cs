@@ -52,7 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
+#if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
+#endif
         }
 
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -320,9 +322,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+#if FEATURE_NODE
                     new NodeFunctionDescriptorProvider(this, ScriptConfig),
+#endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+#if FEATURE_POWERSHELL
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
+#endif
                 };
 
                 // Allow BindingProviders to initialize
@@ -410,9 +416,11 @@ namespace Microsoft.Azure.WebJobs.Script
             // signal host restart
             _restartEvent.Set();
 
+#if FEATURE_NODE
             // whenever we're restarting the host, we want to let the Node
             // invoker know so it can clear the require cache, etc.
             NodeFunctionInvoker.OnHostRestart();
+#endif
         }
 
         /// <summary>
@@ -1176,7 +1184,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 _restartEvent.Dispose();
                 (TraceWriter as IDisposable)?.Dispose();
 
+#if FEATURE_NODE
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
+#endif
             }
         }
     }

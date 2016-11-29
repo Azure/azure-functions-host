@@ -139,7 +139,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         if (!_webHostSettings.IsSelfHost)
                         {
+ //Mono does not yet support HostingEnvironment.QueueBackgroundWorkItem
+#if MONO
+                            Task.Run(() => WarmUp(_webHostSettings));
+#else
                             HostingEnvironment.QueueBackgroundWorkItem((ct) => WarmUp(_webHostSettings));
+#endif
                         }
                         else
                         {
@@ -153,7 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     if (!_webHostSettings.IsSelfHost)
                     {
+#if MONO
+                        Task.Run(() => RunAndBlock());
+#else
                         HostingEnvironment.QueueBackgroundWorkItem((ct) => RunAndBlock(ct));
+#endif
                     }
                     else
                     {

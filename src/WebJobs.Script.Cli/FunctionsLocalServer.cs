@@ -68,11 +68,20 @@ namespace WebJobs.Script.Cli
                     _settings.DisplayLaunchingRunServerWarning = answer == "yes" ? true : false;
                 }
 
-                var exeName = Process.GetCurrentProcess().MainModule.FileName;
-                var exe = new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true);
+                //TODO: factor out to PlatformHelper.LaunchInNewConsole and implement for Mac using AppleScript
+                var exeName = System.Reflection.Assembly.GetEntryAssembly().Location;
+                var exe = PlatformHelper.IsWindows
+                    ? new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true)
+                    : new Executable("mono", $"{exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: false);
+
                 exe.RunAsync().Ignore();
                 await Task.Delay(500);
-                ConsoleNativeMethods.GetFocusBack();
+
+                if (PlatformHelper.IsWindows)
+                {
+                    ConsoleNativeMethods.GetFocusBack();
+                }
+
                 return server;
             }
             else
