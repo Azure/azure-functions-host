@@ -27,6 +27,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(Fixture.TestBlobTriggerContents + "_" + Fixture.TestBlobContents, resultContents.Trim());
         }
 
+        [Fact]
+        public async Task ManualTrigger_Invoke_Succeeds()
+        {
+            await ManualTrigger_Invoke_SucceedsTest();
+        }
+
+        [Fact]
+        public async Task QueueTriggerToBlob()
+        {
+            await QueueTriggerToBlobTest();
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Php", "php")

@@ -148,4 +148,47 @@
 
 }</value>
   </data>
+  <data name="DotNetFunctionJson" xml:space="preserve">
+    <value>{
+    "scriptFile":"DotNetFunctionAssembly.dll",
+    "entryPoint": "TestFunction.Function.Run",
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "name": "req",
+            "direction": "in",
+            "methods": [ "get" ]
+        },
+        {
+            "type": "http",
+            "name": "$return",
+            "direction": "out"
+        }
+    ]
+}</value>
+  </data>
+  <data name="DotNetFunctionSource" xml:space="preserve">
+    <value>using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+
+namespace TestFunction
+{
+    public class Function
+    {
+        public static Task&lt;HttpResponseMessage&gt; Run(HttpRequestMessage req, TraceWriter log)
+        {
+            log.Info("Test");
+
+            var res = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Hello from .NET")
+            };
+
+            return Task.FromResult(res);
+        }
+    }
+}</value>
+  </data>
 </root>

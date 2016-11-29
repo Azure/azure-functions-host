@@ -129,6 +129,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ManualTrigger_Invoke_Succeeds()
+        {
+            await ManualTrigger_Invoke_SucceedsTest();
+        }
+
+        [Fact]
+        public async Task QueueTriggerToBlob()
+        {
+            await QueueTriggerToBlobTest();
+        }
+
+        [Fact]
         public async Task TableInput()
         {
             await TableInputTest();

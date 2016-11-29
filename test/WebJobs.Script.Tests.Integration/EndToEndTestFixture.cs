@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TraceWriter = TraceWriter,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            
+
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             Host.Stop();
             Host.Dispose();

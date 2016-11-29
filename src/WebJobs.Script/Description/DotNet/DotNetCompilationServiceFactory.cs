@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory
     {
-        private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp }.ToImmutableArray();
+        private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp, ScriptType.DotNetAssembly }.ToImmutableArray();
         private static OptimizationLevel? _optimizationLevel;
 
         ImmutableArray<ScriptType> ICompilationServiceFactory.SupportedScriptTypes
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     string releaseModeSetting = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.CompilationReleaseMode);
                     bool releaseMode;
                     if (!bool.TryParse(releaseModeSetting, out releaseMode) &&
-                        ScriptSettingsManager.Instance.IsAzureEnvironment && 
+                        ScriptSettingsManager.Instance.IsAzureEnvironment &&
                         !ScriptSettingsManager.Instance.IsRemoteDebuggingEnabled)
                     {
                         // If the release mode setting is not set, we're running in Azure
@@ -61,6 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     return new CSharpCompilationService(metadataResolver, OptimizationLevel);
                 case ScriptType.FSharp:
                     return new FSharpCompiler(metadataResolver, OptimizationLevel);
+                case ScriptType.DotNetAssembly:
+                    return new RawAssemblyCompilationService();
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture,
                         "The script type {0} is not supported by the {1}", scriptType, typeof(DotNetCompilationServiceFactory).Name));
