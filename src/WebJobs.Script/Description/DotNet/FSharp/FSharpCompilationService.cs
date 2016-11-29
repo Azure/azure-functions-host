@@ -83,11 +83,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             FSharpErrorInfo[] errors = null;
             FSharpOption<Assembly> assemblyOption = null;
-            string scriptFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(functionMetadata.ScriptFile));
 
-            var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
-            var dllName = Path.GetTempPath() + asmName + ".dll";
-            var pdbName = Path.ChangeExtension(dllName, "pdb");
+            string scriptPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(scriptPath);
+
+            string scriptFilePath = Path.Combine(scriptPath, Path.GetFileName(functionMetadata.ScriptFile));
+
+            var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
+            var assemblyFileName = Path.Combine(scriptPath, assemblyName + ".dll");
+            var pdbName = Path.ChangeExtension(assemblyFileName, "pdb");
 
             try
             {
@@ -112,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 var otherFlags = new List<string>();
 
-                // For some reason CompileToDynamicAssembly wants "fsc.exe" as the first arg, it is ignored.
                 otherFlags.Add("fsc.exe");
 
                 // The --noframework option is used because we will shortly add references to mscorlib and FSharp.Core
@@ -159,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--lib:" + Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName));
                 }
 
-                otherFlags.Add("--out:" + dllName);
+                otherFlags.Add("--out:" + assemblyFileName);
 
                 // Get the #load closure
                 FSharpChecker checker = FSharpChecker.Create(null, null, null, msbuildEnabled: FSharpOption<bool>.Some(false));
@@ -183,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (code == 0)
                 {
-                    var assemblyBytes = File.ReadAllBytes(dllName);
+                    var assemblyBytes = File.ReadAllBytes(assemblyFileName);
                     byte[] pdbBytes = null;
                     if (File.Exists(pdbName))
                     {
@@ -195,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             finally
             {
-                Task.WhenAll(DeleteIfExistsAsync(scriptFilePath), DeleteIfExistsAsync(dllName), DeleteIfExistsAsync(pdbName))
+                DeleteDirectoryAsync(scriptPath, recursive: true)
                 .ContinueWith(t => t.Exception.Handle(e =>
                 {
                     // TODO: Trace
