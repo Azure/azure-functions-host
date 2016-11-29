@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GetScript()
         {
             string result = PowerShellFunctionInvoker.GetScript(_fixture.TestScriptPath);
-            Assert.Equal(_fixture.TestScripContent, result.Trim(), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(_fixture.TestScriptContent, result.Trim(), StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -85,7 +85,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
         {
             public Fixture()
             {
-                TestScripContent = "This is a test script.";
+                TestScriptContent = "This is a test script.";
                 TestFunctionName = "TestFunction";
                 TestRootScriptPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
                 TestFunctionRoot = Path.Combine(TestRootScriptPath, TestFunctionName);
@@ -116,7 +116,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
 
             public string TestScriptPath { get; private set; }
 
-            public string TestScripContent { get; private set; }
+            public string TestScriptContent { get; private set; }
 
             public string TestFunctionName { get; private set; }
 
@@ -156,7 +156,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                     // Create a file to write to.
                     using (StreamWriter sw = File.CreateText(path))
                     {
-                        sw.WriteLine(TestScripContent);
+                        sw.WriteLine(TestScriptContent);
                     }
                 }
 

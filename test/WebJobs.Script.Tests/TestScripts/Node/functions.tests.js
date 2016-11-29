@@ -22,6 +22,22 @@ describe('http', () => {
             res = response(context);
         });
 
+        it('setHeader', () => {
+            res.setHeader('TEST', 'val');
+            expect(res.headers.test).to.equal('val');
+        });
+
+        it('getHeader', () => {
+            res.setHeader('TEST', 'val');
+            expect(res.getHeader('TeSt')).to.equal('val');
+        });
+
+        it('removeHeader', () => {
+            res.setHeader('TEST', 'val');
+            res.removeHeader('teSt');
+            expect(res.getHeader('test')).to.be.undefined;
+        });
+
         it('status', () => {
             res.status(200);
             expect(res.statusCode).to.equal(200);
@@ -46,6 +62,19 @@ describe('http', () => {
             expect(context.isDone).to.be.true;
         });
 
+        it('sends buffer', () => {
+            res.send(new Buffer([0, 1]));
+            expect(Buffer.isBuffer(res.body)).to.be.true;
+            expect(res.get('content-type')).to.equal('application/octet-stream');
+        });
+
+        it('send maintains set type', () => {
+            res.send(new Buffer([0, 1]))
+                .type('image/png');
+            expect(Buffer.isBuffer(res.body)).to.be.true;
+            expect(res.get('content-type')).to.equal('image/png');
+        });
+
         it('json', () => {
             res.json('test');
             expect(res.body).to.equal('test');
@@ -54,13 +83,13 @@ describe('http', () => {
         });
 
         it('set', () => {
-            res.set('header', 'val');
+            res.set('Header', 'val');
             expect(res.headers.header).to.equal('val');
             expect(context.isDone).to.be.false;
         });
 
         it('header', () => {
-            res.header('header', 'val');
+            res.header('Header', 'val');
             expect(res.headers.header).to.equal('val');
             expect(context.isDone).to.be.false;
         });
@@ -74,6 +103,12 @@ describe('http', () => {
         it('get', () => {
             res.set('header', 'val');
             expect(res.get('header')).to.equal('val');
+            expect(context.isDone).to.be.false;
+        });
+
+        it('get upper', () => {
+            res.set('header', 'val');
+            expect(res.get('HEADER')).to.equal('val');
             expect(context.isDone).to.be.false;
         });
 
@@ -100,8 +135,12 @@ describe('http', () => {
 
         it('get', () => {
             expect(req.get('test')).to.equal('val');
-        })
-    });    
+        });
+        
+        it('get upper', () => {
+            expect(req.get('TEST')).to.equal('val');
+        });
+    });
 });
 
 describe('functions', () => {
@@ -195,7 +234,6 @@ describe('functions', () => {
             });
 
             func(context, () => {});
-            
         });
 
         it('logs if promise and done', (done) => {
