@@ -12,6 +12,17 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class FileUtility
     {
+        public static Task DeleteDirectoryAsync(string path, bool recursive)
+        {
+            return Task.Run(() =>
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive);
+                }
+            });
+        }
+
         public static Task DeleteIfExistsAsync(string path)
         {
             return Task.Run(() =>
