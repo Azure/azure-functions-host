@@ -254,6 +254,16 @@ namespace Microsoft.Azure.WebJobs.Logging
                     var segment = await SafeExecuteQuerySegmentedAsync(rangeQuery, startTime, endTime, continuationToken);
 
                     list.AddRange(segment.Results);
+
+                    if (rangeQuery.TakeCount.HasValue)
+                    {
+                        // Don't need to return more entries than were requested. 
+                        if (list.Count >= rangeQuery.TakeCount.Value)
+                        {
+                            segment.ContinuationToken = null;
+                        }
+                    }
+
                     if (segment.ContinuationToken == null)
                     {
                         // Done!
