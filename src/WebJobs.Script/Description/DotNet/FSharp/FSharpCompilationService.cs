@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
             var dllName = Path.GetTempPath() + asmName + ".dll";
-            var pdbName = Path.ChangeExtension(dllName, "pdb");
+            var pdbName = Path.ChangeExtension(dllName, _isMono? "dll.mdb" : "pdb");
 
             try
             {
@@ -150,6 +150,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--tailcalls-");
                 }
 
+                if (_isMono)
+                {
+                    var monoDir = Path.GetDirectoryName(typeof(string).Assembly.Location);
+                    var facadesDir = Path.Combine(monoDir, "Facades");
+                    otherFlags.Add("--lib:" + facadesDir);
+                }
+
                 // If we have a private assembly folder, make sure the compiler uses it to resolve dependencies
                 string privateAssembliesFolder = Path.Combine(Path.GetDirectoryName(functionMetadata.ScriptFile), DotNetConstants.PrivateAssembliesFolderName);
                 if (Directory.Exists(privateAssembliesFolder))
@@ -195,6 +202,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             return new FSharpCompilation(errors, assemblyOption);
         }
+
+        static bool _isMono = Type.GetType("Mono.Runtime") != null;
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)
         {
