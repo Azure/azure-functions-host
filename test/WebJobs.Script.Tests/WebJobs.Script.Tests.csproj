@@ -175,6 +175,7 @@
       <HintPath>..\..\packages\Microsoft.CodeAnalysis.Scripting.Common.1.3.2\lib\dotnet\Microsoft.CodeAnalysis.Scripting.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Data.Edm.5.8.1\lib\net40\Microsoft.Data.Edm.dll</HintPath>
       <Private>True</Private>
@@ -408,6 +409,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Binding\HttpBindingTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="ApiHub\ApiHubTestHelper.cs" />
     <Compile Include="AuthorizationLevelAttributeTests.cs" />
@@ -440,6 +442,7 @@
     <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
     <Compile Include="ExtensionSharedAssemblyProviderTests.cs" />
     <Compile Include="Extensions\HttpRequestMessageExtensions.cs" />
+    <Compile Include="Extensions\IDictionaryExtensionsTests.cs" />
     <Compile Include="FeatureFlagsTests.cs" />
     <Compile Include="FileTraceWriterTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />

@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
@@ -111,17 +112,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             attributes.Add(attribute);
         }
 
-        internal static ICollection ReadAsCollection(object value)
+        internal static IEnumerable ReadAsEnumerable(object value)
         {
-            ICollection values = null;
+            IEnumerable values = null;
 
             if (value is Stream)
             {
                 // first deserialize the stream as a string
-                using (var reader = new StreamReader((Stream)value))
-                {
-                    value = reader.ReadToEnd();
-                }
+                ConvertStreamToValue((Stream)value, DataType.String, ref value);
             }
 
             string stringValue = value as string;
@@ -141,10 +139,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     values = (JArray)token;
                 }
             }
+            else if (value is Array && !(value is byte[]))
+            {
+                values = (IEnumerable)value;
+            }
             else
             {
-                // not json, so add the singleton value
-                values = new Collection<object>() { value };
+                // not a collection, so just add the singleton value
+                values = new object[] { value };
             }
 
             return values;
@@ -154,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(context.Attributes);
 
-            IEnumerable values = ReadAsCollection(context.Value);
+            IEnumerable values = ReadAsEnumerable(context.Value);
 
             // convert values as necessary and add to the collector
             foreach (var value in values)
@@ -162,18 +164,41 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 object converted = null;
                 if (typeof(T) == typeof(string))
                 {
-                    converted = value.ToString();
+                    if (value is ExpandoObject)
+                    {
+                        converted = Utility.ToJson((ExpandoObject)value, Formatting.None);
+                    }
+                    else
+                    {
+                        converted = value.ToString();
+                    }
                 }
                 else if (typeof(T) == typeof(JObject))
                 {
-                    converted = (JObject)value;
+                    if (value is JObject)
+                    {
+                        converted = (JObject)value;
+                    }
+                    else if (value is ExpandoObject)
+                    {
+                        converted = Utility.ToJObject((ExpandoObject)value);
+                    }
                 }
                 else if (typeof(T) == typeof(byte[]))
                 {
                     byte[] bytes = value as byte[];
                     if (bytes == null)
                     {
-                        string stringValue = value.ToString();
+                        string stringValue = null;
+                        if (value is ExpandoObject)
+                        {
+                            stringValue = Utility.ToJson((ExpandoObject)value, Formatting.None);
+                        }
+                        else
+                        {
+                            stringValue = value.ToString();
+                        }
+                        
                         bytes = Encoding.UTF8.GetBytes(stringValue);
                     }
                     converted = bytes;
@@ -252,6 +277,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     JToken jToken = (JToken)value;
                     string json = jToken.ToString(Formatting.None);
+                    bytes = Encoding.UTF8.GetBytes(json);
+                }
+                else if (value is ExpandoObject)
+                {
+                    string json = Utility.ToJson((ExpandoObject)value, Formatting.None);
                     bytes = Encoding.UTF8.GetBytes(json);
                 }
 

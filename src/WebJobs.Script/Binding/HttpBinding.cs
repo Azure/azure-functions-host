@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -21,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
+        private static readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
+
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
@@ -31,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return null;
         }
 
-        public override async Task BindAsync(BindingContext context)
+        public override Task BindAsync(BindingContext context)
         {
             HttpRequestMessage request = (HttpRequestMessage)context.TriggerValue;
 
@@ -39,58 +42,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             if (content is Stream)
             {
                 // for script language functions (e.g. PowerShell, BAT, etc.) the value
-                // will be a Stream which we need to convert
-                using (StreamReader streamReader = new StreamReader((Stream)content))
-                {
-                    content = await streamReader.ReadToEndAsync();
-                }
+                // will be a Stream which we need to convert to string
+                ConvertStreamToValue((Stream)content, DataType.String, ref content);
             }
 
-            HttpStatusCode statusCode = HttpStatusCode.OK;
-            JObject headers = null;
-            bool isRawResponse = false;
-            if (content is string)
+            HttpResponseMessage response = CreateResponse(request, content);
+            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+
+            return Task.CompletedTask;
+        }
+
+        internal static HttpResponseMessage CreateResponse(HttpRequestMessage request, object content)
+        {
+            string stringContent = content as string;
+            if (stringContent != null)
             {
                 try
                 {
-                    // attempt to read the content as a JObject
-                    JObject jo = JObject.Parse((string)content);
-
-                    // if the content is json we capture that so it will be
-                    // serialized as json by WebApi below
-                    content = jo;
-
-                    // TODO: Improve this logic
-                    // Sniff the object to see if it looks like a response object
-                    // by convention
-                    JToken value = null;
-                    if (jo.TryGetValue("body", StringComparison.OrdinalIgnoreCase, out value))
-                    {
-                        content = value;
-
-                        if (value is JValue && ((JValue)value).Type == JTokenType.String)
-                        {
-                            // convert raw strings so they get serialized properly below
-                            content = (string)value;
-                        }
-
-                        if (jo.TryGetValue("headers", StringComparison.OrdinalIgnoreCase, out value) && value is JObject)
-                        {
-                            headers = (JObject)value;
-                        }
-
-                        if ((jo.TryGetValue("status", StringComparison.OrdinalIgnoreCase, out value) && value is JValue) ||
-                            (jo.TryGetValue("statusCode", StringComparison.OrdinalIgnoreCase, out value) && value is JValue))
-                        {
-                            statusCode = (HttpStatusCode)(int)value;
-                        }
-
-                        if ((jo.TryGetValue("isRaw", StringComparison.OrdinalIgnoreCase, out value) && value is JValue) &&
-                            value.Type == JTokenType.Boolean)
-                        {
-                            isRawResponse = (bool)value;
-                        }
-                    }
+                    // attempt to read the content as json
+                    content = JObject.Parse(stringContent);
                 }
                 catch (JsonException)
                 {
@@ -98,21 +68,79 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            HttpResponseMessage response = CreateResponse(request, statusCode, content, headers, isRawResponse);
+            // see if the content is a response object, defining http response
+            // properties
+            IDictionary<string, object> responseObject = null;
+            if (content is JObject)
+            {
+                responseObject = JsonConvert.DeserializeObject<Dictionary<string, object>>(stringContent, _dictionaryJsonConverter);
+            }
+            else
+            {
+                // Handle ExpandoObjects
+                responseObject = content as IDictionary<string, object>;
+            }
 
-            if (headers != null)
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            IDictionary<string, object> responseHeaders = null;
+            bool isRawResponse = false;
+            if (responseObject != null)
+            {
+                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out isRawResponse);
+            }
+
+            HttpResponseMessage response = CreateResponse(request, statusCode, content, responseHeaders, isRawResponse);
+
+            if (responseHeaders != null)
             {
                 // apply any user specified headers
-                foreach (var header in headers)
+                foreach (var header in responseHeaders)
                 {
                     AddResponseHeader(response, header);
                 }
             }
 
-            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+            return response;
         }
 
-        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, JObject headers, bool isRawResponse)
+        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out HttpStatusCode statusCode, out bool isRawResponse)
+        {
+            headers = null;
+            statusCode = HttpStatusCode.OK;
+            isRawResponse = false;
+
+            // TODO: Improve this logic
+            // Sniff the object to see if it looks like a response object
+            // by convention
+            object bodyValue = null;
+            if (responseObject.TryGetValue("body", out bodyValue, ignoreCase: true))
+            {
+                // the response content becomes the specified body value
+                content = bodyValue;
+
+                IDictionary<string, object> headersValue = null;
+                if (responseObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
+                {
+                    headers = headersValue;
+                }
+
+                object statusValue;
+                if ((responseObject.TryGetValue("statusCode", out statusValue, ignoreCase: true) ||
+                     responseObject.TryGetValue("status", out statusValue, ignoreCase: true)) &&
+                     (statusValue is int || statusValue is string))
+                {
+                    statusCode = (HttpStatusCode)Convert.ToInt32(statusValue);
+                }
+
+                bool isRawValue;
+                if (responseObject.TryGetValue<bool>("isRaw", out isRawValue, ignoreCase: true))
+                {
+                    isRawResponse = isRawValue;
+                }
+            }
+        }
+
+        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, IDictionary<string, object> headers, bool isRawResponse)
         {
             if (isRawResponse)
             {
@@ -121,11 +149,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new HttpResponseMessage(statusCode) { Content = CreateResultContent(content) };
             }
 
-            JToken contentType = null;
+            string contentType = null;
             MediaTypeHeaderValue mediaType = null;
             if (content != null &&
-                (headers?.TryGetValue("content-type", StringComparison.OrdinalIgnoreCase, out contentType) ?? false) &&
-                MediaTypeHeaderValue.TryParse(contentType.Value<string>(), out mediaType))
+                (headers?.TryGetValue<string>("content-type", out contentType, ignoreCase: true) ?? false) &&
+                MediaTypeHeaderValue.TryParse((string)contentType, out mediaType))
             {
                 MediaTypeFormatter writer = request.GetConfiguration()
                     .Formatters.FindWriter(content.GetType(), mediaType);
@@ -152,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return CreateNegotiatedResponse(request, statusCode, content);
         }
 
-        private static HttpContent CreateResultContent(object content, string mediaType = null)
+        internal static HttpContent CreateResultContent(object content, string mediaType = null)
         {
             if (content is byte[])
             {
@@ -163,7 +191,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new StreamContent((Stream)content);
             }
 
-            return new StringContent(content?.ToString() ?? string.Empty, null, mediaType);
+            string stringContent;
+            if (content is ExpandoObject)
+            {
+                stringContent = Utility.ToJson((ExpandoObject)content);
+            }
+            else
+            {
+                stringContent = content?.ToString() ?? string.Empty;
+            }
+
+            return new StringContent(stringContent, null, mediaType);
         }
 
         private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
@@ -209,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result != null;
         }
 
-        private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, JToken> header)
+        internal static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)
         {
             if (header.Value != null)
             {
@@ -248,7 +286,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         break;
                     case "content-md5":
-                        response.Content.Headers.ContentMD5 = header.Value.Value<byte[]>();
+                        byte[] value;
+                        if (header.Value is string)
+                        {
+                            value = Convert.FromBase64String((string)header.Value);
+                        }
+                        else
+                        {
+                            value = header.Value as byte[];
+                        }
+                        response.Content.Headers.ContentMD5 = value;
                         break;
                     case "expires":
                         if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))

@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _script;
         private static readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
-        private static readonly ExpandoObjectJsonConverter _expandoObjectJsonConverter = new ExpandoObjectJsonConverter();
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
 
@@ -226,8 +224,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // apply the value to the binding
                 if (haveValue && value != null)
                 {
-                    value = ConvertBindingValue(value);
-
                     BindingContext bindingContext = new BindingContext
                     {
                         TriggerValue = input,
@@ -238,23 +234,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     await binding.BindAsync(bindingContext);
                 }
             }
-        }
-
-        /// <summary>
-        /// Perform any necessary conversions on the binding value received
-        /// from the script.
-        /// </summary>
-        internal static object ConvertBindingValue(object value)
-        {
-            if (value.GetType() == typeof(ExpandoObject) ||
-               (value is Array && value.GetType() != typeof(byte[])))
-            {
-                // objects and arrays we serialize to string before
-                // passing to the binding layer
-                value = JsonConvert.SerializeObject(value, _expandoObjectJsonConverter);
-            }
-
-            return value;
         }
 
         internal static void OnHostRestart()
