@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TraceWriter = TraceWriter,
                 FileLoggingMode = FileLoggingMode.Always
             };
-
+            
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
