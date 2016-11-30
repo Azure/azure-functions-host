@@ -3,16 +3,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
+
         public static string GetSubscriptionId()
         {
             string ownerName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
@@ -171,6 +176,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return input;
+        }
+
+        public static string ToJson(ExpandoObject value, Formatting formatting = Formatting.Indented)
+        {
+            return JsonConvert.SerializeObject(value, formatting, _expandoObjectJsonConverter);
+        }
+
+        public static JObject ToJObject(ExpandoObject value)
+        {
+            string json = ToJson(value);
+            return JObject.Parse(json);
         }
     }
 }

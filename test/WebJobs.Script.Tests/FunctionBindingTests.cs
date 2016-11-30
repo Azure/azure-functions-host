@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -173,34 +172,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Value1", (string)collection[0]);
             Assert.Equal("Value2", (string)collection[1]);
             Assert.Equal("Value3", (string)collection[2]);
-        }
-
-        [Fact]
-        public void ToJObject_ReturnsExpectedResult()
-        {
-            dynamic child = new ExpandoObject();
-            child.Name = "Mary";
-            child.Location = "Seattle";
-            child.Age = 5;
-
-            dynamic parent = new ExpandoObject();
-            parent.Name = "Bob";
-            parent.Location = "Seattle";
-            parent.Age = 40;
-            parent.Children = new object[] { child };
-
-            JObject resultParent = FunctionBinding.ToJObject(parent);
-
-            Assert.Equal(resultParent["Name"], parent.Name);
-            Assert.Equal(resultParent["Location"], parent.Location);
-            Assert.Equal(resultParent["Age"], parent.Age);
-
-            var children = (JArray)resultParent["Children"];
-            Assert.Equal(1, children.Count);
-            var resultChild = (JObject)children[0];
-            Assert.Equal(resultChild["Name"], child.Name);
-            Assert.Equal(resultChild["Location"], child.Location);
-            Assert.Equal(resultChild["Age"], child.Age);
         }
     }
 }

@@ -7,7 +7,9 @@ using System.Dynamic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
@@ -96,6 +98,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
 
             Assert.Equal(null, content);
             Assert.Equal(HttpStatusCode.Accepted, statusCode);
+        }
+
+        [Fact]
+        public async Task CreateResultContent_ExpandoObject_ReturnsJsonStringContent()
+        {
+            dynamic expandoObject = new ExpandoObject();
+            expandoObject.name = "Mathew";
+            expandoObject.location = "Seattle";
+
+            StringContent stringContent = HttpBinding.CreateResultContent(expandoObject);
+            string json = await stringContent.ReadAsStringAsync();
+            JObject parsed = JObject.Parse(json);
+            Assert.Equal("Mathew", parsed["name"]);
+            Assert.Equal("Seattle", parsed["location"]);
+            Assert.Equal("text/plain", stringContent.Headers.ContentType.MediaType);
+
+            stringContent = HttpBinding.CreateResultContent(expandoObject, "application/json");
+            json = await stringContent.ReadAsStringAsync();
+            parsed = JObject.Parse(json);
+            Assert.Equal("Mathew", parsed["name"]);
+            Assert.Equal("Seattle", parsed["location"]);
+            Assert.Equal("application/json", stringContent.Headers.ContentType.MediaType);
         }
     }
 }

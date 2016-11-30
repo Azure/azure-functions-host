@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -22,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     public abstract class FunctionBinding
     {
         private readonly ScriptHostConfiguration _config;
-        private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
 
         protected FunctionBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
         {
@@ -168,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     if (value is ExpandoObject)
                     {
-                        converted = ToJson((ExpandoObject)value);
+                        converted = Utility.ToJson((ExpandoObject)value, Formatting.None);
                     }
                     else
                     {
@@ -183,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     else if (value is ExpandoObject)
                     {
-                        converted = ToJObject((ExpandoObject)value);
+                        converted = Utility.ToJObject((ExpandoObject)value);
                     }
                 }
                 else if (typeof(T) == typeof(byte[]))
@@ -194,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         string stringValue = null;
                         if (value is ExpandoObject)
                         {
-                            stringValue = ToJson((ExpandoObject)value);
+                            stringValue = Utility.ToJson((ExpandoObject)value, Formatting.None);
                         }
                         else
                         {
@@ -283,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
                 else if (value is ExpandoObject)
                 {
-                    string json = ToJson((ExpandoObject)value);
+                    string json = Utility.ToJson((ExpandoObject)value, Formatting.None);
                     bytes = Encoding.UTF8.GetBytes(json);
                 }
 
@@ -326,17 +324,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     break;
             }
-        }
-
-        internal static string ToJson(ExpandoObject value)
-        {
-            return JsonConvert.SerializeObject(value, Formatting.None, _expandoObjectJsonConverter);
-        }
-
-        internal static JObject ToJObject(ExpandoObject value)
-        {
-            string json = ToJson(value);
-            return JObject.Parse(json);
         }
     }
 }

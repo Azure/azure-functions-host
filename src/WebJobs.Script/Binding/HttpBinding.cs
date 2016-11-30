@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -179,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return CreateNegotiatedResponse(request, statusCode, content);
         }
 
-        private static HttpContent CreateResultContent(object content, string mediaType = null)
+        internal static HttpContent CreateResultContent(object content, string mediaType = null)
         {
             if (content is byte[])
             {
@@ -190,7 +191,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new StreamContent((Stream)content);
             }
 
-            return new StringContent(content?.ToString() ?? string.Empty, null, mediaType);
+            string stringContent;
+            if (content is ExpandoObject)
+            {
+                stringContent = Utility.ToJson((ExpandoObject)content);
+            }
+            else
+            {
+                stringContent = content?.ToString() ?? string.Empty;
+            }
+
+            return new StringContent(stringContent, null, mediaType);
         }
 
         private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
