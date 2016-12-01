@@ -180,7 +180,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.BotFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.4-beta\lib\net452\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.9-beta\lib\net452\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -223,8 +223,8 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebSites.DataProtection.0.1.6-alpha45\lib\net46\Microsoft.Azure.WebSites.DataProtection.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Bot.Connector.DirectLine, Version=3.0.0.20, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Bot.Connector.DirectLine.3.0.0.21-alpha\lib\net45\Microsoft.Bot.Connector.DirectLine.dll</HintPath>
+    <Reference Include="Microsoft.Bot.Connector.DirectLine, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Bot.Connector.DirectLine.3.0.0-beta\lib\net45\Microsoft.Bot.Connector.DirectLine.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
