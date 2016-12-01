@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Colors.Net;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Extensions;

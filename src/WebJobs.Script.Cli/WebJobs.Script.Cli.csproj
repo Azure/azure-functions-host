@@ -255,7 +255,6 @@
     <Compile Include="NativeMethods\ConsoleNativeMethods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Helpers\PlatformHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

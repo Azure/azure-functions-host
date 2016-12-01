@@ -164,9 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // If running on Azure Web App, derive the host ID from the default subdomain
             // Otherwise, derive it from machine name and folder name
-            string hostId = MakeValidHostID(
-                _settingsManager.AzureWebsiteDefaultSubdomain
-                ?? $"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}");
+            string hostId = _settingsManager.AzureWebsiteDefaultSubdomain
+                ?? MakeValidHostId($"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}");
 
             if (!String.IsNullOrEmpty(hostId))
             {
@@ -180,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         //cannot start or end with dash.
         //cannot have consecutive dashes.
         //max length 32.
-        private static string MakeValidHostID(string id)
+        private static string MakeValidHostId(string id)
         {
             var sb = new StringBuilder();
 
@@ -215,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 sb.Length -= 1;
             }
 
-            //length canmot exceed 32
+            //length cannot exceed 32
             const int MaximumHostIdLength = 32;
             if (sb.Length > MaximumHostIdLength)
             {

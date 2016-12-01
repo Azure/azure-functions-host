@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
             var dllName = Path.GetTempPath() + asmName + ".dll";
-            var pdbName = Path.ChangeExtension(dllName, _isMono? "dll.mdb" : "pdb");
+            var pdbName = Path.ChangeExtension(dllName, PlatformHelper.IsMono? "dll.mdb" : "pdb");
 
             try
             {
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--tailcalls-");
                 }
 
-                if (_isMono)
+                if (PlatformHelper.IsMono)
                 {
                     var monoDir = Path.GetDirectoryName(typeof(string).Assembly.Location);
                     var facadesDir = Path.Combine(monoDir, "Facades");
@@ -202,8 +202,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             return new FSharpCompilation(errors, assemblyOption);
         }
-
-        static bool _isMono = Type.GetType("Mono.Runtime") != null;
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)
         {

@@ -442,6 +442,7 @@
     <Compile Include="ScriptConstants.cs" />
     <Compile Include="Config\ScriptSettingsManager.cs" />
     <Compile Include="Utility.cs" />
+    <Compile Include="PlatformHelper.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(EnableNode)'=='True'">
     <Compile Include="Description\Node\NodeFunctionDescriptorProvider.cs" />
