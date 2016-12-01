@@ -60,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             if (options == null)
             {
                 options = EventProcessorOptions.DefaultOptions;
-                options.MaxBatchSize = 1000;
+                options.MaxBatchSize = 64;
+                options.PrefetchCount = options.MaxBatchSize * 4;
             }
             _partitionOptions = partitionOptions;
 
