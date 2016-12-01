@@ -42,17 +42,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public override Task WriteToStreamAsync(Type type, object value, Stream writeStream, HttpContent content, TransportContext transportContext, CancellationToken cancellationToken)
+        public override async Task WriteToStreamAsync(Type type, object value, Stream writeStream, HttpContent content, TransportContext transportContext, CancellationToken cancellationToken)
         {
             if (value == null)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             Encoding selectedEncoding = SelectCharacterEncoding(content.Headers);
             using (var writer = new StreamWriter(writeStream, selectedEncoding, bufferSize: 1024, leaveOpen: true))
             {
-                return writer.WriteAsync((string)value);
+                await writer.WriteAsync((string)value);
             }
         }
     }

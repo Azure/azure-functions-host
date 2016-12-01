@@ -396,6 +396,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(body.ToString(), responseBody);
         }
 
+        [Fact]
+        public async Task HttpTrigger_GetPlainText_WithLongResponse_ReturnsExpectedResult()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Get,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            JObject value = new JObject()
+            {
+                { "status", "200" },
+                { "body", new string('.', 2000) }
+            };
+            JObject input = new JObject()
+            {
+                { "scenario", "echo" },
+                { "value", value }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(2000, body.Length);
+        }
+
         [Theory]
         [InlineData("application/json", "\"testinput\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">testinput</string>")]
