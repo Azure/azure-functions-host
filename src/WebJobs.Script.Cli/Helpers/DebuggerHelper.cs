@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -73,7 +74,7 @@ namespace WebJobs.Script.Cli.Helpers
 }}";
 
             var existingLaunchJson = await (FileSystemHelpers.FileExists(LaunchJsonPath)
-                ? Utilities.SafeGuardAsync(async () => JsonConvert.DeserializeObject<JObject>(await FileSystemHelpers.ReadAllTextFromFileAsync(LaunchJsonPath)))
+                ? TaskUtilities.SafeGuardAsync(async () => JsonConvert.DeserializeObject<JObject>(await FileSystemHelpers.ReadAllTextFromFileAsync(LaunchJsonPath)))
                 : Task.FromResult<JObject>(null));
 
             FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(LaunchJsonPath));

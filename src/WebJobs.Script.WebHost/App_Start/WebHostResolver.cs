@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
@@ -164,23 +165,63 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // If running on Azure Web App, derive the host ID from the default subdomain
             // Otherwise, derive it from machine name and folder name
             string hostId = _settingsManager.AzureWebsiteDefaultSubdomain
-                ?? $"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}";
+                ?? MakeValidHostId($"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}");
+
             if (!String.IsNullOrEmpty(hostId))
             {
-                // Truncate to the max host name length if needed
-                const int MaximumHostIdLength = 32;
-                if (hostId.Length > MaximumHostIdLength)
-                {
-                    hostId = hostId.Substring(0, MaximumHostIdLength);
-                }
-
-                // Trim any trailing - as they can cause problems with queue names
-                hostId = hostId.TrimEnd('-');
-
-                scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
+                scriptHostConfig.HostConfig.HostId = hostId;
             }
 
             return scriptHostConfig;
+        }
+
+        //lowercase letters, numbers and dashes.
+        //cannot start or end with dash.
+        //cannot have consecutive dashes.
+        //max length 32.
+        private static string MakeValidHostId(string id)
+        {
+            var sb = new StringBuilder();
+
+            //filter for valid characters
+            foreach (var c in id)
+            {
+                if (c == '-')
+                {
+                    //dashes are valid
+                    //but it cannot start with one
+                    //nor can it have consecutive dashes
+                    if (sb.Length != 0 && sb[sb.Length - 1] != '-')
+                    {
+                        sb.Append(c);
+                    }
+                }
+                else if (char.IsDigit(c))
+                {
+                    //digits are valid
+                    sb.Append(c);
+                }
+                else if (char.IsLetter(c))
+                {
+                    //letters are valid but must be lowercase
+                    sb.Append(char.ToLowerInvariant(c));
+                }
+            }
+
+            //it cannot end with a dash
+            if (sb.Length > 0 && sb[sb.Length - 1] == '-')
+            {
+                sb.Length -= 1;
+            }
+
+            //length cannot exceed 32
+            const int MaximumHostIdLength = 32;
+            if (sb.Length > MaximumHostIdLength)
+            {
+                sb.Length = MaximumHostIdLength;
+            }
+
+            return sb.ToString();
         }
 
         private static void InitializeFileSystem(string scriptPath)

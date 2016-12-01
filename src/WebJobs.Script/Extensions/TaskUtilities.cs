@@ -4,11 +4,11 @@
 using System;
 using System.Threading.Tasks;
 
-namespace WebJobs.Script.Cli
+namespace Microsoft.Azure.WebJobs.Script
 {
-    internal static class Utilities
+    internal static class TaskUtilities
     {
-        public static async Task SafeGuardAsync(Func<Task> action)
+        internal static async Task SafeGuardAsync(Func<Task> action)
         {
             try
             {
@@ -20,7 +20,7 @@ namespace WebJobs.Script.Cli
             }
         }
 
-        public static async Task<T> SafeGuardAsync<T>(Func<Task<T>> action)
+        internal static async Task<T> SafeGuardAsync<T>(Func<Task<T>> action)
         {
             try
             {
@@ -33,7 +33,7 @@ namespace WebJobs.Script.Cli
             }
         }
 
-        public static T SafeGuard<T>(Func<T> action)
+        internal static T SafeGuard<T>(Func<T> action)
         {
             try
             {

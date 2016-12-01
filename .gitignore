@@ -9,6 +9,7 @@ Publish
 *.suo
 *.cscfg
 *.Cache
+*.userprefs
 
 /packages
 /TestResults

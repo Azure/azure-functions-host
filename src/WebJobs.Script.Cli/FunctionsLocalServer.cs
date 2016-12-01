@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Colors.Net;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Extensions;
@@ -44,10 +45,7 @@ namespace WebJobs.Script.Cli
         private async Task<Uri> DiscoverServer(int iteration = 0)
         {
             var server = new Uri($"http://localhost:{Port + iteration}");
-            var allCliProcesses = _processManager.GetProcessesByName(Path.GetFileNameWithoutExtension(_processManager.GetCurrentProcess().FileName))
-                .Where(p => p.Id != _processManager.GetCurrentProcess().Id)
-                .ToList();
-            if (!allCliProcesses.Any() || !await server.IsServerRunningAsync())
+            if (NotRunningAlready () || !await server.IsServerRunningAsync())
             {
                 // create the server
                 if (_settings.DisplayLaunchingRunServerWarning)
@@ -68,11 +66,20 @@ namespace WebJobs.Script.Cli
                     _settings.DisplayLaunchingRunServerWarning = answer == "yes" ? true : false;
                 }
 
-                var exeName = Process.GetCurrentProcess().MainModule.FileName;
-                var exe = new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true);
+                //TODO: factor out to PlatformHelper.LaunchInNewConsole and implement for Mac using AppleScript
+                var exeName = System.Reflection.Assembly.GetEntryAssembly().Location;
+                var exe = PlatformHelper.IsWindows
+                    ? new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true)
+                    : new Executable("mono", $"{exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: false);
+
                 exe.RunAsync().Ignore();
                 await Task.Delay(500);
-                ConsoleNativeMethods.GetFocusBack();
+
+                if (PlatformHelper.IsWindows)
+                {
+                    ConsoleNativeMethods.GetFocusBack();
+                }
+
                 return server;
             }
             else
@@ -94,5 +101,20 @@ namespace WebJobs.Script.Cli
                 }
             }
         }
-    }
+
+        private bool NotRunningAlready()
+        {
+            if (PlatformHelper.IsMono)
+            {
+                //FIXME: tricky on Mono since the processes just show up as "mono"
+                // and GetProcessesByName can throw if there are any dead processes.
+                // For now, just assume we need to check properly.
+                return false;
+            }
+
+            var fileName = Path.GetFileNameWithoutExtension(_processManager.GetCurrentProcess().FileName);
+            var pid = _processManager.GetCurrentProcess().Id;
+            return !_processManager.GetProcessesByName(fileName).Any(p => p.Id != pid);
+        }
+   }
 }

@@ -42,6 +42,9 @@
   <PropertyGroup>
     <ApplicationIcon>AzureFunctions-CLI.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(OS)'!='Unix'">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="ARMClient.Authentication, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\ARMClient.Authentication.0.0.5-alpha\lib\net45\ARMClient.Authentication.dll</HintPath>
@@ -211,8 +214,6 @@
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Extensions\FunctionStatusExtensions.cs" />
     <Compile Include="Extensions\GenericExtensions.cs" />
-    <Compile Include="Extensions\IEnumerableExtensions.cs" />
-    <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="Arm\IArmManager.cs" />
     <Compile Include="Arm\Models\ArmArrayWrapper.cs" />
     <Compile Include="Arm\Models\ArmStorage.cs" />
@@ -227,7 +228,6 @@
     <Compile Include="Arm\Models\Site.cs" />
     <Compile Include="Arm\Models\StorageAccount.cs" />
     <Compile Include="Arm\Models\Subscription.cs" />
-    <Compile Include="Common\Utilities.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Helpers\DebuggerHelper.cs" />
     <Compile Include="Interfaces\IAction.cs" />
@@ -261,7 +261,7 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(OS)'!='Unix'">
     <COMReference Include="CERTENROLLLib">
       <Guid>{728AB348-217D-11DA-B2A4-000E7BBB2B09}</Guid>
       <VersionMajor>1</VersionMajor>

@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // We can't wait on this as it may cause a deadlock if the timeout was fired
             // by a Listener that cannot stop until it has completed.
-            Task ignoreTask = _manager.StopAsync();
+            _manager.StopAsync().IgnoreFailure().Ignore();
 
             // Give the manager and all running tasks some time to shut down gracefully.
             await Task.Delay(timeoutGracePeriod);

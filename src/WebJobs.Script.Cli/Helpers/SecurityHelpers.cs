@@ -5,8 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
+#if WINDOWS
 using CERTENROLLLib;
+#endif
 using Ignite.SharpNetSH;
+using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.Cli.NativeMethods;
 
 namespace WebJobs.Script.Cli.Helpers
@@ -21,6 +24,11 @@ namespace WebJobs.Script.Cli.Helpers
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         public static bool IsUrlAclConfigured(string protocol, int port)
         {
+            if (!PlatformHelper.IsWindows)
+            {
+                return true;
+            }
+
             var responses = NetSH.CMD.Http.Show.UrlAcl($"{protocol}://+:{port}/")?.ResponseObject;
             if (responses?.Count > 0)
             {
@@ -76,6 +84,7 @@ namespace WebJobs.Script.Cli.Helpers
         // http://stackoverflow.com/a/13806300/3234163
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName)
         {
+#if WINDOWS
             // create DN for subject and issuer
             var dn = new CX500DistinguishedName();
             dn.Encode("CN=" + subjectName, X500NameFlags.XCN_CERT_NAME_STR_NONE);
@@ -131,6 +140,9 @@ namespace WebJobs.Script.Cli.Helpers
                 Convert.FromBase64String(base64encoded), string.Empty,
                 // mark the private key as exportable (this is usually what you want to do)
                 X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
+#else
+            throw new NotSupportedException();
+#endif
         }
     }
 }

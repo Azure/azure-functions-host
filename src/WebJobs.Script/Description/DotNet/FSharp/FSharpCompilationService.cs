@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var asmName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
             var dllName = Path.GetTempPath() + asmName + ".dll";
-            var pdbName = Path.ChangeExtension(dllName, "pdb");
+            var pdbName = Path.ChangeExtension(dllName, PlatformHelper.IsMono? "dll.mdb" : "pdb");
 
             try
             {
@@ -148,6 +148,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--optimize-");
                     otherFlags.Add("--debug+");
                     otherFlags.Add("--tailcalls-");
+                }
+
+                if (PlatformHelper.IsMono)
+                {
+                    var monoDir = Path.GetDirectoryName(typeof(string).Assembly.Location);
+                    var facadesDir = Path.Combine(monoDir, "Facades");
+                    otherFlags.Add("--lib:" + facadesDir);
                 }
 
                 // If we have a private assembly folder, make sure the compiler uses it to resolve dependencies
