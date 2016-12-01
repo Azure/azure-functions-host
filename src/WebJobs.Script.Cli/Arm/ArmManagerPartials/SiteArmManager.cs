@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.Cli.Arm.Models;
 using WebJobs.Script.Cli.Extensions;
 

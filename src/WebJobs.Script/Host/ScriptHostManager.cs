@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
-                    Task taskIgnore = Orphan(newInstance);
+                    Orphan(newInstance).Ignore();
                 }
                 catch (Exception ex)
                 {
@@ -165,14 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan and cleanup that instance.
                     if (newInstance != null)
                     {
-                        Orphan(newInstance, forceStop: true)
-                            .ContinueWith(t =>
-                            {
-                                if (t.IsFaulted)
-                                {
-                                    t.Exception.Handle(e => true);
-                                }
-                            }, TaskContinuationOptions.ExecuteSynchronously);
+                        Orphan(newInstance, forceStop: true).Ignore();
                     }
 
                     // Wait for a short period of time before restarting to

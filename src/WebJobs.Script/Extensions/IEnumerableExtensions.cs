@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace WebJobs.Script.Cli.Extensions
+namespace Microsoft.Azure.WebJobs.Script
 {
     internal static class IEnumerableExtensions
     {

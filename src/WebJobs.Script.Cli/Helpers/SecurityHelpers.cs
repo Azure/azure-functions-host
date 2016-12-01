@@ -9,6 +9,7 @@ using System.Security.Principal;
 using CERTENROLLLib;
 #endif
 using Ignite.SharpNetSH;
+using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.Cli.NativeMethods;
 
 namespace WebJobs.Script.Cli.Helpers

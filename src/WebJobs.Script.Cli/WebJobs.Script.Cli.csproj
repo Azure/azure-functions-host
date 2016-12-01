@@ -15,7 +15,7 @@
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisCulture>en-US</CodeAnalysisCulture>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
@@ -214,8 +214,6 @@
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
     <Compile Include="Extensions\FunctionStatusExtensions.cs" />
     <Compile Include="Extensions\GenericExtensions.cs" />
-    <Compile Include="Extensions\IEnumerableExtensions.cs" />
-    <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="Arm\IArmManager.cs" />
     <Compile Include="Arm\Models\ArmArrayWrapper.cs" />
     <Compile Include="Arm\Models\ArmStorage.cs" />
@@ -230,7 +228,6 @@
     <Compile Include="Arm\Models\Site.cs" />
     <Compile Include="Arm\Models\StorageAccount.cs" />
     <Compile Include="Arm\Models\Subscription.cs" />
-    <Compile Include="Common\Utilities.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Helpers\DebuggerHelper.cs" />
     <Compile Include="Interfaces\IAction.cs" />

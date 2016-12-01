@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FluentAssertions;
 using WebJobs.Script.Cli.Extensions;
+using Microsoft.Azure.WebJobs.Script;
 using Xunit;
 
 namespace WebJobs.Script.Cli.Tests.ExtensionsTests

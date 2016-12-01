@@ -15,7 +15,7 @@
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisCulture>en-US</CodeAnalysisCulture>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
@@ -443,6 +443,9 @@
     <Compile Include="Config\ScriptSettingsManager.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="PlatformHelper.cs" />
+    <Compile Include="Extensions\TaskExtensions.cs" />
+    <Compile Include="Extensions\IEnumerableExtensions.cs" />
+    <Compile Include="Extensions\TaskUtilities.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(EnableNode)'=='True'">
     <Compile Include="Description\Node\NodeFunctionDescriptorProvider.cs" />

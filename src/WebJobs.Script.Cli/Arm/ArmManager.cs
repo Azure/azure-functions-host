@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -11,8 +10,8 @@ using System.Threading.Tasks;
 using ARMClient.Authentication;
 using ARMClient.Authentication.Contracts;
 using ARMClient.Library;
+using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.Cli.Arm.Models;
-using WebJobs.Script.Cli.Extensions;
 
 namespace WebJobs.Script.Cli.Arm
 {
@@ -54,7 +53,7 @@ namespace WebJobs.Script.Cli.Arm
             var functionApp = new Site(subscription.SubscriptionId, resourceGroup.ResourceGroupName, functionAppNameStr);
             var keys = await GetStorageAccountKeysAsync(storageAccount);
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccount.StorageAccountName};AccountKey={keys.First().Value}";
-            var armFunctionApp = await ArmHttpAsync<ArmWrapper<object>>(HttpMethod.Put, ArmUriTemplates.Site.Bind(functionApp),
+            await ArmHttpAsync<ArmWrapper<object>>(HttpMethod.Put, ArmUriTemplates.Site.Bind(functionApp),
                     new
                     {
                         properties = new
@@ -70,7 +69,7 @@ namespace WebJobs.Script.Cli.Arm
                                     { $"{storageAccount.StorageAccountName}_STORAGE", connectionString },
                                     { "WEBSITE_NODE_DEFAULT_VERSION", "6.5.0" }
                                 }
-                                .Select(e => new { name = e.Key, value = e.Value})
+                                .Select(e => new { name = e.Key, value = e.Value })
                             },
                             sku = "Dynamic"
                         },
