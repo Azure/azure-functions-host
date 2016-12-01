@@ -428,7 +428,6 @@
     <Compile Include="Description\Script\ScriptFunctionInvoker.cs" />
     <Compile Include="Description\Node\NodeFunctionDescriptorProvider.cs" />
     <Compile Include="Description\Node\NodeFunctionInvoker.cs" />
-    <Compile Include="DictionaryJsonConverter.cs" />
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="Diagnostics\FileTraceWriter.cs" />
     <Compile Include="Host\ScriptHostState.cs" />
