@@ -7,7 +7,6 @@ using System.Linq;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;

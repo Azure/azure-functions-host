@@ -15,7 +15,7 @@ using System.Web.Http;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties;
+using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.ServiceBus;

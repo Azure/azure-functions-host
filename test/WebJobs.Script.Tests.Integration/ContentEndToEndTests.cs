@@ -13,7 +13,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
 

@@ -15,6 +15,7 @@ using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
 using Newtonsoft.Json.Linq;
