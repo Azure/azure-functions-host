@@ -410,7 +410,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp-Dyna
 		sample\WebHook-Generic-CSharp-Dynamic\run.csx = sample\WebHook-Generic-CSharp-Dynamic\run.csx
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Integration", "test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj", "{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{38c609d3-b126-43b0-b9d8-6d62faee2abc}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -440,6 +449,10 @@ Global
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -514,5 +527,7 @@ Global
 		{EF36E33B-646C-4EF4-B0E2-517E14F6DC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{98DBDE0D-364C-4865-9A4A-B17410D771F6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{2F6EF597-6586-4F59-BBB6-BA7146FEFD27} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 EndGlobal

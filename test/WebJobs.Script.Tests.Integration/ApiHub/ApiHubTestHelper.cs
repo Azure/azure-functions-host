@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Extensions.ApiHub.Common;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static class ApiHubTestHelper
     {

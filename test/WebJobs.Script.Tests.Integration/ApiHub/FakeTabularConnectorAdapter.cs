@@ -9,7 +9,7 @@ using Microsoft.Azure.ApiHub;
 using Microsoft.Azure.ApiHub.Table.Internal;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.ApiHub
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     internal class FakeTabularConnectorAdapter : ITabularConnectorAdapter
     {

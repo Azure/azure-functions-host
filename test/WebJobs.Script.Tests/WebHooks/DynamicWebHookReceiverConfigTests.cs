@@ -12,7 +12,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.WebHooks
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DynamicWebHookReceiverConfigTests
     {

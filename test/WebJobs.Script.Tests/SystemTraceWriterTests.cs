@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public SystemTraceWriterTests()
         {
-            _settingsManager = ScriptSettingsManager.Instance;
+            _settingsManager = new ScriptSettingsManager();
 
             _subscriptionId = "e3235165-1600-4819-85f0-2ab362e909e4";
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");

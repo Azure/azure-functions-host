@@ -17,7 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Tests.ApiHub;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Content
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeTextPlain : ContentTests
     {

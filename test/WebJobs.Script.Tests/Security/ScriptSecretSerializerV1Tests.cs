@@ -4,13 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Security
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ScriptSecretSerializerV1Tests
     {

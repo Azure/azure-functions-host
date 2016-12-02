@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
         private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
 
-        protected ScriptSettingsManager()
+        internal ScriptSettingsManager()
         {
         }
 

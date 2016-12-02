@@ -187,6 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script
         protected virtual void Initialize()
         {
             string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+            FileUtility.EnsureDirectoryExists(hostLogPath);
             string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
             this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
 

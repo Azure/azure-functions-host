@@ -154,18 +154,27 @@
   <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
       <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
+	  <IntegrationTestProjects Include="test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"
-     
              Properties="$(SetConfiguration); $(SetPlatform)"
              BuildInParallel="$(BuildInParallel)">
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
+    </MSBuild>
+    <MSBuild Projects="@(IntegrationTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="IntegrationTestAssemblies"/>
     </MSBuild>
   </Target>
   
   <Target Name="UnitTest" DependsOnTargets="TestBuild">
     <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
+  </Target>
+  
+  <Target Name="IntegrationTest" DependsOnTargets="TestBuild">
+    <xunit Assemblies="@(IntegrationTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
   </Target>
 
   <PropertyGroup Condition=" '$(APPVEYOR_API_URL)' != '' ">
@@ -180,7 +189,7 @@
 
   <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
     <Exec Command="npm i mocha chai $(AppveyorModules)" />
-    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
+    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">

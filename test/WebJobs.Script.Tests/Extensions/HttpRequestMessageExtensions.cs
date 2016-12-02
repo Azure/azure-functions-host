@@ -4,7 +4,7 @@
 using System.Net.Http;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpRequestMessageExtensions
     {

@@ -20,7 +20,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WebScriptHostManagerTests : IClassFixture<WebScriptHostManagerTests.Fixture>, IDisposable
     {
