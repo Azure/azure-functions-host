@@ -411,33 +411,33 @@
   <ItemGroup>
     <Compile Include="Binding\HttpBindingTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
-    <Compile Include="AuthorizationLevelAttributeTests.cs" />
+    <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
     <Compile Include="Binding\ScriptBindingContextTests.cs" />
-    <Compile Include="CompositeTraceWriterTests.cs" />
-    <Compile Include="ConsoleTraceWriterTests.cs" />
-    <Compile Include="CSharpFunctionSignatureTests.cs" />
+    <Compile Include="Diagnostics\CompositeTraceWriterTests.cs" />
+    <Compile Include="Diagnostics\ConsoleTraceWriterTests.cs" />
+    <Compile Include="Description\DotNet\CSharp\CSharpFunctionSignatureTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationTests.cs" />
     <Compile Include="Description\DotNet\DotNetCompilationServiceFactoryTests.cs" />
     <Compile Include="Description\DotNet\FunctionAssemblyLoaderTests.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionInvokerTests.cs" />
     <Compile Include="Description\DotNet\PackageManagerTests.cs" />
     <Compile Include="Description\DotNet\DotNetFunctionDescriptorProviderTests.cs" />
-    <Compile Include="ExtensionSharedAssemblyProviderTests.cs" />
+    <Compile Include="Description\DotNet\ExtensionSharedAssemblyProviderTests.cs" />
     <Compile Include="Extensions\HttpRequestMessageExtensions.cs" />
     <Compile Include="Extensions\IDictionaryExtensionsTests.cs" />
     <Compile Include="FeatureFlagsTests.cs" />
-    <Compile Include="FileTraceWriterTests.cs" />
-    <Compile Include="FunctionBindingTests.cs" />
-    <Compile Include="FunctionDescriptorProviderTests.cs" />
-    <Compile Include="FunctionEntryPointResolverTests.cs" />
-    <Compile Include="FunctionGeneratorTests.cs" />
+    <Compile Include="Diagnostics\FileTraceWriterTests.cs" />
+    <Compile Include="Binding\FunctionBindingTests.cs" />
+    <Compile Include="Description\FunctionDescriptorProviderTests.cs" />
+    <Compile Include="Description\FunctionEntryPointResolverTests.cs" />
+    <Compile Include="Description\FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\PackageAssemblyResolverTests.cs" />
-    <Compile Include="FunctionInvokerBaseTests.cs" />
+    <Compile Include="Description\FunctionInvokerBaseTests.cs" />
     <Compile Include="HttpRouteFactoryTests.cs" />
-    <Compile Include="HttpTriggerAttributeBindingProviderTests.cs" />
-    <Compile Include="NodeFunctionInvokerTests.cs" />
-    <Compile Include="PowerShellInvokerTests.cs" />
+    <Compile Include="Binding\HttpTriggerAttributeBindingProviderTests.cs" />
+    <Compile Include="Description\Node\NodeFunctionInvokerTests.cs" />
+    <Compile Include="Description\PowerShell\PowerShellInvokerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -449,15 +449,15 @@
     <Compile Include="Security\ScriptSecretSerializerV0Tests.cs" />
     <Compile Include="Security\ScriptSecretSerializerV1Tests.cs" />
     <Compile Include="Security\SecretManagerTests.cs" />
-    <Compile Include="NodeFunctionGenerationTests.cs" />
+    <Compile Include="Description\Node\NodeFunctionGenerationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SystemTraceWriterTests.cs" />
-    <Compile Include="HttpTriggerBindingTests.cs" />
-    <Compile Include="PowerShellFunctionGenerationTests.cs" />
-    <Compile Include="TraceWriterExtensionsTests.cs" />
+    <Compile Include="Diagnostics\SystemTraceWriterTests.cs" />
+    <Compile Include="Binding\HttpTriggerBindingTests.cs" />
+    <Compile Include="Description\PowerShell\PowerShellFunctionGenerationTests.cs" />
+    <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
-    <Compile Include="WebScriptHostHandlerTests.cs" />
+    <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
@@ -518,6 +518,7 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

@@ -405,8 +405,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ApiHub\ApiHubTestHelper.cs" />
-    <Compile Include="ApiHub\FakeTabularConnectorAdapter.cs" />
+    <Compile Include="ApiHubTestHelper.cs" />
+    <Compile Include="FakeTabularConnectorAdapter.cs" />
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="ContentEndToEndTests.cs" />
@@ -426,7 +426,7 @@
     <Compile Include="EndToEndTimeoutTests.cs" />
     <Compile Include="FSharpEndToEndTests.cs" />
     <Compile Include="FunctionGeneratorEndToEndTests.cs" />
-    <Compile Include="MetricsEventManagerTests.cs" />
+    <Compile Include="Diagnostics\MetricsEventManagerTests.cs" />
     <Compile Include="NodeEndToEndTests.cs" />
     <Compile Include="PhpEndToEndTests.cs" />
     <Compile Include="PowerShellEndToEndTests.cs" />
@@ -438,9 +438,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="SamplesEndToEndTests.cs" />
-    <Compile Include="ScriptHostManagerTests.cs" />
-    <Compile Include="StandbyModeTests.cs" />
-    <Compile Include="WebScriptHostManagerTests.cs" />
+    <Compile Include="Host\ScriptHostManagerTests.cs" />
+    <Compile Include="Host\StandbyModeTests.cs" />
+    <Compile Include="Host\WebScriptHostManagerTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup>
