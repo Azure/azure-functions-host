@@ -20,7 +20,6 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
     public class FunctionGeneratorTests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
@@ -83,13 +82,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_CSharp()
+        public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_CSharp()
         {
             await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("csharp");
         }
 
         [Fact]
-        internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_FSharp()
+        public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_FSharp()
         {
             await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("fsharp");
         }

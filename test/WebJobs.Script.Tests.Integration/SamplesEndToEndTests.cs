@@ -30,7 +30,6 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;

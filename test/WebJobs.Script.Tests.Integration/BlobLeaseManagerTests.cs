@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class BlobLeaseManagerTests
     {
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task HasLease_WhenLeaseIsAcquired_ReturnsTrue()
         {
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -39,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task HasLeaseChanged_WhenLeaseIsAcquiredAndStateChanges_IsFired()
         {
             string hostId = Guid.NewGuid().ToString();
@@ -78,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task HasLeaseChanged_WhenLeaseIsLostAndStateChanges_IsFired()
         {
             string hostId = Guid.NewGuid().ToString();
@@ -153,7 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task Renew_WhenBlobIsDeleted_RecreatesBlob()
         {
             string hostId = Guid.NewGuid().ToString();
@@ -193,7 +189,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task Dispose_ReleasesBlobLease()
         {
             string hostId = Guid.NewGuid().ToString();
@@ -285,7 +280,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        [Trait("Category", "E2E")]
         public async Task DifferentHosts_UsingSameStorageAccount_CanObtainLease()
         {
             string hostId1 = Guid.NewGuid().ToString();

@@ -17,7 +17,6 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
     public class ScriptHostManagerTests
     {
         private readonly ScriptSettingsManager _settingsManager;

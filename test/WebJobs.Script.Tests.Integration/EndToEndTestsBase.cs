@@ -23,7 +23,6 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
     public abstract class EndToEndTestsBase<TTestFixture> :
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
