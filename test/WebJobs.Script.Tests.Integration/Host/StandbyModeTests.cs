@@ -117,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var content = File.ReadAllText(hostLogFile);
 
                 Assert.Contains("Warm up started", content);
-                Assert.Contains("Executed: 'Functions.Test-CSharp' (Succeeded)", content);
-                Assert.Contains("Executed: 'Functions.Test-FSharp' (Succeeded)", content);
+                Assert.Contains("Executed 'Functions.Test-CSharp' (Succeeded, Id=", content);
+                Assert.Contains("Executed 'Functions.Test-FSharp' (Succeeded, Id=", content);
                 Assert.Contains("Warm up succeeded", content);
             }
         }

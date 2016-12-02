@@ -14,7 +14,6 @@ using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
@@ -51,10 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await host.CallAsync("ManualTrigger", parameters);
 
             Assert.Equal(4, _fixture.EventGenerator.Events.Count);
-            Assert.Equal("Info WebJobs.Execution Executing: 'Functions.ManualTrigger' - Reason: 'This function was programmatically called via the host APIs.'", _fixture.EventGenerator.Events[0]);
+            Assert.True(_fixture.EventGenerator.Events[0].StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id="));
             Assert.True(_fixture.EventGenerator.Events[1].StartsWith("Info ManualTrigger Function started (Id="));
             Assert.True(_fixture.EventGenerator.Events[2].StartsWith("Info ManualTrigger Function completed (Success, Id="));
-            Assert.Equal("Info WebJobs.Execution Executed: 'Functions.ManualTrigger' (Succeeded)", _fixture.EventGenerator.Events[3]);
+            Assert.True(_fixture.EventGenerator.Events[3].StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id="));
 
             // make sure the user log wasn't traced
             Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
@@ -119,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostManager.Stop();
             Assert.Equal(ScriptHostState.Default, hostManager.State);
 
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            // give some time for the logs to be flushed fullly
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs * 3);
 
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
