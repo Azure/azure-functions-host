@@ -409,7 +409,7 @@
     <Compile Include="FakeTabularConnectorAdapter.cs" />
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
-    <Compile Include="ContentEndToEndTests.cs" />
+    <Compile Include="NodeContentTests.cs" />
     <Compile Include="Controllers\ControllerScenarioTestFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostFunctionKeysScenario.cs" />
@@ -593,9 +593,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Bash\TimeoutSync\run.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="TestScripts\Content\Node\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\CSharp\ApiHubFileSender\function.json">
@@ -1067,9 +1064,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="TestScripts\Content\Node\index.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="TestScripts\FSharp\ManualTrigger\run.fsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
