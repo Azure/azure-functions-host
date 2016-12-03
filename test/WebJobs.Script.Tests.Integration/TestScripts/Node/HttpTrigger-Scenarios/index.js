@@ -1,7 +1,7 @@
 ﻿var util = require('util');
 
 module.exports = function (context, req) {
-    var scenario = req.body.scenario;
+    var scenario = (req.headers && req.headers.scenario) || req.body.scenario;
     
     if (scenario == "echo") {
         context.res = req.body.value;
@@ -25,6 +25,15 @@ module.exports = function (context, req) {
             status: 200,
             body: req.body.value,
             isRaw: true
+        }
+    }
+    else if (scenario == "content") {
+        if (req.headers.return) {
+            context.res = req.body;
+            context.done();
+        } else {
+            var sendFunc = req.headers.raw ? 'raw' : 'send';
+            context.res.type(req.headers.type)[sendFunc](req.body);
         }
     }
     else {
