@@ -117,37 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="AzureWebHookEventRequest" xml:space="preserve">
-    <value>{
-  "status": "Resolved",
-  "context": {
-    "id": "/subscriptions/&lt;your-subscriptionId&gt;/resourceGroups/functionsWebhooks/providers/microsoft.insights/alertrules/webhooksdemo",
-    "name": "webhooksdemo",
-    "description": "webhooksdemo",
-    "conditionType": "Metric",
-    "condition": {
-      "metricName": "Requests",
-      "metricUnit": "Count",
-      "metricValue": "1",
-      "threshold": "1",
-      "windowSize": "5",
-      "timeAggregation": "Total",
-      "operator": "GreaterThan"
-    },
-    "subscriptionId": "&lt;your-subscriptionId&gt;",
-    "resourceGroupName": "functionsWebhooks",
-    "timestamp": "2016-04-15T10:10:20.264882Z",
-    "resourceName": "functionsWebhookDemo",
-    "resourceType": "microsoft.web/sites",
-    "resourceId": "/subscriptions/&lt;your-subscriptionId&gt;/resourceGroups/functionsWebhooks/providers/Microsoft.Web/sites/FunctionsWebhooksDemoSite",
-    "resourceRegion": "East US",
-    "portalLink": "https://portal.azure. com/#resource/subscriptions/ &lt;your-subscriptionId&gt;/resourceGroups/functionsWebhooks/providers/Microsoft.Web/sites/FunctionsWebhooksDemoSite"
-
-  },
-  "properties": {}
-
-}</value>
-  </data>
   <data name="ProjectLockFileFormatString" xml:space="preserve">
     <value>{{
   "locked": false,

@@ -22,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
-        private static readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
-
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
@@ -68,17 +66,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            // see if the content is a response object, defining http response
-            // properties
+            // see if the content is a response object, defining http response properties
             IDictionary<string, object> responseObject = null;
             if (content is JObject)
             {
-                responseObject = JsonConvert.DeserializeObject<Dictionary<string, object>>(stringContent, _dictionaryJsonConverter);
+                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
             }
             else
             {
                 // Handle ExpandoObjects
-                responseObject = content as IDictionary<string, object>;
+                responseObject = content as ExpandoObject;
             }
 
             HttpStatusCode statusCode = HttpStatusCode.OK;
@@ -155,9 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 (headers?.TryGetValue<string>("content-type", out contentType, ignoreCase: true) ?? false) &&
                 MediaTypeHeaderValue.TryParse((string)contentType, out mediaType))
             {
-                MediaTypeFormatter writer = request.GetConfiguration()
-                    .Formatters.FindWriter(content.GetType(), mediaType);
-
+                var writer = request.GetConfiguration().Formatters.FindWriter(content.GetType(), mediaType);
                 if (writer != null)
                 {
                     return new HttpResponseMessage(statusCode)
@@ -166,15 +161,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     };
                 }
 
+                // create a non-negotiated result content
                 HttpContent resultContent = CreateResultContent(content, mediaType.MediaType);
-
-                if (resultContent != null)
+                return new HttpResponseMessage(statusCode)
                 {
-                    return new HttpResponseMessage(statusCode)
-                    {
-                        Content = resultContent
-                    };
-                }
+                    Content = resultContent
+                };
             }
 
             return CreateNegotiatedResponse(request, statusCode, content);
@@ -194,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             string stringContent;
             if (content is ExpandoObject)
             {
-                stringContent = Utility.ToJson((ExpandoObject)content);
+                stringContent = Utility.ToJson((ExpandoObject)content, Formatting.None);
             }
             else
             {
@@ -217,6 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             IContentNegotiator negotiator = configuration.Services.GetContentNegotiator();
             var negotiationResult = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
 
+            // ObjectContent can handle ExpandoObjects as well
             result.Content = new ObjectContent(content.GetType(), content, negotiationResult.Formatter, negotiationResult.MediaType);
 
             return result;

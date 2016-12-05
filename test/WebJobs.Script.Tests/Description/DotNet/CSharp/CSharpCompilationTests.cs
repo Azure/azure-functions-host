@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Description.CSharp
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class CSharpCompilationTests
     {

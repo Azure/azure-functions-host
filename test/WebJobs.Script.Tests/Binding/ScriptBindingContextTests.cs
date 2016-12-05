@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ScriptBindingContextTests
     {

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -25,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _script;
-        private static readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
 
@@ -536,16 +536,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             result = null;
 
             // if the input is json, try converting to an object or array
-            Dictionary<string, object> jsonObject;
-            Dictionary<string, object>[] jsonObjectArray;
-            if (TryDeserializeJson(json, out jsonObject))
+            ExpandoObject obj;
+            ExpandoObject[] objArray;
+            if (TryDeserializeJson(json, out obj))
             {
-                result = jsonObject;
+                result = obj;
                 return true;
             }
-            else if (TryDeserializeJson(json, out jsonObjectArray))
+            else if (TryDeserializeJson(json, out objArray))
             {
-                result = jsonObjectArray;
+                result = objArray;
                 return true;
             }
 
@@ -558,7 +558,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                result = JsonConvert.DeserializeObject<TResult>(json, _dictionaryJsonConverter);
+                result = JsonConvert.DeserializeObject<TResult>(json);
                 return true;
             }
             catch

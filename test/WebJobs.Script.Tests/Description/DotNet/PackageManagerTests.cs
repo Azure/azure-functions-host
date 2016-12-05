@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class PackageManagerTests
     {

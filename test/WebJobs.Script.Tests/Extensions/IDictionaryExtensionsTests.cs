@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class IDictionaryExtensionsTests
     {

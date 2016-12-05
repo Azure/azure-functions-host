@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ExtensionBindingTests
     {

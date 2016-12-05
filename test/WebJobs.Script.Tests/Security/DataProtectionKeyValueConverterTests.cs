@@ -9,7 +9,7 @@ using Xunit;
 
 using static Microsoft.Azure.Web.DataProtection.Constants;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Security
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DataProtectionKeyValueConverterTests
     {

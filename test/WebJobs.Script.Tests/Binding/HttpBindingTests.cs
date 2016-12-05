@@ -8,11 +8,14 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpBindingTests
     {
@@ -120,6 +123,94 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
             Assert.Equal("Mathew", parsed["name"]);
             Assert.Equal("Seattle", parsed["location"]);
             Assert.Equal("application/json", stringContent.Headers.ContentType.MediaType);
+        }
+
+        [Fact]
+        public async Task CreateResponse_JsonString_ReturnsExpectedResult()
+        {
+            HttpConfiguration config = new HttpConfiguration();
+            config.Formatters.Add(new PlaintextMediaTypeFormatter());
+
+            JObject child = new JObject
+            {
+                { "Name", "Mary" },
+                { "Location", "Seattle" },
+                { "Age", 5 }
+            };
+
+            JObject parent = new JObject
+            {
+                { "Name", "Bob" },
+                { "Location", "Seattle" },
+                { "Age", 40 },
+                { "Children", new JArray(child) }
+            };
+            string expectedBodyJson = parent.ToString(Formatting.None);
+
+            // explicitly set a content type that there is no default
+            // formatter for to force default non-negotiated content codepath
+            JObject headers = new JObject
+            {
+                { "Content-Type", "foo/bar" }
+            };
+            JObject responseObject = new JObject
+            {
+                { "Body", parent },
+                { "Headers", headers }
+            };
+            HttpRequestMessage request = new HttpRequestMessage();
+            request.SetConfiguration(config);
+            var response = HttpBinding.CreateResponse(request, responseObject.ToString());
+            string resultJson = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBodyJson, resultJson);
+            Assert.Equal("foo/bar", response.Content.Headers.ContentType.MediaType);
+
+            // Test again with a recognized content-type header, to force content negotiation
+            headers = new JObject
+            {
+                { "Content-Type", "application/json" }
+            };
+            responseObject = new JObject
+            {
+                { "Body", parent },
+                { "Headers", headers }
+            };
+            request = new HttpRequestMessage();
+            request.SetConfiguration(config);
+            response = HttpBinding.CreateResponse(request, responseObject.ToString());
+            resultJson = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBodyJson, resultJson);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+
+            // Test again with an explicitly specified response content type
+            headers = new JObject
+            {
+                { "Content-Type", "text/plain" }
+            };
+            responseObject = new JObject
+            {
+                { "Body", parent },
+                { "Headers", headers }
+            };
+            request = new HttpRequestMessage();
+            request.SetConfiguration(config);
+            response = HttpBinding.CreateResponse(request, responseObject.ToString());
+            resultJson = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBodyJson, resultJson);
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+
+            // Test again without an explicit response content type
+            // to trigger ObjectContent negotiation codepath
+            responseObject = new JObject
+            {
+                { "Body", parent }
+            };
+            request = new HttpRequestMessage();
+            request.SetConfiguration(config);
+            response = HttpBinding.CreateResponse(request, responseObject.ToString());
+            resultJson = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expectedBodyJson, resultJson);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
         }
     }
 }
