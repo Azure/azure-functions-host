@@ -38,6 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FindDuplicateModules()
+        {
+            List<string> actualModules = PowerShellFunctionInvoker.FindDuplicateModules(PowerShellFunctionInvoker.GetModuleFilePaths(_fixture.TestRootScriptPath, _fixture.TestFunctionName), _fixture.TestRootScriptPath, _fixture.TestFunctionName);
+            Assert.Equal(_fixture.ExpectedNumberOfImportedModules, actualModules.Count);
+            foreach (var actualModule in actualModules)
+            {
+                Assert.True(_fixture.TestModulesPath.Contains(actualModule));
+            }
+        }
+
+        [Fact]
         public void GetRelativePath()
         {
             string functionRootPath = "C:\\";
@@ -90,6 +101,9 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                 TestRootScriptPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
                 TestFunctionRoot = Path.Combine(TestRootScriptPath, TestFunctionName);
                 TestModulesRoot = Path.Combine(TestFunctionRoot, "modules");
+                // The number of imported modules is expected to be 6, as the "manifest-module.psd1" in RootTestModules
+                // should be ignored when importing. So the 7 available modules should end up being 6.
+                ExpectedNumberOfImportedModules = 6;
 
                 TestScriptPath = CreateScriptFile(TestFunctionRoot);
 
@@ -104,7 +118,8 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                 {
                     "root-script-module.psm1",
                     "root-binary-module.dll",
-                    "root-manifest-module.psd1"
+                    "root-manifest-module.psd1",
+                    "manifest-module.psd1"
                 };
 
                 TestModulesPath = CreateModuleFiles(TestModulesRoot, RootTestModules, TestModules);
@@ -127,6 +142,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
             public string TestModulesRoot { get; private set; }
 
             public List<string> TestModulesPath { get; set; }
+            public int ExpectedNumberOfImportedModules { get; set; }
 
             public void Dispose()
             {
