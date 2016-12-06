@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
@@ -54,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (configSection.TryGetValue("maxConcurrentCalls", StringComparison.OrdinalIgnoreCase, out value))
                 {
                     serviceBusConfig.MessageOptions.MaxConcurrentCalls = (int)value;
+                }
+
+                if (configSection.TryGetValue("autoRenewTimeout", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    serviceBusConfig.MessageOptions.AutoRenewTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
 
                 if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
