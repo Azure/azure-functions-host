@@ -87,7 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         System.Management.Automation.PowerShell.Create())
                 {
                     powerShellInstance.Runspace = runspace;
-                    _moduleFiles = GetModuleFilePaths(_host.ScriptConfig.RootScriptPath, _functionName);
+                    _moduleFiles = FindDuplicateModules(GetModuleFilePaths(_host.ScriptConfig.RootScriptPath, _functionName), _host.ScriptConfig.RootScriptPath, _functionName);
+                    // Remove duplicates from _moduleFiles and only keep the ones closest to the Function in moduleDirectory
+
                     if (_moduleFiles.Any())
                     {
                         powerShellInstance.AddCommand("Import-Module").AddArgument(_moduleFiles);
@@ -287,5 +289,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             return paths;
         }
+
+        internal static List<string> FindDuplicateModules(List<string> foundModules, string rootScriptPath, string functionName)
+        {
+            List<string> moduleFileNames = new List<string>();
+            string functionFolder = Path.Combine(rootScriptPath, functionName);
+            string rootModuleDirectory = Path.Combine(rootScriptPath, PowerShellConstants.ModulesFolderName);
+            string moduleDirectory = Path.Combine(functionFolder, PowerShellConstants.ModulesFolderName);
+
+            foreach (string entry in foundModules)
+            {
+                moduleFileNames.Add(Path.GetFileName(entry));
+            }
+
+            List<string> distinctModuleFiles = moduleFileNames.Distinct().ToList();
+
+            foreach (string distinctModuleFile in distinctModuleFiles)
+            {
+                string potentialModule = Path.Combine(moduleDirectory, distinctModuleFile);
+                string result = foundModules.SingleOrDefault(s => s == potentialModule);
+                if (result != null)
+                {
+                    foundModules.Remove(Path.Combine(rootModuleDirectory, distinctModuleFile));
+                }
+            }
+            return foundModules;
+        }
+
     }
 }
