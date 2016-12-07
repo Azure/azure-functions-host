@@ -82,6 +82,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 hostIdProvider = new DynamicHostIdProvider(storageAccountProvider, () => functionIndexProvider);
             }
 
+            AzureStorageDeploymentValidator.Validate();
+
             IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(typeLocator);
 
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor = new ContextAccessor<IMessageEnqueuedWatcher>();

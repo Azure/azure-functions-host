@@ -373,6 +373,7 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\TypeEntityResolver.cs">
       <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
+    <Compile Include="AzureStorageDeploymentValidator.cs" />
     <Compile Include="Bindings\AmbientBindingContext.cs" />
     <Compile Include="Bindings\AttributeCloner.cs" />
     <Compile Include="Bindings\BindingBase.cs" />
