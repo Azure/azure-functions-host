@@ -186,7 +186,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                     Directory.CreateDirectory(moduleRoot);
                 }
 
-                string moduleDirinRoot = TestFunctionRoot + "\\modules";
+                string moduleDirinRoot = TestRootScriptPath + "\\modules";
 
                 if (!Directory.Exists(moduleDirinRoot))
                 {
@@ -209,15 +209,15 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                     modulesPath.Add(path);
                 }
 
-                foreach (var module in rootModules)
+                foreach (var rootModule in rootModules)
                 {
-                    string path = Path.Combine(moduleDirinRoot, module);
+                    string path = Path.Combine(moduleDirinRoot, rootModule);
                     if (!File.Exists(path))
                     {
                         // Create a file to write to.
                         using (StreamWriter sw = File.CreateText(path))
                         {
-                            sw.WriteLine(string.Format("This is a {0} file.", module));
+                            sw.WriteLine(string.Format("This is a {0} file.", rootModule));
                         }
                     }
 
