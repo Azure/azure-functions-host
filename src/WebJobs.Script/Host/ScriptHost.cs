@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -38,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
         private string _instanceId;
         private Action<FileSystemEventArgs> _restart;
-        private FileSystemWatcher _scriptFileWatcher;
-        private FileSystemWatcher _debugModeFileWatcher;
+        private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
+        private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private int _directoryCountSnapshot;
         private BlobLeaseManager _blobLeaseManager;
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
@@ -264,11 +265,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
 
-                _debugModeFileWatcher = new FileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName)
-                {
-                    EnableRaisingEvents = true
-                };
-                _debugModeFileWatcher.Created += OnDebugModeFileChanged;
+                _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName,
+                    includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                
                 _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
                 var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -291,15 +290,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
-                    _scriptFileWatcher = new FileSystemWatcher(ScriptConfig.RootScriptPath)
-                    {
-                        IncludeSubdirectories = true,
-                        EnableRaisingEvents = true
-                    };
+                    _scriptFileWatcher = new AutoRecoveringFileSystemWatcher(ScriptConfig.RootScriptPath);
+
                     _scriptFileWatcher.Changed += OnFileChanged;
-                    _scriptFileWatcher.Created += OnFileChanged;
-                    _scriptFileWatcher.Deleted += OnFileChanged;
-                    _scriptFileWatcher.Renamed += OnFileChanged;
                 }
 
                 // If a file change should result in a restart, we debounce the event to

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _secretsPath;
         private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>();
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
-        private readonly FileSystemWatcher _fileWatcher;
+        private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private readonly string _hostSecretsPath;
         private HostSecretsInfo _hostSecrets;
 
@@ -40,16 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             Directory.CreateDirectory(_secretsPath);
 
-            _fileWatcher = new FileSystemWatcher(_secretsPath, "*.json")
-            {
-                IncludeSubdirectories = true,
-                EnableRaisingEvents = true
-            };
+            _fileWatcher = new AutoRecoveringFileSystemWatcher(_secretsPath, "*.json");
 
             _fileWatcher.Changed += OnChanged;
-            _fileWatcher.Created += OnChanged;
-            _fileWatcher.Deleted += OnChanged;
-            _fileWatcher.Renamed += OnChanged;
 
             if (createHostSecretsIfMissing)
             {

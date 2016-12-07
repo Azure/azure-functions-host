@@ -438,6 +438,7 @@
     <Compile Include="Binding\HttpTriggerAttributeBindingProviderTests.cs" />
     <Compile Include="Description\Node\NodeFunctionInvokerTests.cs" />
     <Compile Include="Description\PowerShell\PowerShellInvokerTests.cs" />
+    <Compile Include="IO\AutoRecoveringFileSystemWatcherTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

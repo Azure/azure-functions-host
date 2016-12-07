@@ -10,15 +10,15 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     [CLSCompliant(false)]
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
-        private FileSystemWatcher _fileWatcher;
+        private AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
 
@@ -35,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // The global trace writer used by the invoker will write all traces to both
             // the host trace writer as well as our file trace writer
-            TraceWriter = host.TraceWriter != null ? 
-                new CompositeTraceWriter(new TraceWriter[] { FileTraceWriter, host.TraceWriter }) : 
+            TraceWriter = host.TraceWriter != null ?
+                new CompositeTraceWriter(new TraceWriter[] { FileTraceWriter, host.TraceWriter }) :
                 FileTraceWriter;
 
             // Apply the function name as an event property to all traces
@@ -87,21 +87,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
                 string functionDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
-                _fileWatcher = new FileSystemWatcher(functionDirectory, "*.*")
-                {
-                    IncludeSubdirectories = true,
-                    EnableRaisingEvents = true
-                };
+                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionDirectory);
                 _fileWatcher.Changed += OnScriptFileChanged;
-                _fileWatcher.Created += OnScriptFileChanged;
-                _fileWatcher.Deleted += OnScriptFileChanged;
-                _fileWatcher.Renamed += OnScriptFileChanged;
 
                 return true;
             }
 
             return false;
-        }
+        }        
 
         public async Task Invoke(object[] parameters)
         {

@@ -47,6 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHost host = _fixture.Host;
             string debugSentinelFilePath = Path.Combine(host.ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
 
+            if (!File.Exists(debugSentinelFilePath))
+            {
+                File.WriteAllText(debugSentinelFilePath, string.Empty);
+            }
+
             host.LastDebugNotify = DateTime.MinValue;
             Assert.False(host.InDebugMode);
 
