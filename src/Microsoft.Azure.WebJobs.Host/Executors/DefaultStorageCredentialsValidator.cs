@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         // Test that the credentials are valid and classify the account.Type as one of StorageAccountTypes
-        private async Task ValidateCredentialsAsyncCore(IStorageAccount account, CancellationToken cancellationToken)
+        private static async Task ValidateCredentialsAsyncCore(IStorageAccount account, CancellationToken cancellationToken)
         {
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.

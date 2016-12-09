@@ -7,8 +7,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.Azure.WebJobs.Logging.Internal;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -78,21 +78,21 @@ namespace Microsoft.Azure.WebJobs.Logging
             return segment;
         }
 
-        private async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table, string hostName)
+        private static async Task<IFunctionDefinition[]> GetFunctionDefinitionsHelperAsync(CloudTable table, string hostName)
         {
             TableQuery<FunctionDefinitionEntity> query;
             if (hostName == null)
-            {                
+            {
                 query = TableScheme.GetRowsInPartition<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK);
             }
             else
             {
-                query = TableScheme.GetRowsWithPrefixAsync<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK, 
-                    TableScheme.NormalizeFunctionName(hostName)); 
+                query = TableScheme.GetRowsWithPrefixAsync<FunctionDefinitionEntity>(TableScheme.FuncDefIndexPK,
+                    TableScheme.NormalizeFunctionName(hostName));
             }
             var results = await table.SafeExecuteQueryAsync(query);
-                    
-            return results;          
+
+            return results;
         }
 
         // Lookup a single instance by id. 
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 query, start, end);
 
             var results = segment.Results;
-            
+
             List<ActivationEvent> l = new List<ActivationEvent>();
             Dictionary<string, string> intern = new Dictionary<string, string>();
 
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 {
                     ContainerName = name,
                     StartTimeBucket = timeBucket,
-                    StartTime  = TimeBucket.ConvertToDateTime(timeBucket),
+                    StartTime = TimeBucket.ConvertToDateTime(timeBucket),
                     Length = result.GetLength()
                 });
             }
@@ -203,10 +203,10 @@ namespace Microsoft.Azure.WebJobs.Logging
             {
                 _tables = tables;
             }
-            
+
             public static async Task<EpochTableIterator> NewAsync(ILogTableProvider tableLookup)
             {
-                Dictionary <long, CloudTable> d = new Dictionary<long, CloudTable>();
+                Dictionary<long, CloudTable> d = new Dictionary<long, CloudTable>();
 
                 var tables = await tableLookup.ListTablesAsync();
 
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     continuationToken = segment.ContinuationToken;
                 }
             }
-            
+
             // Date range queries start with most recent (endTime) and then return entities in descending chronological order. 
             public async Task<Segment<TElement>> SafeExecuteQuerySegmentedAsync<TElement>(
                 TableQuery<TElement> rangeQuery,
