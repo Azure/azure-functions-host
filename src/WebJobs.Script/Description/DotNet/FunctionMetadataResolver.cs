@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Policy;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -222,8 +223,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // When loading shared assemblies, load into the load-from context and load assembly dependencies
                 assembly = Assembly.LoadFrom(assemblyPath);
             }
-            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath) ||
-                _packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
+            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath))
+            {
+                assembly = Assembly.Load(File.ReadAllBytes(assemblyPath));
+                assembly.MapCodeBase(assemblyPath);
+            }
+            else if (_packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
             {
                 // Use LoadFile here to load into the correct context
                 assembly = Assembly.LoadFile(assemblyPath);

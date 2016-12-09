@@ -154,9 +154,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private FunctionAssemblyLoadContext GetFunctionContextFromDependency(Assembly requestingAssembly)
         {
             // If this is a private reference, get the context based on the CodeBase
-            if (Uri.IsWellFormedUriString(requestingAssembly.CodeBase, UriKind.RelativeOrAbsolute))
+            string assemblyCodeBase = requestingAssembly.GetCodeBase();
+            if (Uri.IsWellFormedUriString(assemblyCodeBase, UriKind.RelativeOrAbsolute))
             {
-                var codebaseUri = new Uri(requestingAssembly.CodeBase, UriKind.RelativeOrAbsolute);
+                var codebaseUri = new Uri(assemblyCodeBase, UriKind.RelativeOrAbsolute);
 
                 if (_rootScriptUri.IsBaseOf(codebaseUri))
                 {
