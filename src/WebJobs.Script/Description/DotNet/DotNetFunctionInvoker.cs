@@ -150,7 +150,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal Task<MethodInfo> GetFunctionTargetAsync() => _functionLoader.GetFunctionTargetAsync();
+        internal async Task<MethodInfo> GetFunctionTargetAsync()
+        {
+            try
+            {
+                return await _functionLoader.GetFunctionTargetAsync().ConfigureAwait(false);
+            }
+            catch (CompilationErrorException exc)
+            {
+                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                TraceCompilationDiagnostics(exc.Diagnostics);
+                throw;
+            }
+        }
 
         private void RestorePackages()
         {
@@ -186,7 +198,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Separate system parameters from the actual method parameters
             object[] originalParameters = parameters;
-            MethodInfo function = await _functionLoader.GetFunctionTargetAsync();
+            MethodInfo function = await GetFunctionTargetAsync();
+
             int actualParameterCount = function.GetParameters().Length;
             object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
             parameters = parameters.Take(actualParameterCount).ToArray();
@@ -237,35 +250,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)
         {
-            try
+            await VerifyPackageReferencesAsync();
+
+            string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+            using (_metricsLogger.LatencyEvent(eventName))
             {
-                await VerifyPackageReferencesAsync();
+                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
-                using (_metricsLogger.LatencyEvent(eventName))
-                {
-                    ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
+                TraceCompilationDiagnostics(bindingDiagnostics);
 
-                    ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
-                    TraceCompilationDiagnostics(bindingDiagnostics);
+                Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
-                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
-                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+                // Get our function entry point
+                _functionSignature = functionSignature;
+                System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
+                    .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
 
-                    // Get our function entry point
-                    _functionSignature = functionSignature;
-                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                        .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
-
-                    return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
-                }
-            }
-            catch (CompilationErrorException ex)
-            {
-                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
-                TraceCompilationDiagnostics(ex.Diagnostics);
-                throw;
+                return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
             }
         }
 
