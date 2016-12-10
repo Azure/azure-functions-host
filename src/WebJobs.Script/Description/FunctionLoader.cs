@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly Func<CancellationToken, Task<T>> _valueFactory;
         private FunctionValueLoader<T> _functionValueLoader;
-        private bool disposed = false;
+        private bool _disposed = false;
 
         public FunctionLoader(Func<CancellationToken, Task<T>> valueFactory)
         {
@@ -69,10 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         void Dispose(bool disposing)
         {
-            if (!disposed && disposing)
+            if (!_disposed && disposing)
             {
                 _functionValueLoader.Dispose();
-                disposed = true;
+                _disposed = true;
             }
         }
 

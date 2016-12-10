@@ -45,14 +45,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { ScriptConstants.TracePropertyFunctionNameKey, Metadata.Name }
             };
             TraceWriter = TraceWriter.Apply(functionTraceProperties);
-
-            PrimaryHostTraceProperties = new Dictionary<string, object>
-            {
-                { ScriptConstants.TracePropertyPrimaryHostKey, true }
-            };
         }
 
-        protected IDictionary<string, object> PrimaryHostTraceProperties { get; }
+        protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }
+            = new ReadOnlyDictionary<string, object>(new Dictionary<string, object> { { ScriptConstants.TracePropertyPrimaryHostKey, true } });
+
+        protected static IDictionary<string, object> PrimaryHostUserTraceProperties { get; }
+            = new ReadOnlyDictionary<string, object>(new Dictionary<string, object>(PrimaryHostTraceProperties) { { ScriptConstants.TracePropertyIsUserTraceKey, true } });
+
+        protected static IDictionary<string, object> PrimaryHostSystemTraceProperties { get; }
+            = new ReadOnlyDictionary<string, object>(new Dictionary<string, object>(PrimaryHostTraceProperties) { { ScriptConstants.TracePropertyIsSystemTraceKey, true } });
 
         public ScriptHost Host { get; }
 
