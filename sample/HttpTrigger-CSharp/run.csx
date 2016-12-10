@@ -1,4 +1,6 @@
-﻿public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+﻿using System.Net;
+
+public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
     var queryParams = req.GetQueryNameValuePairs()
         .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
