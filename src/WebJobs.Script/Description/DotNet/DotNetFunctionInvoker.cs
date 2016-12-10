@@ -129,10 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException exc)
             {
-                compilationResult = compilationResult.AddRange(exc.Diagnostics);
+                compilationResult = AddFunctionDiagnostics(compilationResult.AddRange(exc.Diagnostics));
             }
 
-            TraceCompilationDiagnostics(compilationResult);
+            TraceCompilationDiagnostics(compilationResult, suppressSystemLogs: true);
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch (CompilationErrorException exc)
             {
                 TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
-                TraceCompilationDiagnostics(exc.Diagnostics);
+                TraceCompilationDiagnostics(exc.Diagnostics, suppressSystemLogs: true);
                 throw;
             }
         }
@@ -250,26 +250,38 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)
         {
-            await VerifyPackageReferencesAsync();
-
-            string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
-            using (_metricsLogger.LatencyEvent(eventName))
+            try
             {
-                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                await VerifyPackageReferencesAsync();
 
-                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
-                TraceCompilationDiagnostics(bindingDiagnostics);
+                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+                using (_metricsLogger.LatencyEvent(eventName))
+                {
+                    ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
-                Assembly assembly = compilation.EmitAndLoad(cancellationToken);
-                _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+                    ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
+                    TraceCompilationDiagnostics(bindingDiagnostics);
 
-                // Get our function entry point
-                _functionSignature = functionSignature;
-                System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                    .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
+                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
 
-                return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                    // Get our function entry point
+                    _functionSignature = functionSignature;
+                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
+                        .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
+
+                    return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                }
+            }
+            catch (CompilationErrorException exc)
+            {
+                ImmutableArray<Diagnostic> diagnostics = AddFunctionDiagnostics(exc.Diagnostics);
+                
+                // Here we only need to trace to system logs
+                TraceCompilationDiagnostics(diagnostics, suppressUserLogs: true);
+
+                throw new CompilationErrorException(exc.Message, diagnostics);
             }
         }
 
@@ -294,19 +306,47 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, bool suppressSystemLogs = false, bool suppressUserLogs = false)
         {
+            if (suppressSystemLogs && suppressUserLogs)
+            {
+                return;
+            }
+
+            TraceWriter traceWriter  = TraceWriter;
+            IDictionary<string, object> properties = PrimaryHostTraceProperties;
+
+            if (suppressUserLogs)
+            {
+                traceWriter = Host.TraceWriter;
+            }
+            else if (suppressSystemLogs)
+            {
+                properties = PrimaryHostUserTraceProperties; 
+            }
+            
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
-                TraceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), PrimaryHostTraceProperties);
-
-                ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
-
-                if (!scriptDiagnostics.IsEmpty)
-                {
-                    TraceCompilationDiagnostics(scriptDiagnostics);
-                }
+                traceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), properties);
             }
+        }
+
+        private ImmutableArray<Diagnostic> AddFunctionDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        {
+            var result = diagnostics.Aggregate(new List<Diagnostic>(), (a, d) =>
+            {
+                a.Add(d);
+                ImmutableArray<Diagnostic> functionsDiagnostics = GetFunctionDiagnostics(d);
+
+                if (!functionsDiagnostics.IsEmpty)
+                {
+                    a.AddRange(functionsDiagnostics);
+                }
+
+                return a;
+            });
+
+            return ImmutableArray.CreateRange(result);
         }
 
         private ImmutableArray<Diagnostic> GetFunctionDiagnostics(Diagnostic diagnostic)
