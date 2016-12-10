@@ -58,11 +58,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Update the file to trigger a reload
             File.WriteAllText(filePath, string.Empty);
 
+            await TestHelpers.Await(() =>
+            {
+                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                 dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+            });
+
+            dependencies.TraceWriter.Traces.Clear();
+
             CompilationErrorException resultException = await Assert.ThrowsAsync<CompilationErrorException>(() => invoker.GetFunctionTargetAsync());
 
             await TestHelpers.Await(() =>
             {
-                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Function compilation error")) &&
                  dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
         }
@@ -178,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var dependencies = new RunDependencies();
 
+            var functionTraceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
             var scriptHostConfiguration = new ScriptHostConfiguration
             {
@@ -191,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var host = new Mock<ScriptHost>(scriptHostConfiguration);
             host.SetupGet(h => h.IsPrimary).Returns(true);
-
+            
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
 
             var compilation = new Mock<ICompilation>();
@@ -210,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var traceWriterFactory = new Mock<ITraceWriterFactory>();
             traceWriterFactory.Setup(f => f.Create())
-                .Returns(traceWriter);
+                .Returns(functionTraceWriter);
 
             var metricsLogger = new MetricsLogger();
             scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
@@ -223,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CompilationService = compilationService,
                 CompilationServiceFactory = compilationServiceFactory,
                 TraceWriterFactory = traceWriterFactory,
-                TraceWriter = traceWriter
+                TraceWriter = functionTraceWriter
             };
         }
 

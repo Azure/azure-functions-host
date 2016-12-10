@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
+            TraceWriter = ScriptConfig.TraceWriter;
         }
 
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -235,7 +236,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Subscribe(HandleHostError);
                 ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
 
-                TraceWriter = ScriptConfig.TraceWriter;
                 TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
