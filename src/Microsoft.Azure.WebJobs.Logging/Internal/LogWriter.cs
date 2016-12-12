@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 throw new ArgumentNullException("hostName");
             }
             this._hostName = hostName;
-            this._machineName = machineName;         
+            this._machineName = machineName;
             this._logTableProvider = logTableProvider;
         }
 
@@ -104,14 +104,14 @@ namespace Microsoft.Azure.WebJobs.Logging
         private async Task StopBackgroundFlusher()
         {
             Task task = null;
-            lock(_lock)
+            lock (_lock)
             {
                 if (_backgroundFlusherTask != null)
                 {
                     // Clear the flag before waiting, since the background flusher may call back into Flush()
                     task = _backgroundFlusherTask;
                     _backgroundFlusherTask = null;
-                    _cancelBackgroundFlusher.Cancel();                    
+                    _cancelBackgroundFlusher.Cancel();
                 }
             }
             if (task != null)
@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             // Both Start and Completed log here. Completed will overwrite a Start entry. 
             lock (_lock)
             {
-                _activeFuncs[item.FunctionInstanceId] = item;          
+                _activeFuncs[item.FunctionInstanceId] = item;
             }
 
             lock (_lock)
@@ -178,14 +178,14 @@ namespace Microsoft.Azure.WebJobs.Logging
                 _container.Increment(item.FunctionInstanceId);
                 _instanceLogger.Increment(item.FunctionInstanceId);
             }
-            
+
             lock (_lock)
             {
                 if (_seenFunctions.Add(item.FunctionName))
                 {
                     _funcDefs.Add(FunctionDefinitionEntity.New(item.FunctionId, item.FunctionName));
                 }
-            }                   
+            }
 
             if (item.IsCompleted())
             {
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
                         Increment(item, existingEntity);
                     }
-                }           
+                }
             }
 
             // Results will get written on a background thread            
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
         // Could flush on a timer. 
-        private async Task FlushIntancesAsync(bool always)
+        private async Task FlushIntancesAsync()
         {
             // Before writing, give items a chance to refresh 
             var itemsSnapshot = Update();
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             lock (_lock)
             {
-                functionDefinitions = _funcDefs.ToArray();                
+                functionDefinitions = _funcDefs.ToArray();
                 _funcDefs.Clear();
             }
             Task t1 = WriteBatchAsync(instances);
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         private async Task FlushCoreAsync()
         {
             await FlushTimelineAggregateAsync(true);
-            await FlushIntancesAsync(true);
+            await FlushIntancesAsync();
 
             if (_container != null)
             {
@@ -333,21 +333,21 @@ namespace Microsoft.Azure.WebJobs.Logging
         // Parallel uploads. 
         private Task WriteBatchAsync<T>(IEnumerable<T> e1) where T : TableEntity, IEntityWithEpoch
         {
-            return this._logTableProvider.WriteBatchAsync(e1);       
+            return this._logTableProvider.WriteBatchAsync(e1);
         }
 
         // Collection where adding in the same RowKey replaces a previous entry with that key. 
         // This is single-threaded. Caller must lock. 
         // All entities in this collection must have unique row keys across the partition and tables.
-        private class EntityCollection<T>  : IEnumerable<T> where T : TableEntity 
+        private class EntityCollection<T> : IEnumerable<T> where T : TableEntity
         {
             // Ordering doesn't matter since azure tables will order them for us. 
             private Dictionary<string, T> _map = new Dictionary<string, T>();
 
             public void Add(T entry)
-            {                
+            {
                 string row = entry.RowKey;
-                _map[row] = entry;                
+                _map[row] = entry;
             }
 
             public int Count
@@ -388,5 +388,5 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return _map.Values.GetEnumerator();
             }
         }
-    }    
+    }
 }

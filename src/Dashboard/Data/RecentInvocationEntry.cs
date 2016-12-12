@@ -252,8 +252,7 @@ namespace Dashboard.Data
             {
                 return null;
             }
-            DateTime parsedUtc = new DateTime(parsed.Ticks, DateTimeKind.Utc);
-                        
+                                    
             return parsed;
         }
 
