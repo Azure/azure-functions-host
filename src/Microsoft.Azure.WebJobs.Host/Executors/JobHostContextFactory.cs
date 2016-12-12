@@ -179,7 +179,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     config.HostId = hostId;
                 }
 
-                if (dashboardAccount != null)
+                if (dashboardAccount == null)
+                {
+                    hostCallExecutor = new ShutdownFunctionExecutor(shutdownToken, functionExecutor);
+
+                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory);
+                    IListener shutdownListener = new ShutdownListener(shutdownToken, factoryListener);
+                    listener = shutdownListener;
+
+                    hostOutputMessage = new DataOnlyHostOutputMessage();
+                }
+                else
                 {
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
@@ -230,16 +240,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, combinedCancellationToken);
-                }
-                else
-                {
-                    hostCallExecutor = new ShutdownFunctionExecutor(shutdownToken, functionExecutor);
-
-                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory);
-                    IListener shutdownListener = new ShutdownListener(shutdownToken, factoryListener);
-                    listener = shutdownListener;
-
-                    hostOutputMessage = new DataOnlyHostOutputMessage();
                 }
 
                 functionExecutor.HostOutputMessage = hostOutputMessage;
