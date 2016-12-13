@@ -421,7 +421,7 @@
     <Compile Include="Controllers\Keys\PutFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PutHostFunctionKeyScenario.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
-    <Compile Include="DotNetEndToEndTests.cs" />
+    <Compile Include="RawAssemblyEndToEndTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
     <Compile Include="EndToEndTimeoutTests.cs" />
