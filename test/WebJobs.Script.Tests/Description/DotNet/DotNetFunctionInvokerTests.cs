@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task ReloadScript_WithInvalidCompilationAndMissingMethod_ReportsResults()
         {
             // Create the compilation exception we expect to throw during the reload
-            var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingFunctionEntryPointCompilationCode, 
+            var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingFunctionEntryPointCompilationCode,
                 "Test compilation exception", "Test compilation error", "AzureFunctions", DiagnosticSeverity.Error, true);
             var exception = new CompilationErrorException("Test compilation exception", ImmutableArray.Create(Diagnostic.Create(descriptor, Location.None)));
 
@@ -52,17 +52,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
-                new Collection<Script.Binding.FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty), 
+                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty),
                 dependencies.CompilationServiceFactory.Object, dependencies.TraceWriterFactory.Object);
 
             // Update the file to trigger a reload
             File.WriteAllText(filePath, string.Empty);
 
+            await TestHelpers.Await(() =>
+            {
+                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                 dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+            });
+
+            dependencies.TraceWriter.Traces.Clear();
+
             CompilationErrorException resultException = await Assert.ThrowsAsync<CompilationErrorException>(() => invoker.GetFunctionTargetAsync());
 
             await TestHelpers.Await(() =>
             {
-                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Function compilation error")) &&
                  dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
         }
@@ -73,10 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Create the compilation exception we expect to throw during the reload           
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(rootFunctionsFolder);
-            
+
             // Create the invoker dependencies and setup the appropriate method to throw the exception
             RunDependencies dependencies = CreateDependencies();
-                
+
             // Create a dummy file to represent our function
             string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
             File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
@@ -91,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
 
             var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
-            
+
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
                 new DotNetCompilationServiceFactory(), dependencies.TraceWriterFactory.Object);
@@ -111,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Create the invoker dependencies and setup the appropriate method to throw the exception
             RunDependencies dependencies = CreateDependencies();
-            
+
             // Set the host to secondary
             dependencies.Host.SetupGet(h => h.IsPrimary).Returns(false);
 
@@ -178,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var dependencies = new RunDependencies();
 
+            var functionTraceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
             var scriptHostConfiguration = new ScriptHostConfiguration
             {
@@ -210,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var traceWriterFactory = new Mock<ITraceWriterFactory>();
             traceWriterFactory.Setup(f => f.Create())
-                .Returns(traceWriter);
+                .Returns(functionTraceWriter);
 
             var metricsLogger = new MetricsLogger();
             scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
@@ -223,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CompilationService = compilationService,
                 CompilationServiceFactory = compilationServiceFactory,
                 TraceWriterFactory = traceWriterFactory,
-                TraceWriter = traceWriter
+                TraceWriter = functionTraceWriter
             };
         }
 

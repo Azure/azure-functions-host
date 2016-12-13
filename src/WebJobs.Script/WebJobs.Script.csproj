@@ -406,6 +406,7 @@
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
+    <Compile Include="Extensions\AssemblyExtensions.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Extensions\FileUtility.cs" />
     <Compile Include="Extensions\HttpRequestMessageExtensions.cs" />
@@ -434,6 +435,7 @@
     <Compile Include="HttpMethodJsonConverter.cs" />
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />
+    <Compile Include="IO\AutoRecoveringFileSystemWatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />

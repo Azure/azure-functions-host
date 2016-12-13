@@ -129,10 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException exc)
             {
-                compilationResult = compilationResult.AddRange(exc.Diagnostics);
+                compilationResult = AddFunctionDiagnostics(compilationResult.AddRange(exc.Diagnostics));
             }
 
-            TraceCompilationDiagnostics(compilationResult);
+            TraceCompilationDiagnostics(compilationResult, LogTargets.User);
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
@@ -150,7 +150,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal Task<MethodInfo> GetFunctionTargetAsync() => _functionLoader.GetFunctionTargetAsync();
+        internal async Task<MethodInfo> GetFunctionTargetAsync()
+        {
+            try
+            {
+                return await _functionLoader.GetFunctionTargetAsync().ConfigureAwait(false);
+            }
+            catch (CompilationErrorException exc)
+            {
+                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User);
+                throw;
+            }
+        }
 
         private void RestorePackages()
         {
@@ -186,7 +198,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Separate system parameters from the actual method parameters
             object[] originalParameters = parameters;
-            MethodInfo function = await _functionLoader.GetFunctionTargetAsync();
+            MethodInfo function = await GetFunctionTargetAsync();
+
             int actualParameterCount = function.GetParameters().Length;
             object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
             parameters = parameters.Take(actualParameterCount).ToArray();
@@ -261,11 +274,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
                 }
             }
-            catch (CompilationErrorException ex)
+            catch (CompilationErrorException exc)
             {
-                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
-                TraceCompilationDiagnostics(ex.Diagnostics);
-                throw;
+                ImmutableArray<Diagnostic> diagnostics = AddFunctionDiagnostics(exc.Diagnostics);
+
+                // Here we only need to trace to system logs
+                TraceCompilationDiagnostics(diagnostics, LogTargets.System);
+
+                throw new CompilationErrorException(exc.Message, diagnostics);
             }
         }
 
@@ -290,19 +306,48 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
         {
+            if (logTarget == LogTargets.None)
+            {
+                return;
+            }
+
+            TraceWriter traceWriter = TraceWriter;
+            IDictionary<string, object> properties = PrimaryHostTraceProperties;
+
+            if (!logTarget.HasFlag(LogTargets.User))
+            {
+                traceWriter = Host.TraceWriter;
+                properties = PrimaryHostSystemTraceProperties;
+            }
+            else if (!logTarget.HasFlag(LogTargets.System))
+            {
+                properties = PrimaryHostUserTraceProperties;
+            }
+
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
-                TraceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), PrimaryHostTraceProperties);
-
-                ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
-
-                if (!scriptDiagnostics.IsEmpty)
-                {
-                    TraceCompilationDiagnostics(scriptDiagnostics);
-                }
+                traceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), properties);
             }
+        }
+
+        private ImmutableArray<Diagnostic> AddFunctionDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        {
+            var result = diagnostics.Aggregate(new List<Diagnostic>(), (a, d) =>
+            {
+                a.Add(d);
+                ImmutableArray<Diagnostic> functionsDiagnostics = GetFunctionDiagnostics(d);
+
+                if (!functionsDiagnostics.IsEmpty)
+                {
+                    a.AddRange(functionsDiagnostics);
+                }
+
+                return a;
+            });
+
+            return ImmutableArray.CreateRange(result);
         }
 
         private ImmutableArray<Diagnostic> GetFunctionDiagnostics(Diagnostic diagnostic)
@@ -433,6 +478,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return processor ?? ((_, __, ___, ____) => { /*noop*/ });
+        }
+
+        [Flags]
+        internal enum LogTargets
+        {
+            None = 0,
+            System = 1,
+            User = 2,
+            All = System | User
         }
     }
 }
