@@ -60,8 +60,12 @@
                                 "$ref": "#/definitions/manualTrigger"
                             },
                             {
+                                "$ref": "#/definitions/table"
+                            },
+                            {
                                 "$ref": "#/definitions/dynamic"
                             }
+                            
                         ]
                     }
                 }
@@ -78,7 +82,8 @@
                 "eventHubTrigger",
                 "manualTrigger",
                 "blobTrigger",
-                "serviceBusTrigger"
+                "serviceBusTrigger",
+                "table"
             ]
         },
         "serviceBusTrigger": {
@@ -227,6 +232,62 @@
             "allOf": [
                 {
                     "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "table": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "table"
+                },
+                "tableName": {
+                    "type": "string",
+                    "description": "The name of the storage table."
+                },
+                "partitionKey": {
+                    "type": "string",
+                    "description": "The partition key."
+                },
+                "rowKey": {
+                    "type": "string",
+                    "description": "The table row key."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "An app setting (or environment variable) with the storage connection string to be used by this binding."
+                }
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/tableInputBinding"
+                },
+                {
+                     "$ref": "#/definitions/tableOutputBinding"
+                }
+            ]
+        },
+        "tableInputBinding": {
+            "properties": {
+                "take": {
+                    "type": "string",
+                    "description": "The number or records to retrieve."
+                },
+                "filter": {
+                    "type": "string",
+                    "description": "A filter expression to be applied when retrieving rows."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inputBinding"
+                }
+            ]
+        },
+         "tableOutputBinding": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
                 }
             ]
         },
