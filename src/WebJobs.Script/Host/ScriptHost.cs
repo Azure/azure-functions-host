@@ -812,6 +812,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.Bash;
                 case "fsx":
                     return ScriptType.FSharp;
+                case "dll":
+                    return ScriptType.DotNetAssembly;
                 default:
                     return ScriptType.Unknown;
             }

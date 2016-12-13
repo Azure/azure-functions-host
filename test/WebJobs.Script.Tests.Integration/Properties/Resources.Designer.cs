@@ -83,5 +83,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
                 return ResourceManager.GetString("AzureWebHookEventRequest", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///    &quot;scriptFile&quot;:&quot;DotNetFunctionAssembly.dll&quot;,
+        ///    &quot;entryPoint&quot;: &quot;TestFunction.Function.Run&quot;,
+        ///    &quot;bindings&quot;: [
+        ///        {
+        ///            &quot;type&quot;: &quot;httpTrigger&quot;,
+        ///            &quot;name&quot;: &quot;req&quot;,
+        ///            &quot;direction&quot;: &quot;in&quot;,
+        ///            &quot;methods&quot;: [ &quot;get&quot; ]
+        ///        },
+        ///        {
+        ///            &quot;type&quot;: &quot;http&quot;,
+        ///            &quot;name&quot;: &quot;$return&quot;,
+        ///            &quot;direction&quot;: &quot;out&quot;
+        ///        }
+        ///    ]
+        ///}.
+        /// </summary>
+        internal static string DotNetFunctionJson {
+            get {
+                return ResourceManager.GetString("DotNetFunctionJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to using System.Net;
+        ///using System.Net.Http;
+        ///using System.Threading.Tasks;
+        ///using Microsoft.Azure.WebJobs.Host;
+        ///
+        ///namespace TestFunction
+        ///{
+        ///    public class Function
+        ///    {
+        ///        public static Task&lt;HttpResponseMessage&gt; Run(HttpRequestMessage req, TraceWriter log)
+        ///        {
+        ///            log.Info(&quot;Test&quot;);
+        ///
+        ///            var res = new HttpResponseMessage(HttpStatusCode.OK)
+        ///            {
+        ///                Content = new StringContent(&quot;Hello from .NET&quot;)
+        ///            };
+        ///
+        ///            return Task.FromResult(re [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string DotNetFunctionSource {
+            get {
+                return ResourceManager.GetString("DotNetFunctionSource", resourceCulture);
+            }
+        }
     }
 }

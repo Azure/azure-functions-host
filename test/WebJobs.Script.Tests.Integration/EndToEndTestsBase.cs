@@ -111,8 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public async Task ManualTrigger_Invoke_Succeeds()
+        public async Task ManualTrigger_Invoke_SucceedsTest()
         {
             TestHelpers.ClearFunctionLogs("ManualTrigger");
 
@@ -133,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logs.Any(p => p.Contains(testData)));
         }
 
-        [Fact]
         public async Task QueueTriggerToBlobTest()
         {
             TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");

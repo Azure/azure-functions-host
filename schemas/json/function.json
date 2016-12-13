@@ -1,0 +1,354 @@
+﻿{
+    "title": "JSON schema for Azure Functions function.json files",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "disabled": {
+            "type": "boolean",
+            "description": "If set to true, marks the function as disabled."
+        },
+        "bindings": {
+            "type": "array",
+            "description": "A list of function bindings.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/bindingNames"
+                            },
+                            {
+                                "not": {
+                                    "$ref": "#/definitions/bindingNames"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "allOf": [
+                    {
+                        "$ref": "#/definitions/binding"
+                    }
+                ],
+                "required": [
+                    "type"
+                ],
+                "dependencies": {
+                    "type": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/timerTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/queueTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/httpTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/eventHubTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/serviceBusTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/blobTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/manualTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/table"
+                            },
+                            {
+                                "$ref": "#/definitions/dynamic"
+                            }
+                            
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "bindingNames": {
+            "type": "string",
+            "enum": [
+                "timerTrigger",
+                "queueTrigger",
+                "httpTrigger",
+                "eventHubTrigger",
+                "manualTrigger",
+                "blobTrigger",
+                "serviceBusTrigger",
+                "table"
+            ]
+        },
+        "serviceBusTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "serviceBusTrigger"
+                },
+                "queueName": {
+                    "type": "string",
+                    "description": "The service bus queue to monitor (if using a queue)"
+                },
+                "topicName": {
+                    "type": "string",
+                    "description": "The service bus topic to monitor (if using a queue)"
+                },
+                "subscriptionName": {
+                    "type": "string",
+                    "description": "The topic subscription name"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "blobTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "blobTrigger"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The path to the blob contaiter"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "manualTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "manualTrigger"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "eventHubTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "eventHubTrigger"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The event hub path."
+                },
+                "consumerGroup": {
+                    "type": "string",
+                    "description": "The event hub consumer group."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "The event hub connection string setting."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "timerTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "timerTrigger"
+                },
+                "schedule": {
+                    "type": "string",
+                    "description": "A CRON expression representing the timer schedule.",
+                    "pattern": "^(\\*|((([1-5]\\d)|\\d)(\\-(([1-5]\\d)|\\d)(\\/\\d+)?)?)(,((([1-5]\\d)|\\d)(\\-(([1-5]\\d)|\\d)(\\/\\d+)?)?))*)(\\/\\d+)? (\\*|((([1-5]\\d)|\\d)(\\-(([1-5]\\d)|\\d)(\\/\\d+)?)?)(,((([1-5]\\d)|\\d)(\\-(([1-5]\\d)|\\d)(\\/\\d+)?)?))*)(\\/\\d+)? (\\*|(((1\\d)|(2[0-3])|\\d)(\\-((1\\d)|(2[0-3])|\\d)(\\/\\d+)?)?)(,(((1\\d)|(2[0-3])|\\d)(\\-((1\\d)|(2[0-3])|\\d)(\\/\\d+)?)?))*)(\\/\\d+)? (\\*|((([1-2]\\d)|(3[0-1])|[1-9])(\\-(([1-2]\\d)|(3[0-1])|[1-9])(\\/\\d+)?)?)(,((([1-2]\\d)|(3[0-1])|[1-9])(\\-(([1-2]\\d)|(3[0-1])|[1-9])(\\/\\d+)?)?))*)(\\/\\d+)? (\\*|(([A-Za-z]+|(1[0-2])|[1-9])(\\-([A-Za-z]+|(1[0-2])|[1-9])(\\/\\d+)?)?)(,(([A-Za-z]+|(1[0-2])|[1-9])(\\-([A-Za-z]+|(1[0-2])|[1-9])(\\/\\d+)?)?))*)(\\/\\d+)? (\\*|(([A-Za-z]+|[0-6])(\\-([A-Za-z]+|[0-6])(\\/\\d+)?)?)(,(([A-Za-z]+|[0-6])(\\-([A-Za-z]+|[0-6])(\\/\\d+)?)?))*)(\\/\\d+)?$"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "queueTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "queueTrigger"
+                },
+                "queueName": {
+                    "type": "string",
+                    "description": "The queue name."
+                }
+            },
+            "required": [
+                "queueTrigger"
+            ],
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "httpTrigger": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "httpTrigger"
+                },
+                "route": {
+                    "type": "string",
+                    "description": "The function HTTP route template."
+                },
+                "webHookType": {
+                    "type": "string",
+                    "description": "The type of WebHook handled by the trigger (if handling a pre-defined WebHook)."
+                },
+                "authLevel": {
+                    "type": "string",
+                    "default": "function",
+                    "enum": [
+                        "anonymous",
+                        "function",
+                        "admin"
+                    ],
+                    "description": "The function HTTP authorization level."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "table": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "table"
+                },
+                "tableName": {
+                    "type": "string",
+                    "description": "The name of the storage table."
+                },
+                "partitionKey": {
+                    "type": "string",
+                    "description": "The partition key."
+                },
+                "rowKey": {
+                    "type": "string",
+                    "description": "The table row key."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "An app setting (or environment variable) with the storage connection string to be used by this binding."
+                }
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/tableInputBinding"
+                },
+                {
+                     "$ref": "#/definitions/tableOutputBinding"
+                }
+            ]
+        },
+        "tableInputBinding": {
+            "properties": {
+                "take": {
+                    "type": "string",
+                    "description": "The number or records to retrieve."
+                },
+                "filter": {
+                    "type": "string",
+                    "description": "A filter expression to be applied when retrieving rows."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inputBinding"
+                }
+            ]
+        },
+         "tableOutputBinding": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
+        "binding": {
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "in",
+                        "out",
+                        "inout"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "direction",
+                "name"
+            ]
+        },
+        "trigger": {
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "in"
+                    ]
+                }
+            }
+        },
+        "inputBinding": {
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "in"
+                    ]
+                }
+            }
+        },
+        "outputBinding": {
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "out"
+                    ]
+                }
+            }
+        },
+        "dynamic": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "not": {
+                        "$ref": "#/definitions/bindingNames"
+                    }
+                }
+            }
+        }
+    }
+}

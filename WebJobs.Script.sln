@@ -414,6 +414,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Integr
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{67174433-2838-460C-9880-419476D02994}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A}"
+	ProjectSection(SolutionItems) = preProject
+		schema\json\function.json = schema\json\function.json
+		schema\json\host.json = schema\json\host.json
+		schema\json\README.md = schema\json\README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -529,5 +538,6 @@ Global
 		{2F6EF597-6586-4F59-BBB6-BA7146FEFD27} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A} = {67174433-2838-460C-9880-419476D02994}
 	EndGlobalSection
 EndGlobal

@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         PHP,
         Bash,
         FSharp,
+        DotNetAssembly,
         Unknown
     }
 }
