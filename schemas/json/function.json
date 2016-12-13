@@ -64,8 +64,16 @@
                             },
                             {
                                 "$ref": "#/definitions/dynamic"
+                            },
+                            {
+                                "$ref": "#/definitions/notificationHub"
+                            },
+                            {
+                                "$ref": "#/definitions/twilioSms"
+                            },
+                            {
+                                "$ref": "#/definitions/sendGrid"
                             }
-                            
                         ]
                     }
                 }
@@ -83,7 +91,10 @@
                 "manualTrigger",
                 "blobTrigger",
                 "serviceBusTrigger",
-                "table"
+                "table",
+                "notificationHub",
+                "twilioSms",
+                "sendGrid"
             ]
         },
         "serviceBusTrigger": {
@@ -303,6 +314,109 @@
             ]
         },
          "tableOutputBinding": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
+        "notificationHub": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "notificationHub"
+                },
+                "tagExpression": {
+                    "type": "string",
+                    "description": "The tag to send the notification to."
+                },
+                "hubName": {
+                    "type": "string",
+                    "description": "The name of the notification hub."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "The name of the app setting which contains the notification hub connection string."
+                },
+                "platform": {
+                    "type": "string",
+                    "description": "The notification platform to target.",
+                    "enum": [
+                        "template",
+                        "apns",
+                        "adm",
+                        "gcm",
+                        "wns",
+                        "mpns"
+                    ]
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
+        "twilioSms": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "twilioSms"
+                },
+                "accountSid": {
+                    "type": "string",
+                    "description": "The name of the app setting which contains your Twilio Account Sid."
+                },
+                "authToken": {
+                    "type": "string",
+                    "description": "The name of the app setting which contains your Twilio authentication token."
+                },
+                "to": {
+                    "type": "string",
+                    "description": "The phone number the SMS text is sent to."
+                },
+                "from": {
+                    "type": "string",
+                    "description": "The phone number the SMS text is sent from."
+                },
+                "body": {
+                    "type": "string",
+                    "description": "Optional body of SMS text message."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
+        "sendGrid": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "sendGrid"
+                },
+                "apiKey": {
+                    "type": "string",
+                    "description": "The name of the app setting which contains your SendGrid api key."
+                },
+                "to": {
+                    "type": "string",
+                    "description": "The email address to send to."
+                },
+                "from": {
+                    "type": "string",
+                    "description": "The email address to send from."
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "The subject of the email."
+                },
+                "text": {
+                    "type": "string",
+                    "description": "The text of the email."
+                }
+            },
             "allOf": [
                 {
                     "$ref": "#/definitions/outputBinding"
