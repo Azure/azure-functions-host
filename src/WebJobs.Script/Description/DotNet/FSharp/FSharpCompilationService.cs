@@ -4,11 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
@@ -22,36 +24,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class FSharpCompiler : ICompilationService
     {
-        private static readonly string[] TheWatchedFileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
+        private static readonly string[] FileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
         private readonly IFunctionMetadataResolver _metadataResolver;
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
         = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly OptimizationLevel _optimizationLevel;
         private readonly Regex _hashRRegex;
+        private readonly TraceWriter _traceWriter;
 
-        public FSharpCompiler(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
+        public FSharpCompiler(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, TraceWriter traceWriter)
         {
             _metadataResolver = metadataResolver;
             _optimizationLevel = optimizationLevel;
+            _traceWriter = traceWriter;
             _hashRRegex = new Regex(@"^\s*#r\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
-        public string Language
-        {
-            get
-            {
-                return "FSharp";
-            }
-        }
+        public string Language => "FSharp";
 
-        public IEnumerable<string> SupportedFileTypes
-        {
-            get
-            {
-                return TheWatchedFileTypes;
-            }
-        }
+        public IEnumerable<string> SupportedFileTypes => FileTypes;
 
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {
@@ -77,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var resolverSource = resolverSourceBuilder.ToString();
 
             Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create(resolverSource, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
-            Compilation compilation = script.GetCompilation();
 
             var compiler = new SimpleSourceCodeServices(msbuildEnabled: FSharpOption<bool>.Some(false));
 
@@ -90,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             string scriptFilePath = Path.Combine(scriptPath, Path.GetFileName(functionMetadata.ScriptFile));
 
-            var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName);
+            var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, Guid.NewGuid().ToString());
             var assemblyFileName = Path.Combine(scriptPath, assemblyName + ".dll");
             var pdbName = Path.ChangeExtension(assemblyFileName, "pdb");
 
@@ -123,31 +114,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // as dictated by the C# reference resolver, and F# doesn't like getting multiple references to those.
                 otherFlags.Add("--noframework");
 
-                // Add the references as reported by the C# reference resolver.
-                foreach (var mdr in compilation.References)
-                {
-                    if (!mdr.Display.Contains("Unresolved "))
+                var references = script.Options.MetadataReferences
+                    .Cast<UnresolvedMetadataReference>()
+                    .Aggregate(new List<PortableExecutableReference>(), (a, r) =>
                     {
-                        otherFlags.Add("-r:" + mdr.Display);
-                    }
-                }
+                        a.AddRange(_metadataResolver.ResolveReference(r.Reference, string.Empty, r.Properties));
+                        return a;
+                    });
 
-                // Above we have used the C# reference resolver to get the basic set of DLL references for the compilation.
-                //
-                // However F# has its own view on default options. For scripts these should include the
-                // following framework facade references.
-
-                otherFlags.Add("-r:System.Linq.dll"); // System.Linq.Expressions.Expression<T> 
-                otherFlags.Add("-r:System.Reflection.dll"); // System.Reflection.ParameterInfo
-                otherFlags.Add("-r:System.Linq.Expressions.dll"); // System.Linq.IQueryable<T>
-                otherFlags.Add("-r:System.Threading.Tasks.dll"); // valuetype [System.Threading.Tasks]System.Threading.CancellationToken
-                otherFlags.Add("-r:System.IO.dll");  //  System.IO.TextWriter
-                otherFlags.Add("-r:System.Net.Requests.dll");  //  System.Net.WebResponse etc.
-                otherFlags.Add("-r:System.Collections.dll"); // System.Collections.Generic.List<T>
-                otherFlags.Add("-r:System.Runtime.Numerics.dll"); // BigInteger
-                otherFlags.Add("-r:System.Threading.dll");  // OperationCanceledException
-                otherFlags.Add("-r:System.Runtime.dll");
-                otherFlags.Add("-r:System.Numerics.dll");
+                // Add the references as reported by the metadata resolver.
+                otherFlags.AddRange(references.Select(r => "-r:" + r.Display));
 
                 if (_optimizationLevel == OptimizationLevel.Debug)
                 {
@@ -196,13 +172,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     var assembly = Assembly.Load(assemblyBytes, pdbBytes);
                     assemblyOption = FSharpOption<Assembly>.Some(assembly);
                 }
+                else
+                {
+                    _traceWriter.Verbose($"F# compilation failed with arguments: { string.Join(" ", otherFlags) }");
+                }
             }
             finally
             {
                 DeleteDirectoryAsync(scriptPath, recursive: true)
                 .ContinueWith(t => t.Exception.Handle(e =>
                 {
-                    // TODO: Trace
+                    _traceWriter.Warning($"Unable to delete F# compilation file: { e.ToString() }");
                     return true;
                 }), TaskContinuationOptions.OnlyOnFaulted);
             }

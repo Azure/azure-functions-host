@@ -43,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Configuration",
                 "System.Xml",
                 "System.Net.Http",
+                "System.Runtime",
+                "System.Threading.Tasks",
                 "Microsoft.CSharp",
-                typeof(object).Assembly.Location,
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
@@ -117,13 +118,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IReadOnlyCollection<string> GetCompilationReferences()
         {
-            // Add package reference assemblies
-            var result = new List<string>(_packageAssemblyResolver.AssemblyReferences);
+            // Combine our default references with package references
+            var combinedReferences = DefaultAssemblyReferences
+                .Union(_packageAssemblyResolver.AssemblyReferences);
 
-            // Add default references
-            result.AddRange(DefaultAssemblyReferences);
-
-            return result.AsReadOnly();
+            return new ReadOnlyCollection<string>(combinedReferences.ToList());
         }
 
         /// <summary>
@@ -189,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 bool externalReference = false;
                 string basePath = _privateAssembliesPath;
-                
+
                 // If this is a relative assembly reference, use the function directory as the base probing path
                 if (reference.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) > -1)
                 {

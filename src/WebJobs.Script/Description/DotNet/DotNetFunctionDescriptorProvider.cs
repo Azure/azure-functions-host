@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ICompilationServiceFactory _compilationServiceFactory;
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-           : this(host, config, new DotNetCompilationServiceFactory())
+           : this(host, config, new DotNetCompilationServiceFactory(host.TraceWriter))
         {
         }
 

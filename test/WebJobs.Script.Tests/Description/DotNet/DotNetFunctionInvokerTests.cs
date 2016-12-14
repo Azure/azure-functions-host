@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -33,7 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Create the invoker dependencies and setup the appropriate method to throw the exception
             RunDependencies dependencies = CreateDependencies();
             dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>()))
-             .Throws(exception);
+                .Throws(exception);
+            dependencies.Compilation.Setup(c => c.EmitAndLoad(It.IsAny<CancellationToken>()))
+                .Returns(typeof(object).Assembly);
 
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(rootFunctionsFolder);
@@ -102,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
@@ -140,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
