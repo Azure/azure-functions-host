@@ -80,4 +80,12 @@ namespace Dashboard.UnitTests.RestProtocol
         public string exceptionType { get; set; }
     }
 
+    class TimelineResponseEntry
+    {
+        public string Start { get; set; } // DateTime
+        public int TotalPass { get; set; }
+        public int TotalFail { get; set; }
+        public int TotalRun { get; set; }
+    }
+
 }

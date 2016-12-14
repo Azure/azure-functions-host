@@ -34,6 +34,20 @@ namespace Dashboard.UnitTests
         }
 
         [Fact]
+        public async Task GetDefinitionSkipStats()
+        {
+            var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100&skipstats=true");
+
+            // Testing against specific data that we added. 
+            Assert.Equal(null, response.ContinuationToken);
+            var x = response.Entries.ToArray();
+            Assert.Equal(1, x.Length);
+            Assert.Equal("alpha", x[0].functionName);
+            Assert.Equal(0, x[0].successCount); // Skipped 
+            Assert.Equal(0, x[0].failedCount);
+        }
+
+        [Fact]
         public async Task GetDefinition()
         {
             var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100");
@@ -56,6 +70,40 @@ namespace Dashboard.UnitTests
             var x = response.Entries.ToArray();
             Assert.Equal(0, x.Length);            
         }
+        
+        [Fact]
+        public async Task GetTimelineInvocations()
+        {
+            // Lookup functions by name 
+            string uri = _endpoint + "/api/functions/invocations/" + FunctionId.Build(Fixture.HostName, "alpha") + 
+                "/timeline?limit=11&start=2001-01-01";
+            var response = await _client.GetJsonAsync<TimelineResponseEntry[]>(uri);
+            
+            // This only includes completed / failed functions, not NeverFinished/Running. 
+            // Important that DateTimes include the 'Z' suffix, meaning UTC timezone. 
+            Assert.Equal(2, response.Length);
+            Assert.Equal("2010-03-06T18:10:00Z", response[0].Start);
+            Assert.Equal(1, response[0].TotalFail);
+            Assert.Equal(0, response[0].TotalPass);
+            Assert.Equal(1, response[0].TotalRun);
+
+            Assert.Equal("2010-03-06T18:11:00Z", response[1].Start);
+            Assert.Equal(0, response[1].TotalFail);
+            Assert.Equal(1, response[1].TotalPass);
+            Assert.Equal(1, response[1].TotalRun);
+        }
+
+        public async Task GetTimelineEmptyInvocations()
+        {
+            // Look in timeline range where there's no functions invocations. 
+            // This verifies the time range is getting parsed by the webapi and passed through. 
+            string uri = _endpoint + "/api/functions/invocations/" + FunctionId.Build(Fixture.HostName, "alpha") + 
+                "/timeline?limit=11&start=2005-01-01";
+            var response = await _client.GetJsonAsync<TimelineResponseEntry[]>(uri);
+
+            Assert.Equal(0, response.Length);
+        }
+
 
         [Fact]
         public async Task GetInvocations()

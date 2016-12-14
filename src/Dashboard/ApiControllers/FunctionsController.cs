@@ -249,7 +249,7 @@ namespace Dashboard.ApiControllers
             {
                  StartBucket = entity.TimeBucket,
                  Start = entity.Time,
-                 TotalPass = entity.TotalPass,
+                 TotalPass = entity.TotalPass, 
                  TotalFail = entity.TotalFail,
                  TotalRun = entity.TotalRun
             });
@@ -466,7 +466,10 @@ namespace Dashboard.ApiControllers
 
         // If host is specified, then only return definitions for that host. If null, return all hosts. 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo, string host = null)
+        public IHttpActionResult GetFunctionDefinitions(
+            [FromUri]PagingInfo pagingInfo, 
+            string host = null,
+            bool skipStats = false)
         {
             if (pagingInfo == null)
             {
@@ -519,7 +522,9 @@ namespace Dashboard.ApiControllers
                 model.IsOldHost = OnlyBeta1HostExists(alreadyFoundNoNewerEntries: true);
             }
 
-            if (model.Entries != null)
+            // This is very slow. Allow a flag to skip it, and then client can query the stats independently 
+            // via the /timeline API. 
+            if ((model.Entries != null) && !skipStats)
             {
                 foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)
                 {
