@@ -75,10 +75,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
             Assert.NotNull(DateTime.Parse(resolvedValue));
 
             resolvedValue = resolver.Resolve("datetime:MM/yyyy");
-            Assert.Equal(DateTime.UtcNow.ToString("MM/yyyy"), resolvedValue);
+            Assert.Equal(DateTime.Now.ToString("MM/yyyy"), resolvedValue);
 
             resolvedValue = resolver.Resolve("datetime:yyyyMMdd");
-            Assert.Equal(DateTime.UtcNow.ToString("yyyyMMdd"), resolvedValue);
+            Assert.Equal(DateTime.Now.ToString("yyyyMMdd"), resolvedValue);
         }
     }
 }

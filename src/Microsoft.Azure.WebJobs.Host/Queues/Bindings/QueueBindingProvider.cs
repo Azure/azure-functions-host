@@ -120,11 +120,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 _accountProvider.GetStorageAccountAsync(parameter, CancellationToken.None, nameResolver));
             IStorageAccount account = t.GetAwaiter().GetResult();
 
-            if (account == null)
-            {
-                throw new InvalidOperationException("Unable to bind Queue because no storage account has been configured.");
-            }
-
             string accountName = account.Credentials.AccountName;
 
             return new QueueParameterDescriptor

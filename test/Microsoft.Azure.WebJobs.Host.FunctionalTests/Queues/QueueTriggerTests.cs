@@ -495,9 +495,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     new string[] { typeof(MaxDequeueCountProgram).FullName + ".PutInPoisonQueue" });
 
                 // Assert
-                IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider();
+                IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider()
+                {
+                    StorageAccount = new FakeStorageAccount()
+                };
                 Assert.Equal(new FakeQueueConfiguration(storageAccountProvider).MaxDequeueCount, MaxDequeueCountProgram.DequeueCount);
-
             }
             finally
             {

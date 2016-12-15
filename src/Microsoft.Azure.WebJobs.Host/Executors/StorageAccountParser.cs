@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 case StorageAccountParseResult.MissingOrEmptyConnectionStringError:
                     return String.Format(CultureInfo.CurrentCulture,
-                        "Microsoft Azure WebJobs SDK {0} connection string is missing or empty. " +
+                        "Microsoft Azure WebJobs SDK '{0}' connection string is missing or empty. " +
                         "The Microsoft Azure Storage account connection string can be set in the following ways:" + Environment.NewLine +
                         "1. Set the connection string named '{1}' in the connectionStrings section of the .config file in the following format " +
                         "<add name=\"{1}\" connectionString=\"DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY\" />, or" + Environment.NewLine +
