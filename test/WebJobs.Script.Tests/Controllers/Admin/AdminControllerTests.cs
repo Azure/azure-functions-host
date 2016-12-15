@@ -38,9 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { config });
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
-            ISecretManager secretManager = new SecretManager();
             WebHostSettings settings = new WebHostSettings();
-            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, secretManager, _settingsManager, settings });
+            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
             testController = new AdminController(managerMock.Object);
@@ -60,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string triggerParameterName = "testTrigger";
             string testInput = Guid.NewGuid().ToString();
             bool functionInvoked = false;
-            
+
             hostMock.Setup(p => p.CallAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), CancellationToken.None))
                 .Callback<string, Dictionary<string, object>, CancellationToken>((name, args, token) =>
                 {

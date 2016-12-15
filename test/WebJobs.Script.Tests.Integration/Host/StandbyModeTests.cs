@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public StandbyModeTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            _webHostResolver = new WebHostResolver(_settingsManager);
+            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false));
         }
 
         [Fact]

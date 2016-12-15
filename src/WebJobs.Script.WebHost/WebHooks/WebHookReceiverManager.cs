@@ -116,15 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             {
                 if (disposing)
                 {
-                    if (_httpConfiguration != null)
-                    {
-                        _httpConfiguration.Dispose();
-                    }
-
-                    if (_secretManager != null)
-                    {
-                        (_secretManager as IDisposable).Dispose();
-                    }
+                    _httpConfiguration?.Dispose();
+                    (_secretManager as IDisposable)?.Dispose();
                 }
 
                 disposedValue = true;

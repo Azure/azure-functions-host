@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public WebScriptHostHandlerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new SecretManager(), _settingsManager, new WebHostSettings());
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), _settingsManager, new WebHostSettings());
             _managerMock.SetupGet(p => p.Initialized).Returns(true);
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             mockResolver.Setup(p => p.GetService(typeof(WebScriptHostManager))).Returns(_managerMock.Object);

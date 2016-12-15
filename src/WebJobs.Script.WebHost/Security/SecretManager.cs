@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ using System.Security.Cryptography;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -21,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private readonly string _hostSecretsPath;
+        private readonly TraceWriter _traceWriter;
         private HostSecretsInfo _hostSecrets;
 
         // for testing
@@ -28,13 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ScriptSettingsManager settingsManager, string secretsPath, bool createHostSecretsIfMissing = false)
-            : this(secretsPath, new DefaultKeyValueConverterFactory(settingsManager), createHostSecretsIfMissing)
+        public SecretManager(ScriptSettingsManager settingsManager, string secretsPath, TraceWriter traceWriter, bool createHostSecretsIfMissing = false)
+            : this(secretsPath, new DefaultKeyValueConverterFactory(settingsManager), traceWriter, createHostSecretsIfMissing)
         {
         }
 
-        public SecretManager(string secretsPath, IKeyValueConverterFactory keyValueConverterFactory, bool createHostSecretsIfMissing = false)
+        public SecretManager(string secretsPath, IKeyValueConverterFactory keyValueConverterFactory, TraceWriter traceWriter, bool createHostSecretsIfMissing = false)
         {
+            _traceWriter = traceWriter.WithSource(ScriptConstants.TraceSourceSecretManagement);
             _secretsPath = secretsPath;
             _hostSecretsPath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
             _keyValueConverterFactory = keyValueConverterFactory;
@@ -75,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (!TryLoadSecrets(_hostSecretsPath, out hostSecrets))
                 {
+                    _traceWriter.Verbose(Resources.TraceHostSecretGeneration);
                     hostSecrets = GenerateHostSecrets();
                     PersistSecrets(hostSecrets, _hostSecretsPath);
                 }
@@ -87,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // the state and persist the secrets
                 if (hostSecrets.HasStaleKeys)
                 {
+                    _traceWriter.Verbose(Resources.TraceStaleHostSecretRefresh);
                     RefreshSecrets(hostSecrets, _hostSecretsPath);
                 }
 
@@ -115,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string secretsFilePath = GetFunctionSecretsFilePath(functionName);
                 if (!TryLoadFunctionSecrets(functionName, out secrets, secretsFilePath))
                 {
+                    _traceWriter.VerboseFormat(Resources.TraceFunctionSecretGeneration, functionName);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -131,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (secrets.HasStaleKeys)
                 {
+                    _traceWriter.VerboseFormat(Resources.TraceStaleFunctionSecretRefresh, functionName);
                     RefreshSecrets(secrets, secretsFilePath);
                 }
 
@@ -169,7 +177,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 secretsFactory = GenerateHostSecrets;
             }
 
-            return AddOrUpdateSecret(secretsType, secretsFilePath, secretName, secret, secretsFactory);
+            KeyOperationResult result = AddOrUpdateSecret(secretsType, secretsFilePath, secretName, secret, secretsFactory);
+
+            _traceWriter.InfoFormat(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, functionName ?? "host", result.Result);
+
+            return result;
         }
 
         public KeyOperationResult SetMasterKey(string value = null)
@@ -200,6 +212,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             PersistSecrets(secrets, _hostSecretsPath);
 
+            _traceWriter.InfoFormat(Resources.TraceMasterKeyCreatedOrUpdated, result);
+
             return new KeyOperationResult(masterKey, result);
         }
 
@@ -214,11 +228,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 secretsType = ScriptSecretsType.Function;
             }
 
-            return ModifyFunctionSecret(secretsType, secretsFilePath, secretName, (secrets, key) =>
+            bool deleted = ModifyFunctionSecret(secretsType, secretsFilePath, secretName, (secrets, key) =>
             {
                 secrets?.RemoveKey(key);
                 return secrets;
             });
+
+            if (deleted)
+            {
+                string target = secretsType == ScriptSecretsType.Function
+                    ? $"Function ('{functionName}')"
+                    : "Host";
+                _traceWriter.InfoFormat(Resources.TraceSecretDeleted, target, secretName);
+            }
+
+            return deleted;
         }
 
         private KeyOperationResult AddOrUpdateSecret(ScriptSecretsType secretsType, string secretFilePath, string secretName, string secret, Func<ScriptSecrets> secretsFactory)

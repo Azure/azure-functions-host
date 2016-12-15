@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -18,11 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
+        private readonly TraceWriter _traceWriter;
 
-        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager)
+        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, TraceWriter traceWriter)
         {
             _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
+            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSecretManagement}.Api");
         }
 
         [HttpGet]
@@ -110,6 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 operationResult = _secretManager.AddOrUpdateFunctionSecret(keyName, value, functionName);
             }
 
+            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, functionName ?? "host", operationResult.Result);
+
             switch (operationResult.Result)
             {
                 case OperationResult.Created:
@@ -145,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // Either the function or the key were not found
                 return NotFound();
             }
+
+            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, functionName ?? "host", "Deleted");
 
             return StatusCode(HttpStatusCode.NoContent);
         }
