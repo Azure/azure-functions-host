@@ -413,7 +413,6 @@
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
-    <Compile Include="Binding\ScriptBindingContextTests.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriterTests.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriterTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpFunctionSignatureTests.cs" />
