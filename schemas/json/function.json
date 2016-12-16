@@ -73,6 +73,12 @@
                             },
                             {
                                 "$ref": "#/definitions/sendGrid"
+                            },
+                            {
+                                "$ref": "#/definitions/mobileTable"
+                            },
+                            {
+                                "$ref": "#/definitions/documentDB"
                             }
                         ]
                     }
@@ -94,7 +100,9 @@
                 "table",
                 "notificationHub",
                 "twilioSms",
-                "sendGrid"
+                "sendGrid",
+                "mobileTable",
+                "documentDB"
             ]
         },
         "serviceBusTrigger": {
@@ -264,6 +272,102 @@
                 }
             ]
         },
+        "mobileTable": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "mobileTable"
+                },
+                "tableName": {
+                    "type": "string",
+                    "description": "This is the name of the table within your Mobile App to which data will be written."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "This is the app setting name that specifies the URL of your Mobile App."
+                },
+                "apiKey": {
+                    "type": "string",
+                    "description": "This is app setting name that specifies the API Key for your Mobile App."
+                }
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/mobileTableInputBinding"
+                },
+                {
+                    "$ref": "#/definitions/mobileTableOutputBinding"
+                }
+            ]
+        },
+        "mobileTableInputBinding": {
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "This is the id for the record to retrieve."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inputBinding"
+                }
+            ]
+        },
+        "mobileTableOutputBinding": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
+        "documentDB": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "documentDB"
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "This is the connection string for your DocumentDB account."
+                },
+                "databaseName": {
+                    "type": "string",
+                    "description": "This is the name of the database within your DocumentDB account to which data will be written."
+                },
+                "collectionName": {
+                    "type": "string",
+                    "description": "This is the name of the collection within your database to which data will be written."
+                }
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/documentDBInputBinding"
+                },
+                {
+                    "$ref": "#/definitions/documentDBOutputBinding"
+                }
+            ]
+        },
+        "documentDBInputBinding": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inputBinding"
+                }
+            ]
+        },
+        "documentDBOutputBinding": {
+            "properties": {
+                "createIfNotExists": {
+                    "type": "boolean",
+                    "description": "When true, your database and collection will be created automatically."
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                }
+            ]
+        },
         "table": {
             "properties": {
                 "type": {
@@ -292,7 +396,7 @@
                     "$ref": "#/definitions/tableInputBinding"
                 },
                 {
-                     "$ref": "#/definitions/tableOutputBinding"
+                    "$ref": "#/definitions/tableOutputBinding"
                 }
             ]
         },
@@ -313,7 +417,7 @@
                 }
             ]
         },
-         "tableOutputBinding": {
+        "tableOutputBinding": {
             "allOf": [
                 {
                     "$ref": "#/definitions/outputBinding"
