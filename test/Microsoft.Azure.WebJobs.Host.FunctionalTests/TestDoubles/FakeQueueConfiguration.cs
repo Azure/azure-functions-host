@@ -44,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { return 3; }
         }
 
+        public TimeSpan VisibilityTimeout
+        {
+            get { return TimeSpan.Zero; }
+        }
+
         public IQueueProcessorFactory QueueProcessorFactory
         {
             get

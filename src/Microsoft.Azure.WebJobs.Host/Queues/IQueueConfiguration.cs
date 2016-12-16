@@ -15,6 +15,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
 
         int MaxDequeueCount { get; }
 
+        TimeSpan VisibilityTimeout { get; }
+
         IQueueProcessorFactory QueueProcessorFactory { get; }
     }
 }

@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly object _stopWaitingTaskSourceLock = new object();
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly QueueProcessor _queueProcessor;
+        private readonly TimeSpan _visibilityTimeout;
 
         private bool _foundMessageSinceLastDelay;
         private bool _disposed;
@@ -72,6 +73,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _exceptionHandler = exceptionHandler;
             _trace = trace;
             _queueConfiguration = queueConfiguration;
+
+            // if the function runs longer than this, the invisibility will be updated
+            // on a timer periodically for the duration of the function execution
+            _visibilityTimeout = TimeSpan.FromMinutes(10);
 
             if (sharedWatcher != null)
             {
@@ -134,14 +139,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 return CreateBackoffResult();
             }
 
-            // What if job takes longer. Call CloudQueue.UpdateMessage
-            TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
             IEnumerable<IStorageQueueMessage> batch;
-
             try
             {
                 batch = await _queue.GetMessagesAsync(_queueProcessor.BatchSize,
-                    visibilityTimeout,
+                    _visibilityTimeout,
                     options: null,
                     operationContext: null,
                     cancellationToken: cancellationToken);
@@ -181,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 // of the cancellation token contract. However, the timer implementation would not dispose of the
                 // cancellation token source until it has stopped and perhaps also disposed, and we wait for all
                 // outstanding tasks to complete before stopping the timer.
-                Task task = ProcessMessageAsync(message, visibilityTimeout, cancellationToken);
+                Task task = ProcessMessageAsync(message, _visibilityTimeout, cancellationToken);
 
                 // Having both WaitForNewBatchThreshold and this method mutate _processing is safe because the timer
                 // contract is serial: it only calls ExecuteAsync once the wait expires (and the wait won't expire until

@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly TraceWriter _trace;
-        private readonly int _maxDequeueCount;
 
         /// <summary>
         /// Constructs a new instance.
@@ -42,10 +41,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             _queue = context.Queue;
             _poisonQueue = context.PoisonQueue;
             _trace = context.Trace;
-            _maxDequeueCount = context.MaxDequeueCount;
 
+            MaxDequeueCount = context.MaxDequeueCount;
             BatchSize = context.BatchSize;
             NewBatchThreshold = context.NewBatchThreshold;
+            VisibilityTimeout = context.VisibilityTimeout;
         }
 
         /// <summary>
@@ -59,9 +59,20 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         public int BatchSize { get; protected set; }
 
         /// <summary>
+        /// Gets or sets the number of times to try processing a message before moving it to the poison queue.
+        /// </summary>
+        public int MaxDequeueCount { get; protected set; }
+
+        /// <summary>
         /// Gets or sets the threshold at which a new batch of messages will be fetched.
         /// </summary>
         public int NewBatchThreshold { get; protected set; }
+
+        /// <summary>
+        /// Gets or sets the default message visibility timeout that will be used
+        /// for messages that fail processing.
+        /// </summary>
+        public TimeSpan VisibilityTimeout { get; protected set; }
 
         /// <summary>
         /// This method is called when there is a new message to process, before the job function is invoked.
@@ -95,14 +106,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             }
             else if (_poisonQueue != null)
             {
-                if (message.DequeueCount >= _maxDequeueCount)
+                if (message.DequeueCount >= MaxDequeueCount)
                 {
                     await CopyMessageToPoisonQueueAsync(message, cancellationToken);
                     await DeleteMessageAsync(message, cancellationToken);
                 }
                 else
                 {
-                    await ReleaseMessageAsync(message, result, TimeSpan.Zero, cancellationToken);
+                    await ReleaseMessageAsync(message, result, VisibilityTimeout, cancellationToken);
                 }
             }
             else
@@ -121,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <returns></returns>
         protected virtual async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
         {
-            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", _maxDequeueCount, _poisonQueue.Name), TraceSource.Execution);
+            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", MaxDequeueCount, _poisonQueue.Name), TraceSource.Execution);
 
             await AddMessageAndCreateIfNotExistsAsync(_poisonQueue, message, cancellationToken);
 

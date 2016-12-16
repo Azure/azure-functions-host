@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private int _batchSize = DefaultBatchSize;
         private int _newBatchThreshold;
         private TimeSpan _maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
+        private TimeSpan _visibilityTimeout = TimeSpan.Zero;
         private int _maxDequeueCount = DefaultMaxDequeueCount;
 
         /// <summary>
@@ -123,6 +124,28 @@ namespace Microsoft.Azure.WebJobs.Host
                 }
 
                 _maxDequeueCount = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the default message visibility timeout that will be used
+        /// for messages that fail processing. The default is TimeSpan.Zero. To increase
+        /// the time delay between retries, increase this value.
+        /// </summary>
+        /// <remarks>
+        /// When message processing fails, the message will remain in the queue and
+        /// its visibility will be updated with this value. The message will then be
+        /// available for reprocessing after this timeout expires.
+        /// </remarks>
+        public TimeSpan VisibilityTimeout
+        {
+            get
+            {
+                return _visibilityTimeout;
+            }
+            set
+            {
+                _visibilityTimeout = value;
             }
         }
 
