@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Caching;
@@ -583,6 +584,19 @@ namespace Dashboard.ApiControllers
             _aborter.RequestHostInstanceAbort(instanceQueueName);
 
             return Ok();
+        }
+
+        // Diagnostics endpoint, getting the version of the service that's running. 
+        [Route("api/host/status")]
+        public IHttpActionResult GetVersionInfo()
+        {
+            var assembly = this.GetType().Assembly;
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
+            return Ok(new
+            {
+                Version = fileVersionAttr.Version
+            });
         }
 
         private bool? HostHasHeartbeat(FunctionIndexEntry function)
