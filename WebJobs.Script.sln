@@ -418,9 +418,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{6717
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A}"
 	ProjectSection(SolutionItems) = preProject
-		schema\json\function.json = schema\json\function.json
-		schema\json\host.json = schema\json\host.json
-		schema\json\README.md = schema\json\README.md
+		schemas\json\function.json = schemas\json\function.json
+		schemas\json\host.json = schemas\json\host.json
+		schemas\json\README.md = schemas\json\README.md
 	EndProjectSection
 EndProject
 Global
