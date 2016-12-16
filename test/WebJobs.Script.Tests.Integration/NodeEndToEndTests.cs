@@ -246,6 +246,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("This is a test", logEntry["message"]);
             Assert.Equal("v6.5.0", (string)logEntry["version"]);
             Assert.Equal(testData, logEntry["input"]);
+
+            // verify log levels
+            TraceEvent[] traces = Fixture.TraceWriter.Traces.Where(t => t.Message.Contains("loglevel")).ToArray();
+            Assert.Equal(TraceLevel.Info, traces[0].Level);
+            Assert.Equal("loglevel default", traces[0].Message);
+            Assert.Equal(TraceLevel.Info, traces[1].Level);
+            Assert.Equal("loglevel info", traces[1].Message);
+            Assert.Equal(TraceLevel.Verbose, traces[2].Level);
+            Assert.Equal("loglevel verbose", traces[2].Message);
+            Assert.Equal(TraceLevel.Warning, traces[3].Level);
+            Assert.Equal("loglevel warn", traces[3].Message);
+            Assert.Equal(TraceLevel.Error, traces[4].Level);
+            Assert.Equal("loglevel error", traces[4].Message);
         }
 
         [Fact]
