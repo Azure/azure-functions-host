@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
@@ -271,12 +272,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
             {
-                string text = p as string;
-                if (text != null)
+                var logData = (IDictionary<string, object>)p;
+                string message = (string)logData["msg"];
+                if (message != null)
                 {
                     try
                     {
-                        traceWriter.Info(text);
+                        TraceLevel level = (TraceLevel)logData["lvl"];
+                        var evt = new TraceEvent(level, message);
+                        traceWriter.Trace(evt);
                     }
                     catch (ObjectDisposedException)
                     {

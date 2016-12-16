@@ -33,11 +33,21 @@ function createFunction(f) {
 
         f = getEntryPoint(f, context);
 
+        // configure loggers
         var origLog = context.log;
-        context.log = function () {
-            value = util.format.apply(null, arguments);
-            origLog(value);
-        };
+        var logLevel = function (traceLevel) {
+            return function () {
+                var message = util.format.apply(null, arguments);
+                origLog({ lvl: traceLevel, msg: message });
+            };
+        }
+        // set default log to 'info'
+        var log = logLevel(3);
+        ['error', 'warn', 'info', 'verbose'].forEach((level, index) => {
+            var traceLevel = index + 1;
+            log[level] = logLevel(traceLevel);
+        });
+        context.log = log;
 
         context.done = function (err, result) {
             if (context._done) {
@@ -117,4 +127,3 @@ function getEntryPoint(f, context) {
 
     return f;
 }
-

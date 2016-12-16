@@ -39,6 +39,12 @@ var assert = require('assert');
         context.log(1234);
         context.log(true);
 
+        context.log('loglevel default');
+        context.log.info('loglevel info');
+        context.log.verbose('loglevel verbose');
+        context.log.warn('loglevel warn');
+        context.log.error('loglevel error');
+
         context.done();
     }
     else if (scenario == 'bindingData') {
