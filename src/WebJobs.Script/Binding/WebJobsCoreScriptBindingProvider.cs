@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host;
@@ -46,6 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (configSection.TryGetValue("newBatchThreshold", out value))
                 {
                     Config.Queues.NewBatchThreshold = (int)value;
+                }
+                if (configSection.TryGetValue("visibilityTimeout", out value))
+                {
+                    Config.Queues.VisibilityTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
                 }
             }
 

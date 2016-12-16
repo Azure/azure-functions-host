@@ -247,8 +247,8 @@
                     ],
                     "description": "The function HTTP authorization level."
                 },
-                "methods":{
-                    "type":"array",
+                "methods": {
+                    "type": "array",
                     "items": [
                         {
                             "type": "string",
