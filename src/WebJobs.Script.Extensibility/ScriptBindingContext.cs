@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensibility
@@ -88,10 +89,16 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
             string rawValue = GetMetadataValue<string>(name);
 
             TEnum enumValue = default(TEnum);
-            if (!string.IsNullOrEmpty(rawValue) &&
-                Enum.TryParse<TEnum>(rawValue, true, out enumValue))
+            if (!string.IsNullOrEmpty(rawValue))
             {
-                return enumValue;
+                if (Enum.TryParse<TEnum>(rawValue, true, out enumValue))
+                {
+                    return enumValue;
+                }
+                else
+                {
+                    throw new FormatException($"Invalid value specified for binding property '{name}' of enum type {PrettyTypeName(typeof(TEnum))}.");
+                }
             }
 
             return defaultValue;
@@ -107,12 +114,32 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         public TValue GetMetadataValue<TValue>(string name, TValue defaultValue = default(TValue))
         {
             JToken value = null;
-            if (Metadata.TryGetValue(name, StringComparison.OrdinalIgnoreCase, out value))
+            try
             {
-                return value.Value<TValue>();
+                if (Metadata.TryGetValue(name, StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    return value.Value<TValue>();
+                }
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
             }
 
             return defaultValue;
+        }
+
+        private static string PrettyTypeName(Type t)
+        {
+            if (t.IsGenericType)
+            {
+                return string.Format(
+                    "{0}<{1}>",
+                    t.Name.Substring(0, t.Name.LastIndexOf("`", StringComparison.Ordinal)),
+                    string.Join(", ", t.GetGenericArguments().Select(PrettyTypeName)));
+            }
+
+            return t.Name;
         }
     }
 }
