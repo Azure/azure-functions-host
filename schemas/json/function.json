@@ -45,16 +45,31 @@
                                 "$ref": "#/definitions/queueTrigger"
                             },
                             {
+                                "$ref": "#/definitions/queue"
+                            },
+                            {
                                 "$ref": "#/definitions/httpTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/http"
                             },
                             {
                                 "$ref": "#/definitions/eventHubTrigger"
                             },
                             {
+                                "$ref": "#/definitions/eventHub"
+                            },
+                            {
                                 "$ref": "#/definitions/serviceBusTrigger"
                             },
                             {
+                                "$ref": "#/definitions/serviceBus"
+                            },
+                            {
                                 "$ref": "#/definitions/blobTrigger"
+                            },
+                            {
+                                "$ref": "#/definitions/blob"
                             },
                             {
                                 "$ref": "#/definitions/manualTrigger"
@@ -92,11 +107,16 @@
             "enum": [
                 "timerTrigger",
                 "queueTrigger",
+                "queue",
                 "httpTrigger",
+                "http",
                 "eventHubTrigger",
+                "eventHub",
                 "manualTrigger",
                 "blobTrigger",
+                "blob",
                 "serviceBusTrigger",
+                "serviceBus",
                 "table",
                 "notificationHub",
                 "twilioSms",
@@ -110,7 +130,35 @@
                 "type": {
                     "type": "string",
                     "pattern": "serviceBusTrigger"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/trigger"
                 },
+                {
+                    "$ref": "#/definitions/serviceBusBase"
+                }
+            ]
+        },
+        "serviceBus": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "serviceBus"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                },
+                {
+                    "$ref": "#/definitions/serviceBusBase"
+                }
+            ]
+        },
+        "serviceBusBase": {
+            "properties": {
                 "queueName": {
                     "type": "string",
                     "description": "The service bus queue to monitor (if using a queue)"
@@ -122,30 +170,64 @@
                 "subscriptionName": {
                     "type": "string",
                     "description": "The topic subscription name"
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "An app setting (or environment variable) with the service bus connection string to be used by this binding."
+                },
+                "accessRights": {
+                    "type": "string",
+                    "description": "The permission level of the service bus connection string used by this binding.",
+                    "enum": [
+                        "manage",
+                        "listen"
+                    ]
                 }
-            },
-            "allOf": [
-                {
-                    "$ref": "#/definitions/trigger"
-                }
-            ]
+            }
         },
         "blobTrigger": {
             "properties": {
                 "type": {
                     "type": "string",
                     "pattern": "blobTrigger"
-                },
-                "path": {
-                    "type": "string",
-                    "description": "The path to the blob contaiter"
                 }
             },
             "allOf": [
                 {
                     "$ref": "#/definitions/trigger"
+                },
+                {
+                    "$ref": "#/definitions/blobBindingBase"
                 }
             ]
+        },
+        "blob": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "blob"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/blobBindingBase"
+                },
+                {
+                    "$ref": "#/definitions/binding"
+                }
+            ]
+        },
+        "blobBindingBase": {
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "The path to the blob contaiter"
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "An app setting (or environment variable) with the storage connection string to be used by this binding."
+                }
+            }
         },
         "manualTrigger": {
             "properties": {
@@ -166,24 +248,47 @@
                     "type": "string",
                     "pattern": "eventHubTrigger"
                 },
-                "path": {
-                    "type": "string",
-                    "description": "The event hub path."
-                },
                 "consumerGroup": {
                     "type": "string",
                     "description": "The event hub consumer group."
-                },
-                "connection": {
-                    "type": "string",
-                    "description": "The event hub connection string setting."
                 }
             },
             "allOf": [
                 {
                     "$ref": "#/definitions/trigger"
+                },
+                {
+                    "$ref": "#/definitions/eventHubBase"
                 }
             ]
+        },
+        "eventHub": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "eventHub"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                },
+                {
+                    "$ref": "#/definitions/eventHubBase"
+                }
+            ]
+        },
+        "eventHubBase": {
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "The event hub path."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "The event hub connection string setting."
+                }
+            }
         },
         "timerTrigger": {
             "properties": {
@@ -208,20 +313,44 @@
                 "type": {
                     "type": "string",
                     "pattern": "queueTrigger"
-                },
-                "queueName": {
-                    "type": "string",
-                    "description": "The queue name."
                 }
             },
-            "required": [
-                "queueTrigger"
-            ],
             "allOf": [
                 {
                     "$ref": "#/definitions/trigger"
+                },
+                {
+                    "$ref": "#/definitions/queueBase"
                 }
             ]
+        },
+        "queue": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "pattern": "queue"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
+                },
+                {
+                    "$ref": "#/definitions/queueBase"
+                }
+            ]
+        },
+        "queueBase": {
+            "properties": {
+                "queueName": {
+                    "type": "string",
+                    "description": "The queue name."
+                },
+                "connection": {
+                    "type": "string",
+                    "description": "An app setting (or environment variable) with the storage connection string to be used by this binding."
+                }
+            }
         },
         "httpTrigger": {
             "properties": {
@@ -269,6 +398,13 @@
             "allOf": [
                 {
                     "$ref": "#/definitions/trigger"
+                }
+            ]
+        },
+        "http": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/outputBinding"
                 }
             ]
         },
@@ -553,8 +689,15 @@
                     "enum": [
                         "in"
                     ]
-                }
-            }
+                },
+                "name": {
+                    "type": "string"
+                },
+            },
+            "required": [
+                "direction",
+                "name"
+            ]
         },
         "inputBinding": {
             "properties": {
@@ -563,8 +706,15 @@
                     "enum": [
                         "in"
                     ]
+                },
+                "name": {
+                    "type": "string"
                 }
-            }
+            },
+            "required": [
+                "direction",
+                "name"
+            ]
         },
         "outputBinding": {
             "properties": {
@@ -573,8 +723,15 @@
                     "enum": [
                         "out"
                     ]
+                },
+                "name": {
+                    "type": "string"
                 }
-            }
+            },
+            "required": [
+                "direction",
+                "name"
+            ]
         },
         "dynamic": {
             "properties": {
