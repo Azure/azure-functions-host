@@ -111,8 +111,15 @@
                 "prefetchCount": {
                     "description": "The default PrefetchCount that will be used by the underlying MessageReceiver.",
                     "type": "integer"
+                },
+
+                "autoRenewTimeout": {
+                    "description": "The maximum duration within which the Service Bus message lock will be renewed automatically.",
+                    "type": "string",
+                    "pattern": "^\\d\\d:\\d\\d:\\d\\d$",
+                    "default": "00:05:00"
                 }
-            }
+            }          
         },
 
         "eventHub": {
