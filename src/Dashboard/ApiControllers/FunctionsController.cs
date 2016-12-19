@@ -587,7 +587,7 @@ namespace Dashboard.ApiControllers
         }
 
         // Diagnostics endpoint, getting the version of the service that's running. 
-        [Route("api/host/status")]
+        [Route("api/version")]
         public IHttpActionResult GetVersionInfo()
         {
             var assembly = this.GetType().Assembly;

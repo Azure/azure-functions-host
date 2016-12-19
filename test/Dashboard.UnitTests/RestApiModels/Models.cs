@@ -88,4 +88,8 @@ namespace Dashboard.UnitTests.RestProtocol
         public int TotalRun { get; set; }
     }
 
+    public class VersionResponse
+    {
+        public string Version { get; set; } // version string
+    }
 }

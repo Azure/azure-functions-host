@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Dashboard.UnitTests.RestProtocol;
@@ -31,6 +32,19 @@ namespace Dashboard.UnitTests
             _fixture = fixture;
             _client = fixture.Client;
             _endpoint = fixture.Endpoint;
+        }
+
+
+        // test the /verison endpoint. 
+        [Fact]
+        public async Task GetVersion()
+        {
+            var response = await _client.GetJsonAsync<VersionResponse>(_endpoint + "/api/version");
+
+            var assembly = typeof(WebApiConfig).Assembly;
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
+            Assert.Equal(response.Version, fileVersionAttr.Version);
         }
 
         [Fact]
