@@ -4,8 +4,8 @@
 using System.Net.Http;
 using System.Web.Http;
 using Autofac;
-using Microsoft.Azure.WebJobs.Host;
 using Autofac.Integration.WebApi;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;

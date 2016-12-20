@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         ReinitializeAppSettings();
                     }
 
-                    _activeScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
 
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
