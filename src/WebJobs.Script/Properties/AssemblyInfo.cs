@@ -19,5 +19,6 @@ using System.Runtime.InteropServices;
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("1dc670cd-f42f-4d8f-97bd-0e1aa8221094")]
 
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]

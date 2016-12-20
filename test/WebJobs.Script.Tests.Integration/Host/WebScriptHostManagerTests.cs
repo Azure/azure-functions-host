@@ -107,9 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            ISecretManager secretManager = new SecretManager(_settingsManager, secretsDir);
+            ISecretManager secretManager = new SecretManager(_settingsManager, secretsDir, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
-            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager, _settingsManager, webHostSettings);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileLoggingMode = FileLoggingMode.Always,
                 RestartInterval = TimeSpan.FromMilliseconds(500)
             };
-            SecretManager secretManager = new SecretManager(_settingsManager, secretsDir);
+            SecretManager secretManager = new SecretManager(_settingsManager, secretsDir, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
             var factoryMock = new Mock<IScriptHostFactory>();
             int count = 0;
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 count++;
             }).Throws(new Exception("Kaboom!"));
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, secretManager, _settingsManager, webHostSettings, factoryMock.Object);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings, factoryMock.Object);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -263,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
-            var manager = new WebScriptHostManager(config, new SecretManager(), _settingsManager, new WebHostSettings());
+            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), _settingsManager, new WebHostSettings());
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
 
@@ -322,13 +322,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     FileLoggingMode = FileLoggingMode.Always
                 };
 
-                ISecretManager secretManager = new SecretManager(_settingsManager, SecretsPath);
+                ISecretManager secretManager = new SecretManager(_settingsManager, SecretsPath, NullTraceWriter.Instance);
                 WebHostSettings webHostSettings = new WebHostSettings();
 
                 var hostConfig = config.HostConfig;
                 var testEventGenerator = new TestSystemEventGenerator();
                 hostConfig.AddService<IEventGenerator>(EventGenerator);
-                var mockHostManager = new WebScriptHostManager(config, secretManager, _settingsManager, webHostSettings);
+                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
                 HostManager = mockHostManager;
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 

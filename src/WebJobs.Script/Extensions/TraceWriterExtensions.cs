@@ -36,6 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return new InterceptingTraceWriter(traceWriter, interceptor);
         }
 
+        public static TraceWriter WithSource(this TraceWriter traceWriter, string source)
+            => new InterceptingTraceWriter(traceWriter, t => t.Source = source);
+
+
         public static void Verbose(this TraceWriter traceWriter, string message, IDictionary<string, object> properties)
         {
             TraceEvent traceEvent = CreateEvent(message, TraceLevel.Verbose, properties);
@@ -64,6 +68,24 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             TraceEvent traceEvent = CreateEvent(message, level, properties);
             traceWriter.Trace(traceEvent);
+        }
+
+        public static void VerboseFormat(this TraceWriter traceWriter, string messageFormat, params object[] parameters)
+        {
+            string message = string.Format(messageFormat, parameters);
+            traceWriter.Verbose(message);
+        }
+
+        public static void InfoFormat(this TraceWriter traceWriter, string messageFormat, params object[] parameters)
+        {
+            string message = string.Format(messageFormat, parameters);
+            traceWriter.Info(message);
+        }
+
+        public static void WarningFormat(this TraceWriter traceWriter, string messageFormat, params object[] parameters)
+        {
+            string message = string.Format(messageFormat, parameters);
+            traceWriter.Warning(message);
         }
 
         private static TraceEvent CreateEvent(string message, TraceLevel level, IDictionary<string, object> properties)

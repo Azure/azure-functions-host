@@ -18,12 +18,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public class CSharpCompilationService : ICompilationService
     {
-        private readonly IFunctionMetadataResolver _metadataResolver;
+        private static readonly string[] FileTypes = { ".csx", ".cs" };
         private static readonly Encoding UTF8WithNoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
           = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly OptimizationLevel _optimizationLevel;
+        private readonly IFunctionMetadataResolver _metadataResolver;
 
         public CSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
         {
@@ -31,21 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _optimizationLevel = optimizationLevel;
         }
 
-        public string Language
-        {
-            get
-            {
-                return "CSharp";
-            }
-        }
+        public string Language => "CSharp";
 
-        public IEnumerable<string> SupportedFileTypes
-        {
-            get
-            {
-                return new[] { ".csx", ".cs" };
-            }
-        }
+        public IEnumerable<string> SupportedFileTypes => FileTypes;
 
         public ICompilation GetFunctionCompilation(FunctionMetadata functionMetadata)
         {

@@ -258,15 +258,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 using (_metricsLogger.LatencyEvent(eventName))
                 {
                     ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+
+                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+
                     FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
                     ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
                     TraceCompilationDiagnostics(bindingDiagnostics);
 
-                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
-                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
-
-                    // Get our function entry point
+                    // Set our function entry point signature
                     _functionSignature = functionSignature;
                     System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
                         .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);

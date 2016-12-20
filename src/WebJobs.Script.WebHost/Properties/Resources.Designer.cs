@@ -181,5 +181,77 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("HostSecretsSchemaV1", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
+        /// </summary>
+        internal static string TraceAddOrUpdateFunctionSecret {
+            get {
+                return ResourceManager.GetString("TraceAddOrUpdateFunctionSecret", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Function (&apos;{0}&apos;) secrets do not exist. Generating secrets..
+        /// </summary>
+        internal static string TraceFunctionSecretGeneration {
+            get {
+                return ResourceManager.GetString("TraceFunctionSecretGeneration", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Host secrets do not exist. Generating secrets..
+        /// </summary>
+        internal static string TraceHostSecretGeneration {
+            get {
+                return ResourceManager.GetString("TraceHostSecretGeneration", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Secret &apos;{0}&apos; for &apos;{1}&apos; {2}..
+        /// </summary>
+        internal static string TraceKeysApiSecretChange {
+            get {
+                return ResourceManager.GetString("TraceKeysApiSecretChange", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Master key {0}.
+        /// </summary>
+        internal static string TraceMasterKeyCreatedOrUpdated {
+            get {
+                return ResourceManager.GetString("TraceMasterKeyCreatedOrUpdated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; deleted..
+        /// </summary>
+        internal static string TraceSecretDeleted {
+            get {
+                return ResourceManager.GetString("TraceSecretDeleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stale function (&apos;{0}&apos;) secrets detected. Refreshing secrets..
+        /// </summary>
+        internal static string TraceStaleFunctionSecretRefresh {
+            get {
+                return ResourceManager.GetString("TraceStaleFunctionSecretRefresh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stale host secrets detected. Refreshing secrets..
+        /// </summary>
+        internal static string TraceStaleHostSecretRefresh {
+            get {
+                return ResourceManager.GetString("TraceStaleHostSecretRefresh", resourceCulture);
+            }
+        }
     }
 }

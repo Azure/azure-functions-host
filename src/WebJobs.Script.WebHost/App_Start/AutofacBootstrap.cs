@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Autofac;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
@@ -13,16 +14,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             builder.RegisterInstance(settingsManager);
 
-            // register the resolver so that it is disposed when the container
-            // is disposed
-            var webHostResolver = new WebHostResolver(settingsManager);
-            builder.RegisterInstance(webHostResolver);
+            builder.RegisterType<WebHostResolver>().SingleInstance();
 
             // these services are externally owned by the WebHostResolver, and will be disposed
             // when the resolver is disposed
-            builder.Register<ISecretManager>(ct => webHostResolver.GetSecretManager(settings)).ExternallyOwned();
-            builder.Register<WebScriptHostManager>(ct => webHostResolver.GetWebScriptHostManager(settings)).ExternallyOwned();
-            builder.Register<WebHookReceiverManager>(ct => webHostResolver.GetWebHookReceiverManager(settings)).ExternallyOwned();
+            builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
+            builder.Register<TraceWriter>(ct => ct.ResolveOptional<WebScriptHostManager>()?.Instance?.TraceWriter ?? NullTraceWriter.Instance).ExternallyOwned();
+            builder.Register<ISecretManager>(ct => ct.Resolve<WebHostResolver>().GetSecretManager(settings)).ExternallyOwned();
+            builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
+            builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
         }
     }
 }

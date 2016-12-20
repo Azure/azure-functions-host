@@ -371,11 +371,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(16, scriptConfig.HostConfig.Queues.BatchSize);
             Assert.Equal(5, scriptConfig.HostConfig.Queues.MaxDequeueCount);
             Assert.Equal(8, scriptConfig.HostConfig.Queues.NewBatchThreshold);
+            Assert.Equal(TimeSpan.Zero, scriptConfig.HostConfig.Queues.VisibilityTimeout);
 
             queuesConfig["maxPollingInterval"] = 5000;
             queuesConfig["batchSize"] = 17;
             queuesConfig["maxDequeueCount"] = 3;
             queuesConfig["newBatchThreshold"] = 123;
+            queuesConfig["visibilityTimeout"] = "00:00:30";
 
             provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
             provider.Initialize();
@@ -384,6 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(17, scriptConfig.HostConfig.Queues.BatchSize);
             Assert.Equal(3, scriptConfig.HostConfig.Queues.MaxDequeueCount);
             Assert.Equal(123, scriptConfig.HostConfig.Queues.NewBatchThreshold);
+            Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.HostConfig.Queues.VisibilityTimeout);
         }
 
         [Fact]

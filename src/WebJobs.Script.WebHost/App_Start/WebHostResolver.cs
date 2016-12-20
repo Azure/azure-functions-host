@@ -16,21 +16,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private static object _syncLock = new object();
 
+        private readonly ISecretManagerFactory _secretManagerFactory;
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
-        private ISecretManager _standbySecretManager;
         private WebHookReceiverManager _standbyReceiverManager;
 
         private ScriptHostConfiguration _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
-        private ISecretManager _activeSecretManager;
         private WebHookReceiverManager _activeReceiverManager;
 
         private static ScriptSettingsManager _settingsManager;
 
-        public WebHostResolver(ScriptSettingsManager settingsManager)
+        public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory)
         {
             _settingsManager = settingsManager;
+            _secretManagerFactory = secretManagerFactory;
         }
 
         public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
@@ -50,17 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ISecretManager GetSecretManager(WebHostSettings settings)
         {
-            if (_activeSecretManager != null)
-            {
-                return _activeSecretManager;
-            }
-
-            lock (_syncLock)
-            {
-                EnsureInitialized(settings);
-
-                return _activeSecretManager ?? _standbySecretManager;
-            }
+            return GetWebScriptHostManager(settings).SecretManager;
         }
 
         public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
@@ -109,16 +99,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     _activeScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
-                    _activeSecretManager = GetSecretManager(_settingsManager, settings.SecretsPath);
-                    _activeReceiverManager = new WebHookReceiverManager(_activeSecretManager);
-                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _activeSecretManager, _settingsManager, settings);
 
-                    (_standbySecretManager as IDisposable)?.Dispose();
+                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
+                    _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+
                     _standbyHostManager?.Dispose();
                     _standbyReceiverManager?.Dispose();
 
                     _standbyScriptHostConfig = null;
-                    _standbySecretManager = null;
                     _standbyHostManager = null;
                     _standbyReceiverManager = null;
                     _settingsManager.Reset();
@@ -129,9 +117,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (_standbyHostManager == null)
                 {
                     _standbyScriptHostConfig = GetScriptHostConfiguration(settings.ScriptPath, settings.LogPath);
-                    _standbySecretManager = GetSecretManager(_settingsManager, settings.SecretsPath);
-                    _standbyReceiverManager = new WebHookReceiverManager(_standbySecretManager);
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _standbySecretManager, _settingsManager, settings);
+
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
+                    _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
                 }
             }
         }
@@ -224,15 +212,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static ISecretManager GetSecretManager(ScriptSettingsManager settingsManager, string secretsPath) => new SecretManager(settingsManager, secretsPath);
-
         public void Dispose()
         {
-            (_standbySecretManager as IDisposable)?.Dispose();
             _standbyHostManager?.Dispose();
             _standbyReceiverManager?.Dispose();
 
-            (_activeSecretManager as IDisposable)?.Dispose();
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
         }

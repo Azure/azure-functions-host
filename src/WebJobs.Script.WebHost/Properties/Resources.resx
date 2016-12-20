@@ -259,4 +259,28 @@
     ]
 }</value>
   </data>
+  <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
+    <value>{0} secret '{1}' for '{2}' {3}.</value>
+  </data>
+  <data name="TraceFunctionSecretGeneration" xml:space="preserve">
+    <value>Function ('{0}') secrets do not exist. Generating secrets.</value>
+  </data>
+  <data name="TraceHostSecretGeneration" xml:space="preserve">
+    <value>Host secrets do not exist. Generating secrets.</value>
+  </data>
+  <data name="TraceKeysApiSecretChange" xml:space="preserve">
+    <value>Secret '{0}' for '{1}' {2}.</value>
+  </data>
+  <data name="TraceMasterKeyCreatedOrUpdated" xml:space="preserve">
+    <value>Master key {0}</value>
+  </data>
+  <data name="TraceSecretDeleted" xml:space="preserve">
+    <value>{0} secret '{1}' deleted.</value>
+  </data>
+  <data name="TraceStaleFunctionSecretRefresh" xml:space="preserve">
+    <value>Stale function ('{0}') secrets detected. Refreshing secrets.</value>
+  </data>
+  <data name="TraceStaleHostSecretRefresh" xml:space="preserve">
+    <value>Stale host secrets detected. Refreshing secrets.</value>
+  </data>
 </root>

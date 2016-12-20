@@ -42,13 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
             : base(config, settingsManager, scriptHostFactory)
         {
             _config = config;
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
-            _secretManager = secretManager;
             _webHostSettings = webHostSettings;
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
@@ -61,12 +60,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 config.TraceWriter = systemTraceWriter;
             }
+
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, webHostSettings.SecretsPath);
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManager secretManager, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
-            : this(config, secretManager, settingsManager, webHostSettings, new ScriptHostFactory())
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
+            : this(config, secretManagerFactory, settingsManager, webHostSettings, new ScriptHostFactory())
         {
         }
+
+        public ISecretManager SecretManager => _secretManager;
 
         public virtual bool Initialized
         {
@@ -242,20 +245,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (disposing)
             {
-                if (_secretManager != null)
-                {
-                    (_secretManager as IDisposable).Dispose();
-                }
-
-                if (_metricsLogger != null)
-                {
-                    _metricsLogger.Dispose();
-                }
-
-                if (_httpRoutes != null)
-                {
-                    _httpRoutes.Dispose();
-                }
+                (_secretManager as IDisposable)?.Dispose();
+                _metricsLogger?.Dispose();
+                _httpRoutes?.Dispose();
             }
 
             base.Dispose(disposing);

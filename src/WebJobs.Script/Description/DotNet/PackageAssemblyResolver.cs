@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     assemblies.AddRange(p.Assemblies.Values);
                     assemblies.AddRange(p.FrameworkAssemblies.Values);
                     return assemblies;
-                });
+                }).Distinct();
             }
         }
 
