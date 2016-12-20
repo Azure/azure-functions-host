@@ -110,12 +110,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 
                 if (!string.IsNullOrEmpty(format))
                 {
-                    return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
+                    return DateTime.UtcNow.ToString(format, CultureInfo.InvariantCulture);
                 }
                 else
                 {
                     // default to ISO 8601
-                    return DateTime.Now.ToString("yyyy-MM-ddTHH-mm-ssK", CultureInfo.InvariantCulture);
+                    return DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK", CultureInfo.InvariantCulture);
                 }
             }
         }
