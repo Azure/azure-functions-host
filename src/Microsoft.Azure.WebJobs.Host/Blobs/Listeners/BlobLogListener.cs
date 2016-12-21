@@ -64,11 +64,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     _scannedBlobNames.Clear();
                 }
 
-                var parsedBlobPaths = from entry in await _parser.ParseLogAsync(blob, cancellationToken)
-                                      where entry.IsBlobWrite
-                                      select entry.ToBlobPath();
+                IEnumerable<StorageAnalyticsLogEntry> entries = await _parser.ParseLogAsync(blob, cancellationToken);
+                IEnumerable<BlobPath> filteredBlobs = GetPathsForValidBlobWrites(entries);
 
-                foreach (BlobPath path in parsedBlobPaths.Where(p => p != null))
+                foreach (BlobPath path in filteredBlobs)
                 {
                     IStorageBlobContainer container = _blobClient.GetContainerReference(path.ContainerName);
                     blobs.Add(container.GetBlockBlobReference(path.BlobName));
@@ -76,6 +75,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             return blobs;
+        }
+
+        internal static IEnumerable<BlobPath> GetPathsForValidBlobWrites(IEnumerable<StorageAnalyticsLogEntry> entries)
+        {
+            IEnumerable<BlobPath> parsedBlobPaths = from entry in entries
+                                                    where entry.IsBlobWrite
+                                                    select entry.ToBlobPath();
+
+            return parsedBlobPaths.Where(p => p != null);
         }
 
         // Return a search prefix for the given start,end time. 

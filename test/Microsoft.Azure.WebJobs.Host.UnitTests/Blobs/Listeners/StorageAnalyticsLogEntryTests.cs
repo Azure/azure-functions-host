@@ -5,9 +5,7 @@ using System;
 using System.Globalization;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 {
@@ -85,14 +83,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         [InlineData(@"/")]
         [InlineData(@"")]
         [InlineData(@"\\")]
-        public void ToBlobPath_IfMalformedObjectKey_ThrowsFormatException(string requestedObjectKey)
+        public void ToBlobPath_IfMalformedObjectKey_ReturnsNull(string requestedObjectKey)
         {
             StorageAnalyticsLogEntry entry = CreateEntry("2014-09-08T18:44:18.9681025Z", StorageServiceOperationType.PutBlob, StorageServiceType.Blob, requestedObjectKey);
 
-            ExceptionAssert.ThrowsFormat(() => entry.ToBlobPath(), "Failed to parse RequestedObjectKey property of the log entry. " +
-                    "It should be in one of the supported formats: " +
-                    @"""https://account.blob.core.windows.net/container/blob"", or" +
-                    @"""/account/container/blob""");
+            BlobPath blobPath = entry.ToBlobPath();
+            Assert.Null(blobPath);
         }
 
         [Theory]
@@ -106,13 +102,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ToBlobPath_IfMalformedBlobPath_ThrowsFormatException()
+        public void ToBlobPath_IfMalformedBlobPath_ReturnsNull()
         {
             string requestedObjectKey = "/account/malformed-blob-path";
             StorageAnalyticsLogEntry entry = CreateEntry("2014-09-08T18:44:18.9681025Z", StorageServiceOperationType.PutBlob, StorageServiceType.Blob, requestedObjectKey);
 
-            ExceptionAssert.ThrowsFormat(() => entry.ToBlobPath(), "Failed to parse RequestedObjectKey property of the log entry. " +
-                    "Blob identifiers must be in the format container/blob.");
+            BlobPath blob = entry.ToBlobPath();
+            Assert.Null(blob);
         }
 
         private static StorageAnalyticsLogEntry CreateEntry(string requestStartTime, StorageServiceOperationType operationType, StorageServiceType serviceType, string requestedObjectKey)

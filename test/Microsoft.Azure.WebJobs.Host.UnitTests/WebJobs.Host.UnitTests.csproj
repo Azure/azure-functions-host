@@ -138,6 +138,7 @@
     <Compile Include="Blobs\Bindings\UncompletedCancellableAsyncResult.cs" />
     <Compile Include="Blobs\BlobCausalityManagerTests.cs" />
     <Compile Include="Blobs\CompletingAsyncResult.cs" />
+    <Compile Include="Blobs\Listeners\BlobLogListenerTests.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\StorageAnalyticsLogEntryTests.cs" />
