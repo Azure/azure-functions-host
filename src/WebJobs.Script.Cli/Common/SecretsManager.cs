@@ -125,7 +125,7 @@ namespace WebJobs.Script.Cli.Common
                 }
                 else
                 {
-                    return Values;
+                    return Values.ToDictionary(k => k.Key, v => v.Value);
                 }
             }
         }
