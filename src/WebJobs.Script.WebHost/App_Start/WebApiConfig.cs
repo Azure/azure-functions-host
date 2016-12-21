@@ -4,15 +4,12 @@
 using System;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Formatting;
 using System.Web;
 using System.Web.Http;
-using System.Web.Http.Cors;
 using System.Web.Http.Routing;
 using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost.Common;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 
@@ -42,14 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             settings = settings ?? GetDefaultSettings(settingsManager);
-
-            if (settings.IsSelfHost)
-            {
-                var cors = new EnableCorsAttribute(LocalhostConstants.AzureFunctionsCors, "*", "*");
-                config.EnableCors(cors);
-                config.Formatters.Clear();
-                config.Formatters.Add(new JsonMediaTypeFormatter());
-            }
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);

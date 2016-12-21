@@ -6,13 +6,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.ServiceModel;
 using System.Threading.Tasks;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.SelfHost;
 using Colors.Net;
 using Fclp;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Common;
 using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Cli.Common;
@@ -36,6 +39,8 @@ namespace WebJobs.Script.Cli.Actions.HostActions
 
         public TraceLevel ConsoleTraceLevel { get; set; }
 
+        public string CorsOrigins { get; set; }
+
         public override ICommandLineParserResult ParseArgs(string[] args)
         {
             Parser
@@ -56,6 +61,12 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 .SetDefault(DefaultDebugLevel)
                 .Callback(p => ConsoleTraceLevel = p);
 
+            Parser
+                .Setup<string>("cors")
+                .WithDescription($"A comma separated list of CORS origins with no spaces. Example: https://functions.azure.com,https://functions-staging.azure.com")
+                .SetDefault(LocalhostConstants.AzureFunctionsCors)
+                .Callback(c => CorsOrigins = c);
+
             return Parser.Parse(args);
         }
 
@@ -69,6 +80,11 @@ namespace WebJobs.Script.Cli.Actions.HostActions
                 IncludeErrorDetailPolicy = IncludeErrorDetailPolicy.Always,
                 TransferMode = TransferMode.Streamed
             };
+
+            var cors = new EnableCorsAttribute(CorsOrigins, "*", "*");
+            config.EnableCors(cors);
+            config.Formatters.Clear();
+            config.Formatters.Add(new JsonMediaTypeFormatter());
 
             var settings = SelfHostWebHostSettingsFactory.Create(NodeDebugPort, ConsoleTraceLevel);
 
