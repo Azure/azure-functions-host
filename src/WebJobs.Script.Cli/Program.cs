@@ -2,16 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
-using System.IO;
 using ARMClient.Authentication;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
 using ARMClient.Library;
 using Autofac;
+using Colors.Net;
 using WebJobs.Script.Cli.Arm;
 using WebJobs.Script.Cli.Common;
 using WebJobs.Script.Cli.Interfaces;
+using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli
 {
@@ -20,7 +20,22 @@ namespace WebJobs.Script.Cli
         static void Main(string[] args)
         {
             FirstTimeCliExperience();
+            SetupGlobalExceptionHandler();
             ConsoleApp.Run<Program>(args, InitializeAutofacContainer());
+        }
+
+        private static void SetupGlobalExceptionHandler()
+        {
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                if (e.IsTerminating)
+                {
+                    ColoredConsole.Error.WriteLine(ErrorColor(e.ExceptionObject.ToString()));
+                    ColoredConsole.Write("Press any to continue....");
+                    Console.ReadKey(true);
+                    Environment.Exit(ExitCodes.GeneralError);
+                }
+            };
         }
 
         private static void FirstTimeCliExperience()
