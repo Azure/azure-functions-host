@@ -40,7 +40,7 @@ namespace WebJobs.Script.Cli.Arm
             Func<string, string> getResourceGroupName = id => id.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[3];
 
             return armSubscriptionWebApps.Value
-                .Where(s => s.Kind?.IndexOf(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) != -1)
+                .Where(s => s.Kind != null && s.Kind.IndexOf(Constants.FunctionAppArmKind, StringComparison.OrdinalIgnoreCase) != -1)
                 .Select(s => new Site(subscription.SubscriptionId, getResourceGroupName(s.Id), s.Name) { Location = s.Location });
         }
 
