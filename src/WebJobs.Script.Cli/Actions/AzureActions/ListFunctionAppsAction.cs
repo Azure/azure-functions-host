@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Colors.Net;
 using WebJobs.Script.Cli.Arm;
+using WebJobs.Script.Cli.Interfaces;
 using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.AzureActions
@@ -11,16 +12,18 @@ namespace WebJobs.Script.Cli.Actions.AzureActions
     class ListFunctionAppsAction : BaseAction
     {
         private readonly IArmManager _armManager;
+        private readonly ISettings _settings;
 
-        public ListFunctionAppsAction(IArmManager armManager)
+        public ListFunctionAppsAction(IArmManager armManager, ISettings settings)
         {
             _armManager = armManager;
+            _settings = settings;
         }
 
         public override async Task RunAsync()
         {
             var user = await _armManager.GetUserAsync();
-            var functionApps = await _armManager.GetFunctionAppsAsync();
+            var functionApps = await _armManager.GetFunctionAppsAsync(await _armManager.GetSubscriptionAsync(_settings.CurrentSubscription));
             if (functionApps.Any())
             {
                 ColoredConsole.WriteLine(TitleColor("Function Apps:"));

@@ -11,6 +11,7 @@ namespace WebJobs.Script.Cli.Arm
     internal interface IArmManager
     {
         Task<IEnumerable<Site>> GetFunctionAppsAsync();
+        Task<IEnumerable<Site>> GetFunctionAppsAsync(Subscription subscription);
         Task<Site> GetFunctionAppAsync(string name);
         Task<Site> CreateFunctionAppAsync(string subscription, string resrouceGroup, string functionAppName, string geoLocation);
         Task<ArmWebsitePublishingCredentials> GetUserAsync();
@@ -23,8 +24,10 @@ namespace WebJobs.Script.Cli.Arm
         Task<TenantCacheInfo> GetCurrentTenantAsync();
         IEnumerable<TenantCacheInfo> GetTenants();
         Task<IEnumerable<Subscription>> GetSubscriptionsAsync();
+        Task<Subscription> GetSubscriptionAsync(string subscriptionId);
         Task<Site> LoadSitePublishingCredentialsAsync(Site site);
         Task<IEnumerable<StorageAccount>> GetStorageAccountsAsync();
+        Task<IEnumerable<StorageAccount>> GetStorageAccountsAsync(Subscription subscription);
         Task<IEnumerable<ArmWrapper<object>>> getAzureResourceAsync(string resourceName);
         Task<StorageAccount> GetStorageAccountsAsync(ArmWrapper<object> armWrapper);
         Task<Dictionary<string, string>> GetFunctionAppAppSettings(Site functionApp);

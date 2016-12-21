@@ -22,6 +22,15 @@ namespace WebJobs.Script.Cli.Arm
             return subscriptions.Value.Select(s => new Subscription(s.SubscriptionId, s.DisplayName));
         }
 
+        public async Task<Subscription> GetSubscriptionAsync(string subscriptionId)
+        {
+            var subscriptionResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.Subscription.Bind(new { subscriptionId = subscriptionId }));
+            subscriptionResponse.EnsureSuccessStatusCode();
+
+            var subscription = await subscriptionResponse.Content.ReadAsAsync<ArmSubscription>();
+            return new Subscription(subscription.SubscriptionId, subscription.DisplayName);
+        }
+
         public async Task<IEnumerable<Site>> GetFunctionAppsAsync(Subscription subscription)
         {
             var armSubscriptionWebAppsResponse = await _client.HttpInvoke(HttpMethod.Get, ArmUriTemplates.SubscriptionWebApps.Bind(subscription));
