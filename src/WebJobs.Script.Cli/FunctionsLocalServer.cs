@@ -38,7 +38,7 @@ namespace WebJobs.Script.Cli
             {
                 await Task.Delay(500);
             }
-            return new HttpClient() { BaseAddress = server };
+            return new HttpClient() { BaseAddress = server, Timeout = timeout };
         }
 
         private async Task<Uri> DiscoverServer(int iteration = 0)

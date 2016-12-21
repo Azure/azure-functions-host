@@ -43,7 +43,7 @@ namespace WebJobs.Script.Cli.Actions.LocalActions
                 Parser
                     .Setup<int>('t', "timeout")
                     .WithDescription("Time to wait until Functions Server is ready in Seconds")
-                    .SetDefault(15)
+                    .SetDefault(20)
                     .Callback(t => Timeout = t);
                 Parser
                     .Setup<string>('c', "content")
