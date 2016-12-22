@@ -63,6 +63,7 @@ namespace WebJobs.Script.Cli.Common
         {
             var settingsFile = new AppSettingsFile(Path.Combine(Environment.CurrentDirectory, AppSettingsFileName));
             settingsFile.RemoveSetting(name);
+            settingsFile.Commit();
         }
 
         private class AppSettingsFile
