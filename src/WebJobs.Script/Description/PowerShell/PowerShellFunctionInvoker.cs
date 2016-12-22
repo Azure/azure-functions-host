@@ -265,11 +265,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (Directory.Exists(moduleDirectory))
             {
                 modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesManifestFileExtensionPattern));
+                    PowerShellConstants.ModulesManifestFileExtensionPattern,
+                    SearchOption.AllDirectories));
                 modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesBinaryFileExtensionPattern));
+                    PowerShellConstants.ModulesBinaryFileExtensionPattern,
+                    SearchOption.AllDirectories));
                 modulePaths.AddRange(Directory.GetFiles(moduleDirectory,
-                    PowerShellConstants.ModulesScriptFileExtensionPattern));
+                    PowerShellConstants.ModulesScriptFileExtensionPattern,
+                    SearchOption.AllDirectories));
             }
 
             return modulePaths;
