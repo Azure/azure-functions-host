@@ -51,8 +51,7 @@ namespace WebJobs.Script.Cli.Actions
 
         private void SetupUrlAcl()
         {
-            
-            NetSH.CMD.Http.Add.UrlAcl($"http://+:{Port}/", Environment.UserName, null);
+            NetSH.CMD.Http.Add.UrlAcl($"http://+:{Port}/", $"{Environment.UserDomainName}\\{Environment.UserName}", null);
         }
     }
 
