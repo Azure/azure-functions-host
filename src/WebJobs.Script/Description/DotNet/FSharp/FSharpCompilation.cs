@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
         {
-            EnsureAssemblyOption();
+            EnsureAssemblyOption(false);
 
             // Scrape the compiled assembly for entry points
             IList<MethodReference<MethodInfo>> methods =
@@ -87,18 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _assemblyOption.Value;
         }
 
-        private void EnsureAssemblyOption()
+        private void EnsureAssemblyOption(bool includeDiagnostics = true)
         {
             if (_assemblyOption == null)
             {
-                var diagnostics = this.GetDiagnostics();
-                var diagnosticsText = new System.Text.StringBuilder();
-                foreach (var diagostic in diagnostics)
-                {
-                    diagnosticsText.Append(diagostic.ToString());
-                }
-
-                throw new CompilationErrorException("Script compilation failed. " + diagnosticsText, this.GetDiagnostics());
+                throw new CompilationErrorException("Script compilation failed.", includeDiagnostics ? this.GetDiagnostics() : ImmutableArray<Diagnostic>.Empty);
             }
         }
     }

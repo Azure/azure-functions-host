@@ -114,16 +114,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // as dictated by the C# reference resolver, and F# doesn't like getting multiple references to those.
                 otherFlags.Add("--noframework");
 
-                var references = script.Options.MetadataReferences
-                    .Cast<UnresolvedMetadataReference>()
-                    .Aggregate(new List<PortableExecutableReference>(), (a, r) =>
-                    {
-                        a.AddRange(_metadataResolver.ResolveReference(r.Reference, string.Empty, r.Properties));
-                        return a;
-                    });
+                var references = script.GetCompilation().References
+                    .Where(m => !(m is UnresolvedMetadataReference))
+                    .Select(m => "-r:" + m.Display)
+                    .Distinct(new FileNameEqualityComparer());
 
                 // Add the references as reported by the metadata resolver.
-                otherFlags.AddRange(references.Select(r => "-r:" + r.Display));
+                otherFlags.AddRange(references);
 
                 if (_optimizationLevel == OptimizationLevel.Debug)
                 {
@@ -200,6 +197,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return code ?? string.Empty;
+        }
+
+        private class FileNameEqualityComparer : IEqualityComparer<string>
+        {
+            public bool Equals(string x, string y)
+            {
+                if (string.Equals(x, y))
+                {
+                    return true;
+                }
+
+                if (string.IsNullOrEmpty(x) || string.IsNullOrEmpty(y))
+                {
+                    return false;
+                }
+
+                return string.Equals(Path.GetFileName(x), Path.GetFileName(y));
+            }
+
+            public int GetHashCode(string obj)
+            {
+                if (string.IsNullOrEmpty(obj))
+                {
+                    return 0;
+                }
+
+                return Path.GetFileName(obj).GetHashCode();
+            }
         }
     }
 }
