@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Kudu
             _tempPath = Path.GetTempPath();
             _logFilesPath = Path.Combine(_tempPath, "LogFiles");
             _applicationLogFilesPath = _logFilesPath;
-            _dataPath = Path.Combine(settings.ScriptPath, KuduConstants.DataPath);
+            _dataPath = Path.Combine(_tempPath, KuduConstants.DataPath);
 
             FileSystemHelpers.EnsureDirectory(_dataPath);
         }
