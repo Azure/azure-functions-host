@@ -86,5 +86,66 @@ namespace WebJobs.Script.Cli.Common
             }
             return path;
         }
+
+        public static void DeleteDirectorySafe(string path, bool ignoreErrors = true)
+        {
+            DeleteFileSystemInfo(Instance.DirectoryInfo.FromDirectoryName(path), ignoreErrors);
+        }
+
+        private static void DeleteFileSystemInfo(FileSystemInfoBase fileSystemInfo, bool ignoreErrors)
+        {
+            if (!fileSystemInfo.Exists)
+            {
+                return;
+            }
+
+            try
+            {
+                fileSystemInfo.Attributes = FileAttributes.Normal;
+            }
+            catch
+            {
+                if (!ignoreErrors) throw;
+            }
+
+            var directoryInfo = fileSystemInfo as DirectoryInfoBase;
+
+            if (directoryInfo != null)
+            {
+                DeleteDirectoryContentsSafe(directoryInfo, ignoreErrors);
+            }
+
+            DoSafeAction(fileSystemInfo.Delete, ignoreErrors);
+        }
+
+        private static void DeleteDirectoryContentsSafe(DirectoryInfoBase directoryInfo, bool ignoreErrors)
+        {
+            try
+            {
+                if (directoryInfo.Exists)
+                {
+                    foreach (var fsi in directoryInfo.GetFileSystemInfos())
+                    {
+                        DeleteFileSystemInfo(fsi, ignoreErrors);
+                    }
+                }
+            }
+            catch
+            {
+                if (!ignoreErrors) throw;
+            }
+        }
+
+        private static void DoSafeAction(Action action, bool ignoreErrors)
+        {
+            try
+            {
+                action();
+            }
+            catch
+            {
+                if (!ignoreErrors) throw;
+            }
+        }
     }
 }

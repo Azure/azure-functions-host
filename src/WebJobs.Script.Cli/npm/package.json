@@ -18,6 +18,5 @@
   "dependencies": {
     "chalk": "^1.1.3",
     "generator-azurefunctions": "^0.1.8",
-    "yo": "^1.8.4"
   }
 }

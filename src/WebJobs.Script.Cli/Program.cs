@@ -75,6 +75,9 @@ namespace WebJobs.Script.Cli
                 .SingleInstance()
                 .ExternallyOwned();
 
+            builder.RegisterType<TemplatesManager>()
+                .As<ITemplatesManager>();
+
             return builder.Build();
         }
     }

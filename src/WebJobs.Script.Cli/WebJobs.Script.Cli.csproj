@@ -210,6 +210,8 @@
     <Compile Include="Common\ProcessInfo.cs" />
     <Compile Include="Common\ProcessManager.cs" />
     <Compile Include="Common\SecretsManager.cs" />
+    <Compile Include="Common\Template.cs" />
+    <Compile Include="Common\TemplatesManager.cs" />
     <Compile Include="ConsoleApp.cs" />
     <Compile Include="Context.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
@@ -239,6 +241,7 @@
     <Compile Include="Interfaces\IProcessManager.cs" />
     <Compile Include="Interfaces\ISecretsManager.cs" />
     <Compile Include="Interfaces\ISettings.cs" />
+    <Compile Include="Interfaces\ITemplatesManager.cs" />
     <Compile Include="NativeMethods\ProcessNativeMethods.cs" />
     <Compile Include="Common\FileSystemHelpers.cs" />
     <Compile Include="Common\SourceControl.cs" />
