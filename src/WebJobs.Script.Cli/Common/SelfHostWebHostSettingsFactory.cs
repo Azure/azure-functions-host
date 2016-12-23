@@ -18,7 +18,7 @@ namespace WebJobs.Script.Cli.Common
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory),
                 LogPath = Path.Combine(Path.GetTempPath(), @"LogFiles\Application\Functions"),
-                SecretsPath = Path.Combine(Environment.CurrentDirectory, "secrets", "functions", "secrets"),
+                SecretsPath = Path.Combine(Path.GetTempPath(), "secrets", "functions", "secrets"),
                 NodeDebugPort = nodeDebugPort,
                 TraceWriter = new ConsoleTraceWriter(consoleTraceLevel)
             };
