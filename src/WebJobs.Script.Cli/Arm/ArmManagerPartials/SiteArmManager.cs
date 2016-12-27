@@ -31,7 +31,7 @@ namespace WebJobs.Script.Cli.Arm
             var armSite = await ArmHttpAsync<ArmWrapper<ArmWebsite>>(HttpMethod.Get, ArmUriTemplates.Site.Bind(site));
 
             site.HostName = armSite.Properties.EnabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) == -1);
-            //site.ScmUri = armSite.properties.enabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1);
+            site.ScmUri = armSite.Properties.EnabledHostNames.FirstOrDefault(s => s.IndexOf(".scm.", StringComparison.OrdinalIgnoreCase) != -1);
             site.Location = armSite.Location;
             return site;
         }

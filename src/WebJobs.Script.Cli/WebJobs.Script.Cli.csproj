@@ -173,6 +173,7 @@
     <Compile Include="Actions\AzureActions\EnableGitRepoAction.cs" />
     <Compile Include="Actions\AzureActions\GetPublishUserNameAction.cs" />
     <Compile Include="Actions\AzureActions\ListStorageAction.cs" />
+    <Compile Include="Actions\AzureActions\LogStreamAction.cs" />
     <Compile Include="Actions\AzureActions\SetAzureAccountAction.cs" />
     <Compile Include="Actions\AzureActions\SetPublishPasswordAction.cs" />
     <Compile Include="Actions\BaseAction.cs" />
