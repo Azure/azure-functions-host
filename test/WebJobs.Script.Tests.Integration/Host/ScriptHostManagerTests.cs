@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _settingsManager = ScriptSettingsManager.Instance;
         }
+
         // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes. 
         // Test with timers: 
         [Fact]
@@ -43,36 +44,134 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock(). 
                 Thread t = new Thread(_ =>
-                   {
-                       // don't start until the manager is running
-                       TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+                {
+                    // don't start until the manager is running
+                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
 
-                       try
-                       {
-                           // Wait for initial execution.
-                           TestHelpers.Await(() =>
-                           {
-                               bool exists = blob1.Exists();
-                               return exists;
-                           }, timeout: 10 * 1000).Wait();
+                    try
+                    {
+                        // Wait for initial execution.
+                        TestHelpers.Await(() =>
+                        {
+                            bool exists = blob1.Exists();
+                            return exists;
+                        }, timeout: 10 * 1000).Wait();
 
-                           // This changes the bindings so that we now write to blob2
-                           var blob2 = UpdateOutputName("first", "second", fixture);
+                        // This changes the bindings so that we now write to blob2
+                        var blob2 = UpdateOutputName("first", "testblob", fixture);
 
-                           // wait for newly executed
-                           TestHelpers.Await(() =>
-                           {
-                               bool exists = blob2.Exists();
-                               return exists;
-                           }, timeout: 30 * 1000).Wait();
-                       }
-                       catch (Exception ex)
-                       {
-                           exception = ExceptionDispatchInfo.Capture(ex);
-                       }
+                        // wait for newly executed
+                        TestHelpers.Await(() =>
+                        {
+                            bool exists = blob2.Exists();
+                            return exists;
+                        }, timeout: 30 * 1000).Wait();
+                    }
+                    catch (Exception ex)
+                    {
+                        exception = ExceptionDispatchInfo.Capture(ex);
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            UpdateOutputName("first", "testblob", fixture);
+                        }
+                        catch
+                        {
+                        }
+                    }
 
-                       cts.Cancel();
-                   });
+                    cts.Cancel();
+                });
+                t.Start();
+
+                manager.RunAndBlock(cts.Token);
+
+                t.Join();
+
+                Assert.True(exception == null, exception?.SourceException?.ToString());
+            }
+        }
+
+        [Fact]
+        public async Task RenameFunctionAndRestart()
+        {
+            var oldDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/TimerTrigger");
+            var newDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/MovedTrigger");
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+            var fixture = new NodeEndToEndTests.TestFixture();
+            await fixture.Host.StopAsync();
+            var config = fixture.Host.ScriptConfig;
+
+            var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
+
+            ExceptionDispatchInfo exception = null;
+
+            using (var manager = new ScriptHostManager(config))
+            {
+                // Background task to run while the main thread is pumping events at RunAndBlock(). 
+                Thread t = new Thread(_ =>
+                {
+                    // don't start until the manager is running
+                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
+                    try
+                    {
+                        // Wait for initial execution.
+                        TestHelpers.Await(() =>
+                        {
+                            bool exists = blob.Exists();
+                            return exists;
+                        }, timeout: 10 * 1000).Wait();
+
+                        // find __dirname from blob
+                        string text;
+                        using (var stream = new MemoryStream())
+                        {
+                            blob.DownloadToStream(stream);
+                            text = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                        }
+
+                        Assert.Contains("TimerTrigger", text);
+
+                        // rename directory & delete old blob
+                        Directory.Move(oldDirectory, newDirectory);
+                        blob.Delete();
+
+                        // wait for newly executed
+                        TestHelpers.Await(() =>
+                        {
+                            bool exists = blob.Exists();
+                            return exists;
+                        }, timeout: 30 * 1000).Wait();
+
+                        using (var stream = new MemoryStream())
+                        {
+                            blob.DownloadToStream(stream);
+                            text = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                        }
+
+                        Assert.Contains("MovedTrigger", text);
+                    }
+                    catch (Exception ex)
+                    {
+                        exception = ExceptionDispatchInfo.Capture(ex);
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            Directory.Move(newDirectory, oldDirectory);
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    cts.Cancel();
+                });
                 t.Start();
 
                 manager.RunAndBlock(cts.Token);
