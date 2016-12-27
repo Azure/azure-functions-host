@@ -14,6 +14,6 @@ namespace WebJobs.Script.Cli.Common
         public static RichString ExampleColor(string value) => DarkGreen(value);
         public static RichString ErrorColor(string value) => Red(value);
         public static RichString QuestionColor(string value) => Magenta(value);
-
+        public static RichString WarningColor(string value) => Yellow(value);
     }
 }

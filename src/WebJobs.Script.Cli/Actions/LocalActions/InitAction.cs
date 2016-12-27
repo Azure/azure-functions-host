@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Colors.Net;
 using Microsoft.Azure.WebJobs.Script;
 using WebJobs.Script.Cli.Common;
+using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
@@ -66,16 +68,23 @@ appsettings.json
                 }
             }
 
-            var checkGitRepoExe = new Executable("git", "rev-parse --git-dir");
-            var result = await checkGitRepoExe.RunAsync();
-            if (result != 0)
+            try
             {
-                var exe = new Executable("git", $"init");
-                await exe.RunAsync(l => ColoredConsole.WriteLine(l), l => ColoredConsole.Error.WriteLine(l));
+                var checkGitRepoExe = new Executable("git", "rev-parse --git-dir");
+                var result = await checkGitRepoExe.RunAsync();
+                if (result != 0)
+                {
+                    var exe = new Executable("git", $"init");
+                    await exe.RunAsync(l => ColoredConsole.WriteLine(l), l => ColoredConsole.Error.WriteLine(l));
+                }
+                else
+                {
+                    ColoredConsole.WriteLine("Directory already a git repository.");
+                }
             }
-            else
+            catch (FileNotFoundException)
             {
-                ColoredConsole.WriteLine("Directory already a git repository.");
+                ColoredConsole.WriteLine(WarningColor("unable to find git on the path"));
             }
         }
     }

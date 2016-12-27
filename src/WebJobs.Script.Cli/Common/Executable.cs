@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using WebJobs.Script.Cli.Extensions;
 
@@ -38,7 +40,20 @@ namespace WebJobs.Script.Cli.Common
                 RedirectStandardOutput = _streamOutput
             };
 
-            var process = Process.Start(processInfo);
+            Process process = null;
+
+            try
+            {
+                process = Process.Start(processInfo);
+            }
+            catch (Win32Exception ex)
+            {
+                if (ex.Message == "The system cannot find the file specified")
+                {
+                    throw new FileNotFoundException(ex.Message, ex);
+                }
+                throw ex;
+            }
 
             if (_streamOutput)
             {
