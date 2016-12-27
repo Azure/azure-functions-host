@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Action<FileSystemEventArgs> _restart;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
-        private int _directoryCountSnapshot;
+        private ImmutableArray<string> _directorySnapshot; 
         private BlobLeaseManager _blobLeaseManager;
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
@@ -309,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _restart = _restart.Debounce(500);
 
                 // take a snapshot so we can detect function additions/removals
-                _directoryCountSnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count();
+                _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
 
                 List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
                 {
@@ -1088,12 +1089,12 @@ namespace Microsoft.Azure.WebJobs.Script
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
             // - the host.json file was changed
             // - a function.json file was changed
-            // - a function directory was added/removed
+            // - a function directory was added/removed/renamed
             string fileName = Path.GetFileName(e.Name);
             if (isWatchedDirectory ||
                 ((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                (Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).Count() != _directoryCountSnapshot))
+                !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
                 // a host level configuration change has been made which requires a
                 // host restart
