@@ -69,7 +69,8 @@ namespace WebJobs.Script.Cli
                 }
 
                 var exeName = Process.GetCurrentProcess().MainModule.FileName;
-                var exe = new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true);
+                //var exe = new Executable("cmd.exe", $"/c start {exeName} host start -p {Port + iteration}", streamOutput: false, shareConsole: true);
+                var exe = new Executable(exeName, $"host start -p {Port + iteration}", streamOutput: false, shareConsole: true);
                 exe.RunAsync().Ignore();
                 await Task.Delay(500);
                 ConsoleNativeMethods.GetFocusBack();
