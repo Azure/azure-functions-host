@@ -48,7 +48,7 @@ namespace WebJobs.Script.Cli
             }
         }
 
-        private static IContainer InitializeAutofacContainer()
+        internal static IContainer InitializeAutofacContainer()
         {
             var builder = new ContainerBuilder();
 

@@ -198,6 +198,7 @@
     <Compile Include="Actions\LocalActions\ListSettingsAction.cs" />
     <Compile Include="Actions\LocalActions\RunFunctionAction.cs" />
     <Compile Include="ActionType.cs" />
+    <Compile Include="TypeAttributePair.cs" />
     <Compile Include="Arm\ArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\ResourceGroupArmManager.cs" />
     <Compile Include="Arm\ArmManagerPartials\SiteArmManager.cs" />

@@ -21,14 +21,28 @@ namespace WebJobs.Script.Cli.Actions
         private readonly ICommandLineParserResult _parseResult;
         private readonly IEnumerable<ActionType> _actionTypes;
 
-        public HelpAction(IEnumerable<ActionType> actionTypes, string context = null, string subContext = null)
+        public HelpAction(IEnumerable<TypeAttributePair> actions, string context = null, string subContext = null)
         {
             _context = context;
             _subContext = subContext;
-            _actionTypes = actionTypes.Where(a => a.Type.GetCustomAttributes<ActionAttribute>().Any(at => at.ShowInHelp));
+            _actionTypes = actions
+                .Where(a => a.Attribute.ShowInHelp)
+                .Select(a => a.Type)
+                .Distinct()
+                .Select(type =>
+                {
+                    var attributes = type.GetCustomAttributes<ActionAttribute>();
+                    return new ActionType
+                    {
+                        Type = type,
+                        Contexts = attributes.Select(a => a.Context),
+                        SubContexts = attributes.Select(a => a.SubContext),
+                        Names = attributes.Select(a => a.Name)
+                    };
+                });
         }
 
-        public HelpAction(IEnumerable<ActionType> actionTypes, IAction action, ICommandLineParserResult parseResult) : this(actionTypes)
+        public HelpAction(IEnumerable<TypeAttributePair> actions, IAction action, ICommandLineParserResult parseResult) : this(actions)
         {
             _action = action;
             _parseResult = parseResult;

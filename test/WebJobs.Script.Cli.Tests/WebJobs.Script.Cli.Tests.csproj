@@ -161,6 +161,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionsTests\ResolveActionTests.cs" />
     <Compile Include="ArmTests\ArmData.cs" />
     <Compile Include="ArmTests\ArmManagerTests.cs" />
     <Compile Include="ArmTests\SubscriptionArmManagerTests.cs" />

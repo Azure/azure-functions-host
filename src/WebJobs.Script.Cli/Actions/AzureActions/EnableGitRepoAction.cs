@@ -5,7 +5,7 @@ using WebJobs.Script.Cli.Arm;
 namespace WebJobs.Script.Cli.Actions.AzureActions
 {
     [Action(Name = "enable-git-repo", Context = Context.Azure, SubContext = Context.FunctionApp, HelpText = "Enable git repository on your Azure-hosted Function App")]
-    class EnableGitRepoAction : BaseFunctionAppAction
+    internal class EnableGitRepoAction : BaseFunctionAppAction
     {
         private readonly IArmManager _armManager;
 

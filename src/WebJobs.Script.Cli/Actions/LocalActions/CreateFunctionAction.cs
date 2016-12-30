@@ -11,7 +11,7 @@ namespace WebJobs.Script.Cli.Actions.LocalActions
     [Action(Name = "create", Context = Context.Function, HelpText = "Create a new Function from a template, using the Yeoman generator")]
     [Action(Name = "new", Context = Context.Function, HelpText = "Create a new Function from a template, using the Yeoman generator")]
     [Action(Name = "new")]
-    class CreateFunctionAction : BaseAction
+    internal class CreateFunctionAction : BaseAction
     {
         private readonly ITemplatesManager _templatesManager;
 

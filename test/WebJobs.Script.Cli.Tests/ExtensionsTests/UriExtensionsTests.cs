@@ -52,7 +52,7 @@ namespace WebJobs.Script.Cli.Tests
 
                     if (url.AbsolutePath == "/")
                     {
-                        response = new HttpResponseMessage(HttpStatusCode.NoContent);
+                        response = new HttpResponseMessage(HttpStatusCode.OK);
                     }
                     else if (url.AbsolutePath.Equals("/admin/host/status", StringComparison.OrdinalIgnoreCase))
                     {

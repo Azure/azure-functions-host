@@ -18,7 +18,7 @@ namespace WebJobs.Script.Cli
     {
         private readonly IContainer _container;
         private readonly string[] _args;
-        private readonly IEnumerable<ActionType> _actionTypes;
+        private readonly IEnumerable<TypeAttributePair> _actionAttributes;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter")]
         public static void Run<T>(string[] args, IContainer container)
@@ -96,20 +96,11 @@ namespace WebJobs.Script.Cli
         {
             _args = args;
             _container = container;
-            _actionTypes = assembly
+            _actionAttributes = assembly
                 .GetTypes()
                 .Where(t => typeof(IAction).IsAssignableFrom(t) && !t.IsAbstract)
-                .Select(type => 
-                {
-                    var attributes = type.GetCustomAttributes<ActionAttribute>();
-                    return new ActionType
-                    {
-                        Type = type,
-                        Contexts = attributes.Select(a => a.Context),
-                        SubContexts = attributes.Select(a => a.SubContext),
-                        Names = attributes.Select(a => a.Name)
-                    };
-                });
+                .Select(type => type.GetCustomAttributes<ActionAttribute>().Select(a => new TypeAttributePair { Type = type, Attribute = a }))
+                .SelectMany(i => i);
         }
 
         internal IAction Parse()
@@ -122,7 +113,7 @@ namespace WebJobs.Script.Cli
                                a.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
                                a.Equals("-version", StringComparison.OrdinalIgnoreCase)))
             {
-                return new HelpAction(_actionTypes);
+                return new HelpAction(_actionAttributes);
             }
 
             var argsStack = new Stack<string>(_args.Reverse());
@@ -152,18 +143,18 @@ namespace WebJobs.Script.Cli
 
             if (string.IsNullOrEmpty(actionStr))
             {
-                return new HelpAction(_actionTypes, contextStr, subContextStr);
+                return new HelpAction(_actionAttributes, contextStr, subContextStr);
             }
 
-            var actionType = _actionTypes
-                .Where(a => a.Names.Any(n => n.Equals(actionStr, StringComparison.OrdinalIgnoreCase)))
-                .Where(c => c.Contexts.Contains(context))
-                .Where(c => c.SubContexts.Contains(subContext))
+            var actionType = _actionAttributes
+                .Where(a => a.Attribute.Name.Equals(actionStr, StringComparison.OrdinalIgnoreCase) &&
+                            a.Attribute.Context == context && 
+                            a.Attribute.SubContext == subContext)
                 .SingleOrDefault();
 
             if (actionType == null)
             {
-                return new HelpAction(_actionTypes, contextStr, subContextStr);
+                return new HelpAction(_actionAttributes, contextStr, subContextStr);
             }
 
             var action = CreateAction(actionType);
@@ -173,7 +164,7 @@ namespace WebJobs.Script.Cli
                 var parseResult = action.ParseArgs(args);
                 if (parseResult.HasErrors)
                 {
-                    return new HelpAction(_actionTypes, action, parseResult);
+                    return new HelpAction(_actionAttributes, action, parseResult);
                 }
                 else
                 {
@@ -187,7 +178,7 @@ namespace WebJobs.Script.Cli
             }
         }
 
-        internal IAction CreateAction(ActionType actionType)
+        internal IAction CreateAction(TypeAttributePair actionType)
         {
             var ctor = actionType.Type.GetConstructors()?.SingleOrDefault();
             var args = ctor?.GetParameters()?.Select(p => _container.Resolve(p.ParameterType)).ToArray();
