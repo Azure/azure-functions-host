@@ -36,6 +36,7 @@ namespace WebJobs.Script.Cli.Actions
 
         public override Task RunAsync()
         {
+            Utilities.PrintLogo();
             if (!string.IsNullOrEmpty(_context) || !string.IsNullOrEmpty(_subContext))
             {
                 var context = Context.None;

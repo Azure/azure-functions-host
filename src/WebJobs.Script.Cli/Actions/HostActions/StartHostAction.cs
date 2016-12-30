@@ -72,6 +72,7 @@ namespace WebJobs.Script.Cli.Actions.HostActions
 
         public override async Task RunAsync()
         {
+            Utilities.PrintLogo();
             ReadSecrets();
             var baseAddress = Setup();
 
