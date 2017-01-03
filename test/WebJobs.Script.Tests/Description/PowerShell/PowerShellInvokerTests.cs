@@ -38,6 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FindDuplicateModules()
+        {
+            List<string> actualModules = PowerShellFunctionInvoker.FindDuplicateModules(PowerShellFunctionInvoker.GetModuleFilePaths(_fixture.TestRootScriptPath, _fixture.TestFunctionName), _fixture.TestRootScriptPath, _fixture.TestFunctionName);
+            Assert.Equal(_fixture.ExpectedNumberOfImportedModules, actualModules.Count);
+            foreach (var actualModule in actualModules)
+            {
+                Assert.True(_fixture.TestModulesPath.Contains(actualModule));
+            }
+        }
+
+        [Fact]
         public void GetRelativePath()
         {
             string functionRootPath = "C:\\";
@@ -90,6 +101,9 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                 TestRootScriptPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
                 TestFunctionRoot = Path.Combine(TestRootScriptPath, TestFunctionName);
                 TestModulesRoot = Path.Combine(TestFunctionRoot, "modules");
+                // The number of imported modules is expected to be 6, as the "manifest-module.psd1" in RootTestModules
+                // should be ignored when importing. So the 7 available modules should end up being 6.
+                ExpectedNumberOfImportedModules = 6;
 
                 TestScriptPath = CreateScriptFile(TestFunctionRoot);
 
@@ -100,7 +114,15 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                     "manifest-module.psd1"
                 };
 
-                TestModulesPath = CreateModuleFiles(TestModulesRoot, TestModules);
+                RootTestModules = new string[]
+                {
+                    "root-script-module.psm1",
+                    "root-binary-module.dll",
+                    "root-manifest-module.psd1",
+                    "manifest-module.psd1"
+                };
+
+                TestModulesPath = CreateModuleFiles(TestModulesRoot, RootTestModules, TestModules);
             }
 
             public string TestFunctionRoot { get; private set; }
@@ -115,9 +137,12 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
 
             public string[] TestModules { get; private set; }
 
+            public string[] RootTestModules { get; private set; }
+
             public string TestModulesRoot { get; private set; }
 
             public List<string> TestModulesPath { get; set; }
+            public int ExpectedNumberOfImportedModules { get; set; }
 
             public void Dispose()
             {
@@ -154,13 +179,20 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                 return path;
             }
 
-            public List<string> CreateModuleFiles(string moduleRoot, string[] modules)
+            public List<string> CreateModuleFiles(string moduleRoot, string[] rootModules, string[] modules)
             {
                 if (!Directory.Exists(moduleRoot))
                 {
                     Directory.CreateDirectory(moduleRoot);
                 }
 
+                string moduleDirinRoot = TestRootScriptPath + "\\modules";
+
+                if (!Directory.Exists(moduleDirinRoot))
+                {
+                    Directory.CreateDirectory(moduleDirinRoot);
+                }
+                
                 List<string> modulesPath = new List<string>();
                 foreach (var module in modules)
                 {
@@ -171,6 +203,21 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
                         using (StreamWriter sw = File.CreateText(path))
                         {
                             sw.WriteLine(string.Format("This is a {0} file.", module));
+                        }
+                    }
+
+                    modulesPath.Add(path);
+                }
+
+                foreach (var rootModule in rootModules)
+                {
+                    string path = Path.Combine(moduleDirinRoot, rootModule);
+                    if (!File.Exists(path))
+                    {
+                        // Create a file to write to.
+                        using (StreamWriter sw = File.CreateText(path))
+                        {
+                            sw.WriteLine(string.Format("This is a {0} file.", rootModule));
                         }
                     }
 
