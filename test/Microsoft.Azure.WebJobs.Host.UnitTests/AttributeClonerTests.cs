@@ -273,6 +273,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
         }
 
+        [Fact]
+        public void TryAutoResolveValue_UnresolvedValue_ThrowsExpectedException()
+        {
+            var resolver = new FakeNameResolver();
+            var attribute = new Attr2(string.Empty, string.Empty)
+            {
+                ResolvedSetting = "MySetting"
+            };
+            var prop = attribute.GetType().GetProperty("ResolvedSetting");
+            string resolvedValue = null;
+
+            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.TryAutoResolveValue(attribute, prop, resolver, out resolvedValue));
+            Assert.Equal("Unable to resolve value for property 'Attr2.ResolvedSetting'.", ex.Message);
+        }
+
         private static BindingContext GetCtx(IReadOnlyDictionary<string, object> values)
         {
             BindingContext ctx = new BindingContext(

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -134,41 +133,53 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             template = null;
 
-            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            string resolvedValue = null;
+            if (!TryAutoResolveValue(_source, propInfo, nameResolver, out resolvedValue))
+            {
+                return false;
+            }
 
-            // Return false if there is no attribute on this property.
+            template = BindingTemplate.FromString(resolvedValue);
+
+            return true;
+        }
+
+        internal static bool TryAutoResolveValue(TAttribute attribute, PropertyInfo propInfo, INameResolver nameResolver, out string resolvedValue)
+        {
+            resolvedValue = null;
+
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
             if (attr == null)
             {
                 return false;
             }
 
-            string originalValue = (string)propInfo.GetValue(_source);
-
-            // Return false if the property value is null.
+            string originalValue = (string)propInfo.GetValue(attribute);
             if (originalValue == null)
             {
                 return false;
             }
 
-            string resolvedValue;
             if (!attr.AllowTokens)
             {
                 resolvedValue = nameResolver.Resolve(originalValue);
 
                 // If a value is non-null and cannot be found, we throw to match the behavior
-                // when %% values are not found.
+                // when %% values are not found in ResolveWholeString below.
                 if (resolvedValue == null)
                 {
-                    string msg = string.Format(CultureInfo.CurrentCulture, "'{0}' does not resolve to a value.", originalValue);
-                    throw new InvalidOperationException(msg);
+                    // It's important that we only log the attribute property name, not the actual value to ensure
+                    // that in cases where users accidentally use a secret key *value* rather than indirect setting name
+                    // that value doesn't get written to logs.
+                    throw new InvalidOperationException($"Unable to resolve value for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'.");
                 }
             }
             else
             {
+                // The logging consideration above doesn't apply in this case, since only tokens wrapped
+                // in %% characters will be resolved, so they are less likely to include a secret value.
                 resolvedValue = nameResolver.ResolveWholeString(originalValue);
             }
-
-            template = BindingTemplate.FromString(resolvedValue);
 
             return true;
         }
