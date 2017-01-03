@@ -58,6 +58,10 @@
       <HintPath>..\..\packages\FluentAssertions.4.17.0\lib\net45\FluentAssertions.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="FluentCommandLineParser, Version=1.4.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\FluentCommandLineParser.1.4.3\lib\net35\FluentCommandLineParser.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.Core, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
@@ -161,7 +165,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionsTests\ActionTestsBase.cs" />
+    <Compile Include="ActionsTests\InitActionTests.cs" />
     <Compile Include="ActionsTests\ResolveActionTests.cs" />
+    <Compile Include="ActionsTests\SettingsActionsTests.cs" />
     <Compile Include="ArmTests\ArmData.cs" />
     <Compile Include="ArmTests\ArmManagerTests.cs" />
     <Compile Include="ArmTests\SubscriptionArmManagerTests.cs" />

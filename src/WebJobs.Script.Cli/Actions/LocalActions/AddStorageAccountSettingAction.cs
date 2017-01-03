@@ -10,7 +10,7 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
     [Action(Name = "add-storage-account", Context = Context.Settings, HelpText = "Add a local app setting using the value from an Azure Storage account. Requires Azure login.")]
-    class AddStorageAccountSettingAction : BaseAction
+    internal class AddStorageAccountSettingAction : BaseAction
     {
         private readonly IArmManager _armManager;
         private readonly ISettings _settings;

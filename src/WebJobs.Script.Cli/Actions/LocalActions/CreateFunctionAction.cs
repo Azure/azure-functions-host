@@ -8,8 +8,8 @@ using static WebJobs.Script.Cli.Common.OutputTheme;
 
 namespace WebJobs.Script.Cli.Actions.LocalActions
 {
-    [Action(Name = "create", Context = Context.Function, HelpText = "Create a new Function from a template, using the Yeoman generator")]
-    [Action(Name = "new", Context = Context.Function, HelpText = "Create a new Function from a template, using the Yeoman generator")]
+    [Action(Name = "create", Context = Context.Function, HelpText = "Create a new Function from a template")]
+    [Action(Name = "new", Context = Context.Function, HelpText = "Create a new Function from a template")]
     [Action(Name = "new")]
     internal class CreateFunctionAction : BaseAction
     {
