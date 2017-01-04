@@ -410,6 +410,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Binding\HttpBindingTests.cs" />
+    <Compile Include="Binding\ServiceBusScriptBindingProviderTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />

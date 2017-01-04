@@ -34,5 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultHttpRoutePrefix = "api";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
+
+        public const string DynamicSku = "Dynamic";
     }
 }
