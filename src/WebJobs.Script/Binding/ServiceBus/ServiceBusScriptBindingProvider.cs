@@ -7,8 +7,11 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding.ServiceBus;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.ServiceBus;
+using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 
@@ -19,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly string _serviceBusAssemblyName;
         private EventHubConfiguration _eventHubConfiguration;
+        private ServiceBusConfiguration _serviceBusConfiguration;
 
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
@@ -33,6 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script
             if (string.Compare(context.Type, "serviceBusTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(context.Type, "serviceBus", StringComparison.OrdinalIgnoreCase) == 0)
             {
+                if (context.IsTrigger)
+                {
+                    MessagingProvider messageProvider = new MessagingProvider(_serviceBusConfiguration);
+                    NamespaceManager namespaceManager = messageProvider.CreateNamespaceManager(context.GetMetadataValue<string>("connection"));
+                    ValidateAccessRights(new AccessRightsValidator(namespaceManager), context.Name);
+                }
+
                 binding = new ServiceBusScriptBinding(context);
             }
             if (string.Compare(context.Type, "eventHubTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
@@ -44,6 +55,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return binding != null;
         }
 
+        public static void ValidateAccessRights(AccessRightsValidator validator, string bindingName)
+        {
+            if (ScriptSettingsManager.Instance.IsDynamicSku)
+            {
+                try
+                {
+                    // namespace manager apis require Manage rights
+                    validator.TestManageRights();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    throw new UnauthorizedAccessException($"Service Bus Trigger binding '{bindingName}' requires a connection string with Manage AccessRights for correct triggering and scaling behavior when running in a consumption plan.");
+                }
+            }
+        }
+        
         public override void Initialize()
         {
             // Apply ServiceBus configuration
@@ -87,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             Config.UseServiceBus(serviceBusConfig);
             Config.UseEventHub(_eventHubConfiguration);
+            _serviceBusConfiguration = serviceBusConfig;
         }
 
         public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
