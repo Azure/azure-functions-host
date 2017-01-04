@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Kudu;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Xunit;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private Mock<ScriptHost> hostMock;
         private Mock<WebScriptHostManager> managerMock;
+        private Mock<IFunctionsManager> functionsManagerMock;
         private Collection<FunctionDescriptor> testFunctions;
         private AdminController testController;
 
@@ -41,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings settings = new WebHostSettings();
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
+            functionsManagerMock = new Mock<IFunctionsManager>();
 
-            testController = new AdminController(managerMock.Object);
+            testController = new AdminController(managerMock.Object, settings, functionsManagerMock.Object);
         }
 
         [Fact]
@@ -89,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Input = testInput
             };
-            HttpResponseMessage response = testController.Invoke(testFunctionName, invocation);
+            HttpResponseMessage response = await testController.Invoke(testFunctionName, invocation);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
             // allow the invoke task to run
