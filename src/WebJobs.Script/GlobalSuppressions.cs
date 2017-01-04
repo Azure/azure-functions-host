@@ -123,4 +123,7 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_debugModeFileWatcher", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.ScriptHost.#Dispose(System.Boolean)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_scriptFileWatcher", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.ScriptHost.#Dispose(System.Boolean)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.IO.AutoRecoveringFileSystemWatcher.#InitializeWatcher()")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sku", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Utility.#IsDynamicSku()")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sku", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.ScriptConstants.#DynamicSku")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sku", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager.#IsDynamicSku")]
 

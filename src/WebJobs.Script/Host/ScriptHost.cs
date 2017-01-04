@@ -965,7 +965,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
 
                 // Only apply limits if this is Dynamic.
-                if (IsDynamicSku() && (requestedTimeout < MinTimeout || requestedTimeout > MaxTimeout))
+                if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinTimeout || requestedTimeout > MaxTimeout))
                 {
                     string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinTimeout} and {MaxTimeout}.";
                     throw new ArgumentException(message);
@@ -973,7 +973,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 scriptConfig.FunctionTimeout = requestedTimeout;
             }
-            else if (IsDynamicSku())
+            else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
                 // Apply a default if this is running on Dynamic.
                 scriptConfig.FunctionTimeout = MaxTimeout;
@@ -1141,12 +1141,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
-        }
-
-        private static bool IsDynamicSku()
-        {
-            string hostingPlan = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
-            return hostingPlan != null && hostingPlan == "Dynamic";
         }
 
         internal static string GetAssemblyFileVersion(Assembly assembly)
