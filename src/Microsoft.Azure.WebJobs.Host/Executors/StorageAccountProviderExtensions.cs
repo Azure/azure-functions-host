@@ -22,14 +22,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return provider.GetAccountAsync(ConnectionStringNames.Dashboard, cancellationToken);
         }
 
-        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, CancellationToken cancellationToken)
+        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, CancellationToken cancellationToken, string connectionStringName = null)
         {
             if (provider == null)
             {
                 throw new ArgumentNullException("provider");
             }
 
-            IStorageAccount account = await provider.GetAccountAsync(ConnectionStringNames.Storage, cancellationToken);
+            if (string.IsNullOrEmpty(connectionStringName))
+            {
+                connectionStringName = ConnectionStringNames.Storage;
+            }
+
+            IStorageAccount account = await provider.GetAccountAsync(connectionStringName, cancellationToken);
             ValidateStorageAccount(account, ConnectionStringNames.Storage);
             return account;
         }
