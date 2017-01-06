@@ -54,7 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
+#if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
+#endif
             TraceWriter = ScriptConfig.TraceWriter;
         }
 
@@ -397,14 +399,16 @@ namespace Microsoft.Azure.WebJobs.Script
             // signal host restart
             _restartEvent.Set();
 
+#if FEATURE_NODE
             // whenever we're restarting the host, we want to let the Node
             // invoker know so it can clear the require cache, etc.
             NodeFunctionInvoker.OnHostRestart();
+#endif
         }
 
-        /// <summary>
-        /// Whenever the debug marker file changes we update our debug timeout
-        /// </summary>
+            /// <summary>
+            /// Whenever the debug marker file changes we update our debug timeout
+            /// </summary>
         private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
             LastDebugNotify = DateTime.UtcNow;
@@ -819,9 +823,13 @@ namespace Microsoft.Azure.WebJobs.Script
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+#if FEATURE_NODE
                     new NodeFunctionDescriptorProvider(this, ScriptConfig),
+#endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
+#if FEATURE_POWERSHELL
                     new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+#endif
                 };
 
             return GetFunctionDescriptors(functions, descriptorProviders);
@@ -1174,7 +1182,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 _restartEvent.Dispose();
                 (TraceWriter as IDisposable)?.Dispose();
 
+#if FEATURE_NODE
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
+#endif
             }
         }
     }

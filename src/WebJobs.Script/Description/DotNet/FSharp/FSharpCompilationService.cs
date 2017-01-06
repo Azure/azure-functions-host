@@ -83,13 +83,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, Guid.NewGuid().ToString());
             var assemblyFileName = Path.Combine(scriptPath, assemblyName + ".dll");
-            var pdbName = Path.ChangeExtension(assemblyFileName, "pdb");
+            var pdbName = Path.ChangeExtension(assemblyFileName, PlatformHelper.IsMono ? "dll.mdb" : "pdb");
 
             try
             {
                 var scriptFileBuilder = new StringBuilder();
 
-                // Write an adjusted version of the script file, prefixing some 'open' decarations
+                // Write an adjusted version of the script file, prefixing some 'open' declarations
                 foreach (string import in script.Options.Imports)
                 {
                     scriptFileBuilder.AppendLine("open " + import);
@@ -127,6 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--optimize-");
                     otherFlags.Add("--debug+");
                     otherFlags.Add("--tailcalls-");
+                }
+
+                if (PlatformHelper.IsMono)
+                {
+                    var monoDir = Path.GetDirectoryName(typeof(string).Assembly.Location);
+                    var facadesDir = Path.Combine(monoDir, "Facades");
+                    otherFlags.Add("--lib:" + facadesDir);
                 }
 
                 // If we have a private assembly folder, make sure the compiler uses it to resolve dependencies
