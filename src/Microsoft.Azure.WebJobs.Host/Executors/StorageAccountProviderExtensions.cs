@@ -19,26 +19,32 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("provider");
             }
 
-            return provider.GetAccountAsync(ConnectionStringNames.Dashboard, cancellationToken);
+            return provider.TryGetAccountAsync(ConnectionStringNames.Dashboard, cancellationToken);
         }
 
-        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, CancellationToken cancellationToken, string connectionStringName = null)
+        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, CancellationToken cancellationToken)
         {
             if (provider == null)
             {
                 throw new ArgumentNullException("provider");
             }
 
-            if (string.IsNullOrEmpty(connectionStringName))
-            {
-                connectionStringName = ConnectionStringNames.Storage;
-            }
-
-            IStorageAccount account = await provider.GetAccountAsync(connectionStringName, cancellationToken);
+            IStorageAccount account = await provider.TryGetAccountAsync(ConnectionStringNames.Storage, cancellationToken);
             ValidateStorageAccount(account, ConnectionStringNames.Storage);
             return account;
         }
 
+        public static async Task<IStorageAccount> GetAccountAsync(this IStorageAccountProvider provider, string connectionStringName, CancellationToken cancellationToken)
+        {
+            if (provider == null)
+            {
+                throw new ArgumentNullException("provider");
+            }
+
+            IStorageAccount account = await provider.TryGetAccountAsync(connectionStringName, cancellationToken);
+            ValidateStorageAccount(account, connectionStringName);
+            return account;
+        }
         public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, ParameterInfo parameter, CancellationToken cancellationToken, INameResolver nameResolver = null)
         {
             if (provider == null)
@@ -61,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
             }
 
-            IStorageAccount account = await provider.GetAccountAsync(connectionStringName, cancellationToken);
+            IStorageAccount account = await provider.TryGetAccountAsync(connectionStringName, cancellationToken);
             ValidateStorageAccount(account, connectionStringName);
             return account;
         }

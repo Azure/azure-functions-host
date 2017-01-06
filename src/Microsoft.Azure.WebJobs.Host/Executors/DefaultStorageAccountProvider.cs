@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public async Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
+        public async Task<IStorageAccount> TryGetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
             IStorageAccount account = null;
             var isPrimary = true;

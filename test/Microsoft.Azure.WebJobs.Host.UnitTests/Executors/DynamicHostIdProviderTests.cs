@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             InvalidOperationException innerException = new InvalidOperationException();
             taskSource.SetException(innerException);
             storageAccountProviderMock
-                .Setup(p => p.GetAccountAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Setup(p => p.TryGetAccountAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(taskSource.Task);
             IStorageAccountProvider storageAccountProvider = storageAccountProviderMock.Object;
             IFunctionIndexProvider functionIndexProvider = CreateDummyFunctionIndexProvider();

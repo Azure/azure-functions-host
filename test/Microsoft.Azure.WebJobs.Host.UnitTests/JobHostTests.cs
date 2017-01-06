@@ -569,7 +569,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 _getAccountAsync = getAccountAsync;
             }
 
-            public Task<IStorageAccount> GetAccountAsync(string connectionStringName,
+            public Task<IStorageAccount> TryGetAccountAsync(string connectionStringName,
                 CancellationToken cancellationToken)
             {
                 return _getAccountAsync.Invoke(connectionStringName, cancellationToken);

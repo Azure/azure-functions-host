@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
 
-            IStorageAccount actualAccount = provider.GetAccountAsync(
+            IStorageAccount actualAccount = provider.TryGetAccountAsync(
                 connectionStringName, CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.Same(parsedAccount, actualAccount);
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser);
 
             Exception actualException = Assert.Throws<InvalidOperationException>(
-                () => provider.GetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
+                () => provider.TryGetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
 
             Assert.Same(expectedException, actualException);
         }
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
 
             Exception actualException = Assert.Throws<InvalidOperationException>(
-                () => provider.GetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
+                () => provider.TryGetAccountAsync(connectionStringName, CancellationToken.None).GetAwaiter().GetResult());
 
             Assert.Same(expectedException, actualException);
         }
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IStorageCredentialsValidator validator = CreateValidator(parsedAccount);
             DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             provider.DashboardConnectionString = connectionString;
-            IStorageAccount actualAccount = provider.GetAccountAsync(
+            IStorageAccount actualAccount = provider.TryGetAccountAsync(
                 ConnectionStringNames.Dashboard, CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.Same(parsedAccount, actualAccount);
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             provider.StorageConnectionString = connectionString;
 
-            IStorageAccount actualAccount = provider.GetAccountAsync(
+            IStorageAccount actualAccount = provider.TryGetAccountAsync(
                 ConnectionStringNames.Storage, CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.Same(parsedAccount, actualAccount);
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             DefaultStorageAccountProvider provider = CreateProductUnderTest();
             provider.DashboardConnectionString = null;
 
-            IStorageAccount actualAccount = provider.GetAccountAsync(
+            IStorageAccount actualAccount = provider.TryGetAccountAsync(
                 ConnectionStringNames.Dashboard, CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.Null(actualAccount);
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             DefaultStorageAccountProvider provider = CreateProductUnderTest();
             provider.StorageConnectionString = null;
 
-            var account = await provider.GetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
+            var account = await provider.TryGetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
             Assert.Null(account);
         }
 
@@ -200,10 +200,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             provider.DashboardConnectionString = null;
             provider.StorageConnectionString = null;
 
-            var dashboardAccount = await provider.GetAccountAsync(ConnectionStringNames.Dashboard, CancellationToken.None);
+            var dashboardAccount = await provider.TryGetAccountAsync(ConnectionStringNames.Dashboard, CancellationToken.None);
             Assert.Null(dashboardAccount);
 
-            var storageAccount = await provider.GetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
+            var storageAccount = await provider.TryGetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None);
             Assert.Null(storageAccount);
         }
 

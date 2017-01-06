@@ -60,9 +60,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             mockSecondaryBlobClient.Setup(p => p.GetContainerReference(HostContainerNames.Hosts)).Returns(mockSecondaryBlobContainer.Object);
             _mockStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockBlobClient.Object);
             _mockSecondaryStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockSecondaryBlobClient.Object);
-            _mockAccountProvider.Setup(p => p.GetAccountAsync(ConnectionStringNames.Storage, It.IsAny<CancellationToken>()))
+            _mockAccountProvider.Setup(p => p.TryGetAccountAsync(ConnectionStringNames.Storage, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_mockStorageAccount.Object);
-            _mockAccountProvider.Setup(p => p.GetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
+            _mockAccountProvider.Setup(p => p.TryGetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_mockSecondaryStorageAccount.Object);
             _mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
 
