@@ -530,8 +530,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             throw new InvalidOperationException("Can't convert from type '" + typeUser.FullName);
         }
 
-        // Helper to invoke and unwrap teh target exception. 
-        private static TReturn MethodInvoke<TReturn>(MethodInfo method, params object[] args)
+        // Helper to invoke and unwrap the target exception. 
+        public static TReturn MethodInvoke<TReturn>(MethodInfo method, params object[] args)
         {
             try
             {

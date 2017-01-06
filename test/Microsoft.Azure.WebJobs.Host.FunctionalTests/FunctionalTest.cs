@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
                 queueConfiguration, blobsConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, extensions);
 

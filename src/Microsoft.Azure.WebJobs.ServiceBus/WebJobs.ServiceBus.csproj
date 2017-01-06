@@ -115,14 +115,8 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\ConversionResult.cs">
       <Link>Converters\ConversionResult.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IAsyncConverter.cs">
-      <Link>Converters\IAsyncConverter.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IAsyncObjectToTypeConverter.cs">
       <Link>Converters\IAsyncObjectToTypeConverter.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IConverter.cs">
-      <Link>Converters\IConverter.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IdentityConverter.cs">
       <Link>Converters\IdentityConverter.cs</Link>

@@ -66,15 +66,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
         }
 
-        public class FakeExtClient : IExtensionConfigProvider
+        public class FakeExtClient : IExtensionConfigProvider, IConverter<TestAttribute, Widget>
         {
             public void Initialize(ExtensionConfigContext context)
             {
                 var bf = context.Config.BindingFactory;
 
-                // Add [Test] support
-                var rule = bf.BindToExactType<TestAttribute, Widget>(attr => new Widget());
+                // Add [Test] support                
+                var rule = bf.BindToInput<TestAttribute, Widget>(this);
                 context.RegisterBindingRules<TestAttribute>(ValidateAtIndexTime, rule);
+            }
+
+            public Widget Convert(TestAttribute attr)
+            {
+                return new Widget();
             }
 
             private static void ValidateAtIndexTime(TestAttribute attribute, Type parameterType)
@@ -103,18 +108,30 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
         }
 
         // Register [Test]  with 2 rules and a local validator. 
-        public class FakeExtClient2 : IExtensionConfigProvider
+        public class FakeExtClient2 : IExtensionConfigProvider,
+            IConverter<TestAttribute, Widget>,
+            IConverter<TestAttribute, Widget2>
         {
             public void Initialize(ExtensionConfigContext context)
             {
                 var bf = context.Config.BindingFactory;
 
                 // Add [Test] support
-                var rule1 = bf.BindToExactType<TestAttribute, Widget>(attr => new Widget());
-                var rule2 = bf.BindToExactType<TestAttribute, Widget2>(attr => new Widget2());
+                var rule1 = bf.BindToInput<TestAttribute, Widget>(this);
+                var rule2 = bf.BindToInput<TestAttribute, Widget2>(this);
                 var rule2Validator = bf.AddValidator<TestAttribute>(LocalValidator, rule2);
 
                 context.RegisterBindingRules<TestAttribute>(rule2Validator, rule1);
+            }
+
+            Widget IConverter<TestAttribute, Widget>.Convert(TestAttribute attr)
+            {
+                return new Widget();
+            }
+
+            Widget2 IConverter<TestAttribute, Widget2>.Convert(TestAttribute attr)
+            {
+                return new Widget2();
             }
 
             private void LocalValidator(TestAttribute attribute, Type parameterType)

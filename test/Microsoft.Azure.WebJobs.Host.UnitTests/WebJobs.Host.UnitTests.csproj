@@ -154,6 +154,7 @@
     <Compile Include="AttributeClonerTests.cs" />
     <Compile Include="Common\BindingProviderFilterTests.cs" />
     <Compile Include="Common\BindToGenericItemTests.cs" />
+    <Compile Include="Common\BindingFactoryHelperTests.cs" />
     <Compile Include="Common\HostCallTestsWithBindingData.cs" />
     <Compile Include="Common\FakeItemTests.cs" />
     <Compile Include="Common\CollectorTests.cs" />
@@ -218,7 +219,6 @@
     <Compile Include="PropertyAccessorFactoryTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityCollectorBinderTests.cs" />
-    <Compile Include="Tables\TableArgumentBindingExtensionProviderTests.cs" />
     <Compile Include="Tables\TableEntityCollectorBinderTests.cs" />
     <Compile Include="Tables\PocoToTableEntityConverterTests.cs" />
     <Compile Include="Tables\TableEntityToPocoConverterTests.cs" />

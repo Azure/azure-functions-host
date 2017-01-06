@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
                     sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
 
-            var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
+            var bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
 
             var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager, trace);

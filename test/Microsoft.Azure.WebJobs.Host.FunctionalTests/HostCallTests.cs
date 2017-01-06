@@ -1774,7 +1774,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private class SdkTableEntity : TableEntity
         {
             public string Value { get; set; }
-        }
+        }     
 
         private class PocoTableEntity
         {

@@ -46,14 +46,23 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Utility.AssertIndexingError<BadProgram3>("Run", "Table entity types must implement the property PartitionKey.");
         }
 
-        [Fact]
-        public void Table_SingleOut_NotSupported()
+        class BindToSingleOutProgram
         {
-            // Not supported. This is inconsistent with the rest of the IAsyncCollector pattern
-            // Tracked by: https://github.com/Azure/azure-webjobs-sdk/issues/790
+            public static void Run([Table(TableName)] out Poco x)
+            {
+                x = new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "1234" };
+            }
+        }
 
-            Utility.AssertIndexingError<TableOutProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco&'.");
-            Utility.AssertIndexingError<TableOutArrayProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco[]&'.");
+        [Fact]
+        public void Table_SingleOut_Supported()
+        {
+            IStorageAccount account = new FakeStorageAccount();
+            var host = TestHelpers.NewJobHost<BindToSingleOutProgram>(account);
+
+            host.Call("Run");
+
+            AssertStringProperty(account, "Property", "1234");
         }
 
         // Helper to demonstrate that TableName property can include { } pairs. 
@@ -81,20 +90,31 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             AssertStringProperty(account, "Property", "456", "ZZxZZ");
         }
 
+        private class CustomTableBindingConverter<T>
+            : IConverter<CloudTable, CustomTableBinding<T>>
+        {
+            public CustomTableBinding<T> Convert(CloudTable input)
+            {
+                return new CustomTableBinding<T>(input);
+            }
+        }
+
         [Fact]
         public void Table_IfBoundToCustomTableBindingExtension_BindsCorrectly()
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
-            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
 
-            // register our custom table binding extension provider
-            DefaultExtensionRegistry extensions = new DefaultExtensionRegistry();
-            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(new CustomTableArgumentBindingProvider());
+            var config = TestHelpers.NewConfig(typeof(CustomTableBindingExtensionProgram), account);
 
-            // Act
-            RunTrigger(account, typeof(CustomTableBindingExtensionProgram), extensions);
+            IConverterManager cm = config.GetService<IConverterManager>();
+
+            // Add a rule for binding CloudTable --> CustomTableBinding<TEntity>
+            cm.AddConverter<CloudTable, CustomTableBinding<OpenType>, TableAttribute>(
+                typeof(CustomTableBindingConverter<>));
+
+            var host = new TestJobHost<CustomTableBindingExtensionProgram>(config);
+            host.Call("Run"); // Act
 
             // Assert
             Assert.Equal(TableName, CustomTableBinding<Poco>.Table.Name);
@@ -498,8 +518,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private class CustomTableBindingExtensionProgram
         {
-            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
-                [Table(TableName)] CustomTableBinding<Poco> table)
+            public static void Run([Table(TableName)] CustomTableBinding<Poco> table)
             {
                 Poco entity = new Poco();
                 table.Add(entity);
@@ -679,91 +698,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 // complete and flush all storage operations
                 return Task.FromResult(true);
-            }
-        }
-
-        /// <summary>
-        /// Demonstrates an example binding extension provider for Tables
-        /// </summary>
-        private class CustomTableArgumentBindingProvider : IArgumentBindingProvider<ITableArgumentBinding>
-        {
-            public ITableArgumentBinding TryCreate(ParameterInfo parameter)
-            {
-                // Determine whether the target is a Table paramter that we should bind to
-                TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
-                if (tableAttribute == null ||
-                    !parameter.ParameterType.IsGenericType ||
-                    (parameter.ParameterType.GetGenericTypeDefinition() != typeof(CustomTableBinding<>)))
-                {
-                    return null;
-                }
-
-                // create the binding
-                Type elementType = GetItemType(parameter.ParameterType);
-                Type bindingType = typeof(CustomTableBindingExtension<>).MakeGenericType(elementType);
-
-                return (ITableArgumentBinding)Activator.CreateInstance(bindingType);
-            }
-
-            private static Type GetItemType(Type queryableType)
-            {
-                Type[] genericArguments = queryableType.GetGenericArguments();
-                var itemType = genericArguments[0];
-                return itemType;
-            }
-
-            /// <summary>
-            /// Custom Table binding extension, responsible for binding a <see cref="CloudTable"/> to a
-            /// <see cref="CustomTableBinding<TElement>"/>
-            /// </summary>
-            /// <typeparam name="TElement"></typeparam>
-            private class CustomTableBindingExtension<TElement> : ITableArgumentBinding
-            {
-                public FileAccess Access
-                {
-                    get { return FileAccess.ReadWrite; }
-                }
-
-                public Type ValueType { get { return typeof(CustomTableBinding<TElement>); } }
-
-                public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
-                {
-                    return Task.FromResult<IValueProvider>(new CustomTableValueBinder(value, ValueType));
-                }
-
-                private class CustomTableValueBinder : IValueBinder
-                {
-                    private readonly CloudTable _table;
-                    private readonly Type _valueType;
-
-                    public CustomTableValueBinder(CloudTable table, Type valueType)
-                    {
-                        _table = table;
-                        _valueType = valueType;
-                    }
-
-                    public Type Type
-                    {
-                        get { return typeof(CustomTableBinding<TElement>); }
-                    }
-
-                    public Task<object> GetValueAsync()
-                    {
-                        return Task.FromResult<object>(new CustomTableBinding<TElement>(_table));
-                    }
-
-                    public Task SetValueAsync(object value, CancellationToken cancellationToken)
-                    {
-                        // this is where any queued up storage operations can be flushed
-                        CustomTableBinding<TElement> tableBinding = value as CustomTableBinding<TElement>;
-                        return tableBinding.FlushAsync(cancellationToken);
-                    }
-
-                    public string ToInvokeString()
-                    {
-                        return _table.Name;
-                    }
-                }
             }
         }
     }

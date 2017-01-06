@@ -268,6 +268,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Same(customFactory, configuration.GetService<StorageClientFactory>());
         }
 
+        [Fact]
+        public void ConverterManager_Getter()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            IConverterManager converterManager  = configuration.ConverterManager;
+            Assert.NotNull(converterManager);
+            Assert.Same(converterManager, configuration.GetService<IConverterManager>());
+
+            var property = configuration.GetType().GetProperty("ConverterManager");
+            Assert.True(property.CanRead);
+            Assert.False(property.CanWrite); // CM is read-only, although the collection itself can be mutated.
+        }
+
         [Theory]
         [InlineData(null, false)]
         [InlineData("Blah", false)]

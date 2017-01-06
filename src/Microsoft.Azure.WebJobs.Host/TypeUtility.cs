@@ -5,6 +5,7 @@ using System;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host
@@ -31,6 +32,22 @@ namespace Microsoft.Azure.WebJobs.Host
         internal static bool IsJObject(Type type)
         {
             return type == typeof(JObject);
+        }
+
+        // Task<T> --> T
+        // Task --> void
+        // T --> T
+        internal static Type UnwrapTaskType(Type type)
+        {
+            if (type == typeof(Task))
+            {
+                return typeof(void);
+            }
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
+            {
+                return type.GetGenericArguments()[0];
+            }
+            return type;
         }
 
         /// <summary>

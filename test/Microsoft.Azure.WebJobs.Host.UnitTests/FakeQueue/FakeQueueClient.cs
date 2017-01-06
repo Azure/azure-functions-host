@@ -13,7 +13,7 @@ using System;
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     // For sending fake queue messages. 
-    public class FakeQueueClient : IExtensionConfigProvider
+    public class FakeQueueClient : IExtensionConfigProvider, IConverter<FakeQueueAttribute, FakeQueueClient>
     {
         public List<FakeQueueData> _items = new List<FakeQueueData>();
 
@@ -58,15 +58,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // Binds [FakeQueue] --> IAsyncCollector<FakeQueueData>
             var ruleOutput = bf.BindToAsyncCollector<FakeQueueAttribute, FakeQueueData>(BuildFromAttr);
 
-            // Binds [FakeQueue] --> FakeQueueClient
-            var ruleClient = bf.BindToExactType<FakeQueueAttribute, FakeQueueClient>((attr) => this);
+            // Binds [FakeQueue] --> FakeQueueClient            
+            var ruleClient = bf.BindToInput<FakeQueueAttribute, FakeQueueClient>(this);
 
             extensions.RegisterBindingRules<FakeQueueAttribute>(ruleOutput, ruleClient);
 
             var triggerBindingProvider = new FakeQueueTriggerBindingProvider(this, cm);
             extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
         }
-                
+
+        FakeQueueClient IConverter<FakeQueueAttribute, FakeQueueClient>.Convert(FakeQueueAttribute attr)
+        {
+            return this;
+        }
 
         private IAsyncCollector<FakeQueueData> BuildFromAttr(FakeQueueAttribute attr)
         {

@@ -124,36 +124,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 IBinding binding = BindingFactoryHelpers.BindCollector<TAttribute, TMessage>(
                     Parameter,
                     NameResolver,
-                    new IdentityConverterManager(),
+                    ConverterManager.Identity,
                     this.Context.BindingDataContract,
                     this.BuildFromAttribute, 
                     null);
 
                 return binding;
             }
-        }
-
-        // "Empty" converter manager that only allows identity conversions. 
-        // The GenericAsyncCollector is already instantiated against the user type, so no conversions should be needed. 
-        private class IdentityConverterManager : IConverterManager
-        {
-            public void AddConverter<TSource, TDestination, TAttribute1>(FuncConverter<TSource, TAttribute1, TDestination> converter) where TAttribute1 : Attribute
-            {
-                throw new NotImplementedException();
-            }   
-
-            public FuncConverter<TSource, TAttribute1, TDestination> GetConverter<TSource, TDestination, TAttribute1>() where TAttribute1 : Attribute
-            {
-                if (typeof(TSource) != typeof(TDestination))
-                {
-                    return null;
-                }
-                return (src, attr, ctx) =>
-                {
-                    object obj = (object)src;
-                    return (TDestination)obj;
-                };
-            }
-        }
+        }      
     } // end class 
 }

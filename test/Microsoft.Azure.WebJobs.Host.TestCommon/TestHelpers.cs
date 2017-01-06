@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     config.JobActivator = jobActivator;
                     continue;
                 }
-
+              
                 IExtensionConfigProvider extension = obj as IExtensionConfigProvider;
                 if (extension != null)
                 {

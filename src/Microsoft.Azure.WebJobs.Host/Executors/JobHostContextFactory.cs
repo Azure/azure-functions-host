@@ -85,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             AzureStorageDeploymentValidator.Validate();
 
+            var converterManager = config.ConverterManager;
+
             IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(typeLocator);
 
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor = new ContextAccessor<IMessageEnqueuedWatcher>();
@@ -106,8 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ExtensionConfigContext context = new ExtensionConfigContext
             {
                 Config = config,
-                Trace = trace,
-                Host = host
+                Trace = trace                
             };
             InvokeExtensionConfigProviders(context);
 
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (bindingProvider == null)
             {
-                bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
+                bindingProvider = DefaultBindingProvider.Create(nameResolver, converterManager, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
 
             bool hasFastTableHook = config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>() != null;
