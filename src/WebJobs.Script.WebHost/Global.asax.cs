@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected void Application_Error(object sender, EventArgs e)
         {
             // TODO: Log any unhandled exceptions
-            Exception ex = Server.GetLastError();
         }
 
         protected void Application_End(object sender, EventArgs e)

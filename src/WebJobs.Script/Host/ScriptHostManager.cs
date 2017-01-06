@@ -147,7 +147,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
-                    Task taskIgnore = Orphan(newInstance);
+#pragma warning disable 4014
+                    Orphan(newInstance);
+#pragma warning restore 4014
                 }
                 catch (Exception ex)
                 {

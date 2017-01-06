@@ -92,6 +92,11 @@ Common build targets overwrites.
     <CleanDependsOn>BeforeClean;ReadNuGetCleanOutputs;CoreClean;AfterClean</CleanDependsOn>
     <RebuildDependsOn>Clean;Build</RebuildDependsOn>
   </PropertyGroup>
+  <!-- FIXME disable nuget pack on Unix as it currently fails -->
+  <PropertyGroup Condition="'$(OS)'=='Unix'">
+    <BuildDependsOn />
+    <CleanDependsOn />
+  </PropertyGroup>
 
   <Target Name="BeforeBuild" />
   <Target Name="Build" DependsOnTargets="$(BuildDependsOn)" />
