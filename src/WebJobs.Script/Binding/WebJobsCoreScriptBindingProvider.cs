@@ -54,6 +54,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            // Apply Blobs configuration
+            Config.Blobs.CentralizedPoisonQueue = true;   // TEMP : In the next release we'll remove this and accept the core SDK default
+            configSection = (JObject)Metadata["blobs"];
+            value = null;
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("centralizedPoisonQueue", out value))
+                {
+                    Config.Blobs.CentralizedPoisonQueue = (bool)value;
+                }
+            }
+        
             Config.UseScriptExtensions();
         }
 
