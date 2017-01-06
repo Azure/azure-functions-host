@@ -390,6 +390,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_Blobs()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject blobsConfig = new JObject();
+            config["blobs"] = blobsConfig;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
+
+            Assert.True(scriptConfig.HostConfig.Blobs.CentralizedPoisonQueue);
+
+            blobsConfig["centralizedPoisonQueue"] = false;
+
+            provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
+
+            Assert.False(scriptConfig.HostConfig.Blobs.CentralizedPoisonQueue);
+        }
+
+        [Fact]
         public void ApplyConfiguration_Singleton()
         {
             JObject config = new JObject();
