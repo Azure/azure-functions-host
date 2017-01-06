@@ -22,6 +22,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string OutputBlobPath = ContainerName + "/" + OutputBlobName;
 
         [Fact]
+        public void BlobTrigger_IfWritesToSecondBlobTrigger_TriggersOutputQuickly()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobContainer container = CreateContainer(account, ContainerName);
+            IStorageBlockBlob inputBlob = container.GetBlockBlobReference(BlobName);
+            inputBlob.UploadText("abc");
+
+            // Act
+            RunTrigger<object>(account, typeof(BlobTriggerToBlobTriggerProgram),
+                (s) => BlobTriggerToBlobTriggerProgram.TaskSource = s);
+
+            // Assert
+            IStorageBlockBlob outputBlob = container.GetBlockBlobReference(OutputBlobName);
+            string content = outputBlob.DownloadText();
+            Assert.Equal("*abc*", content);
+        }
+
+        [Fact]
         public void BlobTrigger_IfBoundToCloudBlob_Binds()
         {
             // Arrange
@@ -47,40 +66,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 TaskSource.TrySetResult(blob);
             }
-        }
-
-        private class PoisonBlobProgram
-        {
-            public static TaskCompletionSource<string> TaskSource { get; set; }
-
-            public static void PutInPoisonQueue([BlobTrigger(BlobPath)] string message)
-            {
-                throw new InvalidOperationException();
-            }
-
-            public static void ReceiveFromPoisonQueue([QueueTrigger("webjobs-blobtrigger-poison")] string message)
-            {
-                TaskSource.TrySetResult(message);
-            }
-        }
-
-        [Fact]
-        public void BlobTrigger_IfWritesToSecondBlobTrigger_TriggersOutputQuickly()
-        {
-            // Arrange
-            IStorageAccount account = CreateFakeStorageAccount();
-            IStorageBlobContainer container = CreateContainer(account, ContainerName);
-            IStorageBlockBlob inputBlob = container.GetBlockBlobReference(BlobName);
-            inputBlob.UploadText("abc");
-
-            // Act
-            RunTrigger<object>(account, typeof(BlobTriggerToBlobTriggerProgram),
-                (s) => BlobTriggerToBlobTriggerProgram.TaskSource = s);
-
-            // Assert
-            IStorageBlockBlob outputBlob = container.GetBlockBlobReference(OutputBlobName);
-            string content = outputBlob.DownloadText();
-            Assert.Equal("*abc*", content);
         }
 
         private class BlobTriggerToBlobTriggerProgram
