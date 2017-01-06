@@ -112,6 +112,7 @@
     <Compile Include="TestDoubles\FakeHostIdProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Queues\QueueTriggerTests.cs" />
+    <Compile Include="Utility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">
