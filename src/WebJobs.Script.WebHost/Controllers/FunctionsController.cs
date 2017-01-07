@@ -6,12 +6,14 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -30,6 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _webHookReceiverManager = webHookReceiverManager;
         }
 
+        public static bool IsHomepageDisabled
+        {
+            get
+            {
+                return string.Equals(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsDisableHomepage),
+                    bool.TrueString, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public override async Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
         {
             HttpRequestMessage request = controllerContext.Request;
@@ -38,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request);
             if (function == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return FunctionNotFound(request);
             }
 
             // Determine the authorization level of the request
@@ -51,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // disabled functions are not publically addressable w/o Admin level auth,
                 // and excluded functions are also ignored here (though the check above will
                 // already exclude them)
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return FunctionNotFound(request);
             }
 
             // Dispatch the request
@@ -95,5 +106,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             
             return response;
         }
+
+        private static HttpResponseMessage FunctionNotFound(HttpRequestMessage request)
+        {
+            if (request.RequestUri.AbsolutePath == "/")
+            {
+                return IsHomepageDisabled
+                    ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                    : new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(Resources.Homepage, Encoding.UTF8, "text/html")
+                    };
+            }
+            else
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+        }        
     }
 }

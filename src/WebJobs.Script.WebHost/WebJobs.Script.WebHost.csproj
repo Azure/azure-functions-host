@@ -405,7 +405,6 @@
     <Compile Include="App_Start\WebHostSettings.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
-    <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
     <Compile Include="Diagnostics\EventGenerator.cs" />
     <Compile Include="Diagnostics\FastLogger.cs" />
