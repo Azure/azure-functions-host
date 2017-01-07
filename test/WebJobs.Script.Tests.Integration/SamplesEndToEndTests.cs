@@ -910,6 +910,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(node.IsEmpty);
         }
 
+        [Fact]
+        public async Task HostStatus_FunctionLevelRequest_Fails()
+        {
+            string uri = "admin/host/status";
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("x-functions-key", "zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc");
+            var response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HostStatus_AnonymousLevelRequest_Fails()
+        {
+            string uri = "admin/host/status";
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            var response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
         private async Task<HttpResponseMessage> GetHostStatusAsync()
         {
             string uri = "admin/host/status";
