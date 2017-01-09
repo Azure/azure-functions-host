@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -53,7 +54,32 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             Utility.AssertIndexingError<TableOutProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco&'.");
             Utility.AssertIndexingError<TableOutArrayProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco[]&'.");            
-        }            
+        }
+
+        // Helper to demonstrate that TableName property can include { } pairs. 
+        private class BindToICollectorITableEntityResolvedTableProgram
+        {
+            public static void Run(
+                [Table("Ta{t1}")] ICollector<Poco> table1,
+                [Table("{t1}x{t1}")] ICollector<Poco> table2)
+            {
+                table1.Add(new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "123" });
+                table2.Add(new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "456" });
+            }
+        }
+
+        // TableName can have {  } pairs.
+        [Fact]
+        public void Table_ResolvedName()
+        {
+            IStorageAccount account = new FakeStorageAccount();
+            var host = TestHelpers.NewJobHost<BindToICollectorITableEntityResolvedTableProgram>(account);
+
+            host.Call("Run", new { t1 = "ZZ" });
+
+            AssertStringProperty(account, "Property", "123", "TaZZ");
+            AssertStringProperty(account, "Property", "456", "ZZxZZ");
+        }
 
         [Fact]
         public void Table_IfBoundToCustomTableBindingExtension_BindsCorrectly()
@@ -133,17 +159,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             RunTrigger(account, typeof(BindToICollectorITableEntityProgram));
 
             // Assert
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            Assert.True(table.Exists());
-            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
-            Assert.NotNull(entity);
-            Assert.NotNull(entity.Properties);
-            Assert.True(entity.Properties.ContainsKey(PropertyName));
-            EntityProperty property = entity.Properties[PropertyName];
-            Assert.NotNull(property);
-            Assert.Equal(EdmType.String, property.PropertyType);
-            Assert.Equal(expectedValue, property.StringValue);
+            AssertStringProperty(account, PropertyName, expectedValue);
         }
 
         [Fact]
@@ -159,17 +175,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             RunTrigger(account, typeof(BindToICollectorPocoProgram));
 
             // Assert
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            Assert.True(table.Exists());
-            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
-            Assert.NotNull(entity);
-            Assert.NotNull(entity.Properties);
-            Assert.True(entity.Properties.ContainsKey(PropertyName));
-            EntityProperty property = entity.Properties[PropertyName];
-            Assert.NotNull(property);
-            Assert.Equal(EdmType.String, property.PropertyType);
-            Assert.Equal(expectedValue, property.StringValue);
+            AssertStringProperty(account, PropertyName, expectedValue);
         }
 
         [Fact]
@@ -371,6 +377,29 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(expectedType, property.PropertyType);
             Nullable<T> actualValue = actualAccessor.Invoke(property);
             Assert.False(actualValue.HasValue);
+        }
+
+        // Assert the given table has the given entity with PropertyName=ExpectedValue
+        void AssertStringProperty(
+            IStorageAccount account,
+            string propertyName,
+            string expectedValue,
+            string tableName = TableName,
+            string partitionKey = PartitionKey,
+            string rowKey = RowKey)
+        {
+            // Assert
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(tableName);
+            Assert.True(table.Exists());
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(partitionKey, rowKey);
+            Assert.NotNull(entity);
+            Assert.NotNull(entity.Properties);
+            Assert.True(entity.Properties.ContainsKey(propertyName));
+            EntityProperty property = entity.Properties[propertyName];
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Equal(expectedValue, property.StringValue);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()
