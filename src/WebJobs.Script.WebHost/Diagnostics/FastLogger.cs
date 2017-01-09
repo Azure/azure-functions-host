@@ -28,12 +28,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Convert Host to Protocol so we can log it 
-            var settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
-            var jsonClone = JsonConvert.SerializeObject(item, settings);
-            var item2 = JsonConvert.DeserializeObject<FunctionInstanceLogItem>(jsonClone);
-            item2.FunctionName = Utility.GetFunctionShortName(item2.FunctionName);
-            await _writer.AddAsync(item2);
+            await _writer.AddAsync(new FunctionInstanceLogItem
+            {
+                FunctionInstanceId = item.FunctionInstanceId,
+                FunctionName = Utility.GetFunctionShortName(item.FunctionName),
+                StartTime = item.StartTime,
+                EndTime = item.EndTime,
+                TriggerReason = item.TriggerReason,
+                Arguments = item.Arguments,
+                ErrorDetails = item.ErrorDetails,
+                LogOutput = item.LogOutput,
+                ParentId = item.ParentId
+            });
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
