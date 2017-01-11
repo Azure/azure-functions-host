@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
@@ -59,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void OnAuthorization_AdminLevel_ValidHeader_Succeeds()
+        public async Task OnAuthorization_AdminLevel_ValidHeader_Succeeds()
         {
             AuthorizationLevelAttribute attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
 
@@ -67,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "abc123");
             _actionContext.ControllerContext.Request = request;
 
-            attribute.OnAuthorization(_actionContext);
+            await attribute.OnAuthorizationAsync(_actionContext, CancellationToken.None);
 
             Assert.Null(_actionContext.Response);
         }
@@ -76,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null)]
         [InlineData("")]
         [InlineData("invalid")]
-        public void OnAuthorization_AdminLevel_InvalidHeader_ReturnsUnauthorized(string headerValue)
+        public async Task OnAuthorization_AdminLevel_InvalidHeader_ReturnsUnauthorized(string headerValue)
         {
             AuthorizationLevelAttribute attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
 
@@ -87,14 +89,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             _actionContext.ControllerContext.Request = request;
 
-            attribute.OnAuthorization(_actionContext);
+            await attribute.OnAuthorizationAsync(_actionContext, CancellationToken.None);
 
             HttpResponseMessage response = _actionContext.Response;
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
-        public void OnAuthorization_AdminLevel_NoMasterKeySet_ReturnsUnauthorized()
+        public async Task OnAuthorization_AdminLevel_NoMasterKeySet_ReturnsUnauthorized()
         {
             AuthorizationLevelAttribute attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
             _hostSecrets.MasterKey = null;
@@ -103,31 +105,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
             _actionContext.ControllerContext.Request = request;
 
-            attribute.OnAuthorization(_actionContext);
+            await attribute.OnAuthorizationAsync(_actionContext, CancellationToken.None);
 
             HttpResponseMessage response = _actionContext.Response;
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
-        public void OnAuthorization_AnonymousLevel_Succeeds()
+        public async Task OnAuthorization_AnonymousLevel_Succeeds()
         {
             AuthorizationLevelAttribute attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Anonymous);
 
             _actionContext.ControllerContext.Request = new HttpRequestMessage();
 
-            attribute.OnAuthorization(_actionContext);
+            await attribute.OnAuthorizationAsync(_actionContext, CancellationToken.None);
 
             Assert.Null(_actionContext.Response);
         }
 
         [Fact]
-        public void GetAuthorizationLevel_ValidKeyHeader_MasterKey_ReturnsAdmin()
+        public async Task GetAuthorizationLevel_ValidKeyHeader_MasterKey_ReturnsAdmin()
         {
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
 
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
@@ -135,39 +137,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
         [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
-        public void GetAuthorizationLevel_ValidKeyHeader_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
+        public async Task GetAuthorizationLevel_ValidKeyHeader_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first verify the host level function key works
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, hostFunctionKeyValue);
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
             Assert.Equal(AuthorizationLevel.Function, level);
 
             // test function specific key
             request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, functionKeyValue);
-            level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
+            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
 
         [Fact]
-        public void GetAuthorizationLevel_InvalidKeyHeader_ReturnsAnonymous()
+        public async Task GetAuthorizationLevel_InvalidKeyHeader_ReturnsAnonymous()
         {
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "invalid");
 
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
         }
 
         [Fact]
-        public void GetAuthorizationLevel_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
+        public async Task GetAuthorizationLevel_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
         {
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", testMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
@@ -175,27 +177,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
         [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
-        public void GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
+        public async Task GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first try host level function key
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", hostFunctionKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
 
             uri = new Uri(string.Format("http://functions/api/foo?code={0}", functionKeyValue));
             request = new HttpRequestMessage(HttpMethod.Get, uri);
-            level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object, functionName: "TestFunction");
+            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
 
         [Fact]
-        public void GetAuthorizationLevel_InvalidCodeQueryParam_ReturnsAnonymous()
+        public async Task GetAuthorizationLevel_InvalidCodeQueryParam_ReturnsAnonymous()
         {
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", "invalid"));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            AuthorizationLevel level = AuthorizationLevelAttribute.GetAuthorizationLevel(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
         }
