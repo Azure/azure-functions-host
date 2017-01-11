@@ -50,15 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "input", input }
             };
             await host.CallAsync("ManualTrigger", parameters);
-
-            Assert.Equal(4, _fixture.EventGenerator.Events.Count);
-            Assert.True(_fixture.EventGenerator.Events[0].StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id="));
-            Assert.True(_fixture.EventGenerator.Events[1].StartsWith("Info ManualTrigger Function started (Id="));
-            Assert.True(_fixture.EventGenerator.Events[2].StartsWith("Info ManualTrigger Function completed (Success, Id="));
-            Assert.True(_fixture.EventGenerator.Events[3].StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id="));
+            var events = _fixture.EventGenerator.Events;
+            Assert.Equal(9, events.Count);
+            Assert.True(events[0].StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id="));
+            Assert.True(events[1].StartsWith("Info ManualTrigger Function started (Id="));
+            Assert.True(events[2].StartsWith("Verbose ManualTrigger Executing Edge.Func."));
+            Assert.True(events[3].StartsWith("Verbose ManualTrigger Requiring user function script."));
+            Assert.True(events[4].StartsWith("Verbose ManualTrigger Executing exported user function."));
+            Assert.True(events[5].StartsWith("Verbose ManualTrigger context.done called."));
+            Assert.True(events[6].StartsWith("Verbose ManualTrigger Edge.Func completed."));
+            Assert.True(events[7].StartsWith("Info ManualTrigger Function completed (Success, Id="));
+            Assert.True(events[8].StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id="));
 
             // make sure the user log wasn't traced
-            Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
+            Assert.False(events.Any(p => p.Contains("ManualTrigger function invoked!")));
         }
 
         [Fact]
