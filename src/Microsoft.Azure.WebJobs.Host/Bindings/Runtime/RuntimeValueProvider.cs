@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return _parameterType; }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _binder;
+            return Task.FromResult<object>(_binder);
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)

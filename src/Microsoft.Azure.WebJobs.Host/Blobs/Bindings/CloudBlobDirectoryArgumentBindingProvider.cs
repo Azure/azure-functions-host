@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -60,9 +59,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _directory;
+                    return Task.FromResult<object>(_directory);
                 }
 
                 public string ToInvokeString()

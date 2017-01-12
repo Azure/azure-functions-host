@@ -96,9 +96,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     get { return _stream; }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return null;
+                    return Task.FromResult<object>(null);
                 }
 
                 /// <summary>

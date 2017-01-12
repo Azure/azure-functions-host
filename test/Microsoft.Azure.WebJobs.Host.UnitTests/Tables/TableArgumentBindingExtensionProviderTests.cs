@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 
             // before binding extensions are registered for these types,
             // the provider returns null
-            
+
             Assert.Null(provider.TryCreate(_parameters[0]));
             Assert.Null(provider.TryCreate(_parameters[1]));
             Assert.Null(provider.TryCreate(_parameters[2]));
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
                     get { throw new NotImplementedException(); }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
                     throw new NotImplementedException();
                 }

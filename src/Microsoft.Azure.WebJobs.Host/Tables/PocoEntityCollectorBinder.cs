@@ -41,9 +41,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _value;
+            return Task.FromResult<object>(_value);
         }
 
         public string ToInvokeString()

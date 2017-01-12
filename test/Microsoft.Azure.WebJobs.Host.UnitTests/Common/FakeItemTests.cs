@@ -1,16 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Config;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System;
-using Xunit;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Newtonsoft.Json;
 using Microsoft.Azure.WebJobs.Host.UnitTests.Indexers;
+using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 value = 123
             };
-            
+
             var host = TestHelpers.NewJobHost<Functions>(nr, client);
 
             // With out parameter 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
                 var item = (Item)client._dict["ModifyInPlace"];
                 Assert.Equal(124, item.value);
-            }         
+            }
         }
     }
 
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
 
             var type = typeof(MySpecialValueBinder<>).MakeGenericType(parameterType);
-            var result = (IValueBinder) Activator.CreateInstance(type, this, attr.Index);
+            var result = (IValueBinder)Activator.CreateInstance(type, this, attr.Index);
             return Task.FromResult<IValueBinder>(result);
         }
 
@@ -121,13 +121,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 }
             }
 
-            public object GetValue()
+            public Task<object> GetValueAsync()
             {
                 // Clone to mimic real network semantics - we're not sharing in-memory objects. 
-                var obj =  _client._dict[_index];
+                var obj = _client._dict[_index];
                 string json = JsonConvert.SerializeObject(obj);
                 var clone = JsonConvert.DeserializeObject(json, this.Type);
-                return clone;
+                return Task.FromResult(clone);
             }
 
             public Task SetValueAsync(object value, CancellationToken cancellationToken)

@@ -35,9 +35,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             get { return _valueType; }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _value;
+            return Task.FromResult(_value);
         }
 
         public string ToInvokeString()

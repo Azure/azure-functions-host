@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             public Binding(
                     AttributeCloner<TAttribute> cloner,
                     Func<TAttribute, Type, Task<IValueBinder>> builder,
-                    ParameterInfo parameter) 
+                    ParameterInfo parameter)
                 : base(cloner, parameter)
             {
                 this._builder = builder;
@@ -88,9 +88,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _inner.GetValue();
+                    return _inner.GetValueAsync();
                 }
 
                 public Task SetValueAsync(object value, CancellationToken cancellationToken)

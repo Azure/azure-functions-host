@@ -35,10 +35,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
             // Out parameters are set on return
-            return null;
+            return Task.FromResult<object>(null);
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)

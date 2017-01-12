@@ -4,10 +4,11 @@
 using System;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
@@ -36,9 +37,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
-        public void GetValue_ReturnsExpectedValue()
+        public async Task GetValueAsync_ReturnsExpectedValue()
         {
-            SingletonLock value = (SingletonLock)_valueProvider.GetValue();
+            SingletonLock value = (SingletonLock)(await _valueProvider.GetValueAsync());
             Assert.Equal(_lockId, value.Id);
             Assert.Equal(TestInstanceId, value.FunctionId);
         }
@@ -51,27 +52,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         }
 
         [Fact]
-        public void ToInvokeString_ReturnsExpectedValue()
+        public async Task ToInvokeString_ReturnsExpectedValue()
         {
             SingletonManager singletonManager = new SingletonManager(null, null, null, null, new FixedHostIdProvider(TestHostId));
             SingletonAttribute attribute = new SingletonAttribute();
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, attribute.ScopeId, TestInstanceId, attribute, singletonManager);
-            SingletonLock singletonLock = (SingletonLock)localValueProvider.GetValue();
+            SingletonLock singletonLock = (SingletonLock)(await localValueProvider.GetValueAsync());
             Assert.Equal("ScopeId: (null)", localValueProvider.ToInvokeString());
 
             attribute = new SingletonAttribute(@"{Region}\{Zone}");
             localValueProvider = new SingletonValueProvider(_method, @"Central\3", TestInstanceId, attribute, singletonManager);
-            singletonLock = (SingletonLock)localValueProvider.GetValue();
+            singletonLock = (SingletonLock)(await localValueProvider.GetValueAsync());
             Assert.Equal(@"ScopeId: Central\3", localValueProvider.ToInvokeString());
         }
 
         [Fact]
-        public void SingletonWatcher_GetStatus_ReturnsExpectedValue()
+        public async Task SingletonWatcher_GetStatus_ReturnsExpectedValue()
         {
             Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
             mockSingletonManager.Setup(p => p.GetLockOwnerAsync(_attribute, _lockId, CancellationToken.None)).ReturnsAsync("someotherguy");
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.ScopeId, TestInstanceId, _attribute, mockSingletonManager.Object);
-            SingletonLock localSingletonLock = (SingletonLock)localValueProvider.GetValue();
+            SingletonLock localSingletonLock = (SingletonLock)(await localValueProvider.GetValueAsync());
 
             // set start time before _minimumWaitForFirstOwnerCheck in SingletonValueProvider
             DateTime startTime = DateTime.UtcNow - TimeSpan.FromSeconds(11);

@@ -18,8 +18,8 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using Xunit;
 using Newtonsoft.Json.Linq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -33,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         [Fact]
         public void Table_IndexingFails()
-        {            
+        {
             // Verify we catch various indexing failures. 
-            Utility.AssertIndexingError<BadProgramTableName>("Run", "'$$' is not a valid name for an Azure table") ;
+            Utility.AssertIndexingError<BadProgramTableName>("Run", "'$$' is not a valid name for an Azure table");
 
             // Pocos must have a default ctor. 
             Utility.AssertIndexingError<BadProgram4>("Run", "Table entity types must provide a default constructor.");
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             // When binding to Pocos, they must be structurally compatible with ITableEntity.
             Utility.AssertIndexingError<BadProgram1>("Run", "Table entity types must implement the property RowKey.");
             Utility.AssertIndexingError<BadProgram2>("Run", "Table entity types must implement the property RowKey.");
-            Utility.AssertIndexingError<BadProgram3>("Run", "Table entity types must implement the property PartitionKey.");            
+            Utility.AssertIndexingError<BadProgram3>("Run", "Table entity types must implement the property PartitionKey.");
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             // Tracked by: https://github.com/Azure/azure-webjobs-sdk/issues/790
 
             Utility.AssertIndexingError<TableOutProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco&'.");
-            Utility.AssertIndexingError<TableOutArrayProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco[]&'.");            
+            Utility.AssertIndexingError<TableOutArrayProgram>("Run", "Can't bind Table entity to type 'Microsoft.Azure.WebJobs.Host.FunctionalTests.TableTests+Poco[]&'.");
         }
 
         // Helper to demonstrate that TableName property can include { } pairs. 
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
-        public void Table_IfBoundToICollectorJObject_AddInsertsEntity()    
+        public void Table_IfBoundToICollectorJObject_AddInsertsEntity()
         {
             // Arrange
             const string expectedValue = "abc";
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(entity.Properties);
 
             AssertPropertyValue(entity, "ValueStr", "abcdef");
-            AssertPropertyValue(entity, "ValueNum", 123);         
+            AssertPropertyValue(entity, "ValueNum", 123);
         }
 
         [Fact]
@@ -345,7 +345,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 Assert.Equal(EdmType.Int32, property.PropertyType);
                 Assert.Equal(expectedValue, property.Int32Value);
             }
-            else {
+            else
+            {
                 Assert.False(true, "test bug: unsupported property type: " + expectedValue.GetType().FullName);
             }
         }
@@ -437,16 +438,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
-        private class BindToICollectorJObjectProgram 
+        private class BindToICollectorJObjectProgram
         {
             public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage message,
                 [Table(TableName)] ICollector<JObject> table)
             {
-                table.Add(JObject.FromObject( new {
+                table.Add(JObject.FromObject(new
+                {
                     PartitionKey = PartitionKey,
                     RowKey = RowKey,
                     ValueStr = "abcdef",
-                    ValueNum = 123 
+                    ValueNum = 123
                 }));
             }
         }
@@ -576,7 +578,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private class TableOutProgram
         {
-            public static void Run([Table(TableName, PartitionKey,RowKey)] out Poco value)
+            public static void Run([Table(TableName, PartitionKey, RowKey)] out Poco value)
             {
                 value = null;
                 Assert.True(false, "should have gotten error at indexing time.");
@@ -745,9 +747,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                         get { return typeof(CustomTableBinding<TElement>); }
                     }
 
-                    public object GetValue()
+                    public Task<object> GetValueAsync()
                     {
-                        return new CustomTableBinding<TElement>(_table);
+                        return Task.FromResult<object>(new CustomTableBinding<TElement>(_table));
                     }
 
                     public Task SetValueAsync(object value, CancellationToken cancellationToken)

@@ -47,9 +47,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _value;
+            return Task.FromResult<object>(_value);
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
