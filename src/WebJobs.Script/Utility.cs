@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public static class Utility
     {
         private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
+        private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
 
         public static string GetSubscriptionId()
         {
@@ -167,12 +168,20 @@ namespace Microsoft.Azure.WebJobs.Script
             return input;
         }
 
+        /// <summary>
+        /// Checks if a given string has a UTF8 BOM
+        /// </summary>
+        /// <param name="input">The string to be evalutated</param>
+        /// <returns>True if the string begins with a UTF8 BOM; Otherwise, false.</returns>
+        public static bool HasUtf8ByteOrderMark(string input)
+            => input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, UTF8ByteOrderMark, CompareOptions.Ordinal);
+
+
         public static string RemoveUtf8ByteOrderMark(string input)
         {
-            string byteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-            if (input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, byteOrderMark, CompareOptions.Ordinal))
+            if (HasUtf8ByteOrderMark(input))
             {
-                input = input.Substring(byteOrderMark.Length);
+                input = input.Substring(UTF8ByteOrderMark.Length);
             }
 
             return input;

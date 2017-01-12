@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new CSharpCompilation(compilation);
         }
 
-        private static string GetFunctionSource(FunctionMetadata functionMetadata)
+        internal static string GetFunctionSource(FunctionMetadata functionMetadata)
         {
             string code = null;
 
