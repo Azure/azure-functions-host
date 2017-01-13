@@ -14,8 +14,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
-
-        [JsonProperty(PropertyName = "metadata", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public FunctionMetadata Metadata { get; set; }
     }
 }

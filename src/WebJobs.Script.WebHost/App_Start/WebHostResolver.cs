@@ -151,13 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
 
             // If running on Azure Web App, derive the host ID from the default subdomain
-            // Otherwise, derive it from machine name and folder name
             string hostId = _settingsManager.AzureWebsiteDefaultSubdomain;
-
-            if (string.IsNullOrEmpty(hostId))
-            {
-                hostId = MakeValidHostId($"{Environment.MachineName}-{Path.GetFileName(Environment.CurrentDirectory)}");
-            }
 
             if (!String.IsNullOrEmpty(hostId))
             {
@@ -175,51 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return scriptHostConfig;
-        }
-
-        private static string MakeValidHostId(string id)
-        {
-            var sb = new StringBuilder();
-
-            //filter for valid characters
-            foreach (var c in id)
-            {
-                if (c == '-')
-                {
-                    //dashes are valid
-                    //but it cannot start with one
-                    //nor can it have consecutive dashes
-                    if (sb.Length != 0 && sb[sb.Length - 1] != '-')
-                    {
-                        sb.Append(c);
-                    }
-                }
-                else if (char.IsDigit(c))
-                {
-                    //digits are valid
-                    sb.Append(c);
-                }
-                else if (char.IsLetter(c))
-                {
-                    //letters are valid but must be lowercase
-                    sb.Append(char.ToLowerInvariant(c));
-                }
-            }
-
-            //it cannot end with a dash
-            if (sb.Length > 0 && sb[sb.Length - 1] == '-')
-            {
-                sb.Length -= 1;
-            }
-
-            //length cannot exceed 32
-            const int MaximumHostIdLength = 32;
-            if (sb.Length > MaximumHostIdLength)
-            {
-                sb.Length = MaximumHostIdLength;
-            }
-
-            return sb.ToString();
         }
 
         private static void InitializeFileSystem(string scriptPath)

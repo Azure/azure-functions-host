@@ -406,9 +406,9 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
         }
 
-            /// <summary>
-            /// Whenever the debug marker file changes we update our debug timeout
-            /// </summary>
+        /// <summary>
+        /// Whenever the debug marker file changes we update our debug timeout
+        /// </summary>
         private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
             LastDebugNotify = DateTime.UtcNow;

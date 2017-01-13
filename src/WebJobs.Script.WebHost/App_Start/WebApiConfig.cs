@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
-            AutofacBootstrap.Initialize(settingsManager, builder, settings, config);
+            AutofacBootstrap.Initialize(settingsManager, builder, settings);
 
             // Invoke registration callback
             dependencyCallback?.Invoke(builder, settings);
@@ -93,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
-                settings.IsSelfHost = true;
             }
             else
             {
