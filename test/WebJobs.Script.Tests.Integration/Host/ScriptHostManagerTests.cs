@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task UpdateFileAndRestart()
         {
             CancellationTokenSource cts = new CancellationTokenSource();
-            var fixture = new CSharpEndToEndTests.TestFixture();
+            var fixture = new NodeEndToEndTests.TestFixture();
             var blob1 = UpdateOutputName("testblob", "first", fixture);
 
             await fixture.Host.StopAsync();

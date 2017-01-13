@@ -62,12 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/status")]
         public FunctionStatus GetFunctionStatus(string name)
         {
+            FunctionStatus status = new FunctionStatus();
             Collection<string> functionErrors = null;
-            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
-            FunctionStatus status = new FunctionStatus
-            {
-                Metadata = function?.Metadata
-            };
 
             // first see if the function has any errors
             if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
@@ -78,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
+                FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
                     throw new HttpResponseException(HttpStatusCode.NotFound);
@@ -93,10 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             HostStatus status = new HostStatus
             {
-                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId,
-                WebHostSettings = _webHostSettings,
-                ProcessId = Process.GetCurrentProcess().Id,
-                IsDebuggerAttached = Debugger.IsAttached
+                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
             };
 
             var lastError = _scriptHostManager.LastError;
@@ -111,13 +105,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/debug")]
-        public bool LaunchDebugger()
+        public HttpResponseMessage LaunchDebugger()
         {
             if (_webHostSettings.IsSelfHost)
             {
-                return Debugger.Launch();
+                // If debugger is already running, this will be a no-op returning true.
+                if (Debugger.Launch())
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+                else
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Conflict);
+                }
             }
-            return false;
+            return new HttpResponseMessage(HttpStatusCode.NotImplemented);
         }
 
         public override Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)

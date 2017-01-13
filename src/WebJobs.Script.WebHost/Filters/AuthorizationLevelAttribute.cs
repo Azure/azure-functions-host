@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             ISecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
             var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
 
-            if (!settings.IsSelfHost && !await IsAuthorizedAsync(actionContext.Request, Level, secretManager))
+            if (!settings.IsAuthDisabled && !await IsAuthorizedAsync(actionContext.Request, Level, secretManager))
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }

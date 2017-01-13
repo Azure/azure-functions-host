@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             // Determine the authorization level of the request
             ISecretManager secretManager = controllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
             var settings = controllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
-            var authorizationLevel = settings.IsSelfHost
+            var authorizationLevel = settings.IsAuthDisabled
                 ? AuthorizationLevel.Admin
                 : await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: function.Name);
 
