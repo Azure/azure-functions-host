@@ -36,22 +36,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
+        private Action _shutdown;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private string[] _watchedFileTypes;
 
-        private static readonly string[] AssemblyFileTypes = { ".dll", ".exe" };
-
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader,
-            ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null)
+            ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null,
+            IFunctionMetadataResolver metadataResolver = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
+            _metadataResolver = metadataResolver ?? new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -66,6 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _reloadScript = ReloadScript;
             _reloadScript = _reloadScript.Debounce();
 
+            _shutdown = () => Host.Shutdown();
+            _shutdown = _shutdown.Debounce();
+
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
         }
@@ -74,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (InitializeFileWatcherIfEnabled())
             {
-                _watchedFileTypes = AssemblyFileTypes
+                _watchedFileTypes = ScriptConstants.AssemblyFileTypes
                     .Concat(_compilationService.SupportedFileTypes)
                     .ToArray();
             }
@@ -84,7 +87,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileExtension = Path.GetExtension(e.Name);
-            if (_watchedFileTypes.Contains(fileExtension))
+            if (ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+            {
+                TraceWriter.Info("Assembly changes detected. Restarting host...");
+
+                // As a result of an assembly change, we initiate a full host shutdown
+                _shutdown();
+            }
+            else if (_watchedFileTypes.Contains(fileExtension))
             {
                 _reloadScript();
             }
@@ -146,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                Host.RestartEvent.Set();
+                Host.Restart();
             }
         }
 
@@ -172,19 +182,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
-        private async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
+        internal async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
         {
             TraceOnPrimaryHost("Restoring packages.", TraceLevel.Info);
 
             try
             {
-                await _metadataResolver.RestorePackagesAsync();
+                PackageRestoreResult result = await _metadataResolver.RestorePackagesAsync();
 
                 TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
 
                 if (reloadScriptOnSuccess)
                 {
-                    _reloadScript();
+                    if (!result.IsInitialInstall && result.ReferencesChanged)
+                    {
+                        TraceOnPrimaryHost("Package references have changed. Restarting host...", TraceLevel.Info);
+
+                        // If this is not the initial package install and references changed,
+                        // shutdown the host, which will cause it to have a clean start and load the new
+                        // assembly references
+                        _shutdown();
+                    }
+                    else
+                    {
+                        _reloadScript();
+                    }
                 }
             }
             catch (Exception exc)

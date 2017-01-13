@@ -7,9 +7,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public sealed class ScriptHostFactory : IScriptHostFactory
     {
-        public ScriptHost Create(ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
+        public ScriptHost Create(IScriptHostEnvironment environment, ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
         {
-            return ScriptHost.Create(config, settingsManager);
+            return ScriptHost.Create(environment, config, settingsManager);
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Immutable;
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptConstants
@@ -36,5 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultFunctionKeyName = "default";
 
         public const string DynamicSku = "Dynamic";
+
+        public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
+
+        public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }
 }
