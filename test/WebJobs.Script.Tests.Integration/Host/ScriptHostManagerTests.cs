@@ -191,12 +191,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var hostMock = new Mock<ScriptHost>(config, null);
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), config, null);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(_settingsManager, It.IsAny<ScriptHostConfiguration>()))
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), _settingsManager, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object);
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, new NullScriptHostEnvironment());
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public bool Throw { get; set; }
 
-            public ScriptHost Create(ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
+            public ScriptHost Create(IScriptHostEnvironment environment, ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
             {
                 if (Throw)
                 {
@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>(), It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return ScriptHost.Create(config, settingsManager);
+                return ScriptHost.Create(environment, config, settingsManager);
             }
         }
     }

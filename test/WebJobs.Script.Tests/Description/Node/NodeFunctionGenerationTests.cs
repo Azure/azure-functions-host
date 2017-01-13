@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.ServiceBus.Messaging;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -192,13 +193,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             List<FunctionMetadata> functions = new List<FunctionMetadata>();
             functions.Add(metadata);
 
+            var environment = new Mock<IScriptHostEnvironment>();
+
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath
             };
 
             Collection<FunctionDescriptor> functionDescriptors = null;
-            using (ScriptHost host = ScriptHost.Create(scriptConfig, SettingsManager))
+            using (ScriptHost host = ScriptHost.Create(environment.Object, scriptConfig, SettingsManager))
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
                 {

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -225,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.HostConfig.StorageConnectionString = null;
                 config.HostConfig.DashboardConnectionString = null;
 
-                host = ScriptHost.Create(config, ScriptSettingsManager.Instance);
+                host = ScriptHost.Create(new NullScriptHostEnvironment(), config, ScriptSettingsManager.Instance);
                 traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
 
                 host.Start();
@@ -432,6 +431,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
+        }
+
+        public override void Shutdown()
+        {
+            Instance?.TraceWriter.Info("Environment shutdown has been triggered. Stopping host and signaling shutdown.");
+
+            Stop();
+            HostingEnvironment.InitiateShutdown();
         }
     }
 }

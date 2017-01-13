@@ -255,13 +255,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _assemblyExtensions.Select(ext => Path.Combine(_privateAssembliesPath, assemblyName.Name + ext));
         }
 
-        public async Task RestorePackagesAsync()
+        public async Task<PackageRestoreResult> RestorePackagesAsync()
         {
             var packageManager = new PackageManager(_functionMetadata, _traceWriter);
-            await packageManager.RestorePackagesAsync();
+            PackageRestoreResult result = await packageManager.RestorePackagesAsync();
 
             // Reload the resolver
             _packageAssemblyResolver = new PackageAssemblyResolver(_functionMetadata);
+
+            return result;
         }
 
         public bool RequiresPackageRestore(FunctionMetadata metadata)

@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var factoryMock = new Mock<IScriptHostFactory>();
             int count = 0;
-            factoryMock.Setup(p => p.Create(_settingsManager, config)).Callback(() =>
+            factoryMock.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), _settingsManager, config)).Callback(() =>
             {
                 count++;
             }).Throws(new Exception("Kaboom!"));

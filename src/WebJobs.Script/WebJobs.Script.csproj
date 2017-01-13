@@ -379,6 +379,7 @@
     <Compile Include="Description\FunctionInvocationContext.cs" />
     <Compile Include="Description\FunctionLoader.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
+    <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
@@ -423,6 +424,8 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Extensions\INameResolverExtensions.cs" />
     <Compile Include="Host\BlobLeaseManager.cs" />
+    <Compile Include="Host\IScriptHostEnvironment.cs" />
+    <Compile Include="Host\NullScriptHostEnvironment.cs" />
     <Compile Include="Host\ScriptHost.cs" />
     <Compile Include="Host\ScriptHostManager.cs" />
     <Compile Include="Description\FunctionMetadata.cs" />

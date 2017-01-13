@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
@@ -49,6 +50,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Hello from .NET", await response.Content.ReadAsStringAsync());
         }
 
+        [Fact]
+        public void AssemblyChange_TriggersEnvironmentShutdown()
+        {
+            var manualResetEvent = new ManualResetEvent(false);
+            Fixture.ScriptHostEnvironmentMock.Setup(e => e.Shutdown())
+                .Callback(() => manualResetEvent.Set());
+
+            string sourceFile = TestFixture.SharedAssemblyPath;
+
+            File.Copy(sourceFile, Path.ChangeExtension(sourceFile, ".copy.dll"));
+
+            bool eventSet = manualResetEvent.WaitOne(1000);
+
+            Assert.True(eventSet, "Shutdown was not called when assembly changes were made.");
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\DotNet";
@@ -68,14 +85,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             }
 
+            public static string SharedAssemblyPath => Path.Combine(FunctionSharedBinPath, "DotNetFunctionSharedAssembly.dll");
+
             public override void Dispose()
             {
                 base.Dispose();
 
                 Task.WaitAll(
-                    FileUtility.DeleteIfExistsAsync(FunctionPath),
-                    FileUtility.DeleteIfExistsAsync(FunctionSharedPath),
-                    FileUtility.DeleteIfExistsAsync(FunctionSharedBinPath));
+                    FileUtility.DeleteDirectoryAsync(FunctionPath, true),
+                    FileUtility.DeleteDirectoryAsync(FunctionSharedPath, true),
+                    FileUtility.DeleteDirectoryAsync(FunctionSharedBinPath, true));
             }
 
             private static void CreateFunctionAssembly()
@@ -94,11 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
                 compilation.Emit(Path.Combine(FunctionPath, "DotNetFunctionAssembly.dll"));
-                compilation.Emit(Path.Combine(FunctionSharedBinPath, "DotNetFunctionSharedAssembly.dll"));
+                compilation.Emit(SharedAssemblyPath);
 
                 CreateFunctionMetadata(FunctionPath, "DotNetFunctionAssembly.dll");
                 CreateFunctionMetadata(FunctionSharedPath, $@"..\\{Path.GetFileName(FunctionSharedBinPath)}\\DotNetFunctionSharedAssembly.dll");
-                // Create function metadata
             }
 
             private static void CreateFunctionMetadata(string path, string scriptFilePath)
