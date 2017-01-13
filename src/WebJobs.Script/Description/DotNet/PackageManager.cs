@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -35,21 +37,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _traceWriter = traceWriter;
         }
 
-        public Task RestorePackagesAsync()
+        public Task<PackageRestoreResult> RestorePackagesAsync()
         {
-            var tcs = new TaskCompletionSource<bool>();
+            var tcs = new TaskCompletionSource<PackageRestoreResult>();
 
             string functionDirectory = null;
             string projectPath = null;
             string nugetHome = null;
             string nugetFilePath = null;
-
+            string currentLockFileHash = null;
             try
             {
                 functionDirectory = Path.GetDirectoryName(_functionMetadata.ScriptFile);
                 projectPath = Path.Combine(functionDirectory, DotNetConstants.ProjectFileName);
                 nugetHome = GetNugetPackagesPath();
                 nugetFilePath = ResolveNuGetPath();
+                currentLockFileHash = GetCurrentLockFileHash(functionDirectory);
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -70,7 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 process.Exited += (s, e) =>
                 {
-                    tcs.SetResult(process.ExitCode == 0);
+                    string newLockFileHash = GetCurrentLockFileHash(functionDirectory);
+                    var result = new PackageRestoreResult
+                    {
+                        IsInitialInstall = string.IsNullOrEmpty(currentLockFileHash),
+                        ReferencesChanged = string.Equals(currentLockFileHash, newLockFileHash),
+                    };
+
+                    tcs.SetResult(result);
                     process.Close();
                 };
 
@@ -86,13 +96,36 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _traceWriter.Error($@"NuGet restore failed with message: '{exc.Message}'
 Function directory: {functionDirectory}
 Project path: {projectPath}
-Packages path: {nugetHome},
-Nuget client path: {nugetFilePath}");
+Packages path: {nugetHome}
+Nuget client path: {nugetFilePath}
+Lock file hash: {currentLockFileHash}");
 
                 tcs.SetException(exc);
             }
 
             return tcs.Task;
+        }
+
+        internal static string GetCurrentLockFileHash(string functionDirectory)
+        {
+            string lockFilePath = Path.Combine(functionDirectory, DotNetConstants.ProjectLockFileName);
+
+            if (!File.Exists(lockFilePath))
+            {
+                return string.Empty;
+            }
+
+            using (var md5 = MD5.Create())
+            {
+                using (var stream = File.OpenRead(lockFilePath))
+                {
+                    byte[] hash = md5.ComputeHash(stream);
+
+                    return hash
+                        .Aggregate(new StringBuilder(), (a, b) => a.Append(b.ToString("x2")))
+                        .ToString();
+                }
+            }
         }
 
         public static string ResolveNuGetPath(string baseKuduPath = null)

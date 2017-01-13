@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -185,7 +186,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, diagnostics.Count());
         }
 
-        private RunDependencies CreateDependencies(TraceLevel traceLevel = TraceLevel.Info)
+        [Theory]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        public async Task RestorePackagesAsync_WithUpdatedReferences_TriggersShutdown(bool initialInstall, bool referencesChanged, bool shutdownExpected)
+        {
+            using (var tempDirectory = new TempDirectory())
+            {
+                var environmentMock = new Mock<IScriptHostEnvironment>();
+
+                // Create the invoker dependencies and setup the appropriate method to throw the exception
+                RunDependencies dependencies = CreateDependencies(environment: environmentMock.Object);
+
+                // Create a dummy file to represent our function
+                string filePath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString() + ".csx");
+                File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
+
+                var metadata = new FunctionMetadata
+                {
+                    ScriptFile = filePath,
+                    Name = Guid.NewGuid().ToString(),
+                    ScriptType = ScriptType.CSharp,
+                };
+
+                metadata.Bindings.Add(new BindingMetadata { Type = "TestTrigger", Direction = BindingDirection.In });
+
+                var metadataResolver = new Mock<IFunctionMetadataResolver>();
+                metadataResolver.Setup(r => r.RestorePackagesAsync())
+                    .ReturnsAsync(new PackageRestoreResult { IsInitialInstall = initialInstall, ReferencesChanged = referencesChanged });
+
+                var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+
+                var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                  new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
+
+                await invoker.RestorePackagesAsync(true);
+
+                // Delay the check as the shutdown call is debounced
+                // and won't be made immediately
+                await Task.Delay(1000);
+
+                environmentMock.Verify(e => e.Shutdown(), Times.Exactly(shutdownExpected ? 1 : 0));
+            }
+        }
+
+        private RunDependencies CreateDependencies(TraceLevel traceLevel = TraceLevel.Info, IScriptHostEnvironment environment = null)
         {
             var dependencies = new RunDependencies();
 
@@ -201,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
 
-            var host = new Mock<ScriptHost>(scriptHostConfiguration, null);
+            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), scriptHostConfiguration, null);
             host.SetupGet(h => h.IsPrimary).Returns(true);
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();

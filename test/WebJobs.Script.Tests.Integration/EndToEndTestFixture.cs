@@ -13,6 +13,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -45,12 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
+            ScriptHostEnvironmentMock = new Mock<IScriptHostEnvironment>();
+
             // Reset the timer logs first, since one of the tests will
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
-            Host = ScriptHost.Create(config, _settingsManager);
+            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, config, _settingsManager);
             Host.Start();
         }
+
+        public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }
 
         public TestTraceWriter TraceWriter { get; private set; }
 

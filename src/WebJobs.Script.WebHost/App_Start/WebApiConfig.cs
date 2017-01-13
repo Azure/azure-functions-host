@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            settings = settings ?? GetDefaultSettings(settingsManager);
+            settings = settings ?? WebHostSettings.CreateDefault(settingsManager);
 
             var builder = new ContainerBuilder();
             builder.RegisterApiControllers(typeof(FunctionsController).Assembly);
@@ -80,34 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
             config.InitializeReceiveSalesforceWebHooks();
-        }
-
-        private static WebHostSettings GetDefaultSettings(ScriptSettingsManager settingsManager)
-        {
-            WebHostSettings settings = new WebHostSettings();
-
-            string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            bool isLocal = string.IsNullOrEmpty(home);
-            if (isLocal)
-            {
-                settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
-                settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
-                settings.SecretsPath = HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
-            }
-            else
-            {
-                // we're running in Azure
-                settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
-                settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
-                settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
-            }
-
-            if (string.IsNullOrEmpty(settings.ScriptPath))
-            {
-                throw new InvalidOperationException("Unable to determine function script root directory.");
-            }
-
-            return settings;
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var config = new ScriptHostConfiguration();
             config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
-            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { config, null });
+            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), config, null });
             hostMock.Object.TraceWriter = _traceWriter;
 
             var metadata = new FunctionMetadata

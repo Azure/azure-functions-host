@@ -7,6 +7,7 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -24,8 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath
             };
+
+            var environment = new Mock<IScriptHostEnvironment>();
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(config, _settingsManager);
+            _host = ScriptHost.Create(environment.Object, config, _settingsManager);
             _provider = new TestDescriptorProvider(_host, config);
         }
 

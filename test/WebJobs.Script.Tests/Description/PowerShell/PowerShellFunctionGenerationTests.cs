@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -151,12 +152,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static ScriptHostInfo GetScriptHostInfo()
         {
+            var environment = new Mock<IScriptHostEnvironment>();
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\PowerShell");
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath
             };
-            var host = ScriptHost.Create(scriptConfig, SettingsManager);
+            var host = ScriptHost.Create(environment.Object, scriptConfig, SettingsManager);
             return new ScriptHostInfo(host, scriptConfig, rootPath);
         }
     }

@@ -483,6 +483,7 @@
     <Compile Include="Binding\HttpTriggerBindingTests.cs" />
     <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
     <Compile Include="UtilityTests.cs" />
+    <Compile Include="WebApiApplicationTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
     <None Include="app.config">

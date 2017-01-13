@@ -39,9 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         internal const int DebugModeTimeoutMinutes = 15;
         private const string HostAssemblyName = "ScriptHost";
-        private readonly AutoResetEvent _restartEvent = new AutoResetEvent(false);
+        private readonly IScriptHostEnvironment _scriptHostEnvironment;
         private string _instanceId;
-        private Action<FileSystemEventArgs> _restart;
+        private Action _restart;
+        private Action _shutdown;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private ImmutableArray<string> _directorySnapshot;
@@ -50,8 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private ScriptSettingsManager _settingsManager;
+        private bool _shutdownScheduled;
 
-        protected ScriptHost(ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+        protected ScriptHost(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -60,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
             }
             ScriptConfig = scriptConfig;
+
+            _scriptHostEnvironment = environment;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 #if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
@@ -102,14 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script
             get
             {
                 return _blobLeaseManager?.HasLease ?? false;
-            }
-        }
-
-        public AutoResetEvent RestartEvent
-        {
-            get
-            {
-                return _restartEvent;
             }
         }
 
@@ -312,13 +308,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // This allows us to deal with a large set of file change events that might
                 // result from a bulk copy/unzip operation. In such cases, we only want to
                 // restart after ALL the operations are complete and there is a quiet period.
-                _restart = (e) =>
-                {
-                    TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", e.ChangeType, e.FullPath));
-                    TraceWriter.Info("Host configuration has changed. Signaling restart.");
-                    RestartHost();
-                };
+                _restart = Restart;
                 _restart = _restart.Debounce(500);
+
+                _shutdown = Shutdown;
+                _shutdown = _shutdown.Debounce(500);
 
                 // take a snapshot so we can detect function additions/removals
                 _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
@@ -367,6 +361,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)
+        {
+            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", changeType, path));
+
+            string action = isShutdown ? "shutdown" : "restart";
+            TraceWriter.Info($"Host configuration has changed. Signaling {action}");
+        }
+
         internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
         {
             Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
@@ -403,16 +405,27 @@ namespace Microsoft.Azure.WebJobs.Script
             return customAttributes;
         }
 
-        private void RestartHost()
+        internal void Restart()
         {
-            // signal host restart
-            _restartEvent.Set();
+            if (_shutdownScheduled)
+            {
+                // If a shutdown was scheduled, skip the restart
+                return;
+            }
+
+            // Request a host restart
+            _scriptHostEnvironment.RestartHost();
 
 #if FEATURE_NODE
             // whenever we're restarting the host, we want to let the Node
             // invoker know so it can clear the require cache, etc.
             NodeFunctionInvoker.OnHostRestart();
 #endif
+        }
+
+        internal void Shutdown()
+        {
+            _scriptHostEnvironment.Shutdown();
         }
 
         /// <summary>
@@ -479,11 +492,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+        public static ScriptHost Create(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
         {
-            scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
-
-            ScriptHost scriptHost = new ScriptHost(scriptConfig, settingsManager);
+            ScriptHost scriptHost = new ScriptHost(environment, scriptConfig, settingsManager);
             try
             {
                 scriptHost.Initialize();
@@ -570,7 +581,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(triggerDisabledValue, settingsManager) || 
+            if (IsDisabled(triggerDisabledValue, settingsManager) ||
                 IsDisabled((JValue)configMetadata["disabled"], settingsManager))
             {
                 functionMetadata.IsDisabled = true;
@@ -1120,15 +1131,35 @@ namespace Microsoft.Azure.WebJobs.Script
             // - the host.json file was changed
             // - a function.json file was changed
             // - a function directory was added/removed/renamed
+            // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
             string fileName = Path.GetFileName(e.Name);
             if (isWatchedDirectory ||
                 ((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
-                // a host level configuration change has been made which requires a
-                // host restart
-                _restart(e);
+                bool shutdown = false;
+                string fileExtension = Path.GetExtension(fileName);
+                if (string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+                {
+                    shutdown = true;
+                }
+
+                TraceFileChangeRestart(e.ChangeType.ToString(), e.FullPath, shutdown);
+                ScheduleRestart(shutdown);
+            }
+        }
+
+        private void ScheduleRestart(bool shutdown)
+        {
+            if (shutdown)
+            {
+                _shutdownScheduled = true;
+                _shutdown();
+            }
+            else
+            {
+                _restart();
             }
         }
 
@@ -1194,7 +1225,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 _blobLeaseManager?.Dispose();
-                _restartEvent.Dispose();
                 (TraceWriter as IDisposable)?.Dispose();
 
 #if FEATURE_NODE

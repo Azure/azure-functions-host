@@ -339,9 +339,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
+            var environment = new Mock<IScriptHostEnvironment>();
+
             var ex = Assert.Throws<FormatException>(() =>
             {
-                ScriptHost.Create(scriptConfig, _settingsManager);
+                ScriptHost.Create(environment.Object, scriptConfig, _settingsManager);
             });
 
             Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
@@ -373,8 +375,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     RootScriptPath = rootPath
                 };
-
-                var scriptHost = ScriptHost.Create(scriptConfig, _settingsManager);
+                var environment = new Mock<IScriptHostEnvironment>();
+                var scriptHost = ScriptHost.Create(environment.Object, scriptConfig, _settingsManager);
 
                 Assert.Equal(1, scriptHost.FunctionErrors.Count);
                 Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
@@ -945,7 +947,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
-                Host = ScriptHost.Create(config);
+                var environment = new Mock<IScriptHostEnvironment>();
+                Host = ScriptHost.Create(environment.Object, config);
             }
 
             public ScriptHost Host { get; private set; }

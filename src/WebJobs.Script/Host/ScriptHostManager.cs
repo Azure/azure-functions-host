@@ -21,10 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script
     /// Class encapsulating a <see cref="ScriptHost"/> an keeping a singleton
     /// instance always alive, restarting as necessary.
     /// </summary>
-    public class ScriptHostManager : IDisposable
+    public class ScriptHostManager : IScriptHostEnvironment, IDisposable
     {
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
+        private readonly IScriptHostEnvironment _environment;
         private ScriptHost _currentInstance;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance. 
@@ -36,14 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _disposed;
         private bool _stopped;
         private AutoResetEvent _stopEvent = new AutoResetEvent(false);
+        private AutoResetEvent _restartHostEvent = new AutoResetEvent(false);
         private TraceWriter _traceWriter;
 
         private ScriptSettingsManager _settingsManager;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private CancellationTokenSource _restartDelayTokenSource;
 
-        public ScriptHostManager(ScriptHostConfiguration config)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory())
+        public ScriptHostManager(ScriptHostConfiguration config, IScriptHostEnvironment environment = null)
+            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), environment)
         {
             if (config.FileWatchingEnabled)
             {
@@ -52,8 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public ScriptHostManager(ScriptHostConfiguration config, ScriptSettingsManager settingsManager, IScriptHostFactory scriptHostFactory)
+        public ScriptHostManager(ScriptHostConfiguration config, ScriptSettingsManager settingsManager, IScriptHostFactory scriptHostFactory, IScriptHostEnvironment environment = null)
         {
+            _environment = environment ?? this;
             _config = config;
             _settingsManager = settingsManager;
             _scriptHostFactory = scriptHostFactory;
@@ -111,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         HostId = _config.HostConfig.HostId
                     };
                     OnInitializeConfig(_config);
-                    newInstance = _scriptHostFactory.Create(_settingsManager, _config);
+                    newInstance = _scriptHostFactory.Create(_environment, _settingsManager, _config);
                     _traceWriter = newInstance.TraceWriter;
 
                     _currentInstance = newInstance;
@@ -150,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     WaitHandle.WaitAny(new WaitHandle[]
                     {
                         cancellationToken.WaitHandle,
-                        newInstance.RestartEvent,
+                        _restartHostEvent,
                         _stopEvent
                     });
 
@@ -359,9 +362,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 _stopEvent.Dispose();
                 _restartDelayTokenSource?.Dispose();
                 _scriptFileWatcher?.Dispose();
+                _restartHostEvent.Dispose();
 
                 _disposed = true;
             }
+        }
+
+        public virtual void RestartHost()
+        {
+            _restartHostEvent.Set();
+        }
+
+        public virtual void Shutdown()
+        {
+            Stop();
+
+            Process.GetCurrentProcess().Close();
         }
     }
 }
