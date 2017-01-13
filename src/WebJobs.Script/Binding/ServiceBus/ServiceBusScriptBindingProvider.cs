@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     MessagingProvider messageProvider = new MessagingProvider(_serviceBusConfiguration);
                     NamespaceManager namespaceManager = messageProvider.CreateNamespaceManager(context.GetMetadataValue<string>("connection"));
-                    ValidateAccessRights(new AccessRightsValidator(namespaceManager), context.Name);
+                    ValidateAccessRights(new AccessRightsValidator(namespaceManager), context.Name, TraceWriter);
                 }
 
                 binding = new ServiceBusScriptBinding(context);
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return binding != null;
         }
 
-        public static void ValidateAccessRights(AccessRightsValidator validator, string bindingName)
+        public static void ValidateAccessRights(AccessRightsValidator validator, string bindingName, TraceWriter traceWriter)
         {
             if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    throw new UnauthorizedAccessException($"Service Bus Trigger binding '{bindingName}' requires a connection string with Manage AccessRights for correct triggering and scaling behavior when running in a consumption plan.");
+                    traceWriter.Warning($"Service Bus Trigger binding '{bindingName}' requires a connection string with Manage AccessRights for correct triggering and scaling behavior when running in a consumption plan.");
                 }
             }
         }
