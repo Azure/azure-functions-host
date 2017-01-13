@@ -18,14 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var validator = new Mock<AccessRightsValidator>(null);
             validator.Setup(v => v.TestManageRights()).Throws(new UnauthorizedAccessException());
-
-            ServiceBusScriptBindingProvider.ValidateAccessRights(validator.Object, "test");
+            var testTraceWriter = new TestTraceWriter(TraceLevel.Warning);
+            ServiceBusScriptBindingProvider.ValidateAccessRights(validator.Object, "test", testTraceWriter);
 
             ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
-            var exc = Assert.Throws<UnauthorizedAccessException>(() => ServiceBusScriptBindingProvider.ValidateAccessRights(validator.Object, "test"));
+            ServiceBusScriptBindingProvider.ValidateAccessRights(validator.Object, "test", testTraceWriter);
             
-            Assert.Equal("Service Bus Trigger binding 'test' requires a connection string with Manage AccessRights for correct triggering and scaling behavior when running in a consumption plan.", exc.Message);
+            Assert.Equal("Service Bus Trigger binding 'test' requires a connection string with Manage AccessRights for correct triggering and scaling behavior when running in a consumption plan.", testTraceWriter.Traces[0].Message);
         }
     }
 }
