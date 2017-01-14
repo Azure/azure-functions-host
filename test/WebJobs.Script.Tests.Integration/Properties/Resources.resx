@@ -188,6 +188,16 @@ namespace TestFunction
 
             return Task.FromResult(res);
         }
+
+        public string OtherMethod()
+        {
+            return "Hello";
+        }
+
+        private string PrivateMethod()
+        {
+            return "Hello";
+        }
     }
 }</value>
   </data>

@@ -269,10 +269,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                     // Set our function entry point signature
                     _functionSignature = functionSignature;
-                    System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                        .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
 
-                    return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
+                    return _functionSignature.GetMethod(assembly);
                 }
             }
             catch (CompilationErrorException exc)
