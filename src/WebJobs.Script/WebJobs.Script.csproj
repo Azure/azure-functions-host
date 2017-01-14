@@ -345,8 +345,7 @@
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
     <Compile Include="Binding\NullListener.cs" />
     <Compile Include="Binding\ScriptJobHostConfigurationExtensions.cs" />
-    <Compile Include="Binding\ServiceBus\AccessRightsValidator.cs" />
-    <Compile Include="Binding\ServiceBus\ServiceBusScriptBindingProvider.cs" />
+    <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
