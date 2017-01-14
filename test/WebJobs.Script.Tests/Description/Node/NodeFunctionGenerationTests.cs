@@ -202,10 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
                 {
-                new NodeFunctionDescriptorProvider(host, scriptConfig)
+                    new NodeFunctionDescriptorProvider(host, scriptConfig)
                 };
 
-                functionDescriptors = host.ReadFunctions(functions, descriptorProviders);
+                functionDescriptors = host.GetFunctionDescriptors(functions, descriptorProviders);
             }
 
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);

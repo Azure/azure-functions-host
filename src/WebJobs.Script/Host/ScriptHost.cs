@@ -162,16 +162,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal void AddFunctionError(string functionName, string error, bool isFunctionShortName = false)
+        internal static void AddFunctionError(Dictionary<string, Collection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)
         {
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
-            Collection<string> functionErrors = new Collection<string>();
-            if (!FunctionErrors.TryGetValue(functionName, out functionErrors))
+            Collection<string> functionErrorCollection = new Collection<string>();
+            if (!functionErrors.TryGetValue(functionName, out functionErrorCollection))
             {
-                FunctionErrors[functionName] = functionErrors = new Collection<string>();
+                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
             }
-            functionErrors.Add(error);
+            functionErrorCollection.Add(error);
         }
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
@@ -312,14 +312,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // take a snapshot so we can detect function additions/removals
                 _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
 
-                List<FunctionDescriptorProvider> descriptionProviders = new List<FunctionDescriptorProvider>()
-                {
-                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
-                    new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
-                };
-
                 // Allow BindingProviders to initialize
                 foreach (var bindingProvider in ScriptConfig.BindingProviders)
                 {
@@ -344,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // read all script functions and apply to JobHostConfiguration
-                Collection<FunctionDescriptor> functions = ReadFunctions(descriptionProviders);
+                Collection<FunctionDescriptor> functions = GetFunctionDescriptors();
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
                 string defaultNamespace = "Host";
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
@@ -595,11 +587,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        private Collection<FunctionDescriptor> ReadFunctions(IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        public static Collection<FunctionMetadata> ReadFunctionMetadata(ScriptHostConfiguration config, TraceWriter traceWriter, Dictionary<string, Collection<string>> functionErrors)
         {
-            var functions = new List<FunctionMetadata>();
+            var functions = new Collection<FunctionMetadata>();
 
-            foreach (var scriptDir in Directory.EnumerateDirectories(ScriptConfig.RootScriptPath))
+            foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
             {
                 string functionName = null;
 
@@ -615,8 +607,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     functionName = Path.GetFileName(scriptDir);
 
-                    if (ScriptConfig.Functions != null &&
-                        !ScriptConfig.Functions.Contains(functionName, StringComparer.OrdinalIgnoreCase))
+                    if (config.Functions != null &&
+                        !config.Functions.Contains(functionName, StringComparer.OrdinalIgnoreCase))
                     {
                         // a functions filter has been specified and the current function is
                         // not in the filter list
@@ -632,11 +624,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     string functionError = null;
                     FunctionMetadata functionMetadata = null;
                     var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, TraceWriter, functionFiles, out functionMetadata, out functionError))
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, functionFiles, out functionMetadata, out functionError))
                     {
                         // for functions in error, log the error and don't
                         // add to the functions collection
-                        AddFunctionError(functionName, functionError);
+                        AddFunctionError(functionErrors, functionName, functionError);
                         continue;
                     }
                     else if (functionMetadata != null)
@@ -647,11 +639,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                    AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
             }
 
-            return ReadFunctions(functions, descriptorProviders);
+            return functions;
         }
 
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions, TraceWriter traceWriter, Lazy<string[]> functionFilesProvider, out FunctionMetadata functionMetadata, out string error)
@@ -820,7 +812,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal Collection<FunctionDescriptor> ReadFunctions(List<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        private Collection<FunctionDescriptor> GetFunctionDescriptors()
+        {
+            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, FunctionErrors);
+
+            var descriptorProviders = new List<FunctionDescriptorProvider>()
+                {
+                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
+                    new DotNetFunctionDescriptorProvider(this, ScriptConfig),
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+                };
+
+            return GetFunctionDescriptors(functions, descriptorProviders);
+        }
+
+        internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             foreach (FunctionMetadata metadata in functions)
@@ -844,7 +851,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(metadata.Name, Utility.FlattenException(ex, includeSource: false));
+                    AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                 }
             }
 
@@ -1022,7 +1029,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // For all startup time indexing errors, we accumulate them per function
                 FunctionIndexingException indexingException = exception as FunctionIndexingException;
                 string formattedError = Utility.FlattenException(indexingException);
-                AddFunctionError(indexingException.MethodName, formattedError);
+                AddFunctionError(FunctionErrors, indexingException.MethodName, formattedError);
 
                 // Also notify the invoker so the error can also be written to the function
                 // log file
