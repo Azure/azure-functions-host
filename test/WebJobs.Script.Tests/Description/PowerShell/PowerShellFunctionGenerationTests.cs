@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new PowerShellFunctionDescriptorProvider(scriptHostInfo.Host, scriptHostInfo.Configuration)
             };
 
-            var functionDescriptors = scriptHostInfo.Host.ReadFunctions(functions, descriptorProviders);
+            var functionDescriptors = scriptHostInfo.Host.GetFunctionDescriptors(functions, descriptorProviders);
             Type t = FunctionGenerator.Generate("TestScriptHost", "Host.Functions", null, functionDescriptors);
 
             MethodInfo method = t.GetMethods(BindingFlags.Public | BindingFlags.Static).First();
