@@ -42,6 +42,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ReadFunctionMetadata_Succeeds()
+        {
+            var config = new ScriptHostConfiguration
+            {
+                RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample")
+            };
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var functionErrors = new Dictionary<string, Collection<string>>();
+            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, functionErrors);
+            Assert.Equal(48, metadata.Count);
+        }
+
+        [Fact]
         public async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
             ScriptHost host = _fixture.Host;
