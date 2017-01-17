@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            TestPoco testPoco = (TestPoco)triggerData.ValueProvider.GetValue();
+            TestPoco testPoco = (TestPoco)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Equal("Mathew Charles", testPoco.Name);
             Assert.Equal("Seattle", testPoco.Location);
         }
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            TestPoco result = (TestPoco)triggerData.ValueProvider.GetValue();
+            TestPoco result = (TestPoco)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Same(testPoco, result);
         }
 
@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            TestPoco testPoco = (TestPoco)triggerData.ValueProvider.GetValue();
+            TestPoco testPoco = (TestPoco)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Equal("Mathew Charles", testPoco.Name);
             Assert.Equal("Seattle", testPoco.Location);
         }
@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            TestPoco testPoco = (TestPoco)triggerData.ValueProvider.GetValue();
+            TestPoco testPoco = (TestPoco)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Equal("Mathew Charles", testPoco.Name);
             Assert.Equal("Seattle", testPoco.Location);
         }
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("(425) 555-6666", triggerData.BindingData["Phone"]);
             Assert.Equal("25", triggerData.BindingData["Age"]);
 
-            TestPocoEx testPoco = (TestPocoEx)triggerData.ValueProvider.GetValue();
+            TestPocoEx testPoco = (TestPocoEx)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Equal("Mathew Charles", testPoco.Name);
             Assert.Equal("Seattle", testPoco.Location);
             Assert.Equal("(425) 555-6666", testPoco.Phone);
@@ -236,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            HttpRequestMessage result = (HttpRequestMessage)triggerData.ValueProvider.GetValue();
+            HttpRequestMessage result = (HttpRequestMessage)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Same(request, result);
         }
 
@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", triggerData.BindingData["Name"]);
             Assert.Equal("Seattle", triggerData.BindingData["Location"]);
 
-            HttpRequestMessage result = (HttpRequestMessage)triggerData.ValueProvider.GetValue();
+            HttpRequestMessage result = (HttpRequestMessage)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Same(request, result);
         }
 
@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(0, triggerData.BindingData.Count);
 
-            string result = (string)triggerData.ValueProvider.GetValue();
+            string result = (string)(await triggerData.ValueProvider.GetValueAsync());
             Assert.Equal("This is a test", result);
         }
 
