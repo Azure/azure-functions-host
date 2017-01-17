@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 var util = require('util');
-var process = require('process');
 var request = require('./http/request');
 var response = require('./http/response');
 
@@ -16,6 +15,22 @@ function globalInitialization(context, callback) {
     process.on('uncaughtException', function (err) {
         context.handleUncaughtException(err.stack);
     });
+
+    if (context.console) {
+        var capture = (stream) => {
+            // ensure that stream has not already been wrapped (edge sets stdout and stderr to same backing NullStream object)
+            if (!stream._oldwrite) {
+                stream._oldwrite = stream.write;
+                stream.write = (...args) => {
+                    context.console(args[0]);
+                    stream._oldwrite(...args);
+                };
+            }
+        };
+        capture(process.stdout);
+        capture(process.stderr);
+    }
+
     callback();
 }
 
