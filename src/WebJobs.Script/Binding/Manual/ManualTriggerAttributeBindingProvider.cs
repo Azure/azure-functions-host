@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 get { return _parameter.ParameterType; }
             }
 
-            public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
+            public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
             {
                 IValueProvider valueProvider = null;
                 IReadOnlyDictionary<string, object> bindingData = null;
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         // binding data is defined by the user type
                         // the provider might be null if the Type is invalid, or if the Type
                         // has no public properties to bind to
-                        bindingData = _bindingDataProvider.GetBindingData(valueProvider.GetValue());
+                        bindingData = _bindingDataProvider.GetBindingData(await valueProvider.GetValueAsync());
                     }
                 }
                 else
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     bindingData = bindingDataTemp;
                 }
 
-                return Task.FromResult<ITriggerData>(new TriggerData(valueProvider, bindingData));
+                return new TriggerData(valueProvider, bindingData);
             }
 
             public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)

@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         // some binding data is defined by the user type
                         // the provider might be null if the Type is invalid, or if the Type
                         // has no public properties to bind to
-                        poco = valueProvider.GetValue();
+                        poco = await valueProvider.GetValueAsync();
                         userTypeBindingData = _bindingDataProvider.GetBindingData(poco);
                     }
                 }
@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         // necessary conversion
                         value = pair.Value;
                         Type type = null;
-                        if (bindingDataContract != null && 
+                        if (bindingDataContract != null &&
                             bindingDataContract.TryGetValue(pair.Key, out type))
                         {
                             value = ConvertValueIfNecessary(value, type);
@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     _invokeString = invokeString;
                 }
 
-                public override object GetValue()
+                public override async Task<object> GetValueAsync()
                 {
                     if (_parameter.ParameterType == typeof(HttpRequestMessage))
                     {
@@ -318,10 +318,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     {
                         // for dynamic, we read as an object, which will actually return
                         // a JObject which is dynamic
-                        return _request.Content.ReadAsAsync<object>().GetAwaiter().GetResult();
+                        return await _request.Content.ReadAsAsync<object>();
                     }
 
-                    return base.GetValue();
+                    return await base.GetValueAsync();
                 }
 
                 protected override Stream GetStream()
