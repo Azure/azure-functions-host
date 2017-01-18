@@ -334,12 +334,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logs[1].Contains("Exports: IsObject=true, Count=1"));
         }
 
-        [Fact]
-        public async Task HttpTrigger_Get()
+        [Theory]
+        [InlineData("httptrigger")]
+        [InlineData("httptriggershared")]
+        public async Task HttpTrigger_Get(string functionName)
         {
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
+                RequestUri = new Uri($"http://localhost/api/{functionName}?name=Mathew%20Charles&location=Seattle"),
                 Method = HttpMethod.Get,
             };
             request.SetConfiguration(Fixture.RequestConfiguration);

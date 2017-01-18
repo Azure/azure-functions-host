@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,13 +25,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Invoking_DotNetFunction()
         {
+            await InvokeDotNetFunction("DotNetFunction");
+        }
+
+        [Fact]
+        public async Task Invoking_DotNetFunctionShared()
+        {
+            await InvokeDotNetFunction("DotNetFunctionShared");
+        }
+
+        public async Task InvokeDotNetFunction(string functionName)
+        {
             var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }
             };
 
-            await Fixture.Host.CallAsync("DotNetFunction", arguments);
+            await Fixture.Host.CallAsync(functionName, arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
 
@@ -41,10 +53,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private const string ScriptRoot = @"TestScripts\DotNet";
             private static readonly string FunctionPath;
+            private static readonly string FunctionSharedPath;
+            private static readonly string FunctionSharedBinPath;
 
             static TestFixture()
             {
                 FunctionPath = Path.Combine(ScriptRoot, "DotNetFunction");
+                FunctionSharedPath = Path.Combine(ScriptRoot, "DotNetFunctionShared");
+                FunctionSharedBinPath = Path.Combine(ScriptRoot, "DotNetFunctionSharedBin");
                 CreateFunctionAssembly();
             }
 
@@ -56,15 +72,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 base.Dispose();
 
-                if (Directory.Exists(FunctionPath))
-                {
-                    Directory.Delete(FunctionPath, true);
-                }
+                Task.WaitAll(
+                    FileUtility.DeleteIfExistsAsync(FunctionPath),
+                    FileUtility.DeleteIfExistsAsync(FunctionSharedPath),
+                    FileUtility.DeleteIfExistsAsync(FunctionSharedBinPath));
             }
 
             private static void CreateFunctionAssembly()
             {
                 Directory.CreateDirectory(FunctionPath);
+                Directory.CreateDirectory(FunctionSharedBinPath);
+                Directory.CreateDirectory(FunctionSharedPath);
 
                 var syntaxTree = CSharpSyntaxTree.ParseText(Resources.DotNetFunctionSource);
                 Compilation compilation = CSharpCompilation.Create("DotNetFunctionAssembly", new[] { syntaxTree })
@@ -75,10 +93,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
-                var result = compilation.Emit(Path.Combine(FunctionPath, "DotNetFunctionAssembly.dll"));
+                compilation.Emit(Path.Combine(FunctionPath, "DotNetFunctionAssembly.dll"));
+                compilation.Emit(Path.Combine(FunctionSharedBinPath, "DotNetFunctionSharedAssembly.dll"));
 
+                CreateFunctionMetadata(FunctionPath, "DotNetFunctionAssembly.dll");
+                CreateFunctionMetadata(FunctionSharedPath, $@"..\\{Path.GetFileName(FunctionSharedBinPath)}\\DotNetFunctionSharedAssembly.dll");
                 // Create function metadata
-                File.WriteAllText(Path.Combine(FunctionPath, "function.json"), Resources.DotNetFunctionJson);
+            }
+
+            private static void CreateFunctionMetadata(string path, string scriptFilePath)
+            {
+                File.WriteAllText(Path.Combine(path, "function.json"),
+                     string.Format(Resources.DotNetFunctionJson, scriptFilePath));
             }
         }
     }
