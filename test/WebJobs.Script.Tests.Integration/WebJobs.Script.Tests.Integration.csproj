@@ -566,6 +566,9 @@
     <None Include="TestScripts\DotNet\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Node\HttpTriggerShared\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Node\MultipleOutputs\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

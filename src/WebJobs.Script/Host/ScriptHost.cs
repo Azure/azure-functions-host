@@ -30,6 +30,8 @@ using Microsoft.Azure.WebJobs.Script.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Immutable;
+using System.Configuration;
+using System.IO.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Action<FileSystemEventArgs> _restart;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
-        private ImmutableArray<string> _directorySnapshot; 
+        private ImmutableArray<string> _directorySnapshot;
         private BlobLeaseManager _blobLeaseManager;
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
@@ -270,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName,
                     includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-                
+
                 _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
                 var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -624,11 +626,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     string json = File.ReadAllText(functionConfigPath);
                     JObject functionConfig = JObject.Parse(json);
 
-                    Lazy<string[]> functionFiles = new Lazy<string[]>(() => Directory.EnumerateFiles(scriptDir).Where(p => Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName).ToArray());
                     string functionError = null;
                     FunctionMetadata functionMetadata = null;
                     var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, functionFiles, out functionMetadata, out functionError))
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, scriptDir, out functionMetadata, out functionError))
                     {
                         // for functions in error, log the error and don't
                         // add to the functions collection
@@ -650,8 +651,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions, TraceWriter traceWriter, Lazy<string[]> functionFilesProvider, out FunctionMetadata functionMetadata, out string error)
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions,
+            TraceWriter traceWriter, string scriptDirectory, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
+            fileSystem = fileSystem ?? new FileSystem();
+
             error = null;
             functionMetadata = ParseFunctionMetadata(functionName, functionConfig);
 
@@ -667,22 +671,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 traceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
             }
 
-            // determine the primary script
-            string[] functionFiles = functionFilesProvider.Value;
-            if (functionFiles.Length == 0)
+            try
             {
-                error = "No function script files present.";
+                functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionConfig, scriptDirectory, fileSystem);
+            }
+            catch (ConfigurationErrorsException exc)
+            {
+                error = exc.Message;
                 return false;
             }
-            string scriptFile = DeterminePrimaryScriptFile(functionConfig, functionFiles);
-            if (string.IsNullOrEmpty(scriptFile))
-            {
-                error =
-                    "Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
-                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-                return false;
-            }
-            functionMetadata.ScriptFile = scriptFile;
 
             // determine the script type based on the primary script file extension
             functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
@@ -754,35 +751,59 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Determines which script should be considered the "primary" entry point script.
         /// </summary>
-        internal static string DeterminePrimaryScriptFile(JObject functionConfig, string[] functionFiles)
+        /// <exception cref="ConfigurationErrorsException">Thrown if the function metadata points to an invalid script file, or no script files are present.</exception>
+        internal static string DeterminePrimaryScriptFile(JObject functionConfig, string scriptDirectory, IFileSystem fileSystem = null)
         {
-            if (functionFiles.Length == 1)
+            fileSystem = fileSystem ?? new FileSystem();
+
+            // First see if there is an explicit primary file indicated
+            // in config. If so use that.
+            string functionPrimary = null;
+            string scriptFile = (string)functionConfig["scriptFile"];
+
+            if (!string.IsNullOrEmpty(scriptFile))
             {
-                // if there is only a single file, that file is primary
-                return functionFiles[0];
+                string scriptPath = fileSystem.Path.Combine(scriptDirectory, scriptFile);
+                if (!fileSystem.File.Exists(scriptPath))
+                {
+                    throw new ConfigurationErrorsException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
+                }
+
+                functionPrimary = scriptPath;
             }
             else
             {
-                // First see if there is an explicit primary file indicated
-                // in config. If so use that.
-                string functionPrimary = null;
-                string scriptFileName = (string)functionConfig["scriptFile"];
-                if (!string.IsNullOrEmpty(scriptFileName))
+                string[] functionFiles = fileSystem.Directory.EnumerateFiles(scriptDirectory)
+                    .Where(p => fileSystem.Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName)
+                    .ToArray();
+
+                if (functionFiles.Length == 0)
                 {
-                    functionPrimary = functionFiles.FirstOrDefault(p =>
-                        string.Compare(Path.GetFileName(p), scriptFileName, StringComparison.OrdinalIgnoreCase) == 0);
+                    throw new ConfigurationErrorsException("No function script files present.");
+                }
+
+                if (functionFiles.Length == 1)
+                {
+                    // if there is only a single file, that file is primary
+                    functionPrimary = functionFiles[0];
                 }
                 else
                 {
                     // if there is a "run" file, that file is primary,
                     // for Node, any index.js file is primary
                     functionPrimary = functionFiles.FirstOrDefault(p =>
-                        Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
-                        Path.GetFileName(p).ToLowerInvariant() == "index.js");
+                        fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js");
                 }
-
-                return functionPrimary;
             }
+
+            if (string.IsNullOrEmpty(functionPrimary))
+            {
+                throw new ConfigurationErrorsException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
+            }
+
+            return Path.GetFullPath(functionPrimary);
         }
 
         private static ScriptType ParseScriptType(string scriptFilePath)
