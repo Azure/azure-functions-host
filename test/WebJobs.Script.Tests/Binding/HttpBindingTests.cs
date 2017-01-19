@@ -212,5 +212,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedBodyJson, resultJson);
             Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
         }
+
+        [Theory]
+        [InlineData((short)301, HttpStatusCode.MovedPermanently)]
+        [InlineData((ushort)401, HttpStatusCode.Unauthorized)]
+        [InlineData((int)501, HttpStatusCode.NotImplemented)]
+        [InlineData((uint)202, HttpStatusCode.Accepted)]
+        [InlineData((long)302, HttpStatusCode.Redirect)]
+        [InlineData((ulong)402, HttpStatusCode.PaymentRequired)]
+        [InlineData(HttpStatusCode.Conflict, HttpStatusCode.Conflict)]
+        [InlineData("410", HttpStatusCode.Gone)]
+        [InlineData("", HttpStatusCode.OK)]
+        public void ParseResponseObject_ObjectStatus_ReturnsExpectedResult(object value, HttpStatusCode expected)
+        {
+            dynamic responseObject = new ExpandoObject();
+            responseObject.body = "Test Body";
+            responseObject.status = value;
+
+            object content = null;
+            IDictionary<string, object> headers;
+            HttpStatusCode statusCode;
+            bool isRawResponse;
+            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out isRawResponse);
+
+            Assert.Equal(expected, statusCode);
+        }
     }
 }
