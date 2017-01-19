@@ -46,5 +46,22 @@ public void Run(){
 
             Assert.Equal(1, diagnostics.Count());
         }
+
+        [Fact]
+        public void AsyncVoid_ReturnsExpectedDiagnostics()
+        {
+            string code = @"
+public async void Run(){
+await System.Threading.Tasks.Task.Run(() => {});
+}";
+            Script<object> script = CSharpScript.Create(code);
+            var compilation = new CSharpCompilation(script.GetCompilation());
+
+            var diagnostic = compilation.GetDiagnostics().First();
+
+            Assert.Equal("This method has the async keyword but it returns void",
+                diagnostic.GetMessage());
+            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        }
     }
 }
