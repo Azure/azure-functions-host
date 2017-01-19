@@ -34,10 +34,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
 
         public override void Initialize(AnalysisContext context)
         {
-            context.RegisterCompilationAction(AnalizeCompilation);
+            context.RegisterCompilationAction(AnalyzeCompilation);
         }
 
-        private void AnalizeCompilation(CompilationAnalysisContext context)
+        private void AnalyzeCompilation(CompilationAnalysisContext context)
         {
             // Find CS0006: Metadata file '{0}' could not be found
             Diagnostic invalidMetadataDiagnostic = context.Compilation
