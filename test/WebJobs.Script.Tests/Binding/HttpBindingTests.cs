@@ -224,6 +224,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("statusCode", (int)202, HttpStatusCode.Accepted, true)]
         [InlineData("statusCode", "202", HttpStatusCode.Accepted, true)]
         [InlineData("statusCode", "invalid", HttpStatusCode.Accepted, false)]
+        [InlineData("statusCode", "", HttpStatusCode.Accepted, false)]
+        [InlineData("statusCode", null, HttpStatusCode.Accepted, false)]
         [InlineData("code", (int)202, HttpStatusCode.Accepted, false)]
         public void TryParseStatusCode_ReturnsExpectedResult(string propertyName, object value, HttpStatusCode expectedStatusCode, bool expectedReturn)
         {
