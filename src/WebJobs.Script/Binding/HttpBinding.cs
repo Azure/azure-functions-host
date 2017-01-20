@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         internal static bool TryParseStatusCode(IDictionary<string, object> responseObject, out HttpStatusCode statusCode)
         {
-            statusCode = 0;
+            statusCode = HttpStatusCode.OK;
             object statusValue;
 
             if (!responseObject.TryGetValue("statusCode", out statusValue, ignoreCase: true) &&
@@ -147,62 +147,32 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return false;
             }
 
-            if (responseObject == null)
+            if (statusValue is HttpStatusCode ||
+                statusValue is int)
             {
-                return false;
-            }
-
-            if (statusValue is long)
-            {
-                statusCode = (HttpStatusCode)(long)statusValue;
+                statusCode = (HttpStatusCode)statusValue;
                 return true;
             }
 
-            if (statusValue is int ||
-                statusValue is HttpStatusCode)
+            if (statusValue is uint ||
+                statusValue is short ||
+                statusValue is ushort ||
+                statusValue is long ||
+                statusValue is ulong)
             {
-                statusCode = (HttpStatusCode) statusValue;
-                return true;
-            }
-
-            if (statusValue is short)
-            {
-                statusCode = (HttpStatusCode)(short)statusValue;
-                return true;
-            }
-
-            if (statusValue is ulong)
-            {
-                statusCode = (HttpStatusCode)(ulong)statusValue;
-                return true;
-            }
-
-            if (statusValue is uint)
-            {
-                statusCode = (HttpStatusCode)(uint)statusValue;
-                return true;
-            }
-
-            if (statusValue is ushort)
-            {
-                statusCode = (HttpStatusCode)(ushort)statusValue;
+                statusCode = (HttpStatusCode)Convert.ToInt32(statusValue);
                 return true;
             }
 
             var stringValue = statusValue as string;
-            if (stringValue == null)
+            int parsedStatusCode;
+            if (stringValue != null && int.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedStatusCode))
             {
+                statusCode = (HttpStatusCode)parsedStatusCode;
                 return true;
             }
 
-            int parsedStatusCode;
-            if (!int.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedStatusCode))
-            {
-                return false;
-            }
-
-            statusCode = (HttpStatusCode) parsedStatusCode;
-            return true;
+            return false;
         }
 
         private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, IDictionary<string, object> headers, bool isRawResponse)

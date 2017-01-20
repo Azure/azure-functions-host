@@ -214,28 +214,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData((short)301, HttpStatusCode.MovedPermanently)]
-        [InlineData((ushort)401, HttpStatusCode.Unauthorized)]
-        [InlineData((int)501, HttpStatusCode.NotImplemented)]
-        [InlineData((uint)202, HttpStatusCode.Accepted)]
-        [InlineData((long)302, HttpStatusCode.Redirect)]
-        [InlineData((ulong)402, HttpStatusCode.PaymentRequired)]
-        [InlineData(HttpStatusCode.Conflict, HttpStatusCode.Conflict)]
-        [InlineData("410", HttpStatusCode.Gone)]
-        [InlineData("", HttpStatusCode.OK)]
-        public void ParseResponseObject_ObjectStatus_ReturnsExpectedResult(object value, HttpStatusCode expected)
+        [InlineData("status", (short)301, HttpStatusCode.MovedPermanently, true)]
+        [InlineData("status", (ushort)401, HttpStatusCode.Unauthorized, true)]
+        [InlineData("status", (int)501, HttpStatusCode.NotImplemented, true)]
+        [InlineData("status", (uint)202, HttpStatusCode.Accepted, true)]
+        [InlineData("status", (long)302, HttpStatusCode.Redirect, true)]
+        [InlineData("status", (ulong)402, HttpStatusCode.PaymentRequired, true)]
+        [InlineData("status", HttpStatusCode.Conflict, HttpStatusCode.Conflict, true)]
+        [InlineData("statusCode", (int)202, HttpStatusCode.Accepted, true)]
+        [InlineData("statusCode", "202", HttpStatusCode.Accepted, true)]
+        [InlineData("statusCode", "invalid", HttpStatusCode.Accepted, false)]
+        [InlineData("code", (int)202, HttpStatusCode.Accepted, false)]
+        public void TryParseStatusCode_ReturnsExpectedResult(string propertyName, object value, HttpStatusCode expectedStatusCode, bool expectedReturn)
         {
-            dynamic responseObject = new ExpandoObject();
-            responseObject.body = "Test Body";
-            responseObject.status = value;
+            var responseObject = new Dictionary<string, object>
+            {
+                { propertyName, value }
+            };
 
-            object content = null;
-            IDictionary<string, object> headers;
             HttpStatusCode statusCode;
-            bool isRawResponse;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out isRawResponse);
+            bool returnValue = HttpBinding.TryParseStatusCode(responseObject, out statusCode);
 
-            Assert.Equal(expected, statusCode);
+            Assert.Equal(expectedReturn, returnValue);
+            if (expectedReturn)
+            {
+                Assert.Equal(expectedStatusCode, statusCode);
+            }
         }
     }
 }
