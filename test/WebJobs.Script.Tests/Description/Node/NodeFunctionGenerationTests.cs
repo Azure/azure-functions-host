@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             Collection<FunctionDescriptor> functionDescriptors = null;
-            using (ScriptHost host = ScriptHost.Create(SettingsManager, scriptConfig))
+            using (ScriptHost host = ScriptHost.Create(scriptConfig, SettingsManager))
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
                 {

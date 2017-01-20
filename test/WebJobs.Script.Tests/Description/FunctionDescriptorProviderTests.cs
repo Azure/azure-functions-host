@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(_settingsManager, config);
+            _host = ScriptHost.Create(config, _settingsManager);
             _provider = new TestDescriptorProvider(_host, config);
         }
 

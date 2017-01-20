@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.HostConfig.StorageConnectionString = null;
                 config.HostConfig.DashboardConnectionString = null;
 
-                host = ScriptHost.Create(ScriptSettingsManager.Instance, config);
+                host = ScriptHost.Create(config, ScriptSettingsManager.Instance);
                 traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
 
                 host.Start();
