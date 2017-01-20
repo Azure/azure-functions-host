@@ -4,7 +4,7 @@ var config = process.argv[process.argv.length - 1]
 config = (config.indexOf('--config=') !== -1)? config.substr(9): 'Debug';
 
 function testRequire(script) {
-    return require('../../bin/' + config + '/Content/Script/' + script);
+    return require('../../bin/' + config + '/azurefunctions/' + script);
 }
 
 var functions = testRequire('functions.js');

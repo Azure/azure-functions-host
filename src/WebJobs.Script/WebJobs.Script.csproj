@@ -487,13 +487,13 @@
       <Link>edge\edge.js</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Content\Script\http\response.js">
+    <Content Include="azurefunctions\http\response.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Content\Script\http\request.js">
+    <Content Include="azurefunctions\http\request.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Content\Script\functions.js">
+    <Content Include="azurefunctions\functions.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
