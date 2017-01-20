@@ -320,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return ScriptHost.Create(settingsManager, config);
+                return ScriptHost.Create(config, settingsManager);
             }
         }
     }

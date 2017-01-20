@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                ScriptHost.Create(_settingsManager, scriptConfig);
+                ScriptHost.Create(scriptConfig, _settingsManager);
             });
 
             Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
@@ -337,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootScriptPath = rootPath
                 };
 
-                var scriptHost = ScriptHost.Create(_settingsManager, scriptConfig);
+                var scriptHost = ScriptHost.Create(scriptConfig, _settingsManager);
 
                 Assert.Equal(1, scriptHost.FunctionErrors.Count);
                 Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
@@ -906,7 +906,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
                 _settingsManager = ScriptSettingsManager.Instance;
-                Host = ScriptHost.Create(_settingsManager, config);
+                Host = ScriptHost.Create(config, _settingsManager);
             }
 
             public ScriptHost Host { get; private set; }

@@ -466,7 +466,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static ScriptHost Create(ScriptSettingsManager settingsManager = null, ScriptHostConfiguration scriptConfig = null)
+        public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
         {
             if (scriptConfig == null)
             {

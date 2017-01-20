@@ -125,4 +125,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.IO.AutoRecoveringFileSystemWatcher.#InitializeWatcher()")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sku", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.ScriptConstants.#DynamicSku")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sku", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager.#IsDynamicSku")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.ScriptHost.#Create(Microsoft.Azure.WebJobs.Script.ScriptHostConfiguration,Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager)")]
 
