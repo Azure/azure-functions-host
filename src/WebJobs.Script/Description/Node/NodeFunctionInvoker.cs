@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -125,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
         }
 
-        private static void EnsureInitialized()
+        private void EnsureInitialized()
         {
             if (!_initialized)
             {
@@ -574,7 +575,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Performs required static initialization in the Edge context.
         /// </summary>
-        private static void Initialize()
+        private void Initialize()
         {
             var handle = (Func<object, Task<object>>)(err =>
             {
@@ -590,10 +591,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 return Task.FromResult<object>(null);
             });
+
             var context = new Dictionary<string, object>()
             {
                 { "handleUncaughtException", handle }
             };
+
+            if (Host.ScriptConfig.HostConfig?.Tracing?.ConsoleLevel == TraceLevel.Verbose)
+            {
+                context.Add("console", (Func<object, Task<object>>)(msg =>
+                {
+                    try
+                    {
+                        Host.TraceWriter.Verbose(msg as string, PrimaryHostUserTraceProperties);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
+                    return Task.FromResult<object>(null);
+                }));
+            }
 
             GlobalInitializationFunc(context).GetAwaiter().GetResult();
         }

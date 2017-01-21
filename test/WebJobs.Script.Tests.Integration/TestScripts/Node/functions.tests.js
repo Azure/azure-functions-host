@@ -233,7 +233,7 @@ describe('functions', () => {
                 expect(logs[0].msg).to.match(/Error: 'done' has already been called.*/);
             });
 
-            func(context, () => {});
+            func(context, () => { });
         });
 
         it('logs if promise and done', (done) => {
@@ -321,6 +321,30 @@ describe('functions', () => {
                 expect(context.res.headers.header).to.equal('val');
                 expect(context._http).to.be.undefined;
                 expect(context._done).to.be.true;
+            });
+        });
+    });
+
+    describe('global init', (done) => {
+        it('captures stdout and stderr if context.console', () => {
+            var stdo = process.stdout;
+            var stde = process.stderr;
+
+            var logs = [];
+            var console = (log) => logs.push(log);
+            var context = {
+                console: console,
+                unauthorizedException: () => { }
+            }
+
+            var func = functions.globalInitialization(context, () => {
+                process.stdout.write("stdout");
+                process.stderr.write("stderr");
+                process.stdout = stdo;
+                process.stderr = stde;
+
+                expect(logs[0]).to.equal("stdout");
+                expect(logs[1]).to.equal("stderr");
             });
         });
     });
