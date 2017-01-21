@@ -168,15 +168,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <typeparam name="TUserType">The exact type of the user's parameter that this will bind to.</typeparam>
         /// <param name="buildFromAttribute">builder function to create the object that will get passed to the user function.</param>
         /// <param name="buildParameterDescriptor">An optional function to create a specific ParameterDescriptor object for the dashboard. If missing, a default ParameterDescriptor is created. </param>
-        /// <param name="postResolveHook">an advanced hook for translating the attribute. </param>
+        /// <param name="postResolveHook">an advanced hook for translating the attribute.</param>
+        /// <param name="preBindHook">an advanced hook for performing any per invocation attribute resolution.</param>
         /// <returns>A binding provider that applies these semantics.</returns>
         public IBindingProvider BindToExactAsyncType<TAttribute, TUserType>(
             Func<TAttribute, Task<TUserType>> buildFromAttribute,
             Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
-            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
+            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null,
+            Action<TAttribute, BindingContext> preBindHook = null)
             where TAttribute : Attribute
         {
-            var bindingProvider = new ExactTypeBindingProvider<TAttribute, TUserType>(_nameResolver, buildFromAttribute, buildParameterDescriptor, postResolveHook);
+            var bindingProvider = new ExactTypeBindingProvider<TAttribute, TUserType>(_nameResolver, buildFromAttribute, buildParameterDescriptor, postResolveHook, preBindHook);
             return bindingProvider;
         }
 

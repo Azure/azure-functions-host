@@ -16,14 +16,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly Func<TAttribute, Task<TUserType>> _buildFromAttr;
         private readonly Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> _buildParameterDescriptor;
         private readonly Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> _postResolveHook;
+        private readonly Action<TAttribute, BindingContext> _preBindHook = null;
 
         public ExactTypeBindingProvider(
             INameResolver nameResolver,
             Func<TAttribute, Task<TUserType>> buildFromAttr,
             Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
-            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
+            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null,
+            Action<TAttribute, BindingContext> preBindHook = null)
         {
             this._postResolveHook = postResolveHook;
+            this._preBindHook = preBindHook;
             this._nameResolver = nameResolver;
             this._buildParameterDescriptor = buildParameterDescriptor;
             this._buildFromAttr = buildFromAttr;
@@ -72,21 +75,24 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 };
             }
 
-            var binding = new ExactBinding(cloner, param, _buildFromAttr);
+            var binding = new ExactBinding(cloner, param, _buildFromAttr, _preBindHook);
             return Task.FromResult<IBinding>(binding);
         }
 
         private class ExactBinding : BindingBase<TAttribute>
         {
             private readonly Func<TAttribute, Task<TUserType>> _buildFromAttr;
+            private readonly Action<TAttribute, BindingContext> _preBindHook = null;
 
             public ExactBinding(
                 AttributeCloner<TAttribute> cloner, 
                 ParameterDescriptor param, 
-                Func<TAttribute, Task<TUserType>> buildFromAttr)
+                Func<TAttribute, Task<TUserType>> buildFromAttr,
+                Action<TAttribute, BindingContext> preBindHook = null)
                 : base(cloner, param)
             {
                 _buildFromAttr = buildFromAttr;
+                _preBindHook = preBindHook;
             }
 
             protected override async Task<IValueProvider> BuildAsync(TAttribute attrResolved, ValueBindingContext context)
@@ -96,7 +102,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
                 IValueProvider vp = new ConstantValueProvider(obj, typeof(TUserType), invokeString);
                 return vp;
-            }            
+            }
+
+            protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved, BindingContext context)
+            {
+                _preBindHook?.Invoke(attrResolved, context);
+
+                return BuildAsync(attrResolved, context.ValueContext);
+            }
         }
     }
 }

@@ -423,6 +423,7 @@
     <Compile Include="Storage\IStorageAccountExtensions.cs" />
     <Compile Include="Storage\StorageAccountType.cs" />
     <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
+    <Compile Include="Tables\TableFilterFormatter.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />
     <Compile Include="Bindings\ConverterManager.cs" />

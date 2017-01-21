@@ -42,12 +42,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
+        protected abstract Task<IValueProvider> BuildAsync(TAttribute attrResolved, BindingContext context);
+
         protected abstract Task<IValueProvider> BuildAsync(TAttribute attrResolved, ValueBindingContext context);
 
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
             var attrResolved = await Cloner.ResolveFromBindingDataAsync(context);
-            return await BuildAsync(attrResolved, context.ValueContext);
+            return await BuildAsync(attrResolved, context);
         }
 
         public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)

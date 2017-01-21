@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// </summary>
         /// <param name="bindingData">The binding data to convert.</param>
         /// <returns>A collection of path compatible parameters.</returns>
-        public static IReadOnlyDictionary<string, string> ConvertParameters(IReadOnlyDictionary<string, object> bindingData)
+        public static Dictionary<string, string> ConvertParameters(IReadOnlyDictionary<string, object> bindingData)
         {
             if (bindingData == null)
             {

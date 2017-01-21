@@ -69,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return new Wrapper(valueBinder, invokeString);
             }
 
+            protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved, BindingContext context)
+            {
+                return BuildAsync(attrResolved, context.ValueContext);
+            }
+
             private class Wrapper : IValueBinder
             {
                 private readonly IValueBinder _inner;

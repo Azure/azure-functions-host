@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
         }
 
-        // [Table] has some pre-existing behavior where the storage account can be specified outside of the [Queue] attribute. 
+        // [Table] has some pre-existing behavior where the storage account can be specified outside of the [Table] attribute. 
         // The storage account is pulled from the ParameterInfo (which could pull in a [Storage] attribute on the container class)
         // Resolve everything back down to a single attribute so we can use the binding helpers. 
         // This pattern should be rare since other extensions can just keep everything directly on the primary attribute. 
@@ -79,7 +80,24 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             var bindAsyncCollector = bindingFactory.BindToAsyncCollector<TableAttribute, ITableEntity>(original.BuildFromTableAttribute, null, original.CollectAttributeInfo);
 
             var bindToJobject = bindingFactory.BindToExactAsyncType<TableAttribute, JObject>(original.BuildJObject, null, original.CollectAttributeInfo);
-            var bindToJArray = bindingFactory.BindToExactAsyncType<TableAttribute, JArray>(original.BuildJArray, null, original.CollectAttributeInfo);
+
+            BindingTemplate bindingTemplate = null;
+            Func<TableAttribute, ParameterInfo, INameResolver, Task<TableAttribute>> postResolveHook = (attribute, parameterInfo, resolver) =>
+            {
+                if (!string.IsNullOrEmpty(attribute.Filter))
+                {
+                    bindingTemplate = BindingTemplate.FromString(attribute.Filter);
+                }
+                return original.CollectAttributeInfo(attribute, parameterInfo, nameResolver);
+            };
+            Action<TableAttribute, BindingContext> preBindHook = (attribute, context) =>
+            {
+                if (bindingTemplate != null)
+                {
+                    attribute.Filter = TableFilterFormatter.Format(bindingTemplate, context.BindingData);
+                }
+            };
+            var bindToJArray = bindingFactory.BindToExactAsyncType<TableAttribute, JArray>(original.BuildJArray, null, postResolveHook, preBindHook);
 
             // Filter to just support JObject, and use legacy bindings for everything else. 
             // Once we have ITableEntity converters for pocos, we can remove the filter. 
@@ -93,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             return bindingProvider;
         }
-        
+
         private async Task<JObject> BuildJObject(TableAttribute attribute)
         {
             IStorageTable table = GetTable(attribute);

@@ -14,6 +14,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -41,12 +42,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static int _badMessage2Calls;
 
         private static EventWaitHandle _startWaitHandle;
-
         private static EventWaitHandle _functionChainWaitHandle;
-
         private CloudStorageAccount _storageAccount;
-
         private RandomNameResolver _resolver;
+        private static object TestResult;
 
         public AzureStorageEndToEndTests(TestFixture fixture)
         {
@@ -172,6 +171,14 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _badMessage2Calls++;
         }
 
+        [NoAutomaticTrigger]
+        public static void TableWithFilter(
+            [QueueTrigger("test")] Person person,
+            [Table(TableName, Filter = "(Age gt {Age}) and (Location eq '{Location}')")] JArray results)
+        {
+            TestResult = results;
+        }
+
         // Uncomment the Fact attribute to run
         // [Fact(Timeout = 20 * 60 * 1000)]
         public void AzureStorageEndToEndSlow()
@@ -183,6 +190,83 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public void AzureStorageEndToEndFast()
         {
             EndToEndTest(uploadBlobBeforeHostStart: true);
+        }
+
+        [Fact]
+        public async Task TableFilterTest()
+        {
+            // Reinitialize the name resolver to avoid conflicts
+            _resolver = new RandomNameResolver();
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration()
+            {
+                NameResolver = _resolver,
+                TypeLocator = new FakeTypeLocator(
+                    this.GetType(),
+                    typeof(BlobToCustomObjectBinder))
+            };
+
+            // write test entities
+            string testTableName = _resolver.ResolveInString(TableName);
+            CloudTableClient tableClient = _storageAccount.CreateCloudTableClient();
+            CloudTable table = tableClient.GetTableReference(testTableName);
+            await table.CreateIfNotExistsAsync();
+            var operation = new TableBatchOperation();
+            operation.Insert(new Person
+            {
+                PartitionKey = "1",
+                RowKey = "1",
+                Name = "Lary",
+                Age = 20,
+                Location = "Seattle"
+            });
+            operation.Insert(new Person
+            {
+                PartitionKey = "1",
+                RowKey = "2",
+                Name = "Moe",
+                Age = 35,
+                Location = "Seattle"
+            });
+            operation.Insert(new Person
+            {
+                PartitionKey = "1",
+                RowKey = "3",
+                Name = "Curly",
+                Age = 45,
+                Location = "Texas"
+            });
+            operation.Insert(new Person
+            {
+                PartitionKey = "1",
+                RowKey = "4",
+                Name = "Bill",
+                Age = 28,
+                Location = "Tam O'Shanter"
+            });
+            await table.ExecuteBatchAsync(operation);
+
+            JobHost host = new JobHost(hostConfig);
+            var methodInfo = this.GetType().GetMethod("TableWithFilter", BindingFlags.Public | BindingFlags.Static);
+            var input = new Person { Age = 25, Location = "Seattle" };
+            string json = JsonConvert.SerializeObject(input);
+            var arguments = new { person = json };
+            await host.CallAsync(methodInfo, arguments);
+
+            // wait for test results to appear
+            await TestHelpers.Await(() => TestResult != null);
+
+            JArray results = (JArray)TestResult;
+            Assert.Equal(1, results.Count);
+
+            input = new Person { Age = 25, Location = "Tam O'Shanter" };
+            json = JsonConvert.SerializeObject(input);
+            arguments = new { person = json };
+            await host.CallAsync(methodInfo, arguments);
+            await TestHelpers.Await(() => TestResult != null);
+            results = (JArray)TestResult;
+            Assert.Equal(1, results.Count);
+            Assert.Equal("Bill", (string)results[0]["Name"]);
         }
 
         private void EndToEndTest(bool uploadBlobBeforeHostStart)
@@ -377,6 +461,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public string Text { get; set; }
 
             public int Number { get; set; }
+        }
+
+        public class Person : TableEntity
+        {
+            public int Age { get; set; }
+            public string Location { get; set; }
+            public string Name { get; set; }
         }
 
         public class TestFixture : IDisposable

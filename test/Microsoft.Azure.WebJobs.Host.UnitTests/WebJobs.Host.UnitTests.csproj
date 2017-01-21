@@ -225,6 +225,7 @@
     <Compile Include="Tables\TableEntityValueBinderTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
+    <Compile Include="Tables\TableFilterFormatterTests.cs" />
     <Compile Include="Tables\TToEntityPropertyConverterFactoryTests.cs" />
     <Compile Include="Tables\EntityPropertyToTConverterFactoryTests.cs" />
     <Compile Include="TestJobHostContextFactory.cs" />

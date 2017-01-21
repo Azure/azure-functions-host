@@ -28,6 +28,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             var value = _argumentBuilder(attrResolved, context);
             return Task.FromResult(value);
-        }      
+        }
+
+        protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved, BindingContext context)
+        {
+            return BuildAsync(attrResolved, context.ValueContext);
+        }
     }
 }
