@@ -312,9 +312,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.CallAsync("MultipleExports", arguments);
 
             var logs = await TestHelpers.GetFunctionLogsAsync("MultipleExports");
+            var log = logs.Where(l => l.Contains("Exports:"));
 
-            Assert.Equal(3, logs.Count);
-            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=4"));
+            Assert.True(log.First().Contains("Exports: IsObject=true, Count=4"));
         }
 
         [Fact]
@@ -330,8 +330,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var logs = await TestHelpers.GetFunctionLogsAsync("SingleNamedExport");
 
-            Assert.Equal(3, logs.Count);
-            Assert.True(logs[1].Contains("Exports: IsObject=true, Count=1"));
+            var log = logs.Where(l => l.Contains("Exports:"));
+            Assert.True(log.First().Contains("Exports: IsObject=true, Count=1"));
         }
 
         [Theory]
@@ -852,7 +852,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
 
-            Assert.True(logs[1].Contains("Timer function ran!"));
+            Assert.True(logs.Any(l => l.Contains("Timer function ran!")));
         }
 
         [Fact]

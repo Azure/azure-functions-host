@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         static NodeFunctionInvoker()
         {
             // node cwd is edge nuget package (double_edge.js)
-            _functionTemplate = @"return require('../Content/Script/functions.js').createFunction(require('{0}'));";
+            _functionTemplate = @"return require('../Content/Script/functions.js').createFunction('{0}');";
             _clearRequireCacheScript = @"return require('../Content/Script/functions.js').clearRequireCache;";
             _globalInitializationScript = @"return require('../Content/Script/functions.js').globalInitialization;";
         }
@@ -120,12 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
 
+            TraceWriter.Verbose("Executing Edge.Func.");
             object functionResult = await ScriptFunc(scriptExecutionContext);
+            TraceWriter.Verbose("Edge.Func completed.");
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
         }
 
-        private static void EnsureInitialized()
+        private void EnsureInitialized()
         {
             if (!_initialized)
             {
@@ -133,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     if (!_initialized)
                     {
+                        TraceWriter.Verbose("Initializing node environment.");
                         Initialize();
                         _initialized = true;
                     }
@@ -160,6 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     DataType = inputBinding.Metadata.DataType ?? DataType.String,
                     Cardinality = inputBinding.Metadata.Cardinality ?? Cardinality.One
                 };
+                TraceWriter.Verbose($"Processing {inputBinding.Metadata.Type} binding {inputBinding.Metadata.Name}.");
                 await inputBinding.BindAsync(bindingContext);
 
                 // Perform any JSON to object conversions if the
@@ -278,9 +282,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     try
                     {
+                        TraceWriter trace = logData.ContainsKey("sys") ? TraceWriter: traceWriter;
                         TraceLevel level = (TraceLevel)logData["lvl"];
                         var evt = new TraceEvent(level, message);
-                        traceWriter.Trace(evt);
+                        trace.Trace(evt);
                     }
                     catch (ObjectDisposedException)
                     {

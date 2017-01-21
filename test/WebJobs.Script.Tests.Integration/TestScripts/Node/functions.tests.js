@@ -230,7 +230,7 @@ describe('functions', () => {
             var func = functions.createFunction((context) => {
                 context.done();
                 context.done();
-                expect(logs[0].msg).to.match(/Error: 'done' has already been called.*/);
+                expect(logs.pop().msg).to.match(/Error: 'done' has already been called.*/);
             });
 
             func(context, () => {});
@@ -244,7 +244,7 @@ describe('functions', () => {
 
             func(context, () => {
                 setImmediate(() => {
-                    expect(logs[0].msg).to.match(/Error: Choose either to return a promise or call 'done'.*/);
+                    expect(logs.pop().msg).to.match(/Error: Choose either to return a promise or call 'done'.*/);
                     done();
                 });
             });
@@ -262,11 +262,13 @@ describe('functions', () => {
 
             func(context, () => {
                 expect(logs).to.eql([
+                    { lvl: 4, msg: "Executing exported user function.", sys: true},
                     { lvl: 3, msg: 'default' },
                     { lvl: 1, msg: 'error' },
                     { lvl: 2, msg: 'warn' },
                     { lvl: 3, msg: 'info' },
                     { lvl: 4, msg: 'verbose' },
+                    { lvl: 4, msg: "context.done called.", sys: true },
                 ])
                 done();
             });
