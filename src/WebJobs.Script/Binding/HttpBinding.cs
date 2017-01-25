@@ -302,7 +302,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         break;
                     case "content-disposition":
-                        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(header.Value.ToString());
+                        ContentDispositionHeaderValue contentDisposition = null;
+                        if (ContentDispositionHeaderValue.TryParse(header.Value.ToString(), out contentDisposition))
+                        {
+                            response.Content.Headers.ContentDisposition = contentDisposition;
+                        }
                         break;
                     case "content-encoding":
                     case "content-language":

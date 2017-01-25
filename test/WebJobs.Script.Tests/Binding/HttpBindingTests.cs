@@ -42,6 +42,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void AddResponseHeader_ContentDisposition_AddsExpectedHeader()
+        {
+            HttpResponseMessage response = new HttpResponseMessage()
+            {
+                Content = new StringContent("Test")
+            };
+            var cd = "attachment; filename=\"test.txt\"";
+            var header = new KeyValuePair<string, object>("content-disposition", cd);
+            HttpBinding.AddResponseHeader(response, header);
+            Assert.Equal(cd, response.Content.Headers.ContentDisposition.ToString());
+        }
+
+        [Fact]
         public void ParseResponseObject_ReturnsExpectedResult()
         {
             IDictionary<string, object> inputHeaders = new Dictionary<string, object>()
