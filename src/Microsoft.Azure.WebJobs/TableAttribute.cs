@@ -91,6 +91,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Allow arbitrary table filter. RowKey should be null. 
         /// </summary>
+        [AutoResolve]
         public string Filter
         {
             get; set;

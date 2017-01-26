@@ -67,11 +67,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 IValueProvider vp = new ConstantValueProvider(obj, _parameter.ParameterType, invokeString);
                 return vp;
             }
-
-            protected override Task<IValueProvider> BuildAsync(TAttribute attrResolved, BindingContext context)
-            {
-                return BuildAsync(attrResolved, context.ValueContext);
-            }
         }
     }
 }
