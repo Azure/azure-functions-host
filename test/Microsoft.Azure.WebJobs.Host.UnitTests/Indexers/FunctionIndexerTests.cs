@@ -3,17 +3,19 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Moq;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 {
@@ -112,6 +114,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             // Act & Assert
             product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnTask"),
                 index, CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        [Fact]
+        public async Task IndexMethod_IfMethodReturnsAsyncVoid_Throws()
+        {
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            // Arrange
+            IFunctionIndexCollector index = CreateStubFunctionIndex();
+            FunctionIndexer product = CreateProductUnderTest(traceWriter: traceWriter);
+
+            // Act & Assert
+            await product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnAsyncVoid"), index, CancellationToken.None);
+
+            var warning = traceWriter.Traces.First(p => p.Level == TraceLevel.Warning);
+            Assert.Equal("Function 'ReturnAsyncVoid' is async but does not return a Task. Your function may not run correctly.", warning.Message);
         }
 
         [Fact]
@@ -268,9 +286,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             return new Mock<IFunctionIndexCollector>(MockBehavior.Strict).Object;
         }
 
-        private static FunctionIndexer CreateProductUnderTest()
+        private static FunctionIndexer CreateProductUnderTest(TraceWriter traceWriter = null)
         {
-            return FunctionIndexerFactory.Create();
+            return FunctionIndexerFactory.Create(traceWriter: traceWriter);
         }
 
         private static IFunctionIndexCollector CreateStubFunctionIndex()
@@ -347,6 +365,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public static Task ReturnTask()
         {
             throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static async void ReturnAsyncVoid()
+        {
+            await Task.FromResult(0);
         }
     }
 }

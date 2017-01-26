@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal static class FunctionIndexerFactory
     {
-        public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null)
+        public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null, TraceWriter traceWriter = null)
         {
             Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
             StorageClientFactory clientFactory = new StorageClientFactory();
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
-            TestTraceWriter logger = new TestTraceWriter(TraceLevel.Verbose);
+            TraceWriter logger = traceWriter ?? new TestTraceWriter(TraceLevel.Verbose);
             SingletonManager singletonManager = new SingletonManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
             var blobsConfiguration = new JobHostBlobsConfiguration();
@@ -51,18 +51,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
 
-            TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
 
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, trace);
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger);
 
             if (extensionRegistry == null)
             {
                 extensionRegistry = new DefaultExtensionRegistry();
             }
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager(), trace);
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager(), logger);
         }
     }
 }

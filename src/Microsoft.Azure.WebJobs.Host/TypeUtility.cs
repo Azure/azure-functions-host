@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host
@@ -73,6 +74,30 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             return null;
+        }
+
+        public static bool IsAsync(MethodInfo methodInfo)
+        {
+            if (methodInfo == null)
+            {
+                throw new ArgumentNullException(nameof(methodInfo));
+            }
+
+            var stateMachineAttribute = methodInfo.GetCustomAttribute<AsyncStateMachineAttribute>();
+            if (stateMachineAttribute != null)
+            {
+                var stateMachineType = stateMachineAttribute.StateMachineType;
+                if (stateMachineType != null)
+                {
+                    return stateMachineType.GetCustomAttribute<CompilerGeneratedAttribute>() != null;
+                }
+            }
+            return false;
+        }
+
+        public static bool IsAsyncVoid(MethodInfo methodInfo)
+        {
+            return IsAsync(methodInfo) && (methodInfo.ReturnType == typeof(void));
         }
     }
 }

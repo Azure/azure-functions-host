@@ -2,12 +2,36 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class TypeUtilityTests
     {
+        [Theory]
+        [InlineData("VoidMethod", false)]
+        [InlineData("AsyncVoidMethod", true)]
+        [InlineData("AsyncTaskMethod", true)]
+        public void IsAsync_ReturnsExpectedResult(string methodName, bool expectedResult)
+        {
+            var method = typeof(TypeUtilityTests).GetMethod(methodName, BindingFlags.Public|BindingFlags.Static);
+            bool result = TypeUtility.IsAsync(method);
+            Assert.Equal(result, expectedResult);
+        }
+
+        [Theory]
+        [InlineData("VoidMethod", false)]
+        [InlineData("AsyncVoidMethod", true)]
+        [InlineData("AsyncTaskMethod", false)]
+        public void IsAsyncVoid_ReturnsExpectedResult(string methodName, bool expectedResult)
+        {
+            var method = typeof(TypeUtilityTests).GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+            bool result = TypeUtility.IsAsyncVoid(method);
+            Assert.Equal(result, expectedResult);
+        }
+
         [Theory]
         [InlineData(typeof(TypeUtilityTests), false)]
         [InlineData(typeof(string), false)]
@@ -27,5 +51,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Assert.Equal(expected, TypeUtility.GetFriendlyName(type));
         }
+
+        public static void VoidMethod() { }
+        public static async void AsyncVoidMethod() { await Task.FromResult(0); }
+        public static async Task AsyncTaskMethod() { await Task.FromResult(0); }
     }
 }
