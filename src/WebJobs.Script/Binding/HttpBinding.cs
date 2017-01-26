@@ -58,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 try
                 {
-                    // attempt to read the content as json
-                    content = JObject.Parse(stringContent);
+                    // attempt to read the content as JObject/JArray
+                    content = JsonConvert.DeserializeObject(stringContent);
                 }
                 catch (JsonException)
                 {
