@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var hostMock = new Mock<ScriptHost>(config);
+            var hostMock = new Mock<ScriptHost>(config, null);
             var factoryMock = new Mock<IScriptHostFactory>();
             factoryMock.Setup(f => f.Create(_settingsManager, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);

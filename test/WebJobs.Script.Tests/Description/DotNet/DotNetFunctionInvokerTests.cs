@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
 
-            var host = new Mock<ScriptHost>(scriptHostConfiguration);
+            var host = new Mock<ScriptHost>(scriptHostConfiguration, null);
             host.SetupGet(h => h.IsPrimary).Returns(true);
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
