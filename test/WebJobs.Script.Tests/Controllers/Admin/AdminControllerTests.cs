@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testFunctions = new Collection<FunctionDescriptor>();
 
             var config = new ScriptHostConfiguration();
-            hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { config });
+            hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { config, null });
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
             WebHostSettings settings = new WebHostSettings();

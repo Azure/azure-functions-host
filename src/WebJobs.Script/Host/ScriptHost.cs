@@ -49,17 +49,24 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static ScriptSettingsManager _settingsManager;
+        private ScriptSettingsManager _settingsManager;
 
-        protected ScriptHost(ScriptHostConfiguration scriptConfig)
+        protected ScriptHost(ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
             : base(scriptConfig.HostConfig)
         {
+            scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
+            if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
+            {
+                scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
+            }
             ScriptConfig = scriptConfig;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 #if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
 #endif
             TraceWriter = ScriptConfig.TraceWriter;
+
+            _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
         }
 
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -474,23 +481,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static ScriptHost Create(ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
         {
-            if (scriptConfig == null)
-            {
-                scriptConfig = new ScriptHostConfiguration();
-            }
+            scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
 
-            _settingsManager = settingsManager;
-            if (settingsManager == null)
-            {
-                _settingsManager = ScriptSettingsManager.Instance;
-            }
-
-            if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
-            {
-                scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
-            }
-
-            ScriptHost scriptHost = new ScriptHost(scriptConfig);
+            ScriptHost scriptHost = new ScriptHost(scriptConfig, settingsManager);
             try
             {
                 scriptHost.Initialize();
@@ -549,7 +542,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return bindingProviders;
         }
 
-        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata)
+        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, ScriptSettingsManager settingsManager)
         {
             FunctionMetadata functionMetadata = new FunctionMetadata
             {
@@ -577,8 +570,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function can be disabled at the trigger or function level
-            if (IsDisabled(triggerDisabledValue) ||
-                IsDisabled((JValue)configMetadata["disabled"]))
+            if (IsDisabled(triggerDisabledValue, settingsManager) || 
+                IsDisabled((JValue)configMetadata["disabled"], settingsManager))
             {
                 functionMetadata.IsDisabled = true;
             }
@@ -593,9 +586,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        public static Collection<FunctionMetadata> ReadFunctionMetadata(ScriptHostConfiguration config, TraceWriter traceWriter, Dictionary<string, Collection<string>> functionErrors)
+        public static Collection<FunctionMetadata> ReadFunctionMetadata(ScriptHostConfiguration config, TraceWriter traceWriter, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null)
         {
             var functions = new Collection<FunctionMetadata>();
+            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
             foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
             {
@@ -629,7 +623,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     string functionError = null;
                     FunctionMetadata functionMetadata = null;
                     var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, scriptDir, out functionMetadata, out functionError))
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, scriptDir, settingsManager, out functionMetadata, out functionError))
                     {
                         // for functions in error, log the error and don't
                         // add to the functions collection
@@ -652,12 +646,12 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions,
-            TraceWriter traceWriter, string scriptDirectory, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
+            TraceWriter traceWriter, string scriptDirectory, ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
 
             error = null;
-            functionMetadata = ParseFunctionMetadata(functionName, functionConfig);
+            functionMetadata = ParseFunctionMetadata(functionName, functionConfig, settingsManager);
 
             if (functionMetadata.IsExcluded)
             {
@@ -839,7 +833,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors()
         {
-            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, FunctionErrors);
+            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, FunctionErrors, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
@@ -1155,7 +1149,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Empty;
         }
 
-        private static bool IsDisabled(JToken isDisabledValue)
+        private static bool IsDisabled(JToken isDisabledValue, ScriptSettingsManager settingsManager)
         {
             if (isDisabledValue != null)
             {
@@ -1166,7 +1160,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     string settingName = (string)isDisabledValue;
-                    string value = _settingsManager.GetSetting(settingName);
+                    string value = settingsManager.GetSetting(settingName);
                     if (!string.IsNullOrEmpty(value) &&
                         (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
                          string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))

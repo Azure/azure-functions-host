@@ -853,7 +853,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileSystem.AddFile(@"c:\functions\test3\run.csx", new MockFileData(string.Empty));
             fileSystem.AddFile(@"c:\functions\test4\run.csx", new MockFileData(string.Empty));
             fileSystem.AddFile(@"c:\functions\test5\run.csx", new MockFileData(string.Empty));
-            bool result = ScriptHost.TryParseFunctionMetadata("test", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test", out functionMetadata, out functionError, fileSystem);
+            bool result = ScriptHost.TryParseFunctionMetadata("test", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
             Assert.True(result);
             Assert.NotNull(functionMetadata);
             Assert.Null(functionError);
@@ -872,7 +872,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             functionMetadata = null;
             functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test2", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test2", out functionMetadata, out functionError, fileSystem);
+            result = ScriptHost.TryParseFunctionMetadata("test2", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test2", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
             Assert.True(result);
             Assert.NotNull(functionMetadata);
             Assert.Null(functionError);
@@ -890,7 +890,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             functionMetadata = null;
             functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test3", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test3", out functionMetadata, out functionError, fileSystem);
+            result = ScriptHost.TryParseFunctionMetadata("test3", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test3", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
             Assert.True(result);
             Assert.NotNull(functionMetadata);
             Assert.Null(functionError);
@@ -908,7 +908,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             functionMetadata = null;
             functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test4", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test4", out functionMetadata, out functionError, fileSystem);
+            result = ScriptHost.TryParseFunctionMetadata("test4", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test4", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
             Assert.False(result);
             Assert.NotNull(functionMetadata);
             Assert.True(functionError.StartsWith("The route specified conflicts with the route defined by function"));
@@ -924,7 +924,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             functionMetadata = null;
             functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test5", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test5", out functionMetadata, out functionError, fileSystem);
+            result = ScriptHost.TryParseFunctionMetadata("test5", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test5", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
             Assert.False(result);
             Assert.NotNull(functionMetadata);
             Assert.Equal(3, mappedHttpFunctions.Count);
@@ -941,14 +941,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture
         {
-            private readonly ScriptSettingsManager _settingsManager;
-
             public TestFixture()
             {
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
-                _settingsManager = ScriptSettingsManager.Instance;
-                Host = ScriptHost.Create(config, _settingsManager);
+                Host = ScriptHost.Create(config);
             }
 
             public ScriptHost Host { get; private set; }
