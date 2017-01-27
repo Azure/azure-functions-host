@@ -26,7 +26,7 @@
             "direction": "in",
             "tableName": "test",
             "partitionKey": "AAA",
-            "filter": "(Region eq '{Region}') and (Status eq 1)"
+            "filter": "(Region eq '{Region}') and (Status eq {Status})"
         }
     ]
 }

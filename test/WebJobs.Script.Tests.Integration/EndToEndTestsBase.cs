@@ -40,9 +40,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestHelpers.ClearFunctionLogs("TableIn");
 
+            var input = new JObject
+            {
+                { "Region", "West" },
+                { "Status", 1 }
+            };
             var args = new Dictionary<string, object>()
             {
-                { "input", "{ \"Region\": \"West\" }" }
+                { "input", input.ToString() }
             };
             await Fixture.Host.CallAsync("TableIn", args);
 
@@ -69,6 +74,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, query.Count);
             Assert.Equal("003", (string)query[0]["RowKey"]);
             Assert.Equal("004", (string)query[1]["RowKey"]);
+
+            // verify input validation
+            input = new JObject
+            {
+                { "Region", "West" },
+                { "Status", "1 or Status neq 1" }
+            };
+            args = new Dictionary<string, object>()
+            {
+                { "input", input.ToString() }
+            };
+            var exception = await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
+            {
+                await Fixture.Host.CallAsync("TableIn", args);
+            });
+            Assert.Equal("An invalid parameter value was specified for filter parameter 'Status'.", exception.InnerException.Message);
         }
 
         protected async Task TableOutputTest()
