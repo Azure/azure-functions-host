@@ -154,35 +154,41 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 environmentVariables[outputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
             }
 
-            Type triggerParameterType = input.GetType();
-            if (triggerParameterType == typeof(HttpRequestMessage))
+            var request = input as HttpRequestMessage;
+            if (request != null)
             {
-                HttpRequestMessage request = (HttpRequestMessage)input;
-                environmentVariables["REQ_METHOD"] = request.Method.ToString();
+                InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
+            }
+        }
 
-                Dictionary<string, string> queryParams = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
-                foreach (var queryParam in queryParams)
-                {
-                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
-                    environmentVariables[varName] = queryParam.Value;
-                }
+        internal static void InitializeHttpRequestEnvironmentVariables(Dictionary<string, string> environmentVariables, HttpRequestMessage request)
+        {
+            environmentVariables["REQ_ORIGINAL_URL"] = request.RequestUri.ToString();
+            environmentVariables["REQ_METHOD"] = request.Method.ToString();
+            environmentVariables["REQ_QUERY"] = request.RequestUri.Query;
 
-                var headers = request.GetRawHeaders();
-                foreach (var header in headers)
-                {
-                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
-                    environmentVariables[varName] = header.Value;
-                }
+            var queryParams = request.GetQueryParameterDictionary();
+            foreach (var queryParam in queryParams)
+            {
+                string varName = string.Format(CultureInfo.InvariantCulture, "REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
+                environmentVariables[varName] = queryParam.Value;
+            }
 
-                object value = null;
-                if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            var headers = request.GetRawHeaders();
+            foreach (var header in headers)
+            {
+                string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
+                environmentVariables[varName] = header.Value;
+            }
+
+            object value = null;
+            if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            {
+                Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
+                foreach (var pair in routeBindingData)
                 {
-                    Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
-                    foreach (var pair in routeBindingData)
-                    {
-                        string varName = string.Format(CultureInfo.InvariantCulture, "REQ_PARAMS_{0}", pair.Key.ToUpperInvariant());
-                        environmentVariables[varName] = pair.Value.ToString();
-                    }
+                    string varName = string.Format(CultureInfo.InvariantCulture, "REQ_PARAMS_{0}", pair.Key.ToUpperInvariant());
+                    environmentVariables[varName] = pair.Value.ToString();
                 }
             }
         }

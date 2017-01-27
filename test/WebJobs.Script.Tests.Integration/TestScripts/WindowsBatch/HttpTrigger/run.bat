@@ -1,5 +1,10 @@
 echo OFF
 
+IF DEFINED req_query_details (
+	echo URL = "%req_original_url%" >> %res%
+	echo Query = "%req_query%" >> %res%
+)
+
 IF DEFINED req_headers_test-header (
 	echo test-header = %req_headers_test-header% >> %res%
 )

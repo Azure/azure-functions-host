@@ -9,6 +9,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class HttpRequestMessageExtensions
     {
         [Fact]
+        public void GetQueryParameterDictionary_ReturnsExpectedParameters()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com/test?a=1&b=2&b=3&c=4&c=5&d=6");
+            var parameters = request.GetQueryParameterDictionary();
+            Assert.Equal(4, parameters.Count);
+            Assert.Equal("1", parameters["a"]);
+            Assert.Equal("3", parameters["b"]);
+            Assert.Equal("5", parameters["c"]);
+            Assert.Equal("6", parameters["d"]);
+        }
+
+        [Fact]
         public void GetRawHeaders_ReturnsExpectedHeaders()
         {
             // No headers

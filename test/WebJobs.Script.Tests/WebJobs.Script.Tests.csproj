@@ -440,6 +440,7 @@
     <Compile Include="Binding\HttpBindingTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
+    <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriterTests.cs" />

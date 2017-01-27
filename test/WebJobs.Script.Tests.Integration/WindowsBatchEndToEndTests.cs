@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string testData = Guid.NewGuid().ToString();
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?value={0}", testData)),
+                RequestUri = new Uri($"http://localhost/api/httptrigger?value={testData}&a=one&a=two&b=three&details=1"),
                 Method = HttpMethod.Get
             };
             request.SetConfiguration(Fixture.RequestConfiguration);
@@ -88,8 +88,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string body = await response.Content.ReadAsStringAsync();
             string[] lines = body.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-            Assert.Equal("test-header = Test Request Header", lines[0].Trim());
-            Assert.Equal(string.Format("Value = {0}", testData), lines[1].Trim());
+            Assert.Equal($"URL = \"http://localhost/api/httptrigger?value={testData}&a=one&a=two&b=three&details=1\"", lines[0].Trim());
+            Assert.Equal($"Query = \"?value={testData}&a=one&a=two&b=three&details=1\"", lines[1].Trim());
+            Assert.Equal("test-header = Test Request Header", lines[2].Trim());
+            Assert.Equal($"Value = {testData}", lines[3].Trim());
 
             request.RequestUri = new Uri(string.Format("http://localhost/api/httptrigger", testData));
             request.Headers.Clear();
