@@ -434,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, object> requestObject = new Dictionary<string, object>();
             requestObject["originalUrl"] = request.RequestUri.ToString();
             requestObject["method"] = request.Method.ToString().ToUpperInvariant();
-            requestObject["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+            requestObject["query"] = request.GetQueryParameterDictionary();
 
             // since HTTP headers are case insensitive, we lower-case the keys
             // as does Node.js request object

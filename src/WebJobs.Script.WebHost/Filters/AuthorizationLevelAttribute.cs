@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             }
             else
             {
-                var queryParameters = request.GetQueryNameValuePairs().ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+                var queryParameters = request.GetQueryParameterDictionary();
                 queryParameters.TryGetValue("code", out keyValue);
             }
 
