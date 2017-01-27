@@ -38,13 +38,28 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             var convertedBindingData = BindingDataPathHelper.ConvertParameters(bindingData);
             foreach (var parameterGroup in parameterGroups)
             {
+                // perform any OData specific formatting on the values
+                string parameterName = parameterGroup.Key;
+                object originalValue;
+                if (bindingData.TryGetValue(parameterName, out originalValue))
+                {
+                    if (originalValue is DateTime)
+                    {
+                        // OData DateTime literals should be ISO 8601 formatted (e.g. 2009-03-18T04:25:03Z)
+                        convertedBindingData[parameterName] = ((DateTime)originalValue).ToUniversalTime().ToString("o");
+                    }
+                    else if (originalValue is DateTimeOffset)
+                    {
+                        convertedBindingData[parameterName] = ((DateTimeOffset)originalValue).UtcDateTime.ToString("o");
+                    }
+                }
+
                 // to classify as a string literal, ALL occurrences in the template
                 // must be string literals (e.g. of the form '{p}')
                 // note that this will also capture OData expressions of the form
                 // datetime'{p}', guid'{p}', X'{p}' which is fine, because single quotes
                 // aren't valid for those values anyways.
                 bool isStringLiteral = true;
-                string parameterName = parameterGroup.Key;
                 string stringParameterFormat = $"'{{{parameterName}}}'";
                 int count = 0, idx = 0; 
                 while (idx >= 0 && idx < template.Pattern.Length && count++ < parameterGroup.Count())
@@ -69,21 +84,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                     else if (!TryValidateNonStringLiteral(value))
                     {
                         throw new InvalidOperationException($"An invalid parameter value was specified for filter parameter '{parameterName}'.");
-                    }
-                }
-
-                // perform any OData specific formatting on the values
-                object originalValue;
-                if (bindingData.TryGetValue(parameterName, out originalValue))
-                {
-                    if (originalValue is DateTime)
-                    {
-                        // OData DateTime literals should be ISO 8601 formatted (e.g. 2009-03-18T04:25:03Z)
-                        convertedBindingData[parameterName] = ((DateTime)originalValue).ToUniversalTime().ToString("o");
-                    }
-                    else if (originalValue is DateTimeOffset)
-                    {
-                        convertedBindingData[parameterName] = ((DateTimeOffset)originalValue).UtcDateTime.ToString("o");
                     }
                 }
             }
