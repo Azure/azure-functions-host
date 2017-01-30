@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -17,27 +18,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             switch (level)
             {
                 case TraceLevel.Verbose:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Info:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Warning:
-                    FunctionsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Error:
                     if (string.IsNullOrEmpty(details) && exception != null)
                     {
                         details = exception.ToString();
                     }
-                    FunctionsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
             }
         }
 
         public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
         {
-            FunctionsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
+            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
@@ -86,49 +87,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     WriteEvent(57909, executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
                 }
             }
+        }
 
-            [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventVerbose(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
+        [EventSource(Guid = "a7044dd6-c8ef-4980-858c-942d972b6250")]
+        [SuppressMessage("Microsoft.StyleCop.CSharp.NamingRules", "SA1306:FieldNamesMustBeginWithLowerCaseLetter", Justification = "Need to use Pascal Case for MDS column names")]
+        public class FunctionsSystemLogsEventSource : EventSource
+        {
+            internal static readonly FunctionsSystemLogsEventSource Instance = new FunctionsSystemLogsEventSource();
+
+            [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational, Version = 1)]
+            public void RaiseFunctionsEventVerbose(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65520, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
+                    WriteEvent(65520, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp);
                 }
             }
 
-            [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventInfo(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
+            [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 1)]
+            public void RaiseFunctionsEventInfo(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65521, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
+                    WriteEvent(65521, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp);
                 }
             }
 
-            [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventWarning(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
+            [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational, Version = 1)]
+            public void RaiseFunctionsEventWarning(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65522, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
+                    WriteEvent(65522, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp);
                 }
             }
 
-            [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational)]
-            public void RaiseFunctionsEventError(string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string hostVersion, string eventTimestamp)
+            [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational, Version = 1)]
+            public void RaiseFunctionsEventError(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65523, subscriptionId, appName, functionName, eventName, source, details, summary, hostVersion, eventTimestamp);
+                    WriteEvent(65523, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp);
                 }
             }
 
-            [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
-            public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, string hostVersion, string eventTimestamp)
+            [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 1)]
+            public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65524, subscriptionId, appName, eventName, average, minimum, maximum, count, hostVersion, eventTimestamp);
+                    WriteEvent(65524, SubscriptionId, AppName, EventName, Average, Minimum, Maximum, Count, HostVersion, EventTimestamp);
                 }
             }
         }
