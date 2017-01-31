@@ -310,12 +310,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // Derived policies can enforce formatting / escaping when they do injection. 
         private class ResolutionPolicy
         {
-            public virtual string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+            public string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
             {
                 if (bindingData == null)
                 {
                     return template.Pattern;
                 }
+                return this.TemplateBindWorker(template, bindingData);
+            }
+
+            protected virtual string TemplateBindWorker(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+            {                
                 return template.Bind(bindingData);
             }
 
@@ -336,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // Table.Filter's { } resolution does OData escaping. 
         private class TableFilterResolutionPolicy : ResolutionPolicy
         {
-            public override string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+            protected override string TemplateBindWorker(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
             {
                 var filter = TableFilterFormatter.Format(template, bindingData);
                 return filter;
