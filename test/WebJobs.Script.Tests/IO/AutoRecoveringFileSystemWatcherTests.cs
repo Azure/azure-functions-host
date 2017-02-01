@@ -83,8 +83,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                 int expectedTracesBeforeRecovery = (expectedNumberOfAttempts * 2) - 1;
                 // Before + recovery trace
                 int expectedTracesAfterRecovery = expectedTracesBeforeRecovery + 1;
+                if (!isFailureScenario)
+                {
+                    expectedTracesAfterRecovery++;
+                }
 
-                await TestHelpers.Await(() => traceWriter.Traces.Count == expectedTracesBeforeRecovery, pollingInterval: 500);
+                await TestHelpers.Await(() => 
+                {
+                    return traceWriter.Traces.Count == expectedTracesBeforeRecovery;
+                }, pollingInterval: 500);
 
                 if (isFailureScenario)
                 {
@@ -95,14 +102,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     Directory.CreateDirectory(directory.Path);
                 }
 
-                await TestHelpers.Await(() => traceWriter.Traces.Count == expectedTracesAfterRecovery, pollingInterval: 500);
+                await TestHelpers.Await(() =>
+                {
+                    return traceWriter.Traces.Count == expectedTracesAfterRecovery;
+                }, pollingInterval: 500);
 
                 TraceEvent failureEvent = traceWriter.Traces.First();
                 var retryEvents = traceWriter.Traces.Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
 
                 Assert.Equal(TraceLevel.Warning, failureEvent.Level);
                 Assert.Contains("Failure detected", failureEvent.Message);
-                Assert.Equal(expectedNumberOfAttempts - 1, retryEvents.Count);
+                int expectedRetryEvents = expectedNumberOfAttempts;
+                if (isFailureScenario)
+                {
+                    expectedRetryEvents--;
+                }
+                Assert.Equal(expectedRetryEvents, retryEvents.Count);
 
                 // Validate that our the events happened with the expected intervals
                 DateTime previoustTimeStamp = failureEvent.Timestamp;

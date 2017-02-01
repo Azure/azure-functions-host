@@ -131,23 +131,16 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
         private async Task Recover(int attempt = 1)
         {
-            // Exponential backoff on retries
-            long wait = Convert.ToInt64((Math.Pow(2, attempt) - 1) / 2);
-
-            // maximum wait of 5 minutes
-            wait = Math.Min(wait, 300);
-
-            if (wait > 0)
-            {
-                Trace($"Next recovery attempt in {wait} seconds...", TraceLevel.Warning);
-                await Task.Delay(TimeSpan.FromSeconds(wait)).ConfigureAwait(false);
-            }
+            // Exponential backoff on retries with
+            // a maximum wait of 5 minutes
+            await Utility.DelayWithBackoffAsync(attempt, _cancellationToken, max: TimeSpan.FromMinutes(5));
 
             // Check if cancellation was requested while we were waiting
             _cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
+                Trace($"Attempting to recover...", TraceLevel.Warning);
                 ReleaseCurrentFileWatcher();
                 InitializeWatcher();
             }

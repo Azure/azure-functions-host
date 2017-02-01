@@ -148,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 RootScriptPath = functionTestDir,
                 FileLoggingMode = FileLoggingMode.Always,
-                RestartInterval = TimeSpan.FromMilliseconds(500)
             };
 
             ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);
@@ -357,7 +356,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     "Info Host lock lease acquired by instance ID '(.+)'",
                     "Info Function 'Excluded' is marked as excluded",
                     @"Info Generating ([0-9]+) job function\(s\)",
-                    @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, Debug=False\)",
+                    @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, Debug=False, Attempt=0\)",
                     "Info WebJobs.Indexing Found the following functions:",
                     "Info The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
