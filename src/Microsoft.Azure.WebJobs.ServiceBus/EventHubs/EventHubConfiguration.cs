@@ -386,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
 
             // register our binding provider
-            var ruleOutput = bf.BindToAsyncCollector<EventHubAttribute, EventData>(BuildFromAttribute);
+            var ruleOutput = bf.BindToCollector<EventHubAttribute, EventData>(BuildFromAttribute);
             extensions.RegisterBindingRules<EventHubAttribute>(ruleOutput);
         }
 

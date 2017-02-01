@@ -315,7 +315,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Null(cm.GetConverter<char, int, Attribute>());
         }
 
-
         // Test converter using concrete types. 
         class TypeConverterWithConcreteTypes
             : IConverter<string, int>

@@ -115,9 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         // Track items that are queued. 
         public List<object> _items;
         public string _prefix; // from attribute, to test attribute automatic resolution. 
-
-        public Func<FakeQueueAttribute, Type, bool> Filter;
-
+                
         public FakeQueueTypedClient()
         {
             _items = new List<object>();
@@ -133,18 +131,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // Don't add any converters. 
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
             var bf = context.Config.BindingFactory;
-            var ruleOutput = bf.BindToGenericAsyncCollector<FakeQueueAttribute>(Builder, this.Filter);
 
+            var ruleOutput = bf.BindToCollector<FakeQueueAttribute, OpenType>(typeof(Builder<>), this);
             extensions.RegisterBindingRules<FakeQueueAttribute>(ruleOutput);
         }
 
-        private object Builder(FakeQueueAttribute attrResolved, Type typeMessage)
+        public class Builder<T> : IConverter<FakeQueueAttribute, IAsyncCollector<T>>
         {
-            var client = new FakeQueueTypedClient(this, attrResolved.Prefix);
+            private readonly FakeQueueTypedClient _client;
+            public Builder(FakeQueueTypedClient client)
+            {
+                _client = client;
+            }
 
-            var t = typeof(TypedAsyncCollector<>).MakeGenericType(typeMessage);
-            var obj = Activator.CreateInstance(t, client);
-            return obj;
+            public IAsyncCollector<T> Convert(FakeQueueAttribute attrResolved)
+            {
+                var client = new FakeQueueTypedClient(_client, attrResolved.Prefix);
+                return new TypedAsyncCollector<T>(client);
+            }
         }
 
         // Collector gets dynamically instantiated to match the 'core message' type of the user's parameter. 

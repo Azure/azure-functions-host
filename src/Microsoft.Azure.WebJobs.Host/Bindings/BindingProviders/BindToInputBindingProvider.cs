@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // General rule for binding to input parameters.
     // Can invoke Converter manager. 
     // Can leverage OpenTypes for pattern matchers.
-    internal class BindToInputBindingProvider<TAttribute, TType> : FluidBindingProvider<TAttribute>, IBindingProvider
+    internal class BindToInputBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;

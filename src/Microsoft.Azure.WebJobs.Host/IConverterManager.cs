@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs
@@ -58,6 +59,8 @@ namespace Microsoft.Azure.WebJobs
     /// </summary>
     public static class IConverterManagerExtensions
     {
+        private static readonly MethodInfo ConverterMethod = typeof(IConverterManagerExtensions).GetMethod("HasConverterWorker", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+
         /// <summary>
         /// Register a new converter function that applies for all attributes. 
         /// If TSource is object, then this converter is applied to any attempt to convert to TDestination. 
@@ -141,6 +144,22 @@ namespace Microsoft.Azure.WebJobs
                 var converter = patternMatcher.TryGetConverterFunc(typeSource, typeDest);
                 return converter;
             });
+        }
+
+        private static bool HasConverterWorker<TAttribute, TSrc, TDest>(IConverterManager converterManager)
+               where TAttribute : Attribute
+        {
+            var func = converterManager.GetConverter<TSrc, TDest, TAttribute>();
+            return func != null;
+        }
+
+        // Provide late-bound access to check if a conversion exists. 
+        internal static bool HasConverter<TAttribute>(this IConverterManager converterManager, Type typeSource, Type typeDest)
+            where TAttribute : Attribute
+        {
+            var method = ConverterMethod.MakeGenericMethod(typeof(TAttribute), typeSource, typeDest);
+            var result = method.Invoke(null, new object[] { converterManager });
+            return (bool)result;
         }
     }
 }

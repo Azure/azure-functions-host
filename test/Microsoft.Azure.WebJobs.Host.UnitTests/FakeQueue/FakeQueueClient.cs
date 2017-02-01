@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var bf = new BindingFactory(nameResolver, cm);
 
             // Binds [FakeQueue] --> IAsyncCollector<FakeQueueData>
-            var ruleOutput = bf.BindToAsyncCollector<FakeQueueAttribute, FakeQueueData>(BuildFromAttr);
+            var ruleOutput = bf.BindToCollector<FakeQueueAttribute, FakeQueueData>(BuildFromAttr);
 
             // Binds [FakeQueue] --> FakeQueueClient            
             var ruleClient = bf.BindToInput<FakeQueueAttribute, FakeQueueClient>(this);

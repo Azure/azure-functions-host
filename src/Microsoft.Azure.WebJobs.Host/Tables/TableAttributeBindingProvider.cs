@@ -82,10 +82,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             var bindToExactTestCloudTable = bindingFactory.BindToInput<TableAttribute, IStorageTable>(typeof(JObjectBuilder))
                 .SetPostResolveHook<TableAttribute>(original.ToParameterDescriptorForCollector, original.CollectAttributeInfo);
 
-            var bindAsyncCollector = bindingFactory.BindToAsyncCollector<TableAttribute, ITableEntity>(
-                original.BuildFromTableAttribute,
-                null,
-                original.CollectAttributeInfo);
+            var bindAsyncCollector = bindingFactory.BindToCollector<TableAttribute, ITableEntity>(original.BuildFromTableAttribute)
+                .SetPostResolveHook<TableAttribute>(null, original.CollectAttributeInfo);
 
             var bindToJobject = bindingFactory.BindToInput<TableAttribute, JObject>(typeof(JObjectBuilder))
                 .SetPostResolveHook<TableAttribute>(null, original.CollectAttributeInfo);

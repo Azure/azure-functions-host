@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host
             Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
             Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
         {
-            var fluidBinder = (FluidBindingProvider<TAttribute>)binder;
+            var fluidBinder = (FluentBindingProvider<TAttribute>)binder;
 
             fluidBinder.PostResolveHook = postResolveHook;
             fluidBinder.BuildParameterDescriptor = buildParameterDescriptor;

@@ -9,7 +9,9 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 namespace Microsoft.Azure.WebJobs.Host
 {
     // Base class to aide in private backwards compatability hooks for some bindings. 
-    internal class FluidBindingProvider<TAttribute>
+    // Help in implementing a Fluent API design where these extra properties are set
+    // via method cascading rather than all at once upfront. 
+    internal class FluentBindingProvider<TAttribute>
     {
         protected internal Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> BuildParameterDescriptor { get; set; }
         protected internal Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> PostResolveHook { get; set; }

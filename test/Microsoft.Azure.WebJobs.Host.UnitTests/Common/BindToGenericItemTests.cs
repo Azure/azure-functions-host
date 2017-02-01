@@ -320,11 +320,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 
         public class ConfigCollector<TParam> : 
             IExtensionConfigProvider, 
-            ITest<ConfigCollector<TParam>>
+            ITest<ConfigCollector<TParam>>,
+            IConverter<TestAttribute, IAsyncCollector<AlphaType>>
         {        
             public string _log;
 
-            public IAsyncCollector<AlphaType> BuildFromAttribute(TestAttribute arg)
+            public IAsyncCollector<AlphaType> Convert(TestAttribute arg)
             {
                 return new AlphaTypeCollector { _parent = this };
             }
@@ -365,7 +366,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
                 //  that means object[] converts to AlphaType (one) 
                 bf.ConverterManager.AddConverter<TParam, AlphaType, TestAttribute>(typeof(Object2AlphaConverter));
 
-                var rule1 = bf.BindToAsyncCollector<TestAttribute, AlphaType>(BuildFromAttribute);
+                var rule1 = bf.BindToCollector<TestAttribute, AlphaType>(this);
                 context.RegisterBindingRules<TestAttribute>(rule1);
             }
 

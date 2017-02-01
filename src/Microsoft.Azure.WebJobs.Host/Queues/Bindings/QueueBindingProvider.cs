@@ -63,7 +63,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             var bindingFactory = new BindingFactory(nameResolver, converterManager);
 
-            var bindAsyncCollector = bindingFactory.BindToAsyncCollector<QueueAttribute, IStorageQueueMessage>(BuildFromQueueAttribute, ToWriteParameterDescriptorForCollector, CollectAttributeInfo);
+            var bindAsyncCollector = bindingFactory.BindToCollector<QueueAttribute, IStorageQueueMessage>(BuildFromQueueAttribute)
+                .SetPostResolveHook<QueueAttribute>(ToWriteParameterDescriptorForCollector, CollectAttributeInfo);
 
             var bindClient = bindingFactory.BindToInput<QueueAttribute, IStorageQueue>(typeof(QueueBuilder))
                 .SetPostResolveHook<QueueAttribute>(ToReadWriteParameterDescriptorForCollector, CollectAttributeInfo);

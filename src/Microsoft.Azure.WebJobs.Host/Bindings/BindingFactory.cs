@@ -102,47 +102,59 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// Use the <see cref="IConverterManager"/> to convert form the user's parameter type to the TMessage type. 
         /// </summary>
         /// <typeparam name="TAttribute">Type of binding attribute on the user's parameter.</typeparam>
-        /// <typeparam name="TMessage">'core type' for the IAsyncCollector.</typeparam>
+        /// <typeparam name="TMessage">element type of the IAsyncCollector.</typeparam>
         /// <param name="buildFromAttribute">Function to allocate the collector object given a resolved instance of the attribute.</param>
-        /// <param name="buildParameterDescriptor">An optional function to create a specific ParameterDescriptor object for the dashboard. If missing, a default ParameterDescriptor is created. </param>
-        /// <param name="postResolveHook">An advanced hook for translating the attribute. </param>
         /// <returns>A binding provider that applies these semantics.</returns>
-        public IBindingProvider BindToAsyncCollector<TAttribute, TMessage>(
-            Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute, 
-            Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> buildParameterDescriptor = null,
-            Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> postResolveHook = null)
+        public IBindingProvider BindToCollector<TAttribute, TMessage>(
+            Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute)
             where TAttribute : Attribute
         {
-            return new AsyncCollectorWithConverterManagerBindingProvider<TAttribute, TMessage>(
-                _nameResolver, _converterManager, buildFromAttribute, buildParameterDescriptor, postResolveHook);
+            var converter = new DelegateAdapterCollectorBuilder<TAttribute, TMessage> { BuildFromAttribute = buildFromAttribute };
+            var pm = PatternMatcher.New(converter);
+            return new AsyncCollectorBindingProvider<TAttribute, TMessage>(this._nameResolver, this._converterManager, pm);
         }
 
         /// <summary>
-        /// Create a binding provider for binding a parameter to an <see cref="IAsyncCollector{T}"/> where T is the user parameter's type. 
+        /// Create a binding provider for binding a parameter to an <see cref="IAsyncCollector{TType}"/>. 
         /// </summary>
         /// <typeparam name="TAttribute">Type of binding attribute on the user's parameter.</typeparam>
-        /// <param name="builder">Function that gets passed (Resolved attribute, 'core' collector type) and instantiates an IAsyncCollector</param>
-        /// <param name="filter">Optional. type filter, called once at index time. If missing, assume True.</param>   
-        /// <returns>A binding provider that applies these semantics.</returns>
-        public IBindingProvider BindToGenericAsyncCollector<TAttribute>(
-            Func<TAttribute, Type, object> builder, 
-            Func<TAttribute, Type, bool> filter = null)
+        /// <typeparam name="TType">'core type' for the IAsyncCollector. This can be an OpenType and allow resolving against generics.</typeparam>
+        /// <param name="builderInstance">builder object that converts from the attribute to an AsyncCollector. </param>
+        /// <returns></returns>
+        public IBindingProvider BindToCollector<TAttribute, TType>(            
+            IConverter<TAttribute, IAsyncCollector<TType>> builderInstance)
             where TAttribute : Attribute
         {
-            if (builder == null)
-            {
-                throw new ArgumentNullException("builder");
-            }
-
-            return new GenericAsyncCollectorBindingProvider<TAttribute>(this._nameResolver, builder, filter);
+            var pm = PatternMatcher.New(builderInstance);
+            return new AsyncCollectorBindingProvider<TAttribute, TType>(this._nameResolver, this._converterManager, pm);
         }
 
         /// <summary>
-        /// General rule for binding to an input type for a given attribute. 
+        /// Create a binding provider for binding a parameter to an <see cref="IAsyncCollector{TType}"/>. 
+        /// </summary>
+        /// <typeparam name="TAttribute">Type of binding attribute on the user's parameter.</typeparam>
+        /// <typeparam name="TType">'core type' for the IAsyncCollector. This can be an OpenType and allow resolving against generics.</typeparam>
+        /// <param name="builderType">
+        /// Type of the builder object. Should expose a conversion from TAttribute to <see cref="IAsyncCollector{TType}"/>
+        /// </param>
+        /// <param name="constructorArgs">Arguments to pass to the constructor for the builderType.</param>
+        /// <returns></returns>
+        public IBindingProvider BindToCollector<TAttribute, TType>(
+            Type builderType,
+            params object[] constructorArgs)
+            where TAttribute : Attribute
+        {
+            var pm = PatternMatcher.New(builderType, constructorArgs);
+            return new AsyncCollectorBindingProvider<TAttribute, TType>(this._nameResolver, this._converterManager, pm);
+        }
+
+        /// <summary>
+        /// General rule for binding to an generic input type for a given attribute. 
         /// </summary>
         /// <typeparam name="TAttribute">Type of binding attribute on the user's parameter.</typeparam>
         /// <typeparam name="TType">The user type must be compatible with this type for the binding to apply.</typeparam>
-        /// <param name="builderType">A class with builder methods on it. This will get instantiated to perform the builder rule.</param>
+        /// <param name="builderType">A that implements IConverter for the target parameter. 
+        /// This will get instantiated with the appropriate generic args to perform the builder rule.</param>
         /// <param name="constructorArgs">constructor arguments to pass to the typeBuilder instantiation. This can be used 
         /// to flow state (like configuration, secrets, etc) from the configuration to the specific binding</param>
         /// <returns>A binding rule.</returns>
@@ -156,14 +168,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         }
 
         /// <summary>
-        /// General rule for binding to an input type for a given attribute. 
+        /// General rule for binding to an concrete input type for a given attribute. 
         /// </summary>
         /// <typeparam name="TAttribute">Type of binding attribute on the user's parameter.</typeparam>
         /// <typeparam name="TType">The user type must be compatible with this type for the binding to apply.</typeparam>
         /// <param name="builderInstance">Instance with converter methods on it.</param>
         /// <returns>A binding rule.</returns>
         public IBindingProvider BindToInput<TAttribute, TType>(
-            object builderInstance)
+            IConverter<TAttribute, TType> builderInstance)
             where TAttribute : Attribute
         {
             var pm = PatternMatcher.New(builderInstance);
@@ -212,6 +224,20 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 bindingStrategy, argumentBinding, createListener, parameterDescriptor, singleDispatch);
 
             return binding;
+        }
+
+        // Adapter to expose a delegate veneer over IAsyncCollector builders. 
+        // Delegates are more convenient for concrete types. 
+        internal class DelegateAdapterCollectorBuilder<TAttribute, TMessage> : IConverter<TAttribute, IAsyncCollector<TMessage>>
+            where TAttribute : Attribute
+        {
+            public Func<TAttribute, IAsyncCollector<TMessage>> BuildFromAttribute { get; set; }
+
+            public IAsyncCollector<TMessage> Convert(TAttribute input)
+            {
+                var result = BuildFromAttribute(input);
+                return result;
+            }
         }
     }
 }
