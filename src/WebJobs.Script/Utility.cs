@@ -7,6 +7,8 @@ using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -18,6 +20,59 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+
+        /// <summary>
+        /// Implements a configurable exponential backoff strategy.
+        /// </summary>
+        /// <param name="exponent">The backoff exponent. E.g. for backing off in a retry loop,
+        /// this would be the retry attempt count.</param>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use.</param>
+        /// <param name="unit">The time unit for the backoff delay. Default is 1 second, producing a backoff sequence
+        /// of 2, 4, 8, 16, etc. seconds.</param>
+        /// <param name="min">The minimum delay.</param>
+        /// <param name="max">The maximum delay.</param>
+        /// <returns>A <see cref="Task"/> representing the computed backoff interval.</returns>
+        public async static Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
+        {
+            TimeSpan delay = ComputeBackoff(exponent, unit, min, max);
+
+            if (delay.TotalMilliseconds > 0)
+            {
+                try
+                {
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // when the delay is cancelled it is not an error
+                }
+            }
+        }
+
+        internal static TimeSpan ComputeBackoff(int exponent, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
+        {
+            // determine the exponential backoff factor
+            long backoffFactor = Convert.ToInt64((Math.Pow(2, exponent) - 1) / 2);
+
+            // compute the backoff delay
+            unit = unit ?? TimeSpan.FromSeconds(1);
+            long totalDelayTicks = backoffFactor * unit.Value.Ticks;
+            TimeSpan delay = TimeSpan.FromTicks(totalDelayTicks);
+
+            // apply minimum restriction
+            if (min.HasValue && delay < min)
+            {
+                delay = min.Value;
+            }
+
+            // apply maximum restriction
+            if (max.HasValue && delay > max)
+            {
+                delay = max.Value;
+            }
+
+            return delay;
+        }
 
         public static string GetSubscriptionId()
         {

@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
-            RestartInterval = TimeSpan.FromSeconds(5);
         }
 
         /// <summary>
@@ -89,11 +88,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// there is no timeout duration.
         /// </summary>
         public TimeSpan? FunctionTimeout { get; set; }
-
-        /// <summary>
-        /// Gets or sets the restart interval to use between restart attempts
-        /// when the host is in an error state. The default is 5 seconds.
-        /// </summary>
-        public TimeSpan RestartInterval { get; set; }
     }
 }

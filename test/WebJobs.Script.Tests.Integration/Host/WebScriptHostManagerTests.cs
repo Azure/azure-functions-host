@@ -148,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 RootScriptPath = functionTestDir,
                 FileLoggingMode = FileLoggingMode.Always,
-                RestartInterval = TimeSpan.FromMilliseconds(500)
             };
 
             ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);

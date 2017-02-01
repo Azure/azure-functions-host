@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Dynamic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -38,6 +41,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class UtilityTests
     {
+        [Fact]
+        public async Task DelayWithBackoffAsync_Returns_WhenCancelled()
+        {
+            var tokenSource = new CancellationTokenSource();
+            tokenSource.CancelAfter(500);
+
+            // set up a long delay and ensure it is cancelled
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            await Utility.DelayWithBackoffAsync(20, tokenSource.Token);
+            sw.Stop();
+            Assert.True(sw.ElapsedMilliseconds < 1000);
+        }
+
+        [Fact]
+        public async Task DelayWithBackoffAsync_DelaysAsExpected()
+        {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            await Utility.DelayWithBackoffAsync(2, CancellationToken.None);
+            sw.Stop();
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+        }
+
+        [Theory]
+        [InlineData(1, null, null, null, "00:00:00")]
+        [InlineData(2, null, null, null, "00:00:02")]
+        [InlineData(3, null, null, null, "00:00:04")]
+        [InlineData(4, null, null, null, "00:00:08")]
+        [InlineData(5, null, null, null, "00:00:016")]
+        [InlineData(6, null, null, null, "00:00:32")]
+        [InlineData(6, null, null, "00:00:20", "00:00:20")]  // test min/max
+        [InlineData(2, null, "00:00:10", null, "00:00:10")]
+        [InlineData(6, null, "00:00:10", "00:00:20", "00:00:20")]
+        [InlineData(2, null, "00:00:10", "00:00:20", "00:00:10")]
+        [InlineData(1, "00:00:00.100", null, null, "00:00:00.000")]  // changing the base unit
+        [InlineData(2, "00:00:00.100", null, null, "00:00:00.200")]
+        [InlineData(3, "00:00:00.100", null, null, "00:00:00.400")]
+        [InlineData(4, "00:00:00.100", null, null, "00:00:00.800")]
+        [InlineData(5, "00:00:00.100", null, null, "00:00:01.600")]
+        [InlineData(6, "00:00:00.100", null, null, "00:00:03.200")]
+        public void ComputeBackoff_ReturnsExpectedValue(int exponent, string unitValue, string minValue, string maxValue, string expected)
+        {
+            TimeSpan? unit = null;
+            if (!string.IsNullOrEmpty(unitValue))
+            {
+                unit = TimeSpan.Parse(unitValue);
+            }
+            TimeSpan? min = null;
+            if (!string.IsNullOrEmpty(minValue))
+            {
+                min = TimeSpan.Parse(minValue);
+            }
+            TimeSpan? max = null;
+            if (!string.IsNullOrEmpty(maxValue))
+            {
+                max = TimeSpan.Parse(maxValue);
+            }
+
+            TimeSpan result = Utility.ComputeBackoff(exponent, unit, min, max);
+            TimeSpan expectedTimespan = TimeSpan.Parse(expected);
+            Assert.Equal(expectedTimespan, result);
+        }
+
         [Theory]
         [InlineData(typeof(TestPoco), true)]
         [InlineData(typeof(TestStruct), true)]
