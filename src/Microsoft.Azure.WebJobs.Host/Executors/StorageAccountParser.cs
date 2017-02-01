@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     return String.Format(CultureInfo.CurrentCulture,
                         "Failed to validate Microsoft Azure WebJobs SDK {0} connection string. " +
                         "The Microsoft Azure Storage account connection string is not formatted " +
-                        "correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for " +
+                        "correctly. Please visit https://go.microsoft.com/fwlink/?linkid=841340 for " +
                         "details about configuring Microsoft Azure Storage connection strings.",
                         connectionStringName);
             }
