@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.IO;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -37,10 +39,17 @@ namespace Microsoft.Azure.WebJobs.Script
         private TraceWriter _traceWriter;
 
         private ScriptSettingsManager _settingsManager;
+        private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
+        private CancellationTokenSource _restartDelayTokenSource;
 
         public ScriptHostManager(ScriptHostConfiguration config)
             : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory())
         {
+            if (config.FileWatchingEnabled)
+            {
+                _scriptFileWatcher = new AutoRecoveringFileSystemWatcher(config.RootScriptPath);
+                _scriptFileWatcher.Changed += OnScriptFileChanged;
+            }
         }
 
         public ScriptHostManager(ScriptHostConfiguration config, ScriptSettingsManager settingsManager, IScriptHostFactory scriptHostFactory)
@@ -83,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Start the host and restart it if requested. Host Restarts will happen when
-            // host level configuration files change
+            int consecutiveErrorCount = 0;
             do
             {
                 ScriptHost newInstance = null;
@@ -131,6 +139,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     // state to Running
                     State = ScriptHostState.Running;
                     LastError = null;
+                    consecutiveErrorCount = 0;
+                    _restartDelayTokenSource = null;
 
                     // Wait for a restart signal. This event will automatically reset.
                     // While we're restarting, it is possible for another restart to be
@@ -155,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     State = ScriptHostState.Error;
                     LastError = ex;
+                    consecutiveErrorCount++;
 
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
@@ -177,13 +188,20 @@ namespace Microsoft.Azure.WebJobs.Script
                             }, TaskContinuationOptions.ExecuteSynchronously);
                     }
 
-                    // Wait for a short period of time before restarting to
-                    // avoid cases where a host level config error might cause
-                    // a rapid restart cycle
-                    Task.Delay(_config.RestartInterval).GetAwaiter().GetResult();
+                    // attempt restarts using an exponential backoff strategy
+                    CreateRestartBackoffDelay(consecutiveErrorCount).GetAwaiter().GetResult();
                 }
             }
             while (!_stopped && !cancellationToken.IsCancellationRequested);
+        }
+
+        private Task CreateRestartBackoffDelay(int consecutiveErrorCount)
+        {
+            _restartDelayTokenSource = new CancellationTokenSource();
+
+            return Utility.DelayWithBackoffAsync(consecutiveErrorCount, _restartDelayTokenSource.Token,
+                min: TimeSpan.FromSeconds(1),
+                max: TimeSpan.FromMinutes(2));
         }
 
         private static void LogErrors(ScriptHost host)
@@ -231,6 +249,19 @@ namespace Microsoft.Azure.WebJobs.Script
             finally
             {
                 instance.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Handler for any file changes under the root script path
+        /// </summary>
+        private void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (_restartDelayTokenSource != null && !_restartDelayTokenSource.IsCancellationRequested)
+            {
+                // if we're currently awaiting an error/restart delay
+                // cancel that 
+                _restartDelayTokenSource.Cancel();
             }
         }
 
@@ -326,6 +357,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 _stopEvent.Dispose();
+                _restartDelayTokenSource?.Dispose();
+                _scriptFileWatcher?.Dispose();
 
                 _disposed = true;
             }
