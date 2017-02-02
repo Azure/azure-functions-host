@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public TraceWriter TraceWriter { get; private set; }
+        public TraceWriter TraceWriter { get; internal set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 

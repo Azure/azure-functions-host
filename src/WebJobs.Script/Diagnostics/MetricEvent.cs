@@ -7,6 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     public abstract class MetricEvent
     {
+        public string FunctionName { get; set; }
+
         public DateTime Timestamp { get; set; }
 
         public TimeSpan Duration { get; set; }
