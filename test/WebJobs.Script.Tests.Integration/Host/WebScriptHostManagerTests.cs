@@ -434,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                 }
 
-                public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
+                public void LogFunctionMetricEvent(string subscriptionId, string appName, string functoinName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
                 {
                     throw new NotImplementedException();
                 }

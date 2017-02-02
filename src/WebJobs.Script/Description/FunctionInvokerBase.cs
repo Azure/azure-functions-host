@@ -109,10 +109,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
+            var startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
-
-            LogInvocationMetrics(_metrics, Metadata.Bindings);
+            var invokeLatencyEvent = LogInvocationMetrics(_metrics, Metadata);
 
             try
             {
@@ -158,21 +157,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _metrics.EndEvent(startedEvent);
                 }
+                if (invokeLatencyEvent != null)
+                {
+                    _metrics.EndEvent(invokeLatencyEvent);
+                }
             }
         }
 
-        internal static void LogInvocationMetrics(IMetricsLogger metrics, Collection<BindingMetadata> bindings)
+        internal static object LogInvocationMetrics(IMetricsLogger metrics, FunctionMetadata metadata)
         {
-            metrics.LogEvent(MetricEventNames.FunctionInvoke);
-
             // log events for each of the binding types used
-            foreach (var binding in bindings)
+            foreach (var binding in metadata.Bindings)
             {
                 string eventName = binding.IsTrigger ?
                     string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
                     string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
                 metrics.LogEvent(eventName);
             }
+
+            return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
         private void LogFunctionFailed(FunctionStartedEvent startedEvent, string resultString, string invocationId)

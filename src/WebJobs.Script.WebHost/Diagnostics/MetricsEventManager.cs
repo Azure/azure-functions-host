@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// </summary>
         public ConcurrentDictionary<string, SystemMetricEvent> QueuedEvents { get; }
 
-        public object BeginEvent(string eventName)
+        public object BeginEvent(string eventName, string functionName = null)
         {
             if (string.IsNullOrEmpty(eventName))
             {
@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             return new SystemMetricEvent
             {
+                FunctionName = functionName,
                 EventName = eventName.ToLowerInvariant(),
                 Timestamp = DateTime.UtcNow
             };
@@ -74,13 +75,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 evt.Duration = DateTime.UtcNow - evt.Timestamp;
                 long latencyMS = (long)evt.Duration.TotalMilliseconds;
 
-                QueuedEvents.AddOrUpdate(evt.EventName,
+                // event aggregation is based on this key
+                // for each unique key, there will be only 1
+                // queued event that we aggregate into
+                string key = GetAggregateKey(evt.EventName, evt.FunctionName);
+
+                QueuedEvents.AddOrUpdate(key,
                     (name) =>
                     {
                         // create the default event that will be added
-                        // if an event isn't already queued for this event name
+                        // if an event isn't already queued for this key
                         return new SystemMetricEvent
                         {
+                            FunctionName = evt.FunctionName,
                             EventName = evt.EventName,
                             Minimum = latencyMS,
                             Maximum = latencyMS,
@@ -103,20 +110,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public void LogEvent(string eventName)
+        public void LogEvent(string eventName, string functionName = null)
         {
             if (string.IsNullOrEmpty(eventName))
             {
                 throw new ArgumentNullException(nameof(eventName));
             }
 
-            QueuedEvents.AddOrUpdate(eventName,
+            string key = GetAggregateKey(eventName, functionName);
+            QueuedEvents.AddOrUpdate(key,
                 (name) =>
                 {
                     // create the default event that will be added
-                    // if an event isn't already queued for this event name
+                    // if an event isn't already queued for this key
                     return new SystemMetricEvent
                     {
+                        FunctionName = functionName,
                         EventName = eventName.ToLowerInvariant(),
                         Count = 1
                     };
@@ -187,6 +196,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
+        /// <summary>
+        /// Constructs the aggregate key used to group events. When metric events are
+        /// added for later aggregation on flush, they'll be grouped by this key.
+        /// </summary>
+        internal static string GetAggregateKey(string eventName, string functionName = null)
+        {
+            string key = string.IsNullOrEmpty(functionName) ?
+                eventName : $"{eventName}_{functionName}";
+
+            return key.ToLowerInvariant();
+        }
+
         private static string SerializeBindings(IEnumerable<BindingMetadata> bindings)
         {
             if (bindings != null)
@@ -247,6 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _eventGenerator.LogFunctionMetricEvent(
                     subscriptionId,
                     appName,
+                    metricEvent.FunctionName ?? string.Empty,
                     metricEvent.EventName.ToLowerInvariant(),
                     metricEvent.Average,
                     metricEvent.Minimum,

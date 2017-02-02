@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,15 +55,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
+                    It.IsAny<string>(),
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<DateTime>()))
-                .Callback((string subscriptionId, string appName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp) =>
+                .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp) =>
                 {
                     var evt = new SystemMetricEvent
                     {
+                        FunctionName = functionName,
                         EventName = eventName,
                         Average = average,
                         Minimum = min,
@@ -118,6 +121,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
+        }
+
+        [Fact]
+        public void LogEvent_Function_AggregatesIntoExistingEvent()
+        {
+            Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
+
+            for (int i = 0; i < 10; i++)
+            {
+                _metricsLogger.LogEvent("Event1", "Function1");
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                _metricsLogger.LogEvent("Event1", "Function2");
+            }
+
+            for (int i = 0; i < 15; i++)
+            {
+                _metricsLogger.LogEvent("Event3");
+            }
+
+            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+
+            string key = MetricsEventManager.GetAggregateKey("Event1", "Function1");
+            var metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(10, metricEvent.Count);
+            Assert.Equal("event1", metricEvent.EventName);
+            Assert.Equal("Function1", metricEvent.FunctionName);
+
+            key = MetricsEventManager.GetAggregateKey("Event1", "Function2");
+            metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(5, metricEvent.Count);
+            Assert.Equal("event1", metricEvent.EventName);
+            Assert.Equal("Function2", metricEvent.FunctionName);
+
+            key = MetricsEventManager.GetAggregateKey("Event3");
+            metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(15, metricEvent.Count);
+            Assert.Equal("event3", metricEvent.EventName);
+            Assert.Null(metricEvent.FunctionName);
         }
 
         [Fact]
@@ -202,6 +246,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void EndEvent_Function_AggregatesIntoExistingEvent()
+        {
+            SystemMetricEvent metricEvent;
+            for (int i = 0; i < 10; i++)
+            {
+                metricEvent = (SystemMetricEvent)_metricsLogger.BeginEvent("Event1", "Function1");
+                Thread.Sleep(50);
+                _metricsLogger.EndEvent(metricEvent);
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                metricEvent = (SystemMetricEvent)_metricsLogger.BeginEvent("Event1", "Function2");
+                Thread.Sleep(50);
+                _metricsLogger.EndEvent(metricEvent);
+            }
+
+            for (int i = 0; i < 15; i++)
+            {
+                metricEvent = (SystemMetricEvent)_metricsLogger.BeginEvent("Event2");
+                Thread.Sleep(50);
+                _metricsLogger.EndEvent(metricEvent);
+            }
+
+            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+
+            string key = MetricsEventManager.GetAggregateKey("Event1", "Function1");
+            metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(10, metricEvent.Count);
+            Assert.Equal("event1", metricEvent.EventName);
+            Assert.Equal("Function1", metricEvent.FunctionName);
+
+            key = MetricsEventManager.GetAggregateKey("Event1", "Function2");
+            metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(5, metricEvent.Count);
+            Assert.Equal("event1", metricEvent.EventName);
+            Assert.Equal("Function2", metricEvent.FunctionName);
+
+            key = MetricsEventManager.GetAggregateKey("Event2");
+            metricEvent = _metricsEventManager.QueuedEvents[key];
+            Assert.Equal(15, metricEvent.Count);
+            Assert.Equal("event2", metricEvent.EventName);
+            Assert.Null(metricEvent.FunctionName);
+        }
+
+        [Fact]
         public void EndEvent_InvalidHandle_NoOp()
         {
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
@@ -212,21 +302,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void TimerFlush_MultipleEventsQueued_EmitsExpectedEvents()
+        public async Task TimerFlush_MultipleEventsQueued_EmitsExpectedEvents()
         {
             object eventHandle = _metricsLogger.BeginEvent("Event1");
             _metricsLogger.LogEvent("Event2");
             _metricsLogger.LogEvent("Event2");
             _metricsLogger.LogEvent("Event2");
             _metricsLogger.LogEvent("Event3");
-            Thread.Sleep(25);
+            _metricsLogger.LogEvent("Event4", "Function1");
+            _metricsLogger.LogEvent("Event4", "Function2");
+            _metricsLogger.LogEvent("Event4", "Function2");
+            _metricsLogger.LogEvent("Event4", "Function2");
+            _metricsLogger.LogEvent("Event5", "Function1");
+            _metricsLogger.LogEvent("Event5", "Function1");
+            _metricsLogger.LogEvent("Event5", "Function2");
+            await Task.Delay(25);
             _metricsLogger.EndEvent(eventHandle);
 
-            Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
+            var latencyEvent = _metricsLogger.BeginEvent("Event6", "Function1");
+            await Task.Delay(25);
+            _metricsLogger.EndEvent(latencyEvent);
+            latencyEvent = _metricsLogger.BeginEvent("Event6", "Function1");
+            await Task.Delay(25);
+            _metricsLogger.EndEvent(latencyEvent);
+            latencyEvent = _metricsLogger.BeginEvent("Event6", "Function2");
+            await Task.Delay(25);
+            _metricsLogger.EndEvent(latencyEvent);
+
+            int expectedEventCount = 9;
+            Assert.Equal(expectedEventCount, _metricsEventManager.QueuedEvents.Count);
 
             _metricsEventManager.TimerFlush(null);
 
-            Assert.Equal(3, _events.Count());
+            Assert.Equal(expectedEventCount, _events.Count());
 
             SystemMetricEvent evt = _events.Single(p => p.EventName == "event1");
             Assert.True(evt.Average > 0);
@@ -238,6 +346,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, evt.Count);
 
             evt = _events.Single(p => p.EventName == "event3");
+            Assert.Equal(1, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event4" && p.FunctionName == "Function1");
+            Assert.Equal(1, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event4" && p.FunctionName == "Function2");
+            Assert.Equal(3, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event5" && p.FunctionName == "Function1");
+            Assert.Equal(2, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event5" && p.FunctionName == "Function2");
+            Assert.Equal(1, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event6" && p.FunctionName == "Function1");
+            Assert.True(evt.Average > 0);
+            Assert.True(evt.Minimum > 0);
+            Assert.True(evt.Maximum > 0);
+            Assert.Equal(2, evt.Count);
+
+            evt = _events.Single(p => p.EventName == "event6" && p.FunctionName == "Function2");
+            Assert.True(evt.Average > 0);
+            Assert.True(evt.Minimum > 0);
+            Assert.True(evt.Maximum > 0);
             Assert.Equal(1, evt.Count);
 
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
@@ -376,6 +508,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
             Assert.True(_functionExecutionEventArguments[0].ExecutionId != _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are same");
+        }
+
+        [Theory]
+        [InlineData("Event1", null, "event1")]
+        [InlineData("Event1", "", "event1")]
+        [InlineData("Event1", "Function1", "event1_function1")]
+        public void GetAggregateKey_ReturnsExpectedValue(string eventName, string functionName, string expected)
+        {
+            string result = MetricsEventManager.GetAggregateKey(eventName, functionName);
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void SystemEvent_DebugValue_ReturnsExpectedValue()
+        {
+            PropertyInfo debugValueProp = typeof(SystemMetricEvent).GetProperties(BindingFlags.Instance | BindingFlags.NonPublic).Single(p => p.Name == "DebugValue");
+
+            var evt = new SystemMetricEvent
+            {
+                EventName = "Event1",
+                Count = 123
+            };
+            Assert.Equal("(Event: Event1, Count: 123)", debugValueProp.GetValue(evt));
+
+            evt.FunctionName = "Function1";
+            Assert.Equal("(Function: Function1, Event: Event1, Count: 123)", debugValueProp.GetValue(evt));
         }
 
         private static async Task AwaitFunctionTasks(List<Task> taskList)

@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsEventManager = new MetricsEventManager(settingsManager, eventGenerator, metricEventIntervalInSeconds);
         }
 
-        public object BeginEvent(string eventName)
+        public object BeginEvent(string eventName, string functionName = null)
         {
-            return _metricsEventManager.BeginEvent(eventName);
+            return _metricsEventManager.BeginEvent(eventName, functionName);
         }
 
         public void BeginEvent(MetricEvent metricEvent)
@@ -70,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public void LogEvent(string eventName)
+        public void LogEvent(string eventName, string functionName = null)
         {
-            _metricsEventManager.LogEvent(eventName);
+            _metricsEventManager.LogEvent(eventName, functionName);
         }
 
         protected virtual void Dispose(bool disposing)

@@ -3,36 +3,146 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionInvokerBaseTests
     {
+        private MockInvoker _invoker;
+        private TestMetricsLogger _metricsLogger;
+        private TestTraceWriter _traceWriter;
+
+        public FunctionInvokerBaseTests()
+        {
+            _metricsLogger = new TestMetricsLogger();
+            _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var config = new ScriptHostConfiguration();
+            config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { config, null });
+            hostMock.Object.TraceWriter = _traceWriter;
+
+            var metadata = new FunctionMetadata
+            {
+                Name = "TestFunction"
+            };
+            _invoker = new MockInvoker(hostMock.Object, metadata);
+        }
+
         [Fact]
         public void LogInvocationMetrics_EmitsExpectedEvents()
         {
             var metrics = new TestMetricsLogger();
-            Collection<BindingMetadata> bindings = new Collection<BindingMetadata>
+            var metadata = new FunctionMetadata
             {
-                new BindingMetadata { Type = "httpTrigger" },
-                new BindingMetadata { Type = "blob", Direction = BindingDirection.In },
-                new BindingMetadata { Type = "blob", Direction = BindingDirection.Out },
-                new BindingMetadata { Type = "table", Direction = BindingDirection.In },
-                new BindingMetadata { Type = "table", Direction = BindingDirection.In }
+                Name = "TestFunction"
             };
+            metadata.Bindings.Add(new BindingMetadata { Type = "httpTrigger" });
+            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.In });
+            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.Out });
+            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
+            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
+            var invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(metrics, metadata);
 
-            FunctionInvokerBase.LogInvocationMetrics(metrics, bindings);
+            Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
 
-            Assert.Equal(6, metrics.LoggedEvents.Count);
-            Assert.Equal("function.invoke", metrics.LoggedEvents[0]);
-            Assert.Equal("function.binding.httpTrigger", metrics.LoggedEvents[1]);
-            Assert.Equal("function.binding.blob.In", metrics.LoggedEvents[2]);
-            Assert.Equal("function.binding.blob.Out", metrics.LoggedEvents[3]);
-            Assert.Equal("function.binding.table.In", metrics.LoggedEvents[4]);
-            Assert.Equal("function.binding.table.In", metrics.LoggedEvents[5]);
+            Assert.Equal(5, metrics.LoggedEvents.Count);
+            Assert.Equal("function.binding.httptrigger", metrics.LoggedEvents[0]);
+            Assert.Equal("function.binding.blob.in", metrics.LoggedEvents[1]);
+            Assert.Equal("function.binding.blob.out", metrics.LoggedEvents[2]);
+            Assert.Equal("function.binding.table.in", metrics.LoggedEvents[3]);
+            Assert.Equal("function.binding.table.in", metrics.LoggedEvents[4]);
+        }
+
+        [Fact]
+        public async Task Invoke_Success_EmitsExpectedEvents()
+        {
+            var executionContext = new ExecutionContext
+            {
+                InvocationId = Guid.NewGuid()
+            };
+            var parameters = new object[] { "Test", _traceWriter, executionContext };
+            await _invoker.Invoke(parameters);
+
+            Assert.Equal(1, _metricsLogger.MetricEventsBegan.Count);
+            Assert.Equal(1, _metricsLogger.EventsBegan.Count);
+            Assert.Equal(1, _metricsLogger.MetricEventsEnded.Count);
+            Assert.Equal(1, _metricsLogger.EventsEnded.Count);
+
+            // verify started event
+            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan[0];
+            Assert.Equal(executionContext.InvocationId, startedEvent.InvocationId);
+
+            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
+            Assert.Same(startedEvent, completedStartEvent);
+            Assert.True(completedStartEvent.Success);
+            Assert.Equal($"Function completed (Success, Id={executionContext.InvocationId})", _traceWriter.Traces.Last().Message);
+
+            // verify latency event
+            var startLatencyEvent = _metricsLogger.EventsBegan[0];
+            Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", startLatencyEvent);
+            var completedLatencyEvent = _metricsLogger.EventsEnded[0];
+            Assert.Equal(startLatencyEvent, completedLatencyEvent);
+        }
+
+        [Fact]
+        public async Task Invoke_Failure_EmitsExpectedEvents()
+        {
+            var executionContext = new ExecutionContext
+            {
+                InvocationId = Guid.NewGuid()
+            };
+            var parameters = new object[] { "Test", _traceWriter, executionContext };
+            _invoker.Throw = true;
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await _invoker.Invoke(parameters);
+            });
+
+            Assert.Equal(1, _metricsLogger.MetricEventsBegan.Count);
+            Assert.Equal(1, _metricsLogger.EventsBegan.Count);
+            Assert.Equal(1, _metricsLogger.MetricEventsEnded.Count);
+            Assert.Equal(1, _metricsLogger.EventsEnded.Count);
+
+            // verify started event
+            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan[0];
+            Assert.Equal(executionContext.InvocationId, startedEvent.InvocationId);
+
+            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
+            Assert.Same(startedEvent, completedStartEvent);
+            Assert.False(completedStartEvent.Success);
+            Assert.Equal($"Function completed (Failure, Id={executionContext.InvocationId})", _traceWriter.Traces.Last().Message);
+
+            // verify latency event
+            var startLatencyEvent = _metricsLogger.EventsBegan[0];
+            Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", startLatencyEvent);
+            var completedLatencyEvent = _metricsLogger.EventsEnded[0];
+            Assert.Equal(startLatencyEvent, completedLatencyEvent);
+        }
+
+        private class MockInvoker : FunctionInvokerBase
+        {
+            public MockInvoker(ScriptHost host, FunctionMetadata metadata, ITraceWriterFactory traceWriterFactory = null) : base(host, metadata, traceWriterFactory)
+            {
+            }
+
+            public bool Throw { get; set; }
+
+            protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+            {
+                if (Throw)
+                {
+                    throw new InvalidOperationException("Kaboom!");
+                }
+                await Task.Delay(500);
+            }
         }
 
         private class TestMetricsLogger : IMetricsLogger
@@ -40,38 +150,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public TestMetricsLogger()
             {
                 LoggedEvents = new Collection<string>();
+                LoggedMetricEvents = new Collection<MetricEvent>();
+                MetricEventsBegan = new Collection<MetricEvent>();
+                EventsBegan = new Collection<string>();
+                MetricEventsEnded = new Collection<MetricEvent>();
+                EventsEnded = new Collection<object>();
             }
 
             public Collection<string> LoggedEvents { get; }
 
+            public Collection<MetricEvent> LoggedMetricEvents { get; }
+
+            public Collection<MetricEvent> MetricEventsBegan { get; }
+
+            public Collection<MetricEvent> MetricEventsEnded { get; }
+
+            public Collection<string> EventsBegan { get; }
+
+            public Collection<object> EventsEnded { get; }
+
             public void BeginEvent(MetricEvent metricEvent)
             {
-                throw new NotImplementedException();
+                MetricEventsBegan.Add(metricEvent);
             }
 
-            public object BeginEvent(string eventName)
+            public object BeginEvent(string eventName, string functionName = null)
             {
-                throw new NotImplementedException();
+                string key = MetricsEventManager.GetAggregateKey(eventName, functionName);
+                EventsBegan.Add(key);
+                return key;
             }
 
             public void EndEvent(object eventHandle)
             {
-                throw new NotImplementedException();
+                EventsEnded.Add(eventHandle);
             }
 
             public void EndEvent(MetricEvent metricEvent)
             {
-                throw new NotImplementedException();
+                MetricEventsEnded.Add(metricEvent);
             }
 
-            public void LogEvent(string eventName)
+            public void LogEvent(string eventName, string functionName = null)
             {
-                LoggedEvents.Add(eventName);
+                LoggedEvents.Add(MetricsEventManager.GetAggregateKey(eventName, functionName));
             }
 
             public void LogEvent(MetricEvent metricEvent)
             {
-                throw new NotImplementedException();
+                LoggedMetricEvents.Add(metricEvent);
             }
         }
     }
