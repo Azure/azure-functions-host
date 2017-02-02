@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// </summary>
     public class MetricsLogger : IMetricsLogger
     {
-        public object BeginEvent(string eventName)
+        public object BeginEvent(string eventName, string functionName = null)
         {
             return null;
         }
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
         }
 
-        public void LogEvent(string eventName)
+        public void LogEvent(string eventName, string functionName = null)
         {
         }
     }

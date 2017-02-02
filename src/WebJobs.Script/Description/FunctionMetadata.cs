@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsExcluded { get; set; }
 
-        public Collection<BindingMetadata> Bindings { get; private set; }
+        public Collection<BindingMetadata> Bindings { get; }
 
         public IEnumerable<BindingMetadata> InputBindings
         {

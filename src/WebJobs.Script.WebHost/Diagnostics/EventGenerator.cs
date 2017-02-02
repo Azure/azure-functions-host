@@ -36,9 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public void LogFunctionMetricEvent(string subscriptionId, string appName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
+        public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
         {
-            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
+            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp));
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
@@ -132,11 +132,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 1)]
-            public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp)
+            public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string FunctionName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65524, SubscriptionId, AppName, EventName, Average, Minimum, Maximum, Count, HostVersion, EventTimestamp);
+                    WriteEvent(65524, SubscriptionId, AppName, FunctionName, EventName, Average, Minimum, Maximum, Count, HostVersion, EventTimestamp);
                 }
             }
         }
