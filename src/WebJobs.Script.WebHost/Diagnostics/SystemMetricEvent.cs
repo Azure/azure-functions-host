@@ -6,9 +6,23 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    [DebuggerDisplay("{EventName} {Count}")]
+    [DebuggerDisplay("{DebugValue,nq}")]
     public class SystemMetricEvent : MetricEvent
     {
+        private string DebugValue
+        {
+            get
+            {
+                string key = string.Empty;
+                if (!string.IsNullOrEmpty(FunctionName))
+                {
+                    key = $"Function: {FunctionName}, ";
+                }
+                key += $"Event: {EventName}, Count: {Count}";
+                return $"({key})";
+            }
+        }
+
         public string EventName { get; set; }
 
         public long Average { get; set; }
