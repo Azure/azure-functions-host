@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Allow arbitrary table filter. RowKey should be null. 
         /// </summary>
-        [AutoResolve]
+        [AutoResolve(ResolutionPolicyType = typeof(ODataFilterResolutionPolicy))]
         public string Filter
         {
             get; set;
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs
         public int Take
         {
             get; set;
-        }        
+        }
 
         [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         private string DebuggerDisplay

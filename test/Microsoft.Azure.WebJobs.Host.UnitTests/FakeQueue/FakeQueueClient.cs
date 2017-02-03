@@ -1,14 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Azure.WebJobs.Host.Triggers;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Triggers;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 this.SetConverters(cm);
             }
-            
+
             cm.AddConverter<FakeQueueData, string>(msg => msg.Message);
             cm.AddConverter<OtherFakeQueueData, FakeQueueData>(OtherFakeQueueData.ToEvent);
 
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // Binds [FakeQueue] --> IAsyncCollector<FakeQueueData>
             var ruleOutput = bf.BindToCollector<FakeQueueAttribute, FakeQueueData>(BuildFromAttr);
 
-            // Binds [FakeQueue] --> FakeQueueClient            
+            // Binds [FakeQueue] --> FakeQueueClient
             var ruleClient = bf.BindToInput<FakeQueueAttribute, FakeQueueClient>(this);
 
             extensions.RegisterBindingRules<FakeQueueAttribute>(ruleOutput, ruleClient);
@@ -69,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         FakeQueueClient IConverter<FakeQueueAttribute, FakeQueueClient>.Convert(FakeQueueAttribute attr)
         {
+            // Ensure that you can access the state set by the custom IResolutionPolicy
+            Assert.Equal("value1", attr.State1);
+            Assert.Equal("value2", attr.State2);
+
             return this;
         }
 
@@ -79,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 _parent = this,
                 _prefix = attr.Prefix
-            }; 
+            };
 
         }
 

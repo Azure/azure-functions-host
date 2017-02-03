@@ -392,6 +392,8 @@
     <Compile Include="Bindings\OpenType.cs" />
     <Compile Include="Bindings\Path\BindingParameterResolver.cs" />
     <Compile Include="Bindings\PatternMatcher.cs" />
+    <Compile Include="Bindings\DefaultResolutionPolicy.cs" />
+    <Compile Include="Bindings\IResolutionPolicy.cs" />
     <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
@@ -425,6 +427,7 @@
     <Compile Include="Storage\IStorageAccountExtensions.cs" />
     <Compile Include="Storage\StorageAccountType.cs" />
     <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
+    <Compile Include="Bindings\ODataFilterResolutionPolicy.cs" />
     <Compile Include="Tables\TableFilterFormatter.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />

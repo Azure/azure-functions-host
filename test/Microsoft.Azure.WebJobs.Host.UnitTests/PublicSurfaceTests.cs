@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
@@ -126,7 +125,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "StorageAccountAttribute",
                 "DisableAttribute",
                 "TimeoutAttribute",
-                "TraceLevelAttribute"
+                "TraceLevelAttribute",
+                "ODataFilterResolutionPolicy"
             };
 
             AssertPublicTypes(expected, assembly);
@@ -211,7 +211,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IWebJobsExceptionHandler",
                 "WebJobsExceptionHandler",
                 "FunctionTimeoutException",
-                "PoisonMessageEventArgs"
+                "PoisonMessageEventArgs",
+                "IResolutionPolicy"
             };
 
             AssertPublicTypes(expected, assembly);

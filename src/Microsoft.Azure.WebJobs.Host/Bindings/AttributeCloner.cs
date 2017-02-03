@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
-using Microsoft.Azure.WebJobs.Host.Tables;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -78,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     BindingTemplate template;
                     if (TryCreateAutoResolveBindingTemplate(propInfo, nameResolver, out template))
                     {
-                        var policy = ResolutionPolicy.GetPolicy(propInfo);
+                        IResolutionPolicy policy = GetPolicy(propInfo);
                         template.ValidateContractCompatibility(bindingDataContract);
-                        getArgFuncs[i] = (bindingData) => policy.TemplateBind(template, bindingData);
+                        getArgFuncs[i] = (bindingData) => TemplateBind(policy, propInfo, source, template, bindingData);
                     }
                     else
                     {
@@ -106,9 +105,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                             BindingTemplate template;
                             if (TryCreateAutoResolveBindingTemplate(prop, nameResolver, out template))
                             {
-                                var policy = ResolutionPolicy.GetPolicy(prop);
+                                IResolutionPolicy policy = GetPolicy(prop);
                                 template.ValidateContractCompatibility(bindingDataContract);
-                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, policy.TemplateBind(template, bindingData)));
+                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(policy, prop, newAttr, template, bindingData)));
                             }
                             else
                             {
@@ -185,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return true;
-        }        
+        }
 
         // Get a attribute with %% resolved, but not runtime {} resolved.
         public TAttribute GetNameResolvedAttribute()
@@ -305,47 +304,49 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return newAttr;
         }
 
-        // Resolution policy for { } in  binding templates. 
-        // The default policy is just a direct substitution for the binding data. 
-        // Derived policies can enforce formatting / escaping when they do injection. 
-        private class ResolutionPolicy
+        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
         {
-            public string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+            if (bindingData == null)
             {
-                if (bindingData == null)
-                {
-                    return template.Pattern;
-                }
-                return this.TemplateBindWorker(template, bindingData);
+                return template?.Pattern;
             }
 
-            protected virtual string TemplateBindWorker(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
-            {                
-                return template.Bind(bindingData);
-            }
-
-            // Expand on [AutoResolve] property to make this pluggable, 
-            public static ResolutionPolicy GetPolicy(PropertyInfo propInfo)
-            {
-                if (propInfo.DeclaringType == typeof(TableAttribute) && propInfo.Name == "Filter")
-                {
-                    return new TableFilterResolutionPolicy();
-                }
-                else
-                {
-                    return new ResolutionPolicy();
-                }
-            }
+            return policy.TemplateBind(prop, attr, template, bindingData);
         }
 
-        // Table.Filter's { } resolution does OData escaping. 
-        private class TableFilterResolutionPolicy : ResolutionPolicy
+        internal static IResolutionPolicy GetPolicy(PropertyInfo propInfo)
         {
-            protected override string TemplateBindWorker(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+            AutoResolveAttribute autoResolveAttribute = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+
+            var formatterType = autoResolveAttribute.ResolutionPolicyType;
+
+            if (formatterType != null)
             {
-                var filter = TableFilterFormatter.Format(template, bindingData);
-                return filter;
+                // Special-case Table as there is no way to declare this ResolutionPolicy
+                // and use BindingTemplate in the Core assembly
+                if (formatterType == typeof(WebJobs.ODataFilterResolutionPolicy))
+                {
+                    return new ODataFilterResolutionPolicy();
+                }
+
+                if (!typeof(IResolutionPolicy).IsAssignableFrom(formatterType))
+                {
+                    throw new InvalidOperationException($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {propInfo.Name} must derive from {typeof(IResolutionPolicy).Name}.");
+                }
+
+                try
+                {
+                    var obj = Activator.CreateInstance(formatterType);
+                    return (IResolutionPolicy)obj;
+                }
+                catch (MissingMethodException)
+                {
+                    throw new InvalidOperationException($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {propInfo.Name} must derive from {typeof(IResolutionPolicy).Name} and have a default constructor.");
+                }
             }
+
+            // return the default policy                        
+            return new DefaultResolutionPolicy();
         }
 
         // If no name resolver is specified, then any %% becomes an error.

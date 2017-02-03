@@ -73,6 +73,7 @@
       <Word>Prefetch</Word>
       <Word>ScopeId</Word>
       <Word>poco</Word>
+      <Word>ResolutionPolicyType</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>

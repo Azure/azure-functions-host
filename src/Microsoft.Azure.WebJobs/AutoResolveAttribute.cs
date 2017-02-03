@@ -26,5 +26,11 @@ namespace Microsoft.Azure.WebJobs
         /// Default value is true.
         /// </summary>
         public bool AllowTokens { get; set; }
+
+        /// <summary>
+        /// Specifies a type to use for runtime binding resolution. That type must derive from IResolutionPolicy, found
+        /// in the Microsoft.Azure.WebJobs.Host assembly.
+        /// </summary>
+        public Type ResolutionPolicyType { get; set; }
     }
 }

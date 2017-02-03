@@ -71,6 +71,7 @@
     <Compile Include="ICollector.cs" />
     <Compile Include="QueueAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />
+    <Compile Include="ODataFilterResolutionPolicy.cs" />
     <Compile Include="SingletonAttribute.cs" />
     <Compile Include="SingletonMode.cs" />
     <Compile Include="SingletonScope.cs" />
