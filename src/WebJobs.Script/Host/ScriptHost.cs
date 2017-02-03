@@ -1017,8 +1017,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void HandleHostError(Microsoft.Azure.WebJobs.Extensions.TraceFilter traceFilter)
         {
-            // TODO: figure out why sometimes we get null events
-            var events = traceFilter.Events.Where(p => p != null).ToArray();
+            var events = traceFilter.GetEvents().Where(p => p != null).ToArray();
 
             foreach (TraceEvent traceEvent in events)
             {
