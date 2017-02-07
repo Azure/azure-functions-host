@@ -187,6 +187,121 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
         }
 
+        // Test binding to object with an explicit converter. 
+        [Fact]
+        public void TestExplicitObjectConverter()
+        {
+            TestWorker<ConfigExplicitObjectConverter>();
+        }
+
+        public class ConfigExplicitObjectConverter : IExtensionConfigProvider, ITest<ConfigExplicitObjectConverter>, 
+            IConverter<AlphaType, object>
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                var bf = context.Config.BindingFactory;
+
+                var cm = bf.ConverterManager;
+                // Have an explicit converter to object. 
+                cm.AddConverter<AlphaType, object, TestAttribute>(this);
+
+                var rule1 = bf.BindToInput<TestAttribute, AlphaType>(typeof(GeneralBuilder<>));
+                context.RegisterBindingRules<TestAttribute>(rule1);
+            }
+
+            public void Test(TestJobHost<ConfigExplicitObjectConverter> host)
+            {
+                // normal case
+                host.Call("Func", new { k = 1 });
+                Assert.Equal("GeneralBuilder_AlphaType(1)", _log);
+
+                // use 1st rule with explicit converter
+                host.Call("FuncObject", new { k = 1 });
+                Assert.Equal("Alpha2Obj(GeneralBuilder_AlphaType(1))", _log);
+            }
+
+            string _log;
+
+            // builds AlphaDerivedType, and then applies an implicit inheritence converter.
+            public void Func([Test("{k}")] AlphaType w)
+            {
+                _log = w._value;
+            }
+
+            // Invokes a converter 
+            public void FuncObject([Test("{k}")] object w)
+            {                
+                _log = w.ToString();
+            }
+
+            object IConverter<AlphaType, object>.Convert(AlphaType input)
+            {
+                return $"Alpha2Obj({input._value})"; 
+            }
+        }
+
+        // Test binding to object. 
+        [Fact]
+        public void TestObjectInheritence()
+        {
+            TestWorker<ConfigObjectInheritence>();
+        }
+
+        public class ConfigObjectInheritence : IExtensionConfigProvider, ITest<ConfigObjectInheritence>, IConverter<TestAttribute, object>
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                var bf = context.Config.BindingFactory;
+                // No explicit converters -  just use implicit ones like inheritence
+                var rule1 = bf.BindToInput<TestAttribute, AlphaDerivedType>(typeof(GeneralBuilder<>));
+                var rule2 = bf.BindToInput<TestAttribute, object>(this); // 2nd rule
+                context.RegisterBindingRules<TestAttribute>(rule1, rule2);
+            }
+
+            public void Test(TestJobHost<ConfigObjectInheritence> host)
+            {
+                // 1st rule
+                host.Call("FuncDerived", new { k = 1 });
+                Assert.Equal("GeneralBuilder_AlphaDerivedType(1)", _log);
+
+                // 1st rule + implicit converter
+                host.Call("Func", new { k = 1 });
+                Assert.Equal("GeneralBuilder_AlphaDerivedType(1)", _log);
+
+                // 2nd rule, object isn't matched in an inheritence converter
+                host.Call("FuncObject", new { k = 1 });
+                Assert.Equal("[obj!]", _log);
+            }
+
+            string _log;
+
+            public void FuncDerived([Test("{k}")] AlphaDerivedType w)
+            {                
+                _log = w._value;
+            }
+
+            // builds AlphaDerivedType, and then applies an implicit inheritence converter.
+            public void Func([Test("{k}")] AlphaType w)
+            {
+                // Actually passed in a derived instance
+                Assert.IsType<AlphaDerivedType>(w);
+
+                _log = w._value;
+            }
+
+            // Uses the direct -->object binding rule 
+            public void FuncObject([Test("{k}")] object w)
+            {
+                var beta = Assert.IsType<BetaType>(w);
+                _log = beta._value;
+            }         
+
+            public object Convert(TestAttribute input)
+            {
+                return BetaType.New("[obj!]");
+            }
+        }
+
         // Test collectors and object[] bindings. 
         // Object[] --> multiple items 
         [Fact]

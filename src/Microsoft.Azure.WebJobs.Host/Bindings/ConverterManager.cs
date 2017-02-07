@@ -200,11 +200,18 @@ namespace Microsoft.Azure.WebJobs
             // Inheritence (also covers idempotency)
             if (typeDest.IsAssignableFrom(typeSource))
             {
-                return (src, attr, context) =>
+                // Skip implicit conversions to object since that's everybody's base 
+                // class and BindToInput<attr,Object> would catch everything. 
+                // Users can still register an explicit T-->object converter if they want to 
+                // support it. 
+                if (typeDest != typeof(Object))
                 {
-                    object obj = (object)src;
-                    return (TDest)obj;
-                };
+                    return (src, attr, context) =>
+                    {
+                        object obj = (object)src;
+                        return (TDest)obj;
+                    };
+                }
             }
 
             // Object --> TDest
