@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
+        public const string TraceSourceFileWatcher = "FileWatcher";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
