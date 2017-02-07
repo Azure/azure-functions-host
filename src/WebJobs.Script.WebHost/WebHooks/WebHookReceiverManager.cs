@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using Autofac;
@@ -15,6 +16,7 @@ using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
 {
@@ -67,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
             }
 
+            // if the code value is specified via header rather than query string
+            // promote it to the query string (that's what the WebHook library expects)
+            ApplyHeaderValuesToQuery(request);
+
             HttpRequestContext context = new HttpRequestContext
             {
                 Configuration = _httpConfiguration
@@ -90,6 +96,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             string webhookId = $"{receiverId},{clientId}";
 
             return await receiver.ReceiveAsync(webhookId, context, request);
+        }
+
+        internal static void ApplyHeaderValuesToQuery(HttpRequestMessage request)
+        {
+            var query = HttpUtility.ParseQueryString(request.RequestUri.Query);
+            IEnumerable<string> values = null;
+            if (request.Headers.TryGetValues(AuthorizationLevelAttribute.FunctionsKeyHeaderName, out values) &&
+                string.IsNullOrEmpty(query.Get("code")))
+            {
+                string value = values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    query["code"] = value;
+                }
+
+                UriBuilder builder = new UriBuilder(request.RequestUri);
+                builder.Query = query.ToString();
+                request.RequestUri = builder.Uri;
+            }
         }
 
         private static string GetClientID(HttpRequestMessage request)

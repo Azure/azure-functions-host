@@ -486,6 +486,7 @@
     <Compile Include="WebApiApplicationTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
+    <Compile Include="WebHooks\WebHookReceiverManagerTests.cs" />
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
