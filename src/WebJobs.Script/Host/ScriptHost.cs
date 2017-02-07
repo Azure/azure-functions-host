@@ -1211,25 +1211,25 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-
             if (disposing)
             {
+                (TraceWriter as IDisposable)?.Dispose();
+#if FEATURE_NODE
+                NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
+#endif
                 _scriptFileWatcher?.Dispose();
                 _debugModeFileWatcher?.Dispose();
+                _blobLeaseManager?.Dispose();
 
                 foreach (var function in Functions)
                 {
                     (function.Invoker as IDisposable)?.Dispose();
                 }
-
-                _blobLeaseManager?.Dispose();
-                (TraceWriter as IDisposable)?.Dispose();
-
-#if FEATURE_NODE
-                NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
-#endif
             }
+
+            // dispose base last to ensure that errors there don't
+            // cause us to not dispose ourselves
+            base.Dispose(disposing);
         }
     }
 }
