@@ -562,6 +562,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTriggerExpressApi_Return()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                Method = HttpMethod.Get
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "request", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerReturn", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("test", content);
+        }
+
+        [Fact]
         public async Task HttpTriggerPromise_TestBinding()
         {
             HttpRequestMessage request = new HttpRequestMessage
