@@ -614,6 +614,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GenericWebHook_Post_NamedKey_Headers_Succeeds()
+        {
+            // Authenticate using values specified via headers,
+            // rather than URI query params
+            string uri = "api/webhook-generic";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add("x-functions-key", "1388a6b0d05eca2237f10e4a4641260b0a08f3a6");
+            request.Headers.Add("x-functions-clientid", "testclient");
+            request.Content = new StringContent("{ 'value': 'Foobar' }");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            JObject jsonObject = JObject.Parse(body);
+            Assert.Equal("Value: Foobar", jsonObject["result"]);
+        }
+
+        [Fact]
         public async Task GenericWebHook_Post_NamedKeyInHeader_Succeeds()
         {
             // Authenticate using a named key (client id)
