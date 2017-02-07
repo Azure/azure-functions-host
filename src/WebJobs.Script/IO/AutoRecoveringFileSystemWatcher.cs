@@ -35,10 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.IO
             _filter = filter;
             _changeTypes = changeTypes;
             _includeSubdirectories = includeSubdirectories;
-            _traceWriter = traceWriter;
             _cancellationTokenSource = new CancellationTokenSource();
             _cancellationToken = _cancellationTokenSource.Token;
             _handleFileError = new Action<ErrorEventArgs>(OnFileWatcherError).Debounce();
+
+            if (traceWriter != null)
+            {
+                _traceWriter = traceWriter.WithSource(ScriptConstants.TraceSourceFileWatcher);
+            }
 
             InitializeWatcher();
         }
@@ -126,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
         private void Trace(string message, TraceLevel level)
         {
-            _traceWriter?.Trace($"File watcher: ('{_path}') - {message}", level, null);
+            _traceWriter?.Trace($"{message} (path: '{_path}')", level, null);
         }
 
         private async Task Recover(int attempt = 1)
