@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
             {
                 Directory.Delete(directory.Path, true);
 
-                string fileWatcherLogPrefix = $"File watcher: ('{directory.Path}')";
+                string fileWatcherLogSuffix = $"(path: '{directory.Path}')";
 
                 // 1 trace per attempt + 1 trace per failed attempt
                 int expectedTracesBeforeRecovery = (expectedNumberOfAttempts * 2) - 1;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     expectedTracesAfterRecovery++;
                 }
 
-                await TestHelpers.Await(() => 
+                await TestHelpers.Await(() =>
                 {
                     return traceWriter.Traces.Count == expectedTracesBeforeRecovery;
                 }, pollingInterval: 500);
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     Assert.Equal(expectedInterval, (int)actualInterval.TotalSeconds);
                 }
 
-                Assert.True(traceWriter.Traces.All(t => t.Message.StartsWith(fileWatcherLogPrefix)));
+                Assert.True(traceWriter.Traces.All(t => t.Message.EndsWith(fileWatcherLogSuffix)));
 
                 if (isFailureScenario)
                 {
@@ -142,6 +142,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                 {
                     Assert.Contains("File watcher recovered.", traceWriter.Traces.Last().Message);
                 }
+
+                Assert.Equal(ScriptConstants.TraceSourceFileWatcher, traceWriter.Traces.Last().Source);
             }
         }
 
@@ -168,14 +170,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     File.Delete(filePath);
                 };
 
-                Func<FileSystemEventArgs, bool> handler = a => string.Equals(a.FullPath, filePath, StringComparison.OrdinalIgnoreCase) && a.ChangeType  == changeType;
+                Func<FileSystemEventArgs, bool> handler = a => string.Equals(a.FullPath, filePath, StringComparison.OrdinalIgnoreCase) && a.ChangeType == changeType;
 
                 FileWatcherTest(directory.Path, action, handler);
             }
         }
 
         public void FileWatcherTest(string path, Action<AutoRecoveringFileSystemWatcher> action, Func<FileSystemEventArgs, bool> changeHandler,
-            WatcherChangeTypes changeTypes = WatcherChangeTypes.All,  bool expectEvent = true)
+            WatcherChangeTypes changeTypes = WatcherChangeTypes.All, bool expectEvent = true)
         {
             var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
 
@@ -201,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
         private class TestFileSystemWatcher : AutoRecoveringFileSystemWatcher
         {
-            public TestFileSystemWatcher(string path, string filter = "*.*", 
+            public TestFileSystemWatcher(string path, string filter = "*.*",
                 bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, TraceWriter traceWriter = null)
                 : base(path, filter, includeSubdirectories, changeTypes, traceWriter)
             {
