@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
                 {
                     await _listener.StartAsync(CancellationToken.None);
                 });
-            Assert.Equal("Unable to connect to Service Bus using HTTP connectivity mode.", ex.Message);
+            Assert.Equal("No such host is known", ex.Message);
 
             _mockMessagingProvider.VerifyAll();
         }
