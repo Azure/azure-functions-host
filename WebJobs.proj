@@ -70,7 +70,7 @@
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
 
   <Target Name="DownloadNuGet">
-    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
+    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.12.0" />
   </Target>
 
   <Target Name="RestoreSkipStrongNames" DependsOnTargets="DownloadNuGet">
@@ -248,7 +248,7 @@
                     {
                         Log.LogMessage("Downloading latest version of NuGet.exe...");
                         WebClient webClient = new WebClient();
-                        webClient.DownloadFile("https://nuget.org/nuget.exe", OutputFileName);
+                        webClient.DownloadFile("https://dist.nuget.org/win-x86-commandline/latest/nuget.exe", OutputFileName);
                     }
 
                     return true;
