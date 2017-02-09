@@ -279,6 +279,42 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
+
+        class OpenArrayConverter<T>
+            : IConverter<T[], string>
+        {
+            public string Convert(T[] input)
+            {
+                return string.Join(",", input);
+            }
+        }
+
+        // Test OpenType[] --> converter
+        [Fact]
+        public void OpenTypeArray()
+        {
+            var cm = new ConverterManager();
+                        
+            cm.AddConverter<OpenType[], string, Attribute>(typeof(OpenArrayConverter<>));
+            var attr = new TestAttribute(null);
+
+            var converter = cm.GetConverter<int[], string, Attribute>();
+            Assert.Equal("1,2,3", converter(new int[] { 1, 2, 3 }, attr, null));
+        }
+
+        // Test concrete array converters. 
+        [Fact]
+        public void ClosedTypeArray()
+        {
+            var cm = new ConverterManager();
+
+            cm.AddConverter<int[], string, Attribute>(new OpenArrayConverter<int>());
+            var attr = new TestAttribute(null);
+
+            var converter = cm.GetConverter<int[], string, Attribute>();
+            Assert.Equal("1,2,3", converter(new int[] { 1, 2, 3 }, attr, null));
+        }
+
         // Counter used by tests to verify that converter ctors are only run once and then shared across 
         // multiple invocations. 
         private int _counter;

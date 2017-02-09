@@ -71,13 +71,18 @@ namespace Microsoft.Azure.WebJobs
 
         internal static OpenType GetTypeValidator<T>()
         {
-            var openType = GetOpenType<T>();
+            return GetTypeValidator(typeof(T));            
+        }
+
+        internal static OpenType GetTypeValidator(Type type)
+        {
+            var openType = GetOpenType(type);
             if (openType != null)
             {
                 return openType;
             }
-            
-            return new ExactMatch(typeof(T));            
+
+            return new ExactMatch(type);
         }
 
         // Gets an OpenType from the given argument. 
@@ -97,6 +102,13 @@ namespace Microsoft.Azure.WebJobs
             if (typeof(OpenType).IsAssignableFrom(t))
             {
                 return (OpenType)Activator.CreateInstance(t);
+            }
+
+            if (t.IsArray)
+            {
+                var elementType = t.GetElementType();
+                var innerType = GetTypeValidator(elementType);
+                return new ArrayOpenType(innerType);
             }
 
             // Rewriter rule for generics so customers can say: IEnumerable<OpenType> 
@@ -383,6 +395,29 @@ namespace Microsoft.Azure.WebJobs
             public override bool IsMatch(Type type)
             {
                 return type == _type;
+            }
+        }
+
+        // Matches any T[] 
+        private class ArrayOpenType : OpenType
+        {
+            private readonly OpenType _inner;
+            public ArrayOpenType(OpenType inner)
+            {
+                _inner = inner;
+            }
+            public override bool IsMatch(Type type)
+            {
+                if (type == null)
+                {
+                    throw new ArgumentNullException(nameof(type));
+                }
+                if (type.IsArray)
+                {
+                    var elementType = type.GetElementType();
+                    return _inner.IsMatch(elementType);
+                }
+                return false;
             }
         }
     } // end class ConverterManager
