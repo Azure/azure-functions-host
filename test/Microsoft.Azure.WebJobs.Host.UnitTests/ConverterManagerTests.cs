@@ -434,12 +434,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         // Sample types to excercise pattern matcher
-        class Foo<T1, T2> : IConverter<T1, IDictionary<char, T2>>
+        public class Foo<T1, T2> : IConverter<T1, IDictionary<char, T2>>
         {
             public IDictionary<char, T2> Convert(T1 input)
             {
                 throw new NotImplementedException();
             }
+
+            public T1[] _genericArray;
         }
 
         // Unit tests for TestPatternMatcher.ResolveGenerics
@@ -449,6 +451,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var typeFoo = typeof(Foo<,>);
             var int1 = typeFoo.GetInterfaces()[0]; // IConverter<T1, IDictionary<T1, T2>>
             var typeFoo_T1 = typeFoo.GetGenericArguments()[0];
+            var typeGenericArray = typeFoo.GetField("_genericArray").FieldType;
             var typeIConverter_T1 = int1.GetGenericArguments()[0];
             var typeIConverter_IDictChar_T2 = int1.GetGenericArguments()[1];
 
@@ -460,6 +463,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             Assert.Equal(typeof(int), PatternMatcher.ResolveGenerics(typeof(int), genArgs));
 
+            Assert.Equal(typeof(int[]), PatternMatcher.ResolveGenerics(typeGenericArray, genArgs));
+            
             var typeFooIntStr = typeof(Foo<int, string>);
             Assert.Equal(typeFooIntStr, PatternMatcher.ResolveGenerics(typeFooIntStr, genArgs));
 
