@@ -14,8 +14,8 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs Script Node.js</tags>
     <dependencies>
-      <dependency id="Microsoft.Azure.WebJobs" version="2.0.0-beta2-10514" />
-      <dependency id="Microsoft.Azure.WebJobs.ServiceBus" version="2.0.0-beta2-10514" />
+      <dependency id="Microsoft.Azure.WebJobs" version="2.0.0-beta2-10515" />
+      <dependency id="Microsoft.Azure.WebJobs.ServiceBus" version="2.0.0-beta2-10515" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions" version="2.0.0-beta2-10399" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="2.0.0-beta2-10399" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.Twilio" version="1.0.0-beta2-10399" />
