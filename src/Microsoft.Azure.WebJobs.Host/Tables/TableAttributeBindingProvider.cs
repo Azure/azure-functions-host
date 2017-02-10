@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 ValidateAttribute, nameResolver,
                 new IBindingProvider[]
                 {
-                    AllowMultipleRows(bindingFactory, bindAsyncCollector),
+                    bindAsyncCollector,
                     AllowMultipleRows(bindingFactory, bindToExactCloudTable),
                     AllowMultipleRows(bindingFactory, bindToExactTestCloudTable),
                     bindToJArray,

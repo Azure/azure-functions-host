@@ -166,6 +166,23 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             AssertPropertyValue(entity, "ValueNum", 123);
         }
 
+        // Partition and RowKey values are in the attribute
+        [Fact]
+        public void Table_IfBoundToICollectorJObject__WithAttrKeys_AddInsertsEntity()
+        {
+            // Arrange
+            const string expectedValue = "abcdef";
+            IStorageAccount account = CreateFakeStorageAccount();
+            var config = TestHelpers.NewConfig(typeof(BindToICollectorJObjectProgramKeysInAttr), account);
+
+            // Act
+            var host = new TestJobHost<BindToICollectorJObjectProgramKeysInAttr>(config);
+            host.Call("Run");
+
+            // Assert
+            AssertStringProperty(account, "ValueStr", expectedValue);            
+        }
+
         [Fact]
         public void Table_IfBoundToICollectorITableEntity_AddInsertsEntity()
         {
@@ -467,6 +484,22 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 {
                     PartitionKey = PartitionKey,
                     RowKey = RowKey,
+                    ValueStr = "abcdef",
+                    ValueNum = 123
+                }));
+            }
+        }
+
+        // Partition and RowKey are missing from JObject, get them from the attribute. 
+        private class BindToICollectorJObjectProgramKeysInAttr
+        {
+            [NoAutomaticTrigger]
+            public static void Run(
+                [Table(TableName, PartitionKey, RowKey)] ICollector<JObject> table)
+            {
+                table.Add(JObject.FromObject(new
+                {
+                    // no partition and row key! USe from attribute instead. 
                     ValueStr = "abcdef",
                     ValueNum = 123
                 }));
