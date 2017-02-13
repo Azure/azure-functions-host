@@ -1139,7 +1139,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 bool shutdown = false;
                 string fileExtension = Path.GetExtension(fileName);
-                if (string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
                 {
                     shutdown = true;
                 }

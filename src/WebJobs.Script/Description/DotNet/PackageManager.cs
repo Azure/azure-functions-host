@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     var result = new PackageRestoreResult
                     {
                         IsInitialInstall = string.IsNullOrEmpty(currentLockFileHash),
-                        ReferencesChanged = string.Equals(currentLockFileHash, newLockFileHash),
+                        ReferencesChanged = !string.Equals(currentLockFileHash, newLockFileHash),
                     };
 
                     tcs.SetResult(result);
