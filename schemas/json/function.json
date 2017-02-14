@@ -9,19 +9,23 @@
       "items": {
         "oneOf": [
           { "$ref": "#/definitions/dynamicBinding" },
-          { "$ref": "#/definitions/serviceBusBinding" },
-          { "$ref": "#/definitions/blobBinding" },
-          { "$ref": "#/definitions/manualTriggerBinding" },
-          { "$ref": "#/definitions/eventHubBinding" },
-          { "$ref": "#/definitions/timerTriggerBinding" },
-          { "$ref": "#/definitions/queueBinding" },
-          { "$ref": "#/definitions/httpBinding" },
-          { "$ref": "#/definitions/mobileBinding" },
-          { "$ref": "#/definitions/documentDBBinding" },
-          { "$ref": "#/definitions/tableBinding" },
-          { "$ref": "#/definitions/notificationHubBinding" },
-          { "$ref": "#/definitions/twilioSmsBinding" },
-          { "$ref": "#/definitions/sendGridBinding" }
+          { 
+            "oneOf": [
+              { "$ref": "#/definitions/serviceBusBinding" },
+              { "$ref": "#/definitions/blobBinding" },
+              { "$ref": "#/definitions/manualTriggerBinding" },
+              { "$ref": "#/definitions/eventHubBinding" },
+              { "$ref": "#/definitions/timerTriggerBinding" },
+              { "$ref": "#/definitions/queueBinding" },
+              { "$ref": "#/definitions/httpBinding" },
+              { "$ref": "#/definitions/mobileBinding" },
+              { "$ref": "#/definitions/documentDBBinding" },
+              { "$ref": "#/definitions/tableBinding" },
+              { "$ref": "#/definitions/notificationHubBinding" },
+              { "$ref": "#/definitions/twilioSmsBinding" },
+              { "$ref": "#/definitions/sendGridBinding" }
+            ]
+          }
         ],
         "allOf": [
           { "$ref": "#/definitions/bindingBase" }
