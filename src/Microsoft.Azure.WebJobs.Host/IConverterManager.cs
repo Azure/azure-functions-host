@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs
     /// General service for converting between types for parameter bindings.  
     /// Parameter bindings call this to convert from user parameter types to underlying binding types. 
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     public interface IConverterManager
     {
         /// <summary>
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs
     /// <summary>
     /// Convenience methods for <see cref="IConverterManager"/>
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     public static class IConverterManagerExtensions
     {
         private static readonly MethodInfo ConverterMethod = typeof(IConverterManagerExtensions).GetMethod("HasConverterWorker", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);

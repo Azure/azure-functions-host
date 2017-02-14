@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Helper class for creating some generally useful BindingProviders
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     public class BindingFactory
     {
         private readonly INameResolver _nameResolver;

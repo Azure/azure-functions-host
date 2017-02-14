@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs
     /// Place this on binding attributes properties to tell the binders that that the property contains
     /// {key} or "%setting%" segments that should be automatically resolved.
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class AutoResolveAttribute : Attribute
     {
