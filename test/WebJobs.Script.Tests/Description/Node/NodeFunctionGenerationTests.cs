@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.ServiceBus.Messaging;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateTimerTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "TimerTrigger" },
                 { "name", "timerInfo" },
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateQueueTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "QueueTrigger" },
                 { "name", "input" },
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateBlobTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "blobTrigger" },
                 { "name", "input" },
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateHttpTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "HttpTrigger" },
                 { "name", "req" }
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateManualTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "ManualTrigger" },
                 { "name", "input" },
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateServiceBusTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "ServiceBusTrigger" },
                 { "name", "input" },
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            Collection<FunctionDescriptor> functionDescriptors = null;
+            ICollection<IFunctionDescriptor> functionDescriptors = null;
             using (ScriptHost host = ScriptHost.Create(environment.Object, scriptConfig, SettingsManager))
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]

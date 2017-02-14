@@ -409,13 +409,6 @@
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
-    <Compile Include="Diagnostics\EventGenerator.cs" />
-    <Compile Include="Diagnostics\FastLogger.cs" />
-    <Compile Include="Diagnostics\IEventGenerator.cs" />
-    <Compile Include="Diagnostics\MetricsEventManager.cs" />
-    <Compile Include="Diagnostics\SystemMetricEvent.cs" />
-    <Compile Include="Diagnostics\SystemTraceWriter.cs" />
-    <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
     <Compile Include="Extensions\DependencyResolverExtensions.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
     <Compile Include="Formatting\PlaintextMediaTypeFormatter.cs" />
@@ -453,7 +446,6 @@
     <Compile Include="Security\IKeyValueConverterFactory.cs" />
     <Compile Include="Security\IKeyValueReader.cs" />
     <Compile Include="Models\FunctionInvocation.cs" />
-    <Compile Include="Models\FunctionMetrics.cs" />
     <Compile Include="Models\FunctionStatus.cs" />
     <Compile Include="Models\HostStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -506,6 +498,14 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Diagnostics\WebJobs.Script.Diagnostics.csproj">
+      <Project>{f91ce9f9-caf1-472c-829c-0dbe91650a3a}</Project>
+      <Name>WebJobs.Script.Diagnostics</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\webJobs.Script.Models\WebJobs.Script.Models.csproj">
+      <Project>{ec562cc0-e593-4b16-ad00-1168c1284835}</Project>
+      <Name>WebJobs.Script.Models</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>
@@ -519,6 +519,9 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Diagnostics\" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

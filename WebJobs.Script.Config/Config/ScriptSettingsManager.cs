@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -53,12 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             _settingsCache.Clear();
         }
 
-        public virtual string GetSetting(string key)
+        public virtual string GetSetting(string settingKey)
         {
             string settingValue = null;
-            if (!string.IsNullOrEmpty(key))
+            if (!string.IsNullOrEmpty(settingKey))
             {
-                settingValue = Environment.GetEnvironmentVariable(key);
+                settingValue = Environment.GetEnvironmentVariable(settingKey);
             }
 
             return settingValue;

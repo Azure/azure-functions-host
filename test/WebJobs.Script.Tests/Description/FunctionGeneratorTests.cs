@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Script.Description;
+using WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -25,8 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters);
-            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            IFunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters);
+            ICollection<IFunctionDescriptor> functions = new Collection<IFunctionDescriptor>();
             functions.Add(function);
 
             // Make sure we don't generate a TimeoutAttribute if FunctionTimeout is null.

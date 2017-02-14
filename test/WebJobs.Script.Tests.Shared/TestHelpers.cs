@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), new TestTraceWriter(TraceLevel.Verbose));
             ScriptBinding scriptBinding = null;
             provider.TryCreate(context, out scriptBinding);
-            BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+            BindingMetadata bindingMetadata = BindingMetadata.Create<BindingMetadata>(json);
             ScriptHostConfiguration config = new ScriptHostConfiguration();
             return new ExtensionBinding(config, scriptBinding, bindingMetadata);
         }

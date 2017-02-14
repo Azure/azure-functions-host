@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _invokerMap[method];
         }
 
-        public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, Collection<FunctionDescriptor> functions)
+        public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, ICollection<IFunctionDescriptor> functions)
         {
             if (functions == null)
             {

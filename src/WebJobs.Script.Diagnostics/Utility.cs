@@ -10,10 +10,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static TimeSpan ComputeBackoff(int exponent, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
+        public static TimeSpan ComputeBackoff(int exponent, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
         {
             // determine the exponential backoff factor
             long backoffFactor = Convert.ToInt64((Math.Pow(2, exponent) - 1) / 2);
@@ -102,9 +102,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return delay;
         }
 
+        public static IScriptSettingsManagner ScriptSettings;
+
         public static string GetSubscriptionId()
         {
-            string ownerName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
+            string ownerName = ScriptSettings.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
             if (!string.IsNullOrEmpty(ownerName))
             {
                 int idx = ownerName.IndexOf('+');
@@ -188,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Applies any additional binding data from the input value to the specified binding data.
         /// This binding data then becomes available to the binding process (in the case of late bound bindings)
         /// </summary>
-        internal static void ApplyBindingData(object value, Dictionary<string, object> bindingData)
+        public static void ApplyBindingData(object value, Dictionary<string, object> bindingData)
         {
             try
             {
@@ -254,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Checks if a given string has a UTF8 BOM
         /// </summary>
-        /// <param name="input">The string to be evalutated</param>
+        /// <param name="input">The string to be evaluated</param>
         /// <returns>True if the string begins with a UTF8 BOM; Otherwise, false.</returns>
         public static bool HasUtf8ByteOrderMark(string input)
             => input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, UTF8ByteOrderMark, CompareOptions.Ordinal);

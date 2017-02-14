@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -20,7 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             VerifyAndEnableShadowCopy(webHostSettings);
 
-            using (var metricsLogger = new WebHostMetricsLogger())
+            using (var metricsLogger = new WebHostMetricsLogger(
+                ScriptSettingsManager.Instance,
+                new EventGenerator(ScriptHost.Version), 5))
             using (metricsLogger.LatencyEvent(MetricEventNames.ApplicationStartLatency))
             {
                 GlobalConfiguration.Configure(c => WebApiConfig.Initialize(c, settingsManager, webHostSettings));

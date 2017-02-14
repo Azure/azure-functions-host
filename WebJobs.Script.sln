@@ -17,6 +17,14 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Packages.csproj", "{34AB8F63-18DE-4E0D-B21C-15E33B091634}"
+	ProjectSection(ProjectDependencies) = postProject
+		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D} = {479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}
+		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588} = {F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}
+		{EC562CC0-E593-4B16-AD00-1168C1284835} = {EC562CC0-E593-4B16-AD00-1168C1284835}
+		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094} = {1DC670CD-F42F-4D8F-97BD-0E1AA8221094}
+		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F} = {63C9B2F4-F122-4ACC-968F-9B8F0880A72F}
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A} = {F91CE9F9-CAF1-472C-829C-0DBE91650A3A}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Host", "src\WebJobs.Script.Host\WebJobs.Script.Host.csproj", "{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}"
 EndProject
@@ -430,11 +438,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerShared", "HttpTr
 		sample\HttpTriggerShared\function.json = sample\HttpTriggerShared\function.json
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Models", "src\webJobs.Script.Models\WebJobs.Script.Models.csproj", "{EC562CC0-E593-4B16-AD00-1168C1284835}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Diagnostics", "src\WebJobs.Script.Diagnostics\WebJobs.Script.Diagnostics.csproj", "{F91CE9F9-CAF1-472C-829C-0DBE91650A3A}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{38c609d3-b126-43b0-b9d8-6d62faee2abc}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -473,6 +484,14 @@ Global
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC562CC0-E593-4B16-AD00-1168C1284835}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC562CC0-E593-4B16-AD00-1168C1284835}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC562CC0-E593-4B16-AD00-1168C1284835}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC562CC0-E593-4B16-AD00-1168C1284835}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -552,5 +571,7 @@ Global
 		{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A} = {67174433-2838-460C-9880-419476D02994}
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 		{EB76E1C8-C823-4707-BD83-20304425EFC4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EC562CC0-E593-4B16-AD00-1168C1284835} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{F91CE9F9-CAF1-472C-829C-0DBE91650A3A} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

@@ -14,6 +14,7 @@ using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -42,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
 
-            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant())
+                as FunctionDescriptor;
             if (function == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+                IFunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
                     throw new HttpResponseException(HttpStatusCode.NotFound);

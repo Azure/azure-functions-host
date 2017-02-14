@@ -4,11 +4,12 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection.Emit;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     [DebuggerDisplay("{Name} ({Metadata.ScriptType})")]
-    public class FunctionDescriptor
+    public class FunctionDescriptor : IFunctionDescriptor
     {
         public FunctionDescriptor(string name, IFunctionInvoker invoker, FunctionMetadata metadata, Collection<ParameterDescriptor> parameters)
             : this(name, invoker, metadata, parameters, new Collection<CustomAttributeBuilder>())
@@ -16,10 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public FunctionDescriptor(
-            string name, 
+            string name,
             IFunctionInvoker invoker,
             FunctionMetadata metadata,
-            Collection<ParameterDescriptor> parameters, 
+            Collection<ParameterDescriptor> parameters,
             Collection<CustomAttributeBuilder> attributes)
         {
             Name = name;

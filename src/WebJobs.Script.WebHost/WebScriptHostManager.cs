@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -38,18 +39,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly object _syncLock = new object();
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
-        private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
+        private IDictionary<IHttpRoute, IFunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
             : base(config, settingsManager, scriptHostFactory)
         {
             _config = config;
-            _metricsLogger = new WebHostMetricsLogger();
+            _metricsLogger = new WebHostMetricsLogger(ScriptSettingsManager.Instance, new EventGenerator(ScriptHost.Version), 5);
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
 
-            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
+            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator(ScriptHost.Version);
             var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
             if (config.TraceWriter != null)
             {
@@ -324,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return getDataMethod.Invoke(null, new object[] { context });
         }
 
-        public FunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request)
+        public IFunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request)
         {
             if (request == null)
             {
@@ -336,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return null;
             }
 
-            FunctionDescriptor function = null;
+            IFunctionDescriptor function = null;
             var routeData = _httpRoutes.GetRouteData(request);
             if (routeData != null)
             {
@@ -410,13 +411,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             base.OnHostStarted();
         }
 
-        internal void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions)
+        internal void InitializeHttpFunctions(IEnumerable<IFunctionDescriptor> functions)
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
             HttpRouteFactory httpRouteFactory = new HttpRouteFactory(_config.HttpRoutePrefix);
 
-            _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
+            _httpFunctions = new Dictionary<IHttpRoute, IFunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
             foreach (var function in functions)
