@@ -514,6 +514,32 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 PatternMatcher.ResolveGenerics(int1, genArgs));
         }
 
+        public class TestConverter :
+            IConverter<Attribute, IAsyncCollector<string>>, // binding rule converter
+            IConverter<string, byte[]> // general type converter
+        {
+            public IAsyncCollector<string> Convert(Attribute input)
+            {
+                return null;
+            }
+
+            byte[] IConverter<string, byte[]>.Convert(string input)
+            {
+                return null;
+            }
+        }
+
+        [Fact]
+        public void PatternMatcher_Succeeds_WhenBindingRuleConverterExists()
+        {
+            var pm = PatternMatcher.New(typeof(TestConverter));
+            var generalConverter = pm.TryGetConverterFunc(typeof(string), typeof(byte[]));
+            Assert.NotNull(generalConverter);
+
+            var bindingRuleConverter = pm.TryGetConverterFunc(typeof(Attribute), typeof(IAsyncCollector<string>));
+            Assert.NotNull(bindingRuleConverter);
+        }
+
         private class TestConverterFakeEntity
             : IConverter<JObject, IFakeEntity>
         {

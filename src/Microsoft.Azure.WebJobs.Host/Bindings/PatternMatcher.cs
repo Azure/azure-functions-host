@@ -240,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             // IFoo<T>, IFoo<string> 
-            if (openType.IsGenericType)
+            if (specificType.IsGenericType && openType.IsGenericType)
             {
                 if (specificType.GetGenericTypeDefinition() != openType.GetGenericTypeDefinition())
                 {
