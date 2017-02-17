@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -157,31 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     SynchronizationContext.SetSynchronizationContext(currentContext);
                     manager.Stop();
-                }
-            }
-        }
-
-        private sealed class SingleThreadSynchronizationContext : SynchronizationContext
-        {
-            private readonly ConcurrentQueue<Tuple<SendOrPostCallback, object>> _workItems =
-                new ConcurrentQueue<Tuple<SendOrPostCallback, object>>();
-
-            public override void Post(SendOrPostCallback d, object state)
-            {
-                _workItems.Enqueue(new Tuple<SendOrPostCallback, object>(d, state));
-            }
-
-            public override void Send(SendOrPostCallback d, object state)
-            {
-                throw new NotSupportedException();
-            }
-
-            public void Run()
-            {
-                Tuple<SendOrPostCallback, object> item;
-                while (_workItems.TryDequeue(out item))
-                {
-                    item.Item1(item.Item2);
                 }
             }
         }

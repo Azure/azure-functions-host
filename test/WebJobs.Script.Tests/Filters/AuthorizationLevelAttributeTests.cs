@@ -12,6 +12,7 @@ using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -153,6 +154,102 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, functionKeyValue);
             level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
+        }
+
+        [Fact]
+        public void GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_ResolvingSecrets_DoesNotDeadlock()
+        {
+            // Test resolving secrets
+            var secretManager = CreateSecretManager(
+                async () =>
+                {
+                    await Task.Delay(500);
+                    return new HostSecretsInfo();
+                },
+                async () =>
+                {
+                    await Task.Delay(500);
+                    return new Dictionary<string, string> { { "default", TestFunctionKeyValue1 } };
+                });
+
+            bool methodReturned = GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_DoesNotDeadlock(secretManager);
+
+            Assert.True(methodReturned, $"{nameof(AuthorizationLevelAttribute.GetAuthorizationLevelAsync)} resolving secrets did not return.");
+        }
+
+        [Fact]
+        public void GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_AndCachedHostSecrets_DoesNotDeadlock()
+        {
+            var secretManager = CreateSecretManager(() => Task.FromResult(new HostSecretsInfo()), async () =>
+            {
+                await Task.Delay(500);
+                return new Dictionary<string, string> { { "default", TestFunctionKeyValue1 } };
+            });
+
+            var methodReturned = GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_DoesNotDeadlock(secretManager);
+
+            Assert.True(methodReturned, $"{nameof(AuthorizationLevelAttribute.GetAuthorizationLevelAsync)} with cached host secrets did not return.");
+        }
+
+        [Fact]
+        public void GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_AndCachedSecrets_DoesNotDeadlock()
+        {
+            var secretManager = CreateSecretManager(() => Task.FromResult(new HostSecretsInfo()), () => Task.FromResult(new Dictionary<string, string> { { "default", TestFunctionKeyValue1 } }));
+
+            var methodReturned = GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_DoesNotDeadlock(secretManager);
+
+            Assert.True(methodReturned, $"{nameof(AuthorizationLevelAttribute.GetAuthorizationLevelAsync)} with cached secrets did not return.");
+        }
+
+        private ISecretManager CreateSecretManager(Func<Task<HostSecretsInfo>> hostSecrets, Func<Task<Dictionary<string, string>>> functionSecrets)
+        {
+            var secretManagerMock = new Mock<ISecretManager>();
+
+            secretManagerMock.Setup(m => m.GetHostSecretsAsync())
+            .Returns(() => Task.FromResult(new HostSecretsInfo()));
+
+            secretManagerMock.Setup(m => m.GetFunctionSecretsAsync(It.IsAny<string>(), false))
+            .Returns(async () =>
+            {
+                await Task.Delay(500);
+                return new Dictionary<string, string> { { "default", TestFunctionKeyValue1 } };
+            });
+
+            return secretManagerMock.Object;
+        }
+
+        private bool GetAuthorizationLevelAsync_CalledWithSingleThreadedContext_DoesNotDeadlock(ISecretManager secretManager)
+        {
+            var resetEvent = new ManualResetEvent(false);
+
+            var thread = new Thread(() =>
+            {
+                HttpRequestMessage request = new HttpRequestMessage();
+                request = new HttpRequestMessage();
+                request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestFunctionKeyValue1);
+
+                var context = new SingleThreadSynchronizationContext(true);
+                SynchronizationContext.SetSynchronizationContext(context);
+
+                AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: "TestFunction")
+                .ContinueWith(t =>
+                {
+                    context.Stop();
+
+                    resetEvent.Set();
+                });
+
+                context.Run();
+            });
+
+            thread.IsBackground = true;
+            thread.Start();
+
+            bool eventSignaled = resetEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            thread.Abort();
+
+            return eventSignaled;
         }
 
         [Fact]
