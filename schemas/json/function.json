@@ -261,6 +261,10 @@
               "enum": [ "anonymous", "function", "admin" ],
               "description": "The function HTTP authorization level."
             },
+            "isProxy": {
+              "type": "boolean",
+              "description": "When true, this will be called by Function Proxies to run custom logic before the request is sent to the backend or after the response is received from the backend."
+            },
             "methods": {
               "type": "array",
               "items": [

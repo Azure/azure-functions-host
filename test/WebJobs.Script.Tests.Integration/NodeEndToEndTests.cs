@@ -9,9 +9,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -1215,6 +1217,103 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var array = await response.Content.ReadAsByteArrayAsync();
             Assert.Equal(0, array[0]);
             Assert.Equal(1, array[1]);
+        }
+
+        [Fact]
+        public async Task Proxy_Http_Request()
+        {
+            var actualRequestObject = new HttpRequestMessage(HttpMethod.Post, "http://httpbin.org/post");
+
+            actualRequestObject.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            actualRequestObject.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("test");
+            actualRequestObject.Content.Headers.ContentLocation = new Uri("http://www.bing.com");
+            actualRequestObject.Content.Headers.ContentRange = new ContentRangeHeaderValue(100);
+            actualRequestObject.Content.Headers.Expires = new DateTimeOffset(DateTime.Now.AddDays(10));
+            actualRequestObject.Content.Headers.LastModified = new DateTimeOffset(DateTime.Now.AddDays(-10));
+            actualRequestObject.Headers.Add("User-Agent", "TestApp");
+            actualRequestObject.Headers.Add("header1", "key1");
+            actualRequestObject.Headers.Add("header2", new List<string> { "key2", "key21" });
+
+            var originalRequest = ProxyHttpExtensions.Serialize(actualRequestObject);
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/ProxyHttpRequest")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(originalRequest)
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request },
+                { ScriptConstants.SystemTriggerParameterName, request }
+            };
+            await Fixture.Host.CallAsync("ProxyHttpRequest", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var expectedRequestObject = new HttpRequestMessage();
+
+            Assert.True(ProxyHttpExtensions.TryDeserialize(content, out expectedRequestObject));
+
+            Assert.Equal(expectedRequestObject.RequestUri.AbsoluteUri, "http://www.bing.com/");
+            Assert.Equal(expectedRequestObject.Content.Headers.ContentType.MediaType, "text/html");
+            Assert.Equal(expectedRequestObject.Content.Headers.ContentType.CharSet, "utf-8");
+            Assert.Equal(actualRequestObject.Content.Headers.ContentDisposition.DispositionType, expectedRequestObject.Content.Headers.ContentDisposition.DispositionType);
+            Assert.NotNull(expectedRequestObject.Headers.GetValues("ServerDateTime"));
+
+            var expectedContentString = await expectedRequestObject.Content.ReadAsStringAsync();
+            Assert.Equal(expectedContentString, "testBody");
+        }
+
+        [Fact]
+        public async Task Proxy_Http_Response()
+        {
+            var originalResponse = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\ProxyHttpResponse\response.json"));
+
+            var actualResponseObject = new HttpResponseMessage();
+            Assert.True(ProxyHttpExtensions.TryDeserialize(originalResponse, out actualResponseObject));
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/ProxyHttpResponse")),
+                Method = HttpMethod.Post,
+                Content = new StringContent(originalResponse)
+            };
+
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "res", request },
+                { ScriptConstants.SystemTriggerParameterName, request }
+            };
+            await Fixture.Host.CallAsync("ProxyHttpResponse", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var expectedResponseObject = new HttpResponseMessage();
+            Assert.True(ProxyHttpExtensions.TryDeserialize(content, out expectedResponseObject));
+
+            Assert.Equal(actualResponseObject.RequestMessage.RequestUri.AbsoluteUri, expectedResponseObject.RequestMessage.RequestUri.AbsoluteUri);
+            Assert.Equal(expectedResponseObject.Content.Headers.ContentType.MediaType, "text/html");
+            Assert.Equal(expectedResponseObject.Content.Headers.ContentType.CharSet, "utf-8");
+            Assert.Equal(expectedResponseObject.StatusCode, HttpStatusCode.NotFound);
+            Assert.Equal(expectedResponseObject.ReasonPhrase, "Not Found");
+            Assert.Equal(expectedResponseObject.RequestMessage.Method, HttpMethod.Get);
+            Assert.NotNull(expectedResponseObject.Headers.GetValues("ResponseServerDateTime"));
+
+            var expectedContentString = await expectedResponseObject.Content.ReadAsStringAsync();
+            Assert.Equal(expectedContentString, "testBody123");
         }
 
         public class TestFixture : EndToEndTestFixture

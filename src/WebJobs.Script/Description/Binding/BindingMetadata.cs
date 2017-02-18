@@ -44,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         [JsonConverter(typeof(StringEnumConverter))]
         public Cardinality? Cardinality { get; set; }
 
+        public bool IsProxy { get; set; }
+
         /// <summary>
         /// Gets a value indicating whether this binding is a trigger binding.
         /// </summary>
@@ -80,6 +82,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
+
+            bool isProxy = false;
+            if (raw["isProxy"] != null && raw["isProxy"].Type == JTokenType.Boolean)
+            {
+                isProxy = (bool)raw["isProxy"];
+            }
+
             BindingDirection bindingDirection = default(BindingDirection);
 
             if (!string.IsNullOrEmpty(bindingDirectionValue) &&
@@ -104,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindingMetadata.Direction = bindingDirection;
             bindingMetadata.Connection = connection;
             bindingMetadata.Raw = raw;
-
+            bindingMetadata.IsProxy = isProxy;
             return bindingMetadata;
         }
     }

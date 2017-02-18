@@ -23,9 +23,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
+        private readonly bool _isProxy;
+
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
+            _isProxy = metadata.IsProxy;
         }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
@@ -35,7 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override Task BindAsync(BindingContext context)
         {
-            HttpRequestMessage request = (HttpRequestMessage)context.TriggerValue;
+            HttpRequestMessage request = null;
+            HttpResponseMessage response = null;
+
+            if(context.TriggerValue is HttpRequestMessage)
+            {
+                request = (HttpRequestMessage)context.TriggerValue;
+            }
+            else if(context.TriggerValue is HttpResponseMessage)
+            {
+                response = (HttpResponseMessage)context.TriggerValue;
+            }
 
             object content = context.Value;
             if (content is Stream)
@@ -45,7 +58,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 ConvertStreamToValue((Stream)content, DataType.String, ref content);
             }
 
-            HttpResponseMessage response = CreateResponse(request, content);
+            if (_isProxy)
+            {
+                if (content is ExpandoObject)
+                {
+                    if (request != null)
+                    {
+                        HttpRequestMessage newRequest = CreateProxyRequestObject(content);
+                        CreateResponseForProxies(newRequest, ref request, ref response);
+                    }
+                    else
+                    {
+                        HttpResponseMessage newResponse = CreateProxyResponseObject(content);
+                        CreateResponseForProxies(newResponse, ref request, ref response);
+                        request = (HttpRequestMessage)context.Binder.BindingData["res"];
+                    }
+                }
+            }
+            else
+            {
+                response = CreateResponse(request, content);
+            }
+
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
 
             return Task.CompletedTask;
@@ -261,15 +295,169 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             HttpRequestMessage request = (HttpRequestMessage)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequestMessage);
+            HttpResponseMessage response = null;
+
             if (request != null)
             {
-                HttpResponseMessage response = result as HttpResponseMessage;
-                if (response == null)
+                if (_isProxy)
                 {
-                    response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
+                    CreateResponseForProxies(result, ref request, ref response);
+                }
+                else
+                {
+                    response = result as HttpResponseMessage;
+                    if (response == null)
+                    {
+                        response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
+                    }
+                }
+                request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+            }
+        }
+
+        private static void CreateResponseForProxies(object result, ref HttpRequestMessage request, ref HttpResponseMessage response)
+        {
+            var requestObjectFromFunction = result as HttpRequestMessage;
+
+            if (requestObjectFromFunction != null)
+            {
+                var requestValue = ProxyHttpExtensions.Serialize(requestObjectFromFunction);
+
+                response = new HttpResponseMessage();
+
+                response.StatusCode = HttpStatusCode.OK;
+                response.RequestMessage = requestObjectFromFunction;
+                response.Content = new StringContent(requestValue);
+
+                // putting back the original request to the function in the pipeline.
+                request = (HttpRequestMessage)request.Properties[ScriptConstants.AzureFunctionsHttpProxyRoutingDataKey];
+            }
+            else
+            {
+                var responseObjectFromFunction = result as HttpResponseMessage;
+                if (responseObjectFromFunction != null)
+                {
+                    var responseValue = ProxyHttpExtensions.Serialize(responseObjectFromFunction);
+
+                    response = new HttpResponseMessage();
+
+                    response.StatusCode = HttpStatusCode.OK;
+                    response.Content = new StringContent(responseValue);
+                }
+            }
+        }
+
+        private static HttpRequestMessage CreateProxyRequestObject(object content)
+        {
+            IDictionary<string, object> requestObject = (ExpandoObject)content;
+            var newRequest = new HttpRequestMessage();
+
+            object method = null;
+            if (requestObject.TryGetValue("method", out method, ignoreCase: true))
+            {
+                newRequest.Method = new HttpMethod(method.ToString());
+            }
+
+            object uri = null;
+            if (requestObject.TryGetValue("originalUrl", out uri, ignoreCase: true))
+            {
+                newRequest.RequestUri = new Uri(uri.ToString());
+            }
+
+            IDictionary<string, object> headersValue = null;
+            if (requestObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
+            {
+                foreach (var header in headersValue)
+                {
+                    newRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.ToString());
+                }
+            }
+
+            JObject jsonContent = new JObject();
+            CreateProxyContent(requestObject, jsonContent);
+
+            object bodyValue = null;
+            if (requestObject.TryGetValue("body", out bodyValue, ignoreCase: true))
+            {
+                jsonContent.Add("Content", JToken.FromObject(bodyValue));
+            }
+
+            ProxyHttpExtensions.DeserializeContent(newRequest, jsonContent);
+            return newRequest;
+        }
+
+        private static HttpResponseMessage CreateProxyResponseObject(object content)
+        {
+            IDictionary<string, object> responseObject = (ExpandoObject)content;
+            var newResponse = new HttpResponseMessage();
+
+            object status = null;
+            if (responseObject.TryGetValue("statusCode", out status, ignoreCase: true))
+            {
+                HttpStatusCode statusCode;
+                if (Enum.TryParse(status.ToString(), out statusCode))
+                {
+                    newResponse.StatusCode = statusCode;
+                }
+                else
+                {
+                    newResponse.StatusCode = HttpStatusCode.InternalServerError;
+                }
+            }
+
+            object reasonPhrase = null;
+            if (responseObject.TryGetValue("ReasonPhrase", out reasonPhrase, ignoreCase: true))
+            {
+                newResponse.ReasonPhrase = reasonPhrase.ToString();
+            }
+
+            IDictionary<string, object> headersValue = null;
+            if (responseObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
+            {
+                foreach (var header in headersValue)
+                {
+                    newResponse.Headers.TryAddWithoutValidation(header.Key, header.Value.ToString());
+                }
+            }
+
+            JObject jsonContent = new JObject();
+            CreateProxyContent(responseObject, jsonContent);
+
+            object bodyValue = null;
+            if (responseObject.TryGetValue("responseBody", out bodyValue, ignoreCase: true))
+            {
+                jsonContent.Add("Content", JToken.FromObject(bodyValue));
+            }
+
+            ProxyHttpExtensions.DeserializeContent(newResponse, jsonContent);
+
+            object requestInResponse = null;
+            if (responseObject.TryGetValue("request", out requestInResponse, ignoreCase: true))
+            {
+                newResponse.RequestMessage = CreateProxyRequestObject(requestInResponse);
+            }
+
+            return newResponse;
+        }
+
+        private static void CreateProxyContent(IDictionary<string, object> responseObject, JObject jsonContent)
+        {
+            IDictionary<string, object> contentHeadersValue = null;
+            if (responseObject.TryGetValue<IDictionary<string, object>>("contentHeaders", out contentHeadersValue, ignoreCase: true))
+            {
+                JArray jsonArray = new JArray();
+                foreach (var contentHeader in contentHeadersValue)
+                {
+                    JObject jsonHeader = new JObject();
+                    jsonHeader.Add("Key", contentHeader.Key);
+                    jsonHeader.Add("Value", new JArray(contentHeader.Value.ToString()));
+                    jsonArray.Add(jsonHeader);
                 }
 
-                request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                if (jsonArray.Count > 0)
+                {
+                    jsonContent.Add("Headers", jsonArray);
+                }
             }
         }
 

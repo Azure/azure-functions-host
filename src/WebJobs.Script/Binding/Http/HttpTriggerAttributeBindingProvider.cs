@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // Can bind to user types, HttpRequestMessage, object (for dynamic binding support) and all the Read
             // Types supported by StreamValueBinder
             IEnumerable<Type> supportedTypes = StreamValueBinder.GetSupportedTypes(FileAccess.Read)
-                .Union(new Type[] { typeof(HttpRequestMessage), typeof(object) });
+                .Union(new Type[] { typeof(HttpResponseMessage), typeof(HttpRequestMessage), typeof(object) });
             bool isSupportedTypeBinding = ValueBinder.MatchParameterType(parameter, supportedTypes);
             bool isUserTypeBinding = !isSupportedTypeBinding && Utility.IsValidUserType(parameter.ParameterType);
             if (!isSupportedTypeBinding && !isUserTypeBinding)
@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             private readonly ParameterInfo _parameter;
             private readonly IBindingDataProvider _bindingDataProvider;
             private readonly bool _isUserTypeBinding;
+            private readonly bool _isProxy;
             private readonly Dictionary<string, Type> _bindingDataContract;
             private readonly HttpRouteFactory _httpRouteFactory = new HttpRouteFactory();
 
@@ -78,6 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         aggregateDataContract.AddRange(_bindingDataProvider.Contract);
                     }
                 }
+
+                _isProxy = attribute.IsProxy;
 
                 // add any route parameters to the contract
                 if (!string.IsNullOrEmpty(attribute.RouteTemplate))
@@ -125,9 +128,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     throw new NotSupportedException("An HttpRequestMessage is required");
                 }
 
-                IValueProvider valueProvider = null;
+                if (_isProxy)
+                {
+                    return await BindProxyAsync(request);
+                }
+
                 object poco = null;
                 IReadOnlyDictionary<string, object> userTypeBindingData = null;
+                IValueProvider valueProvider = null;
                 string invokeString = ToInvokeString(request);
                 if (_isUserTypeBinding)
                 {
@@ -278,6 +286,60 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new SimpleValueProvider(_parameter.ParameterType, value, invokeString);
             }
 
+            private async Task<ITriggerData> BindProxyAsync(HttpRequestMessage request)
+            {
+                IValueProvider valueProvider = null;
+                string invokeString = ToInvokeString(request);
+
+                HttpResponseMessage responseObjectInFunction = null;
+                HttpRequestMessage requestObjectInFunction = null;
+
+                string content = null;
+                if (request.Content != null)
+                {
+                    content = await request.Content.ReadAsStringAsync();
+                }
+
+                if (_parameter.ParameterType == typeof(HttpResponseMessage))
+                {
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        if (!ProxyHttpExtensions.TryDeserialize(content, out responseObjectInFunction))
+                        {
+                            throw new NotSupportedException("Invalid HttpResponseMessage object.");
+                        }
+                    }
+                    else
+                    {
+                        responseObjectInFunction = new HttpResponseMessage();
+                    }
+
+                    valueProvider = new SimpleValueProvider(typeof(HttpResponseMessage), responseObjectInFunction, invokeString);
+                }
+                else if (_parameter.ParameterType == typeof(HttpRequestMessage))
+                {
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        if (!ProxyHttpExtensions.TryDeserialize(content, out requestObjectInFunction))
+                        {
+                            throw new NotSupportedException("Invalid HttpRequestMessage object.");
+                        }
+                    }
+                    else
+                    {
+                        requestObjectInFunction = new HttpRequestMessage();
+                    }
+
+                    // Adding the original request object to the newly created request object's properties as this will be needed when returning response to the client.
+                    requestObjectInFunction.Properties[ScriptConstants.AzureFunctionsHttpProxyRoutingDataKey] = request;
+                    request = requestObjectInFunction;
+
+                    valueProvider = new SimpleValueProvider(typeof(HttpRequestMessage), requestObjectInFunction, invokeString);
+                }
+
+                return new TriggerData(valueProvider, null);
+            }
+
             private static object ConvertValueIfNecessary(object value, Type targetType)
             {
                 if (value != null && !targetType.IsAssignableFrom(value.GetType()))
@@ -345,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     return _invokeString;
                 }
-            }
+            }            
         }
     }
 }

@@ -1,0 +1,19 @@
+{
+  "bindings": [
+    {
+      "authLevel": "admin",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "res",
+      "dataType": "HttpResponseMessage",
+      "isProxy": true 
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return",
+      "isProxy": true
+    }
+  ],
+  "disabled": false
+}

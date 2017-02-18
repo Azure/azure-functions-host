@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
@@ -143,7 +144,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     attributeBuilders.Add(attributeBuilder);
                 }
 
-                Type triggerParameterType = parameterType ?? binding.DefaultType;
+                Type triggerParameterType = parameterType;
+                if (triggerParameterType == null)
+                {
+                    if (bindingContext.DataType == "HttpResponseMessage")
+                    {
+                        triggerParameterType = typeof(HttpResponseMessage);
+                    }
+                    else
+                    {
+                        triggerParameterType = binding.DefaultType;
+                    }
+                }
+
                 parameterDescriptor = new ParameterDescriptor(bindingContext.Name, triggerParameterType, attributeBuilders);
 
                 return true;
