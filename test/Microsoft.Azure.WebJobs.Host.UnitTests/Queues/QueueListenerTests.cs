@@ -33,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             mockQueue.Setup(p => p.SdkObject).Returns(queue);
 
             _mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
-            Mock<IDelayStrategy> mockDelayStrategy = new Mock<IDelayStrategy>(MockBehavior.Strict);
             Mock<IWebJobsExceptionHandler> mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
             TestTraceWriter log = new TestTraceWriter(TraceLevel.Verbose);
             Mock<IQueueProcessorFactory> mockQueueProcessorFactory = new Mock<IQueueProcessorFactory>(MockBehavior.Strict);
@@ -49,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
             mockQueueProcessorFactory.Setup(p => p.Create(It.IsAny<QueueProcessorFactoryContext>())).Returns(_mockQueueProcessor.Object);
 
-            _listener = new QueueListener(mockQueue.Object, null, _mockTriggerExecutor.Object, mockDelayStrategy.Object, mockExceptionDispatcher.Object, log, null, queueConfig);
+            _listener = new QueueListener(mockQueue.Object, null, _mockTriggerExecutor.Object, mockExceptionDispatcher.Object, log, null, queueConfig);
 
             CloudQueueMessage cloudMessage = new CloudQueueMessage("TestMessage");
             _storageMessage = new StorageQueueMessage(cloudMessage);

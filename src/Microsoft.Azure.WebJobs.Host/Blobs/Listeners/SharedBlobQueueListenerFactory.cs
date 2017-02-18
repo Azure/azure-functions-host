@@ -82,8 +82,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         public SharedBlobQueueListener Create()
         {
             BlobQueueTriggerExecutor triggerExecutor = new BlobQueueTriggerExecutor(_blobWrittenWatcher);
-            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
-                _queueConfiguration.MaxPollingInterval);
 
             // The poison queue to use for a given poison blob lives in the same
             // storage account as the triggering blob by default. In multi-storage account scenarios
@@ -97,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             SharedBlobQueueProcessor queueProcessor = new SharedBlobQueueProcessor(context, triggerExecutor);
 
             IListener listener = new QueueListener(_hostBlobTriggerQueue, defaultPoisonQueue, triggerExecutor,
-                delayStrategy, _exceptionHandler, _trace, _sharedQueueWatcher, _queueConfiguration, queueProcessor);
+                _exceptionHandler, _trace, _sharedQueueWatcher, _queueConfiguration, queueProcessor);
 
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }

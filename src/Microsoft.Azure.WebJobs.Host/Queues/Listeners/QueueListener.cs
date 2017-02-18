@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         public QueueListener(IStorageQueue queue,
             IStorageQueue poisonQueue,
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
-            IDelayStrategy delayStrategy,
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
             SharedQueueWatcher sharedWatcher,
@@ -70,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queue = queue;
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
-            _delayStrategy = delayStrategy;
             _exceptionHandler = exceptionHandler;
             _trace = trace;
             _queueConfiguration = queueConfiguration;
@@ -90,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queueProcessor = queueProcessor ?? CreateQueueProcessor(
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
                 _trace, _queueConfiguration, poisonMessageEventHandler);
+
+            _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueConfiguration.MaxPollingInterval);
         }
 
         public void Cancel()

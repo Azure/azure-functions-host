@@ -83,12 +83,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_executor);
 
-            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueConfiguration.MaxPollingInterval);
-            
             SharedQueueWatcher sharedWatcher = _sharedContextProvider.GetOrCreateInstance<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
-            IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
+            IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor,
                 _exceptionHandler, _trace, sharedWatcher, _queueConfiguration);
 
             return Task.FromResult(listener);
