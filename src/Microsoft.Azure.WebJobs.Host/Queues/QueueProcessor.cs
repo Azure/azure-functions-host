@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             BatchSize = context.BatchSize;
             NewBatchThreshold = context.NewBatchThreshold;
             VisibilityTimeout = context.VisibilityTimeout;
+            MaxPollingInterval = context.MaxPollingInterval;
         }
 
         /// <summary>
@@ -67,6 +68,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// Gets or sets the threshold at which a new batch of messages will be fetched.
         /// </summary>
         public int NewBatchThreshold { get; protected set; }
+
+        /// <summary>
+        /// Gets or sets the longest period of time to wait before checking for a message to arrive when a queue remains
+        /// empty.
+        /// </summary>
+        public TimeSpan MaxPollingInterval { get; protected set; }
 
         /// <summary>
         /// Gets or sets the default message visibility timeout that will be used

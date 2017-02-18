@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
                 _trace, _queueConfiguration, poisonMessageEventHandler);
 
-            _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueConfiguration.MaxPollingInterval);
+            _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueProcessor.MaxPollingInterval);
         }
 
         public void Cancel()
