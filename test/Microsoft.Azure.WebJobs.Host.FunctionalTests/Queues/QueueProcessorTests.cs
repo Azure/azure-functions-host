@@ -42,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 BatchSize = 32,
                 MaxDequeueCount = 2,
                 NewBatchThreshold = 100,
-                VisibilityTimeout = TimeSpan.FromSeconds(30)
+                VisibilityTimeout = TimeSpan.FromSeconds(30),
+                MaxPollingInterval = TimeSpan.FromSeconds(15)
             };
             QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, config);
             QueueProcessor localProcessor = new QueueProcessor(context);
@@ -51,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(config.MaxDequeueCount, localProcessor.MaxDequeueCount);
             Assert.Equal(config.NewBatchThreshold, localProcessor.NewBatchThreshold);
             Assert.Equal(config.VisibilityTimeout, localProcessor.VisibilityTimeout);
+            Assert.Equal(config.MaxPollingInterval, localProcessor.MaxPollingInterval);
         }
 
         [Fact]
