@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 // if there is a function specific key specified try to match against that
                 if (functionName != null)
                 {
-                    IDictionary<string, string> functionSecrets = secretManager.GetFunctionSecretsAsync(functionName).GetAwaiter().GetResult();
+                    IDictionary<string, string> functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                     if (functionSecrets != null &&
                         functionSecrets.Values.Any(s => Key.SecretValueEquals(keyValue, s)))
                     {
