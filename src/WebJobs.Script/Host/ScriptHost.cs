@@ -1044,6 +1044,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("exception");
             }
 
+            AggregateException aggregate = exception as AggregateException;
+            if (aggregate != null)
+            {
+                foreach (Exception innerException in aggregate.Flatten().InnerExceptions)
+                {
+                    HandleException(innerException);
+                }
+            }
+            else
+            {
+                HandleException(exception);
+            }
+        }
+
+        private void HandleException(Exception exception)
+        {
             // First, ensure that we've logged to the host log
             // Also ensure we flush immediately to ensure any buffered logs
             // are written
