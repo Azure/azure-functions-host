@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs
         private const int StateStarted = 2;
         private const int StateStoppingOrStopped = 3;
 
-        private readonly IJobHostContextFactory _contextFactory;
+        private readonly JobHostConfiguration _config;
         private readonly CancellationTokenSource _shutdownTokenSource;
         private readonly WebJobsShutdownWatcher _shutdownWatcher;
         private readonly CancellationTokenSource _stoppingTokenSource;
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs
         private Task<JobHostContext> _contextTask;
         private bool _contextTaskInitialized;
         private object _contextTaskLock = new object();
-
+                
         private JobHostContext _context;
         private IListener _listener;
         private object _contextLock = new object();
@@ -69,27 +69,13 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         /// <param name="configuration">The job host configuration.</param>
         public JobHost(JobHostConfiguration configuration)
-            : this((IServiceProvider)ThrowIfNull(configuration))
         {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="JobHost"/> class using the service provider provided.
-        /// </summary>
-        /// <param name="serviceProvider">The service provider.</param>
-        internal JobHost(IServiceProvider serviceProvider)
-        {
-            if (serviceProvider == null)
+            if (configuration == null)
             {
-                throw new ArgumentNullException("serviceProvider");
+                throw new ArgumentNullException("configuration");
             }
 
-            _contextFactory = serviceProvider.GetJobHostContextFactory();
-            if (_contextFactory == null)
-            {
-                throw new InvalidOperationException("The IJobHostContextFactory service must not be null.");
-            }
-
+            _config = configuration;
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
@@ -334,19 +320,9 @@ namespace Microsoft.Azure.WebJobs
             return function;
         }
 
-        private static JobHostConfiguration ThrowIfNull(JobHostConfiguration configuration)
-        {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException("configuration");
-            }
-
-            return configuration;
-        }
-
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
-        {
-            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
+        {            
+            JobHostContext context = await _config.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
 
             lock (_contextLock)
             {

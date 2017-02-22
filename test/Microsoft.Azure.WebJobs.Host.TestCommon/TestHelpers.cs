@@ -5,7 +5,9 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using System;
 using System.Reflection;
 using System.Threading;
@@ -75,53 +77,85 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var host = new TestJobHost<TProgram>(config);
             return host;
         }
-                
+
+        public static JobHostConfiguration NewConfig<TProgram>(          
+          params object[] services
+          )
+        {
+            return NewConfig(typeof(TProgram), services);
+        }
+
         // Helper to create a JobHostConfiguraiton from a set of services. 
         // Default config, pure-in-memory
         // Default is pure-in-memory, good for unit testing. 
         public static JobHostConfiguration NewConfig(
-            Type functions, 
+            Type functions,
             params object[] services
             )
         {
+            var config = NewConfig(services);
+            config.AddServices(new FakeTypeLocator(functions));
+            return config;
+        }
+
+        public static JobHostConfiguration NewConfig(
+            params object[] services
+        )
+        {
             JobHostConfiguration config = new JobHostConfiguration()
             {
-                TypeLocator = new FakeTypeLocator(functions),
-
                 // Pure in-memory, no storage. 
                 HostId = Guid.NewGuid().ToString("n"),
                 DashboardConnectionString = null,
                 StorageConnectionString = null
             };
+            config.AddServices(services);
+            return config;
+        }
 
+        public static void AddServices(this JobHostConfiguration config, params object[] services)
+        {
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
+
+            var types = new Type[] {
+                typeof(IHostInstanceLoggerProvider),
+                typeof(IFunctionInstanceLoggerProvider),
+                typeof(IFunctionOutputLoggerProvider),
+                typeof(IConsoleProvider),
+                typeof(ITypeLocator),
+                typeof(IWebJobsExceptionHandler),
+                typeof(INameResolver),
+                typeof(IJobActivator),
+                typeof(IExtensionTypeLocator),
+                typeof(SingletonManager),
+                typeof(IHostIdProvider),
+                typeof(IQueueConfiguration),
+                typeof(IFunctionIndexProvider) // set to unit test indexing. 
+            };
 
             foreach (var obj in services)
             {
-                IStorageAccount account = obj as IStorageAccount;
-                if (account != null)
+                if (obj == null)
                 {
-                    IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider
-                    {
-                        StorageAccount = account
-                    };
-                    config.ContextFactory = new JobHostContextFactory(storageAccountProvider, new DefaultConsoleProvider(), config);
                     continue;
                 }
 
-                INameResolver nameResolver = obj as INameResolver;
-                if (nameResolver != null)
+                IStorageAccountProvider storageAccountProvider = obj as IStorageAccountProvider;
+                IStorageAccount account = obj as IStorageAccount;
+                if (account != null)
                 {
-                    config.NameResolver = nameResolver;
+                    storageAccountProvider = new FakeStorageAccountProvider
+                    {
+                        StorageAccount = account
+                    };
+                }
+                if (storageAccountProvider != null)
+                {
+                    config.AddService<IStorageAccountProvider>(storageAccountProvider);
                     continue;
                 }
-                IJobActivator jobActivator = obj as IJobActivator;
-                if (jobActivator != null)
-                {
-                    config.JobActivator = jobActivator;
-                    continue;
-                }
-              
+
+                // A new extension 
                 IExtensionConfigProvider extension = obj as IExtensionConfigProvider;
                 if (extension != null)
                 {
@@ -129,10 +163,24 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     continue;
                 }
 
+                // basic pattern. 
+                bool ok = false;
+                foreach (var type in types)
+                {
+                    if (type.IsAssignableFrom(obj.GetType()))
+                    {
+                        config.AddService(type, obj);
+                        ok = true;
+                        break;
+                    }
+                }
+                if (ok)
+                {
+                    continue;
+                }
+
                 throw new InvalidOperationException("Test bug: Unrecognized type: " + obj.GetType().FullName);                
             }
-            
-            return config;
         }
 
         private class FakeStorageAccountProvider : IStorageAccountProvider

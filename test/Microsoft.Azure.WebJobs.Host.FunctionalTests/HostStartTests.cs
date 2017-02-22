@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             IStorageAccount account = CreateFakeStorageAccount();
             TaskCompletionSource<object> backgroundTaskSource = new TaskCompletionSource<object>();
-            IServiceProvider serviceProvider = FunctionalTest.CreateServiceProviderForCallFailure(account,
+            var serviceProvider = FunctionalTest.CreateConfigurationForCallFailure(account,
                 typeof(InvalidQueueNameProgram), backgroundTaskSource);
 
             using (JobHost host = new JobHost(serviceProvider))

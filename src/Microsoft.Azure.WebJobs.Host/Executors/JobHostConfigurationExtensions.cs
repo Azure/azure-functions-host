@@ -27,67 +27,68 @@ using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class JobHostContextFactory : IJobHostContextFactory
+    internal static class JobHostConfigurationExtensions
     {
-        private readonly IStorageAccountProvider _storageAccountProvider;
-        private readonly IConsoleProvider _consoleProvider;
-        private readonly JobHostConfiguration _config;
-
-        public JobHostContextFactory(IStorageAccountProvider storageAccountProvider, IConsoleProvider consoleProvider, JobHostConfiguration config)
+        // Do full initialization (both static and runtime). 
+        // This can be called multiple times on a config. 
+        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
+            this JobHostConfiguration config, 
+            JobHost host, 
+            CancellationToken shutdownToken, 
+            CancellationToken cancellationToken)
         {
-            _storageAccountProvider = storageAccountProvider;
-            _consoleProvider = consoleProvider;
-            _config = config;
+            JobHostContext context = await config.CreateJobHostContextAsync(host, shutdownToken, cancellationToken);
+
+            return context;
         }
 
-        public async Task<JobHostContext> CreateAndLogHostStartedAsync(JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
+        // Static initialization. Returns a service provider with some new services initialized. 
+        // The new services:
+        // - can retrieve static config like binders and converters; but the listeners haven't yet started.
+        // - can be flowed into the runtime initialization to get a JobHost spun up and running.
+        // This is just static initialization and should not need to make any network calls, 
+        // and so this method should not need to be async. 
+        // This can be called multiple times on a config, which is why it returns a new ServiceProviderWrapper
+        // instead of modifying the config.
+        public static ServiceProviderWrapper CreateStaticServices(this JobHostConfiguration config)
         {
-            IHostIdProvider hostIdProvider = null;
-            if (_config.HostId != null)
+            var services = new ServiceProviderWrapper(config);
+
+            var consoleProvider = services.GetService<IConsoleProvider>();
+            var nameResolver = services.GetService<INameResolver>();
+            IWebJobsExceptionHandler exceptionHandler = services.GetService<IWebJobsExceptionHandler>();
+            IQueueConfiguration queueConfiguration = services.GetService<IQueueConfiguration>();
+            var blobsConfiguration = config.Blobs;
+
+            IStorageAccountProvider storageAccountProvider = services.GetService<IStorageAccountProvider>();
+            IBindingProvider bindingProvider = services.GetService<IBindingProvider>();
+            SingletonManager singletonManager = services.GetService<SingletonManager>();
+
+            IHostIdProvider hostIdProvider = services.GetService<IHostIdProvider>();
+            var hostId = config.HostId;
+            if (hostId != null)
             {
-                hostIdProvider = new FixedHostIdProvider(_config.HostId);
+                hostIdProvider = new FixedHostIdProvider(hostId);
             }
 
-            var fastLogger = _config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>();
-            IWebJobsExceptionHandler exceptionHandler = _config.GetService<IWebJobsExceptionHandler>();
-
-            return await CreateAndLogHostStartedAsync(host, _storageAccountProvider, _config.Queues, _config.Blobs, _config.TypeLocator, _config.JobActivator,
-                _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, exceptionHandler, hostIdProvider, fastLogger: fastLogger);
-        }
-
-        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
-            JobHost host,
-            IStorageAccountProvider storageAccountProvider,
-            IQueueConfiguration queueConfiguration,
-            JobHostBlobsConfiguration blobsConfiguration,
-            ITypeLocator typeLocator,
-            IJobActivator activator,
-            INameResolver nameResolver,
-            IConsoleProvider consoleProvider,
-            JobHostConfiguration config,
-            CancellationToken shutdownToken,
-            CancellationToken cancellationToken,
-            IWebJobsExceptionHandler exceptionHandler,
-            IHostIdProvider hostIdProvider = null,
-            FunctionExecutor functionExecutor = null,
-            IFunctionIndexProvider functionIndexProvider = null,
-            IBindingProvider bindingProvider = null,
-            IHostInstanceLoggerProvider hostInstanceLoggerProvider = null,
-            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = null,
-            IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
-            SingletonManager singletonManager = null,
-            IAsyncCollector<FunctionInstanceLogEntry> fastLogger = null)
-        {
             if (hostIdProvider == null)
             {
-                hostIdProvider = new DynamicHostIdProvider(storageAccountProvider, () => functionIndexProvider);
+                // Need a deferred getter since the IFunctionIndexProvider service isn't created until later. 
+                Func<IFunctionIndexProvider> deferredGetter = () => services.GetService<IFunctionIndexProvider>();
+                hostIdProvider = new DynamicHostIdProvider(storageAccountProvider, deferredGetter);
             }
+            services.AddService<IHostIdProvider>(hostIdProvider);
 
             AzureStorageDeploymentValidator.Validate();
 
-            var converterManager = config.ConverterManager;
+            var converterManager = services.GetService<IConverterManager>();
 
-            IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(typeLocator);
+            IExtensionTypeLocator extensionTypeLocator = services.GetService<IExtensionTypeLocator>();
+            if (extensionTypeLocator == null)
+            {
+                extensionTypeLocator = new ExtensionTypeLocator(services.GetService<ITypeLocator>());
+                services.AddService<IExtensionTypeLocator>(extensionTypeLocator);
+            }
 
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor = new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor = new ContextAccessor<IBlobWrittenWatcher>();
@@ -96,52 +97,91 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Create a wrapper TraceWriter that delegates to both the user 
             // TraceWriters specified via config (if present), as well as to Console
             TraceWriter trace = new ConsoleTraceWriter(config.Tracing, consoleProvider.Out);
+            services.AddService<TraceWriter>(trace);
 
-            // Register system services with the service container
-            config.AddService<INameResolver>(nameResolver);
+            ExtensionConfigContext context = new ExtensionConfigContext
+            {
+                Config = config,
+                Trace = trace
+            };
+            InvokeExtensionConfigProviders(context);
+
+            if (singletonManager == null)
+            {
+                singletonManager = new SingletonManager(storageAccountProvider, exceptionHandler, config.Singleton, trace, hostIdProvider, services.GetService<INameResolver>());
+                services.AddService<SingletonManager>(singletonManager);
+            }
+
+            IExtensionRegistry extensions = services.GetExtensions();
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
+                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration, exceptionHandler,
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, trace);
+            services.AddService<ITriggerBindingProvider>(triggerBindingProvider);
+
+            if (bindingProvider == null)
+            {
+                bindingProvider = DefaultBindingProvider.Create(nameResolver, converterManager, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
+                services.AddService<IBindingProvider>(bindingProvider);
+            }
+
+            return services;
+        }
+
+        // Do the full runtime intitialization. This includes static initialization. 
+        // This mainly means:
+        // - indexing the functions 
+        // - spinning up the listeners (so connecting to the services)
+        private static async Task<JobHostContext> CreateJobHostContextAsync(this JobHostConfiguration config, JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
+        {
+            var services = config.CreateStaticServices();
+
+            FunctionExecutor functionExecutor = services.GetService<FunctionExecutor>();
+            IFunctionIndexProvider functionIndexProvider = services.GetService<IFunctionIndexProvider>();
+            ITriggerBindingProvider triggerBindingProvider = services.GetService<ITriggerBindingProvider>();
+            IBindingProvider bindingProvider = services.GetService<IBindingProvider>();
+            SingletonManager singletonManager = services.GetService<SingletonManager>();
+            IJobActivator activator = services.GetService<IJobActivator>();
+            IHostIdProvider hostIdProvider = services.GetService<IHostIdProvider>();
+            INameResolver nameResolver = services.GetService<INameResolver>();
+            IExtensionRegistry extensions = services.GetExtensions();
+            IStorageAccountProvider storageAccountProvider = services.GetService<IStorageAccountProvider>();
+
+            IQueueConfiguration queueConfiguration = services.GetService<IQueueConfiguration>();
+            var blobsConfiguration = config.Blobs;
+
+            TraceWriter trace = services.GetService<TraceWriter>();
+            IAsyncCollector<FunctionInstanceLogEntry> fastLogger = services.GetService<IAsyncCollector<FunctionInstanceLogEntry>>();                               
+            IWebJobsExceptionHandler exceptionHandler = services.GetService<IWebJobsExceptionHandler>();
 
             if (exceptionHandler != null)
             {
                 exceptionHandler.Initialize(host);
             }
 
-            ExtensionConfigContext context = new ExtensionConfigContext
-            {
-                Config = config,
-                Trace = trace                
-            };
-            InvokeExtensionConfigProviders(context);
-
-            if (singletonManager == null)
-            {
-                singletonManager = new SingletonManager(storageAccountProvider, exceptionHandler, config.Singleton, trace, hostIdProvider, config.NameResolver);
-            }
-
-            IExtensionRegistry extensions = config.GetExtensions();
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration, exceptionHandler,
-                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, trace);
-
-            if (bindingProvider == null)
-            {
-                bindingProvider = DefaultBindingProvider.Create(nameResolver, converterManager, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
-            }
-
-            bool hasFastTableHook = config.GetService<IAsyncCollector<FunctionInstanceLogEntry>>() != null;
+            bool hasFastTableHook = services.GetService<IAsyncCollector<FunctionInstanceLogEntry>>() != null;
             bool noDashboardStorage = config.DashboardConnectionString == null;
-            if (hasFastTableHook && noDashboardStorage)
+
+            // Only testing will override these interfaces. 
+            IHostInstanceLoggerProvider hostInstanceLoggerProvider = services.GetService<IHostInstanceLoggerProvider>();
+            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = services.GetService<IFunctionInstanceLoggerProvider>();
+            IFunctionOutputLoggerProvider functionOutputLoggerProvider = services.GetService<IFunctionOutputLoggerProvider>();
+
+            if (hostInstanceLoggerProvider == null && functionInstanceLoggerProvider == null && functionOutputLoggerProvider == null)
             {
-                var loggerProvider = new FastTableLoggerProvider(trace);
-                hostInstanceLoggerProvider = loggerProvider;
-                functionInstanceLoggerProvider = loggerProvider;
-                functionOutputLoggerProvider = loggerProvider;
-            }
-            else
-            {
-                var loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
-                hostInstanceLoggerProvider = loggerProvider;
-                functionInstanceLoggerProvider = loggerProvider;
-                functionOutputLoggerProvider = loggerProvider;
+                if (hasFastTableHook && noDashboardStorage)
+                {
+                    var loggerProvider = new FastTableLoggerProvider(trace);
+                    hostInstanceLoggerProvider = loggerProvider;
+                    functionInstanceLoggerProvider = loggerProvider;
+                    functionOutputLoggerProvider = loggerProvider;
+                }
+                else
+                {
+                    var loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
+                    hostInstanceLoggerProvider = loggerProvider;
+                    functionInstanceLoggerProvider = loggerProvider;
+                    functionOutputLoggerProvider = loggerProvider;
+                }
             }
 
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
@@ -153,17 +193,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(combinedCancellationToken);
 
                 IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(combinedCancellationToken);
-                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);
+                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(combinedCancellationToken);                
                 IFunctionOutputLogger functionOutputLogger = await functionOutputLoggerProvider.GetAsync(combinedCancellationToken);
 
                 if (functionExecutor == null)
                 {
                     functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, exceptionHandler, trace, fastLogger);
+                    services.AddService(functionExecutor);
                 }
 
                 if (functionIndexProvider == null)
                 {
-                    functionIndexProvider = new FunctionIndexProvider(typeLocator, triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions, singletonManager, trace);
+                    functionIndexProvider = new FunctionIndexProvider(services.GetService<ITypeLocator>(), triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions, singletonManager, trace);
+
+                    // Important to set this so that the func we passed to DynamicHostIdProvider can pick it up. 
+                    services.AddService<IFunctionIndexProvider>(functionIndexProvider);
                 }
 
                 IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
@@ -257,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (descriptorsCount == 0)
                 {
                     trace.Warning(string.Format("No job functions found. Try making your job classes and methods public. {0}",
-                        Constants.ExtensionInitializationMessage), TraceSource.Indexing);
+                        Constants.ExtensionInitializationMessage), Host.TraceSource.Indexing);
                 }
                 else
                 {
@@ -269,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         functionsTrace.AppendLine(descriptor.FullName);
                     }
 
-                    trace.Info(functionsTrace.ToString(), TraceSource.Indexing);
+                    trace.Info(functionsTrace.ToString(), Host.TraceSource.Indexing);
                 }
 
                 return new JobHostContext(functions, hostCallExecutor, listener, trace, fastLogger);

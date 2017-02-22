@@ -68,7 +68,12 @@ namespace Microsoft.Azure.WebJobs.Host
                 return attribute;
             }
 
-            return GetHierarchicalAttributeOrNull<T>((MethodInfo)parameter.Member);
+            var method = parameter.Member as MethodInfo;
+            if (method == null)
+            {
+                return null;
+            }
+            return GetHierarchicalAttributeOrNull<T>(method);            
         }
 
         /// <summary>

@@ -398,6 +398,7 @@
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
     <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
+    <Compile Include="Config\ServiceProviderWrapper.cs" />
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
@@ -460,7 +461,6 @@
     <Compile Include="Executors\FunctionInvokerFactory.cs" />
     <Compile Include="Executors\FunctionResult.cs" />
     <Compile Include="Executors\IFunctionInvoker.cs" />
-    <Compile Include="Executors\IJobHostContextFactory.cs" />
     <Compile Include="Executors\ActivatorInstanceFactory.cs" />
     <Compile Include="Executors\ITriggeredFunctionExecutor.cs" />
     <Compile Include="Executors\NullInstanceFactory.cs" />
@@ -646,7 +646,7 @@
     <Compile Include="Executors\DefaultStorageCredentialsValidator.cs" />
     <Compile Include="Executors\IStorageCredentialsValidator.cs" />
     <Compile Include="Executors\JobHostContext.cs" />
-    <Compile Include="Executors\JobHostContextFactory.cs" />
+    <Compile Include="Executors\JobHostConfigurationExtensions.cs" />
     <Compile Include="Indexers\IFunctionIndex.cs" />
     <Compile Include="Indexers\IFunctionIndexLookup.cs" />
     <Compile Include="Indexers\FunctionIndex.cs" />

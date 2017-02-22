@@ -230,8 +230,6 @@
     <Compile Include="Tables\TableFilterFormatterTests.cs" />
     <Compile Include="Tables\TToEntityPropertyConverterFactoryTests.cs" />
     <Compile Include="Tables\EntityPropertyToTConverterFactoryTests.cs" />
-    <Compile Include="TestJobHostContextFactory.cs" />
-    <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategyTests.cs" />
     <Compile Include="TypeUtilityTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />

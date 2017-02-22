@@ -58,6 +58,7 @@
     <Compile Include="Blobs\Listeners\ScanContainersStrategyTests.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManagerTests.cs" />
     <Compile Include="BlobTriggerTests.cs" />
+    <Compile Include="JobHostTests.cs" />
     <Compile Include="FunctionalTest.cs" />
     <Compile Include="BlobTests.cs" />
     <Compile Include="HostCallTests.cs" />
@@ -79,7 +80,6 @@
     <Compile Include="TestDoubles\BlobAttributes.cs" />
     <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
     <Compile Include="TestDoubles\FakeFunctionInstanceLoggerProvider.cs" />
-    <Compile Include="TestDoubles\FakeJobHostContextFactory.cs" />
     <Compile Include="TestDoubles\FakeStorageAccountProvider.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobDirectory.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
@@ -111,7 +111,6 @@
     <Compile Include="StorageQueueExtensions.cs" />
     <Compile Include="TestDoubles\FakeStorageAccount.cs" />
     <Compile Include="TestDoubles\FakeQueueConfiguration.cs" />
-    <Compile Include="TestDoubles\FakeServiceProvider.cs" />
     <Compile Include="TestDoubles\FakeHostIdProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Queues\QueueTriggerTests.cs" />

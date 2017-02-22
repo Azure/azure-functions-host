@@ -167,7 +167,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Theory]
-        [InlineData(typeof(IJobHostContextFactory), typeof(JobHostContextFactory))]
         [InlineData(typeof(IExtensionRegistry), typeof(DefaultExtensionRegistry))]
         [InlineData(typeof(ITypeLocator), typeof(DefaultTypeLocator))]
         [InlineData(typeof(StorageClientFactory), typeof(StorageClientFactory))]

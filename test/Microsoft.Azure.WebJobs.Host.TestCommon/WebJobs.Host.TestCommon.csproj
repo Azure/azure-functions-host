@@ -120,8 +120,8 @@
     <Compile Include="NullFunctionOutputLoggerProvider.cs" />
     <Compile Include="NullFunctionInstanceLoggerProvider.cs" />
     <Compile Include="NullHostInstanceLoggerProvider.cs" />
+    <Compile Include="ScriptHelpers.cs" />
     <Compile Include="TestHelpers.cs" />
-    <Compile Include="TestJobHostContextFactory.cs" />
     <Compile Include="TestTraceWriter.cs" />
     <Compile Include="WebJobsShutdownContext.cs" />
     <Compile Include="ExceptionAssert.cs" />
@@ -133,7 +133,6 @@
     <Compile Include="SimpleStorageAccountProvider.cs" />
     <Compile Include="JobHostFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestJobHostConfiguration.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Host\WebJobs.Host.csproj">

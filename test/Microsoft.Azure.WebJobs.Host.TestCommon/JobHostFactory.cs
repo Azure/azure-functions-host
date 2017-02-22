@@ -33,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount, int maxDequeueCount)
         {
-            TestJobHostConfiguration config = new TestJobHostConfiguration();
+            IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
+            JobHostConfiguration config = TestHelpers.NewConfig<TProgram>(hostIdProvider);
 
             IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider(config)
             {
@@ -41,49 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 // use null logging string since unit tests don't need logs.
                 DashboardAccount = null
             };
-
-            IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
-            IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
-            INameResolver nameResolver = null;
-            IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount);
-            JobHostBlobsConfiguration blobsConfiguration = new JobHostBlobsConfiguration();
-            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
-                new ContextAccessor<IMessageEnqueuedWatcher>();
-            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
-                new ContextAccessor<IBlobWrittenWatcher>();
-            ISharedContextProvider sharedContextProvider = new SharedContextProvider();
-            IExtensionRegistry extensions = new DefaultExtensionRegistry();
-
-            SingletonManager singletonManager = new SingletonManager();
-
-            TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
-            IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
-            IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, trace);
-
-            var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
-                    nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration,
-                    exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                    sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
-
-            var bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider, extensionTypeLocator,
-                        messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
-
-            var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager, trace);
-
-            IJobHostContextFactory contextFactory = new TestJobHostContextFactory
-            {
-                FunctionIndexProvider = functionIndexProvider,
-                StorageAccountProvider = storageAccountProvider,
-                Queues = queueConfiguration,
-                SingletonManager = singletonManager,
-                HostIdProvider = hostIdProvider
-            };
-
-            config.ContextFactory = contextFactory;
-
+            config.AddServices(storageAccountProvider);
             return new TestJobHost<TProgram>(config);
         }
     }

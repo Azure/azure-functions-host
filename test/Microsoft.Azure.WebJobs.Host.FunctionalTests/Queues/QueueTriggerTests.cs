@@ -743,7 +743,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             // Arrange
             TaskCompletionSource<TResult> functionTaskSource = new TaskCompletionSource<TResult>();
-            IServiceProvider serviceProvider = FunctionalTest.CreateServiceProviderForManualCompletion<TResult>(
+            var serviceProvider = FunctionalTest.CreateConfigurationForManualCompletion<TResult>(
                 CreateFakeStorageAccount(), programType, functionTaskSource);
             Task<TResult> functionTask = functionTaskSource.Task;
             setTaskSource.Invoke(functionTaskSource);

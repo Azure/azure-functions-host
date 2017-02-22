@@ -9,10 +9,20 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class NullFunctionInstanceLoggerProvider : IFunctionInstanceLoggerProvider
     {
+        private readonly IFunctionInstanceLogger _logger;
+        public NullFunctionInstanceLoggerProvider()
+            : this(new NullFunctionInstanceLogger())
+        {
+        }
+
+        public NullFunctionInstanceLoggerProvider(object instance)
+        {
+            _logger = (IFunctionInstanceLogger) instance;
+        }
+
         Task<IFunctionInstanceLogger> IFunctionInstanceLoggerProvider.GetAsync(CancellationToken cancellationToken)
         {
-            IFunctionInstanceLogger logger = new NullFunctionInstanceLogger();
-            return Task.FromResult(logger);
+            return Task.FromResult(_logger);
         }
     }
 }

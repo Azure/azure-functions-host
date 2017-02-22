@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             try
             {
                 TaskCompletionSource<TResult> taskSource = new TaskCompletionSource<TResult>();
-                IServiceProvider serviceProvider = FunctionalTest.CreateServiceProviderForManualCompletion<TResult>(
+                var serviceProvider = FunctionalTest.CreateConfigurationForManualCompletion<TResult>(
                     account, programType, taskSource);
                 Task<TResult> task = taskSource.Task;
                 setTaskSource.Invoke(taskSource);

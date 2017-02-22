@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostBlobsConfiguration _blobsConfiguration = new JobHostBlobsConfiguration();
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
-        private IJobHostContextFactory _contextFactory;
+        
         private string _hostId;
 
         /// <summary>
@@ -61,6 +62,9 @@ namespace Microsoft.Azure.WebJobs
             IConverterManager converterManager = new ConverterManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
 
+            AddService<IQueueConfiguration>(_queueConfiguration);
+            AddService<IConsoleProvider>(ConsoleProvider);
+            AddService<IStorageAccountProvider>(_storageAccountProvider);
             AddService<IExtensionRegistry>(extensions);
             AddService<StorageClientFactory>(new StorageClientFactory());
             AddService<INameResolver>(new DefaultNameResolver());
@@ -256,24 +260,6 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        internal IJobHostContextFactory ContextFactory
-        {
-            get
-            {
-                if (_contextFactory == null)
-                {
-                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, ConsoleProvider, this);
-                }
-
-                return _contextFactory;
-            }
-            set
-            {
-                // Expose this for unit tests to override.
-                _contextFactory = value;
-            }
-        }
-
         /// <summary>
         /// Gets or sets the <see cref="Host.StorageClientFactory"/> that will be used to create
         /// Azure Storage clients.
@@ -322,13 +308,6 @@ namespace Microsoft.Azure.WebJobs
 
             object service = null;
             _services.TryGetValue(serviceType, out service);
-
-            if (service == null && serviceType == typeof(IJobHostContextFactory))
-            {
-                // ContextFactory must be delay created at the right time
-                AddService<IJobHostContextFactory>(ContextFactory);
-                return ContextFactory;
-            }
 
             return service;
         }
