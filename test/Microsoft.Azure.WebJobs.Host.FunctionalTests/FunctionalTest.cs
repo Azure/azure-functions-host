@@ -337,8 +337,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 host.Start();
 
                 // Act
-                completed = task.WaitUntilCompleted(25 * 1000);
-
+                if (Debugger.IsAttached)
+                {
+                    task.WaitUntilCompleted();
+                    completed = true;
+                }
+                else
+                {
+                    completed = task.WaitUntilCompleted(25 * 1000);
+                }
+                
                 // Assert
                 Assert.True(completed);
 

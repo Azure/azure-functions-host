@@ -91,6 +91,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // in case a particular blob lives in a restricted "blob only" storage account (i.e. no queues).
             IStorageQueue defaultPoisonQueue = _hostAccount.CreateQueueClient().GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
 
+            // this special queue bypasses the QueueProcessorFactory - we don't want people to
+            // override this
             QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_hostBlobTriggerQueue.SdkObject, _trace, _queueConfiguration, defaultPoisonQueue.SdkObject);
             SharedBlobQueueProcessor queueProcessor = new SharedBlobQueueProcessor(context, triggerExecutor);
 

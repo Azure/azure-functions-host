@@ -190,14 +190,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Message.Contains("Error"))).Any();
                 if (!hasError)
                 {
-                    Assert.Equal(17, trace.Traces.Count);
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
                     ValidateTraceProperties(trace);
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(27, consoleOutputLines.Length);
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("Another User TextWriter log")));

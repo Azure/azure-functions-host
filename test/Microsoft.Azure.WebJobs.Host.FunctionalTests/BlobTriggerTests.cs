@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -18,27 +17,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string ContainerName = "container";
         private const string BlobName = "blob";
         private const string BlobPath = ContainerName + "/" + BlobName;
-        private const string OutputBlobName = "blob.out";
-        private const string OutputBlobPath = ContainerName + "/" + OutputBlobName;
-
-        [Fact]
-        public void BlobTrigger_IfWritesToSecondBlobTrigger_TriggersOutputQuickly()
-        {
-            // Arrange
-            IStorageAccount account = CreateFakeStorageAccount();
-            IStorageBlobContainer container = CreateContainer(account, ContainerName);
-            IStorageBlockBlob inputBlob = container.GetBlockBlobReference(BlobName);
-            inputBlob.UploadText("abc");
-
-            // Act
-            RunTrigger<object>(account, typeof(BlobTriggerToBlobTriggerProgram),
-                (s) => BlobTriggerToBlobTriggerProgram.TaskSource = s);
-
-            // Assert
-            IStorageBlockBlob outputBlob = container.GetBlockBlobReference(OutputBlobName);
-            string content = outputBlob.DownloadText();
-            Assert.Equal("*abc*", content);
-        }
 
         [Fact]
         public void BlobTrigger_IfBoundToCloudBlob_Binds()
@@ -65,34 +43,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public static void Run([BlobTrigger(BlobPath)] ICloudBlob blob)
             {
                 TaskSource.TrySetResult(blob);
-            }
-        }
-
-        private class BlobTriggerToBlobTriggerProgram
-        {
-            private const string CommittedQueueName = "committed";
-            private const string IntermediateBlobPath = ContainerName + "/" + "blob.middle";
-
-            public static TaskCompletionSource<object> TaskSource { get; set; }
-
-            public static void StepOne([BlobTrigger(BlobPath)] TextReader input,
-                [Blob(IntermediateBlobPath)] TextWriter output)
-            {
-                string content = input.ReadToEnd();
-                output.Write(content);
-            }
-
-            public static void StepTwo([BlobTrigger(IntermediateBlobPath)] TextReader input,
-                [Blob(OutputBlobPath)] TextWriter output, [Queue(CommittedQueueName)] out string committed)
-            {
-                string content = input.ReadToEnd();
-                output.Write("*" + content + "*");
-                committed = String.Empty;
-            }
-
-            public static void StepThree([QueueTrigger(CommittedQueueName)] string ignore)
-            {
-                TaskSource.TrySetResult(null);
             }
         }
 

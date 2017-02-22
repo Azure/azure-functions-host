@@ -18,11 +18,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
     public class BlobTriggerEndToEndTests : IDisposable
     {
         private const string TestArtifactPrefix = "e2etests";
+        
         private const string SingleTriggerContainerName = TestArtifactPrefix + "singletrigger-%rnd%";
         private const string PoisonTestContainerName = TestArtifactPrefix + "poison-%rnd%";
-        private const string BlobName = "test";
+        private const string TestBlobName = "test";
 
-        private static ManualResetEvent _blobProcessedEvent;
+        private const string BlobChainContainerName = TestArtifactPrefix + "blobchain-%rnd%";
+        private const string BlobChainTriggerBlobName = "blob";
+        private const string BlobChainTriggerBlobPath = BlobChainContainerName + "/" + BlobChainTriggerBlobName;
+        private const string BlobChainCommittedQueueName = "committed";
+        private const string BlobChainIntermediateBlobPath = BlobChainContainerName + "/" + "blob.middle";
+        private const string BlobChainOutputBlobName = "blob.out";
+        private const string BlobChainOutputBlobPath = BlobChainContainerName + "/" + BlobChainOutputBlobName;
+
+        private static ManualResetEvent _completedEvent;
         private static int _timesProcessed;
 
         private readonly CloudBlobContainer _testContainer;
@@ -97,7 +106,30 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             int sleepTime = int.Parse(sleepTimeInSeconds) * 1000;
             Thread.Sleep(sleepTime);
 
-            _blobProcessedEvent.Set();
+            _completedEvent.Set();
+        }
+
+        public static void BlobChainStepOne(
+            [BlobTrigger(BlobChainTriggerBlobPath)] TextReader input,
+            [Blob(BlobChainIntermediateBlobPath)] TextWriter output)
+        {
+            string content = input.ReadToEnd();
+            output.Write(content);
+        }
+
+        public static void BlobChainStepTwo(
+            [BlobTrigger(BlobChainIntermediateBlobPath)] TextReader input,
+            [Blob(BlobChainOutputBlobPath)] TextWriter output, 
+            [Queue(BlobChainCommittedQueueName)] out string committed)
+        {
+            string content = input.ReadToEnd();
+            output.Write("*" + content + "*");
+            committed = String.Empty;
+        }
+
+        public static void BlobChainStepThree([QueueTrigger(BlobChainCommittedQueueName)] string ignore)
+        {
+            _completedEvent.Set();
         }
 
         [Theory]
@@ -136,19 +168,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             StringWriter consoleOutput = new StringWriter();
             Console.SetOut(consoleOutput);
 
-            CloudBlockBlob blob = _testContainer.GetBlockBlobReference(BlobName);
+            CloudBlockBlob blob = _testContainer.GetBlockBlobReference(TestBlobName);
             blob.UploadText("0");
 
             int timeToProcess;
 
             // Process the blob first
-            using (_blobProcessedEvent = new ManualResetEvent(initialState: false))
+            using (_completedEvent = new ManualResetEvent(initialState: false))
             using (JobHost host = new JobHost(_hostConfiguration))
             {
                 DateTime startTime = DateTime.Now;
 
                 host.Start();
-                Assert.True(_blobProcessedEvent.WaitOne(TimeSpan.FromSeconds(60)));
+                Assert.True(_completedEvent.WaitOne(TimeSpan.FromSeconds(60)));
 
                 timeToProcess = (int)(DateTime.Now - startTime).TotalMilliseconds;
 
@@ -165,12 +197,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // Then start again and make sure the blob doesn't get reprocessed
             // wait twice the amount of time required to process first before 
             // deciding that it doesn't get reprocessed
-            using (_blobProcessedEvent = new ManualResetEvent(initialState: false))
+            using (_completedEvent = new ManualResetEvent(initialState: false))
             using (JobHost host = new JobHost(_hostConfiguration))
             {
                 host.Start();
 
-                bool blobReprocessed = _blobProcessedEvent.WaitOne(2 * timeToProcess);
+                bool blobReprocessed = _completedEvent.WaitOne(2 * timeToProcess);
 
                 Assert.False(blobReprocessed);
             }
@@ -179,20 +211,38 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
+        public void BlobChainTest()
+        {
+            // write the initial trigger blob to start the chain
+            var blobClient = _storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(_nameResolver.ResolveInString(BlobChainContainerName));
+            container.CreateIfNotExists();
+            CloudBlockBlob blob = container.GetBlockBlobReference(BlobChainTriggerBlobName);
+            blob.UploadText("0");
+
+            using (_completedEvent = new ManualResetEvent(initialState: false))
+            using (JobHost host = new JobHost(_hostConfiguration))
+            {
+                host.Start();
+                Assert.True(_completedEvent.WaitOne(TimeSpan.FromSeconds(60)));
+            }
+        }
+
+        [Fact]
         public void BlobGetsProcessedOnlyOnce_MultipleHosts()
         {
             _testContainer
-                .GetBlockBlobReference(BlobName)
+                .GetBlockBlobReference(TestBlobName)
                 .UploadText("10");
 
-            using (_blobProcessedEvent = new ManualResetEvent(initialState: false))
+            using (_completedEvent = new ManualResetEvent(initialState: false))
             using (JobHost host1 = new JobHost(_hostConfiguration))
             using (JobHost host2 = new JobHost(_hostConfiguration))
             {
                 host1.Start();
                 host2.Start();
 
-                Assert.True(_blobProcessedEvent.WaitOne(TimeSpan.FromSeconds(60)));
+                Assert.True(_completedEvent.WaitOne(TimeSpan.FromSeconds(60)));
             }
 
             Assert.Equal(1, _timesProcessed);
