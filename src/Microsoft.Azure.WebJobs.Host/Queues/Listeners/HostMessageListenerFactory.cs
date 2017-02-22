@@ -80,13 +80,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         {
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(_executor, _functionLookup, _functionInstanceLogger);
 
+            // Provide an upper bound on the maximum polling interval for run/abort from dashboard.
+            // This ensures that if users have customized this value the Dashboard will remain responsive.
+            TimeSpan maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
+
             IListener listener = new QueueListener(_queue,
                 poisonQueue: null,
                 triggerExecutor: triggerExecutor,
                 exceptionHandler: _exceptionHandler,
                 trace: _trace,
                 sharedWatcher: null,
-                queueConfiguration: _queueConfiguration);
+                queueConfiguration: _queueConfiguration,
+                maxPollingInterval: maxPollingInterval);
 
             return Task.FromResult(listener);
         }

@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             TraceWriter trace,
             SharedQueueWatcher sharedWatcher,
             IQueueConfiguration queueConfiguration,
-            QueueProcessor queueProcessor = null)
+            QueueProcessor queueProcessor = null,
+            TimeSpan? maxPollingInterval = null)
         {
             if (trace == null)
             {
@@ -89,7 +90,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
                 _trace, _queueConfiguration, poisonMessageEventHandler);
 
-            _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, _queueProcessor.MaxPollingInterval);
+            TimeSpan maximumInterval = _queueProcessor.MaxPollingInterval;
+            if (maxPollingInterval.HasValue && maximumInterval > maxPollingInterval.Value)
+            {
+                // enforce the maximum polling interval if specified
+                maximumInterval = maxPollingInterval.Value;
+            }
+
+            _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, maximumInterval);
         }
 
         public void Cancel()
