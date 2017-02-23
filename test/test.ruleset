@@ -40,5 +40,6 @@
     <Rule Id="CA908" Action="None" />
     <Rule Id="CA2100" Action="None" />
     <Rule Id="CA1054" Action="None" />
+    <Rule Id="CS0618" Action="None" /> <!-- Ignore Obsolete attributes for 2.0 release -->
   </Rules>
 </RuleSet>
