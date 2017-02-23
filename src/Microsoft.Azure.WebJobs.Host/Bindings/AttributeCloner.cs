@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
@@ -78,8 +77,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     BindingTemplate template;
                     if (TryCreateAutoResolveBindingTemplate(propInfo, nameResolver, out template))
                     {
+                        IResolutionPolicy policy = GetPolicy(propInfo);
                         template.ValidateContractCompatibility(bindingDataContract);
-                        getArgFuncs[i] = (bindingData) => TemplateBind(template, bindingData);
+                        getArgFuncs[i] = (bindingData) => TemplateBind(policy, propInfo, source, template, bindingData);
                     }
                     else
                     {
@@ -105,8 +105,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                             BindingTemplate template;
                             if (TryCreateAutoResolveBindingTemplate(prop, nameResolver, out template))
                             {
+                                IResolutionPolicy policy = GetPolicy(prop);
                                 template.ValidateContractCompatibility(bindingDataContract);
-                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(template, bindingData)));
+                                setProperties.Add((newAttr, bindingData) => prop.SetValue(newAttr, TemplateBind(policy, prop, newAttr, template, bindingData)));
                             }
                             else
                             {
@@ -134,38 +135,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             template = null;
 
-            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
-
-            // Return false if there is no attribute on this property.
-            if (attr == null)
+            string resolvedValue = null;
+            if (!TryAutoResolveValue(_source, propInfo, nameResolver, out resolvedValue))
             {
                 return false;
-            }
-
-            string originalValue = (string)propInfo.GetValue(_source);
-
-            // Return false if the property value is null.
-            if (originalValue == null)
-            {
-                return false;
-            }
-
-            string resolvedValue;
-            if (!attr.AllowTokens)
-            {
-                resolvedValue = nameResolver.Resolve(originalValue);
-
-                // If a value is non-null and cannot be found, we throw to match the behavior
-                // when %% values are not found.
-                if (resolvedValue == null)
-                {
-                    string msg = string.Format(CultureInfo.CurrentCulture, "'{0}' does not resolve to a value.", originalValue);
-                    throw new InvalidOperationException(msg);
-                }
-            }
-            else
-            {
-                resolvedValue = nameResolver.ResolveWholeString(originalValue);
             }
 
             template = BindingTemplate.FromString(resolvedValue);
@@ -173,13 +146,44 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return true;
         }
 
-        private static string TemplateBind(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+        internal static bool TryAutoResolveValue(TAttribute attribute, PropertyInfo propInfo, INameResolver nameResolver, out string resolvedValue)
         {
-            if (bindingData == null)
+            resolvedValue = null;
+
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            if (attr == null)
             {
-                return template.Pattern;
+                return false;
             }
-            return template.Bind(bindingData);
+
+            string originalValue = (string)propInfo.GetValue(attribute);
+            if (originalValue == null)
+            {
+                return false;
+            }
+
+            if (!attr.AllowTokens)
+            {
+                resolvedValue = nameResolver.Resolve(originalValue);
+
+                // If a value is non-null and cannot be found, we throw to match the behavior
+                // when %% values are not found in ResolveWholeString below.
+                if (resolvedValue == null)
+                {
+                    // It's important that we only log the attribute property name, not the actual value to ensure
+                    // that in cases where users accidentally use a secret key *value* rather than indirect setting name
+                    // that value doesn't get written to logs.
+                    throw new InvalidOperationException($"Unable to resolve value for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'.");
+                }
+            }
+            else
+            {
+                // The logging consideration above doesn't apply in this case, since only tokens wrapped
+                // in %% characters will be resolved, so they are less likely to include a secret value.
+                resolvedValue = nameResolver.ResolveWholeString(originalValue);
+            }
+
+            return true;
         }
 
         // Get a attribute with %% resolved, but not runtime {} resolved.
@@ -298,6 +302,51 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return newAttr;
+        }
+
+        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+        {
+            if (bindingData == null)
+            {
+                return template?.Pattern;
+            }
+
+            return policy.TemplateBind(prop, attr, template, bindingData);
+        }
+
+        internal static IResolutionPolicy GetPolicy(PropertyInfo propInfo)
+        {
+            AutoResolveAttribute autoResolveAttribute = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+
+            var formatterType = autoResolveAttribute.ResolutionPolicyType;
+
+            if (formatterType != null)
+            {
+                // Special-case Table as there is no way to declare this ResolutionPolicy
+                // and use BindingTemplate in the Core assembly
+                if (formatterType == typeof(WebJobs.ODataFilterResolutionPolicy))
+                {
+                    return new ODataFilterResolutionPolicy();
+                }
+
+                if (!typeof(IResolutionPolicy).IsAssignableFrom(formatterType))
+                {
+                    throw new InvalidOperationException($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {propInfo.Name} must derive from {typeof(IResolutionPolicy).Name}.");
+                }
+
+                try
+                {
+                    var obj = Activator.CreateInstance(formatterType);
+                    return (IResolutionPolicy)obj;
+                }
+                catch (MissingMethodException)
+                {
+                    throw new InvalidOperationException($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {propInfo.Name} must derive from {typeof(IResolutionPolicy).Name} and have a default constructor.");
+                }
+            }
+
+            // return the default policy                        
+            return new DefaultResolutionPolicy();
         }
 
         // If no name resolver is specified, then any %% becomes an error.

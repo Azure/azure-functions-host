@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     config.JobActivator = jobActivator;
                     continue;
                 }
-
+              
                 IExtensionConfigProvider extension = obj as IExtensionConfigProvider;
                 if (extension != null)
                 {
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
             public IStorageAccount DashboardAccount { get; set; }
 
-            public Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
+            public Task<IStorageAccount> TryGetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
             {
                 IStorageAccount account;
 

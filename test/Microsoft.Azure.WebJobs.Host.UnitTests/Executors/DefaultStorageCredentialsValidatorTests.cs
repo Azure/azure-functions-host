@@ -1,20 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 using Moq;
 using Xunit;
-using Xunit.Extensions;
-using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 {
@@ -63,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 .Verifiable();
 
             blobClientMock.Setup(b => b.GetServicePropertiesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(null);
+                .ReturnsAsync((ServiceProperties)null);
 
             storageMock.Setup(s => s.CreateQueueClient(null))
                 .Returns(queueClientMock.Object)
@@ -76,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 .Throws(new StorageException("", new WebException("Remote name could not be resolved", WebExceptionStatus.NameResolutionFailure)));
 
             storageMock.SetupSet(s => s.Type = StorageAccountType.BlobOnly);
-            
+
             validator.ValidateCredentialsAsync(storageMock.Object, It.IsAny<CancellationToken>()).GetAwaiter().GetResult();
 
             storageMock.Verify();
@@ -100,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 .Verifiable();
 
             blobClientMock.Setup(b => b.GetServicePropertiesAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(null);
+                .ReturnsAsync((ServiceProperties)null);
 
             storageMock.Setup(s => s.CreateQueueClient(null))
                 .Returns(queueClientMock.Object)

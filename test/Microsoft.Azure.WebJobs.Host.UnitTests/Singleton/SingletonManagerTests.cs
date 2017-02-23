@@ -60,9 +60,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             mockSecondaryBlobClient.Setup(p => p.GetContainerReference(HostContainerNames.Hosts)).Returns(mockSecondaryBlobContainer.Object);
             _mockStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockBlobClient.Object);
             _mockSecondaryStorageAccount.Setup(p => p.CreateBlobClient(null)).Returns(mockSecondaryBlobClient.Object);
-            _mockAccountProvider.Setup(p => p.GetAccountAsync(ConnectionStringNames.Storage, It.IsAny<CancellationToken>()))
+            _mockAccountProvider.Setup(p => p.TryGetAccountAsync(ConnectionStringNames.Storage, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_mockStorageAccount.Object);
-            _mockAccountProvider.Setup(p => p.GetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
+            _mockAccountProvider.Setup(p => p.TryGetAccountAsync(Secondary, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_mockSecondaryStorageAccount.Object);
             _mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
 
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             TestHelpers.SetField(_singletonConfig, "_lockPeriod", TimeSpan.FromMilliseconds(500));
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
-            _nameResolver = new TestNameResolver(); 
+            _nameResolver = new TestNameResolver();
             _singletonManager = new SingletonManager(_mockAccountProvider.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, new FixedHostIdProvider(TestHostId), _nameResolver);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
@@ -166,9 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             await _singletonManager.ReleaseLockAsync(lockHandle, cancellationToken);
 
             // verify the traces
-            Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Waiting for Singleton lock (testid)")));
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock acquired (testid)")));
-            Assert.Equal(renewCount, _trace.Traces.Count(p => p.ToString().Contains("Renewing Singleton lock (testid)")));
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock released (testid)")));
 
             renewCount = 0;

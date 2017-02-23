@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     ServiceType.HasValue &&
                     ServiceType == StorageServiceType.Blob &&
                     OperationType.HasValue &&
-                    ((OperationType == StorageServiceOperationType.ClearPage) || 
+                    ((OperationType == StorageServiceOperationType.ClearPage) ||
                     (OperationType == StorageServiceOperationType.CopyBlob) ||
                     (OperationType == StorageServiceOperationType.CopyBlobDestination) ||
                     (OperationType == StorageServiceOperationType.PutBlob) ||
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             var entry = new StorageAnalyticsLogEntry();
 
             DateTime requestStartTime;
-            if (!DateTime.TryParseExact(fields[(int)StorageAnalyticsLogColumnId.RequestStartTime], "o", 
+            if (!DateTime.TryParseExact(fields[(int)StorageAnalyticsLogColumnId.RequestStartTime], "o",
                 CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out requestStartTime))
             {
                 return null;
@@ -119,8 +119,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// <returns>
         /// A valid instance of <see cref="BlobPath"/>, or null if log entry is not associated with a blob.
         /// </returns>
-        /// <exception cref="FormatException">If fails to determine blob path components, i.e. account, container name,
-        /// and blob name.</exception>
         public BlobPath ToBlobPath()
         {
             if (!ServiceType.HasValue || ServiceType != StorageServiceType.Blob)
@@ -139,23 +137,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             else
             {
                 // assuming key is "/account/container/blob"
-                int startPos = RequestedObjectKey.Length > 1 ? RequestedObjectKey.IndexOf('/', 1) : -1;                
+                int startPos = RequestedObjectKey.Length > 1 ? RequestedObjectKey.IndexOf('/', 1) : -1;
                 path = startPos != -1 ? RequestedObjectKey.Substring(startPos + 1) : String.Empty;
             }
 
             if (String.IsNullOrEmpty(path))
             {
-                throw new FormatException("Failed to parse RequestedObjectKey property of the log entry. " +
-                    "It should be in one of the supported formats: " +
-                    @"""https://account.blob.core.windows.net/container/blob"", or" +
-                    @"""/account/container/blob""");
+                return null;
             }
 
             BlobPath blobPath;
             if (!BlobPath.TryParse(path, false, out blobPath))
             {
-                throw new FormatException("Failed to parse RequestedObjectKey property of the log entry. " +
-                    "Blob identifiers must be in the format container/blob.");
+                return null;
             }
 
             return blobPath;

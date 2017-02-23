@@ -70,7 +70,7 @@
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
 
   <Target Name="DownloadNuGet">
-    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
+    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.12.0" />
   </Target>
 
   <Target Name="RestoreSkipStrongNames" DependsOnTargets="DownloadNuGet">
@@ -139,6 +139,21 @@
     </MSBuild>
 
     <xunit Assemblies="@(UnitTestAssemblies)"/>
+  </Target>
+
+  <Target Name="BuildTestBinaries" DependsOnTargets="EnableSkipStrongNames;RestorePackages">
+    <ItemGroup>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.UnitTests\WebJobs.Host.UnitTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.FunctionalTests\WebJobs.Host.FunctionalTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.ServiceBus.UnitTests\WebJobs.ServiceBus.UnitTests.csproj"/>
+        <TestBinaries Include="test\Dashboard.UnitTests\Dashboard.UnitTests.csproj"/>
+        <TestBinaries Include="test\Microsoft.Azure.WebJobs.Host.EndToEndTests\WebJobs.Host.EndToEndTests.csproj"/>
+    </ItemGroup>
+
+    <MSBuild Projects="@(TestBinaries)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+    </MSBuild>
   </Target>
 
   <Target Name="FunctionalTest" DependsOnTargets="UnitTest">
@@ -233,7 +248,7 @@
                     {
                         Log.LogMessage("Downloading latest version of NuGet.exe...");
                         WebClient webClient = new WebClient();
-                        webClient.DownloadFile("https://nuget.org/nuget.exe", OutputFileName);
+                        webClient.DownloadFile("https://dist.nuget.org/win-x86-commandline/latest/nuget.exe", OutputFileName);
                     }
 
                     return true;

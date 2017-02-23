@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
@@ -20,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
             get { return typeof(CloudStorageAccount); }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _account;
+            return Task.FromResult<object>(_account);
         }
 
         public string ToInvokeString()

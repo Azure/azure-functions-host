@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
     /// Base class for aggregating Increment/Decrement counters. 
     /// Maintains a background poller thread that periodically logs a count. 
     /// </summary>
-    public abstract class InstanceCountLoggerBase
+    internal abstract class InstanceCountLoggerBase
     {
         // Track functionInstanceGuids (instead of just a single integer counter) in case we missed an event or double reported an event. 
         private readonly HashSet<Guid> _outstandingCount = new HashSet<Guid>();
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
         private int _totalCount;
 
         private Worker _worker;
-        
+
         object _lock = new object();
 
         /// <summary>
@@ -130,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
 
                     int totalActiveFuncs;
                     int totalThisPeriod;
+
                     lock (_parent._lock)
                     {
                         totalActiveFuncs = _parent._maxCount;

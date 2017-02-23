@@ -254,6 +254,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
             }
 
+            if (TypeUtility.IsAsyncVoid(method))
+            {
+                this._trace.Warning($"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.");
+            }
+
             Type returnType = method.ReturnType;
 
             if (returnType != typeof(void) && returnType != typeof(Task))

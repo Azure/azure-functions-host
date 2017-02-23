@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     /// </summary>
     /// <typeparam name="TMessage">The native message type. For Azure Queues, this would be CloudQueueMessage.</typeparam>
     /// <typeparam name="TTriggerValue">The type of the trigger object that the listener returns. This could represent a single message or a batch of messages.</typeparam>
+    [Obsolete("Not ready for public consumption.")]
     public interface ITriggerBindingStrategy<TMessage, TTriggerValue>
     {
         /// <summary>

@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -23,5 +24,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// to).
         /// </summary>
         public IStorageBlobClient BlobClient { get; set; }
+
+        /// <summary>
+        /// The storage client to use for the poison queue.
+        /// </summary>
+        public IStorageQueueClient QueueClient { get; set; }
     }
 }

@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount);
+            JobHostBlobsConfiguration blobsConfiguration = new JobHostBlobsConfiguration();
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
@@ -63,11 +64,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, trace);
 
             var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
-                    nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
+                    nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration,
                     exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
                     sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
 
-            var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
+            var bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
 
             var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager, trace);

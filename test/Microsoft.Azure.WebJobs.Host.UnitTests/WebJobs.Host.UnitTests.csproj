@@ -14,6 +14,9 @@
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <CodeAnalysisRuleSet>..\test.ruleset</CodeAnalysisRuleSet>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -24,7 +27,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <LangVersion>5</LangVersion>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -34,7 +37,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <LangVersion>5</LangVersion>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
@@ -55,15 +58,15 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Edm.5.8.1\lib\net40\Microsoft.Data.Edm.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Data.Edm.5.8.2\lib\net40\Microsoft.Data.Edm.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Data.OData, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.OData.5.8.1\lib\net40\Microsoft.Data.OData.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Data.OData.5.8.2\lib\net40\Microsoft.Data.OData.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Data.Services.Client, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.1\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.2\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -74,8 +77,8 @@
       <HintPath>..\..\packages\WindowsAzure.Storage.7.2.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Moq, Version=4.5.23.0, Culture=neutral, PublicKeyToken=69f491c39445e920, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Moq.4.5.23\lib\net45\Moq.dll</HintPath>
+    <Reference Include="Moq, Version=4.5.30.0, Culture=neutral, PublicKeyToken=69f491c39445e920, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Moq.4.5.30\lib\net45\Moq.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -89,7 +92,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Spatial, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Spatial.5.8.1\lib\net40\System.Spatial.dll</HintPath>
+      <HintPath>..\..\packages\System.Spatial.5.8.2\lib\net40\System.Spatial.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml" />
@@ -121,6 +124,7 @@
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
     <Compile Include="Bindings\Path\BindingTemplateParserTests.cs" />
     <Compile Include="Bindings\Path\BindingTemplateTests.cs" />
+    <Compile Include="Bindings\Path\BindingParameterResolverTests.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapterTests.cs" />
     <Compile Include="Blobs\AsyncCompletionSource.cs" />
     <Compile Include="Blobs\AsyncResultExtensions.cs" />
@@ -137,6 +141,7 @@
     <Compile Include="Blobs\Bindings\UncompletedCancellableAsyncResult.cs" />
     <Compile Include="Blobs\BlobCausalityManagerTests.cs" />
     <Compile Include="Blobs\CompletingAsyncResult.cs" />
+    <Compile Include="Blobs\Listeners\BlobLogListenerTests.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\StorageAnalyticsLogEntryTests.cs" />
@@ -216,13 +221,13 @@
     <Compile Include="PropertyAccessorFactoryTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityCollectorBinderTests.cs" />
-    <Compile Include="Tables\TableArgumentBindingExtensionProviderTests.cs" />
     <Compile Include="Tables\TableEntityCollectorBinderTests.cs" />
     <Compile Include="Tables\PocoToTableEntityConverterTests.cs" />
     <Compile Include="Tables\TableEntityToPocoConverterTests.cs" />
     <Compile Include="Tables\TableEntityValueBinderTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
+    <Compile Include="Tables\TableFilterFormatterTests.cs" />
     <Compile Include="Tables\TToEntityPropertyConverterFactoryTests.cs" />
     <Compile Include="Tables\EntityPropertyToTConverterFactoryTests.cs" />
     <Compile Include="TestJobHostContextFactory.cs" />

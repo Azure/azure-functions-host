@@ -133,7 +133,8 @@ namespace Microsoft.Azure.WebJobs
                 _disposable.Add(disposableProvider);
             }
 
-            return (TValue)provider.GetValue();
+            object result = await provider.GetValueAsync();
+            return (TValue)result;
         }
 
         /// <summary>

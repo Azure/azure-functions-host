@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Dashboard.UnitTests.RestProtocol;
@@ -33,6 +34,33 @@ namespace Dashboard.UnitTests
             _endpoint = fixture.Endpoint;
         }
 
+
+        // test the /verison endpoint. 
+        [Fact]
+        public async Task GetVersion()
+        {
+            var response = await _client.GetJsonAsync<VersionResponse>(_endpoint + "/api/version");
+
+            var assembly = typeof(WebApiConfig).Assembly;
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
+            Assert.Equal(response.Version, fileVersionAttr.Version);
+        }
+
+        [Fact]
+        public async Task GetDefinitionSkipStats()
+        {
+            var response = await _client.GetJsonAsync<FunctionStatisticsSegment>(_endpoint + "/api/functions/definitions?limit=100&skipstats=true");
+
+            // Testing against specific data that we added. 
+            Assert.Equal(null, response.ContinuationToken);
+            var x = response.Entries.ToArray();
+            Assert.Equal(1, x.Length);
+            Assert.Equal("alpha", x[0].functionName);
+            Assert.Equal(0, x[0].successCount); // Skipped 
+            Assert.Equal(0, x[0].failedCount);
+        }
+
         [Fact]
         public async Task GetDefinition()
         {
@@ -56,6 +84,40 @@ namespace Dashboard.UnitTests
             var x = response.Entries.ToArray();
             Assert.Equal(0, x.Length);            
         }
+        
+        [Fact]
+        public async Task GetTimelineInvocations()
+        {
+            // Lookup functions by name 
+            string uri = _endpoint + "/api/functions/invocations/" + FunctionId.Build(Fixture.HostName, "alpha") + 
+                "/timeline?limit=11&start=2001-01-01";
+            var response = await _client.GetJsonAsync<TimelineResponseEntry[]>(uri);
+            
+            // This only includes completed / failed functions, not NeverFinished/Running. 
+            // Important that DateTimes include the 'Z' suffix, meaning UTC timezone. 
+            Assert.Equal(2, response.Length);
+            Assert.Equal("2010-03-06T18:10:00Z", response[0].Start);
+            Assert.Equal(1, response[0].TotalFail);
+            Assert.Equal(0, response[0].TotalPass);
+            Assert.Equal(1, response[0].TotalRun);
+
+            Assert.Equal("2010-03-06T18:11:00Z", response[1].Start);
+            Assert.Equal(0, response[1].TotalFail);
+            Assert.Equal(1, response[1].TotalPass);
+            Assert.Equal(1, response[1].TotalRun);
+        }
+
+        public async Task GetTimelineEmptyInvocations()
+        {
+            // Look in timeline range where there's no functions invocations. 
+            // This verifies the time range is getting parsed by the webapi and passed through. 
+            string uri = _endpoint + "/api/functions/invocations/" + FunctionId.Build(Fixture.HostName, "alpha") + 
+                "/timeline?limit=11&start=2005-01-01";
+            var response = await _client.GetJsonAsync<TimelineResponseEntry[]>(uri);
+
+            Assert.Equal(0, response.Length);
+        }
+
 
         [Fact]
         public async Task GetInvocations()
@@ -64,33 +126,53 @@ namespace Dashboard.UnitTests
             string uri = _endpoint + "/api/functions/definitions/" + FunctionId.Build(Fixture.HostName, "alpha") + "/invocations?limit=11";
             var response = await _client.GetJsonAsync<DashboardSegment<InvocationLogViewModel>>(uri);
 
-            var item = _fixture.Data[0];
+            Assert.Equal(_fixture.ExpectedItems.Count, response.entries.Length);
 
-            var x = response.entries.ToArray();
-            Assert.Equal(item.FunctionInstanceId.ToString(), x[0].id);
-            Assert.Equal("2010-03-06T18:13:20Z", x[0].whenUtc);
-            Assert.Equal(120000.0, x[0].duration);
-            Assert.Equal("CompletedSuccess", x[0].status);
-            Assert.Equal("alpha", x[0].functionDisplayTitle);
+            for (int i = 0; i < response.entries.Length; i++)
+            {
+                var expectedItem = _fixture.ExpectedItems[i];
+                var actualItem = response.entries[i];
+
+                AssertEqual(expectedItem, actualItem);
+
+                Assert.Equal("alpha", actualItem.functionDisplayTitle);
+            }
         }
 
         [Fact]
         public async Task GetSpecificInvocation()
         {
-            var item = _fixture.Data[0];
+            foreach (var expectedItem in _fixture.ExpectedItems)
+            {
+                var url = _endpoint + "/api/functions/invocations/" + expectedItem.id;
+                var response = await _client.GetJsonAsync<FunctionInstanceDetailsViewModel>(url);
 
-            // Lookup specific invocation 
+                var actualItem = response.Invocation;
+                AssertEqual(expectedItem, actualItem);
 
-            var url = _endpoint + "/api/functions/invocations/" + item.FunctionInstanceId.ToString();
-            var response2 = await _client.GetJsonAsync<FunctionInstanceDetailsViewModel>(url);
+                Assert.Equal("alpha ()", response.Invocation.functionDisplayTitle);
 
-            Assert.Equal(item.FunctionName, response2.Invocation.functionName);
-            Assert.Equal(item.FunctionInstanceId.ToString(), response2.Invocation.id);
-            Assert.Equal("CompletedSuccess", response2.Invocation.status);
-            Assert.Equal(120000.0, response2.Invocation.duration);
-            Assert.Equal("alpha ()", response2.Invocation.functionDisplayTitle);
+                Assert.Equal(actualItem.id, response.TriggerReason.childGuid);
+            }
+        }
 
-            Assert.Equal(item.FunctionInstanceId.ToString(), response2.TriggerReason.childGuid);
+        private static void AssertEqual(InvocationLogViewModel expectedItem, InvocationLogViewModel actualItem)
+        {
+            Assert.Equal(expectedItem.id, actualItem.id);
+            Assert.Equal(expectedItem.whenUtc, actualItem.whenUtc);
+            Assert.Equal(expectedItem.status, actualItem.status);
+            if (actualItem.status != "Running")
+            {
+                Assert.Equal(expectedItem.duration, actualItem.duration);
+            }
+            else
+            {
+                // Compares to current time. 
+                var minValue = DateTime.UtcNow.AddDays(-1) - DateTime.Parse(actualItem.whenUtc);
+                var totalMs = minValue.TotalMilliseconds;
+
+                Assert.True(actualItem.duration.Value > totalMs);
+            }
         }
 
         [Fact]
@@ -117,10 +199,9 @@ namespace Dashboard.UnitTests
 
             public HttpClient Client { get; private set; }
             public string Endpoint { get; private set; }
-            public FunctionInstanceLogItem[] Data
-            {
-                get; private set;
-            }
+
+            public List<FunctionInstanceLogItem> Data {get; private set; }
+            public List<InvocationLogViewModel> ExpectedItems { get; private set; }
 
             public Fixture()
             {
@@ -133,7 +214,7 @@ namespace Dashboard.UnitTests
                 var tablePrefix = "logtesZZ" + Guid.NewGuid().ToString("n");
                 ConfigurationManager.AppSettings[FunctionLogTableAppSettingName] = tablePrefix; // tell dashboard to use it
                 _provider = LogFactory.NewLogTableProvider(tableClient, tablePrefix);
-                this.Data = await WriteTestLoggingDataAsync(_provider);
+                await WriteTestLoggingDataAsync(_provider);
 
                 var config = new HttpConfiguration();
 
@@ -161,31 +242,127 @@ namespace Dashboard.UnitTests
 
             // Write logs. Return what we wrote. 
             // This is baseline data. REader will verify against it exactly. This helps in aggressively catching subtle breaking changes. 
-            private async Task<FunctionInstanceLogItem[]> WriteTestLoggingDataAsync(ILogTableProvider provider)
+            private async Task WriteTestLoggingDataAsync(ILogTableProvider provider)
             {
                 ILogWriter writer = LogFactory.NewWriter(HostName, "c1", provider);
 
                 string Func1 = "alpha";
-                var time = new DateTime(2010, 3, 6, 10, 11, 20);
+                var time = new DateTime(2010, 3, 6, 18, 11, 20, DateTimeKind.Utc);
 
                 List<FunctionInstanceLogItem> list = new List<FunctionInstanceLogItem>();
-                list.Add(new FunctionInstanceLogItem
+                List<InvocationLogViewModel> expected = new List<InvocationLogViewModel>();
+                this.ExpectedItems = expected;
+                this.Data = list;
+
+                // List in reverse chronology. 
+                // Completed Success
                 {
-                    FunctionInstanceId = Guid.NewGuid(),
-                    FunctionName = Func1,
-                    StartTime = time,
-                    EndTime = time.AddMinutes(2),
-                    LogOutput = "one",
-                    Status = Microsoft.Azure.WebJobs.Logging.FunctionInstanceStatus.CompletedSuccess
-                });
+                    var item = new FunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionName = Func1,
+                        StartTime = time,
+                        EndTime = time.AddMinutes(2),  // Completed 
+                        LogOutput = "one",
+                    };
+                    list.Add(item);
+                    expected.Add(new InvocationLogViewModel
+                    {
+                        id = item.FunctionInstanceId.ToString(),
+                        status = "CompletedSuccess",
+                        whenUtc = "2010-03-06T18:13:20Z", // since it's completed, specifies end-time 
+                        duration = 120000.0
+                    });
+                }
+
+                // Completed Error 
+                {
+                    time = time.AddMinutes(-1);
+                    var item = new FunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionName = Func1,
+                        StartTime = time,
+                        EndTime = time.AddMinutes(2),
+                        ErrorDetails = "some failure", // signifies failure 
+                        LogOutput = "two",
+                    };
+                    list.Add(item);
+                    expected.Add(new InvocationLogViewModel
+                    {
+                        id = item.FunctionInstanceId.ToString(),
+                        status = "CompletedFailed",
+                        whenUtc = "2010-03-06T18:12:20Z", // end-time. 
+                        duration = 120000.0
+                    });
+                }
+
+                // Still running 
+                {
+                    time = time.AddMinutes(-1);
+                    var item = new FunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionName = Func1,
+                        StartTime = time,  // Recent heartbeat 
+                        LogOutput = "two",
+                    };
+                    list.Add(item);
+                    expected.Add(new InvocationLogViewModel
+                    {
+                        id = item.FunctionInstanceId.ToString(),
+                        status = "Running",
+                        whenUtc = "2010-03-06T18:09:20Z", // specifies start-time
+                    });
+                }
+
+                // Never Finished
+                {
+                    time = time.AddMinutes(-1);
+                    var item = new TestFunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionName = Func1,
+                        StartTime = time,  // Never Finished
+                        LogOutput = "two",
+                        OnRefresh = (me) => { me.FunctionInstanceHeartbeatExpiry = time; },// stale heartbeat
+                    };
+                    list.Add(item);
+                    expected.Add(new InvocationLogViewModel
+                    {
+                        id = item.FunctionInstanceId.ToString(),
+                        status = "NeverFinished",
+                        whenUtc = "2010-03-06T18:08:20Z", // starttime
+                        duration = null
+                    });
+                }
+
+                // No heartbeat (legacy example)
+                {
+                    time = time.AddMinutes(-1);
+                    var item = new TestFunctionInstanceLogItem
+                    {
+                        FunctionInstanceId = Guid.NewGuid(),
+                        FunctionName = Func1,
+                        StartTime = time,  // Never Finished 
+                        LogOutput = "two",
+                        OnRefresh = (me) => { } // No heart beat 
+                    };
+                    list.Add(item);
+                    expected.Add(new InvocationLogViewModel
+                    {
+                        id = item.FunctionInstanceId.ToString(),
+                        status = "Running",
+                        whenUtc = "2010-03-06T18:07:20Z", // starttime
+                    });
+                } 
 
                 foreach (var item in list)
                 {
                     await writer.AddAsync(item);
                 }
 
-                await writer.FlushAsync();
-                return list.ToArray();
+                await writer.FlushAsync();               
             }
 
             CloudTableClient GetNewLoggingTableClient()
@@ -201,6 +378,16 @@ namespace Dashboard.UnitTests
                 var client = account.CreateCloudTableClient();
                 return client;
             }
+
+            public class TestFunctionInstanceLogItem : FunctionInstanceLogItem
+            {
+                public Action<TestFunctionInstanceLogItem> OnRefresh;
+                public override void Refresh(TimeSpan pollingFrequency)
+                {
+                    OnRefresh(this);
+                }
+            }
+
         }
 
 

@@ -44,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { return 3; }
         }
 
+        public TimeSpan VisibilityTimeout
+        {
+            get { return TimeSpan.Zero; }
+        }
+
         public IQueueProcessorFactory QueueProcessorFactory
         {
             get
@@ -91,14 +96,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 }
             }
 
-            protected override async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+            protected override async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CloudQueue poisonQueue, CancellationToken cancellationToken)
             {
                 FakeStorageQueueMessage fakeMessage = new FakeStorageQueueMessage(message);
 
                 await _poisonQueue.CreateIfNotExistsAsync(cancellationToken);
                 await _poisonQueue.AddMessageAsync(fakeMessage, cancellationToken);
 
-                OnMessageAddedToPoisonQueue(EventArgs.Empty);
+                OnMessageAddedToPoisonQueue(new PoisonMessageEventArgs(message, poisonQueue));
             }
 
             protected override async Task ReleaseMessageAsync(CloudQueueMessage message, FunctionResult result, TimeSpan visibilityTimeout, CancellationToken cancellationToken)

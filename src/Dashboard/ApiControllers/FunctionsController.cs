@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Caching;
@@ -249,7 +250,7 @@ namespace Dashboard.ApiControllers
             {
                  StartBucket = entity.TimeBucket,
                  Start = entity.Time,
-                 TotalPass = entity.TotalPass,
+                 TotalPass = entity.TotalPass, 
                  TotalFail = entity.TotalFail,
                  TotalRun = entity.TotalRun
             });
@@ -341,6 +342,7 @@ namespace Dashboard.ApiControllers
             metadataSnapshot.EndTime = entry.EndTime;
             metadataSnapshot.Succeeded = entry.Succeeded;
             metadataSnapshot.Heartbeat = entry.Heartbeat;
+            metadataSnapshot.FunctionInstanceHeartbeatExpiry = entry.FunctionInstanceHeartbeatExpiry;
             return new InvocationLogViewModel(metadataSnapshot, HostInstanceHasHeartbeat(metadataSnapshot));
         }
 
@@ -465,7 +467,10 @@ namespace Dashboard.ApiControllers
 
         // If host is specified, then only return definitions for that host. If null, return all hosts. 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo, string host = null)
+        public IHttpActionResult GetFunctionDefinitions(
+            [FromUri]PagingInfo pagingInfo, 
+            string host = null,
+            bool skipStats = false)
         {
             if (pagingInfo == null)
             {
@@ -518,7 +523,9 @@ namespace Dashboard.ApiControllers
                 model.IsOldHost = OnlyBeta1HostExists(alreadyFoundNoNewerEntries: true);
             }
 
-            if (model.Entries != null)
+            // This is very slow. Allow a flag to skip it, and then client can query the stats independently 
+            // via the /timeline API. 
+            if ((model.Entries != null) && !skipStats)
             {
                 foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)
                 {
@@ -579,6 +586,19 @@ namespace Dashboard.ApiControllers
             return Ok();
         }
 
+        // Diagnostics endpoint, getting the version of the service that's running. 
+        [Route("api/version")]
+        public IHttpActionResult GetVersionInfo()
+        {
+            var assembly = this.GetType().Assembly;
+            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+
+            return Ok(new
+            {
+                Version = fileVersionAttr.Version
+            });
+        }
+
         private bool? HostHasHeartbeat(FunctionIndexEntry function)
         {
             if (!function.HeartbeatExpirationInSeconds.HasValue)
@@ -626,6 +646,12 @@ namespace Dashboard.ApiControllers
 
         private bool? HostInstanceHasHeartbeat(FunctionInstanceSnapshot snapshot)
         {
+            if (snapshot.FunctionInstanceHeartbeatExpiry.HasValue)
+            {
+                var now = DateTime.UtcNow;
+                return snapshot.FunctionInstanceHeartbeatExpiry.Value > now;
+            }
+
             HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
 
             if (heartbeat == null)

@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     /// Represent a function invocation starting or finishing. 
     /// A host can register an IAsyncCollector on the JobHostConfiguration to receive these notifications to do their own logging. 
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     public class FunctionInstanceLogEntry
     {
         /// <summary>

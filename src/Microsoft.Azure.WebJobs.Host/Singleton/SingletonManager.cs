@@ -74,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         // for testing
-        internal TimeSpan MinimumLeaseRenewalInterval 
-        { 
+        internal TimeSpan MinimumLeaseRenewalInterval
+        {
             get
             {
                 return _minimumLeaseRenewalInterval;
@@ -92,8 +92,8 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (lockHandle == null)
             {
-                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout != null 
-                    ? TimeSpan.FromSeconds(attribute.LockAcquisitionTimeout.Value) : 
+                TimeSpan acquisitionTimeout = attribute.LockAcquisitionTimeout != null
+                    ? TimeSpan.FromSeconds(attribute.LockAcquisitionTimeout.Value) :
                     _config.LockAcquisitionTimeout;
                 throw new TimeoutException(string.Format("Unable to acquire singleton lock blob lease for blob '{0}' (timeout of {1} exceeded).", lockId, acquisitionTimeout.ToString("g")));
             }
@@ -103,8 +103,6 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public async virtual Task<object> TryLockAsync(string lockId, string functionInstanceId, SingletonAttribute attribute, CancellationToken cancellationToken, bool retry = true)
         {
-            _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Waiting for Singleton lock ({0})", lockId), source: TraceSource.Execution);
-
             IStorageBlobDirectory lockDirectory = GetLockDirectory(attribute.Account);
             IStorageBlockBlob lockBlob = lockDirectory.GetBlockBlobReference(lockId);
             TimeSpan lockPeriod = GetLockPeriod(attribute, _config);
@@ -128,7 +126,6 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (string.IsNullOrEmpty(leaseId))
             {
-                _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Unable to acquire Singleton lock ({0}).", lockId), source: TraceSource.Execution);
                 return null;
             }
 
@@ -254,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 Mode = SingletonMode.Listener
             };
-            return new SingletonListener(null, singletonAttribute, this, innerListener);
+            return new SingletonListener(null, singletonAttribute, this, innerListener, _trace);
         }
 
         public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, MethodInfo method)
@@ -347,18 +344,18 @@ namespace Microsoft.Azure.WebJobs.Host
                     config.ListenerLockPeriod : config.LockPeriod;
         }
 
-        private ITaskSeriesTimer CreateLeaseRenewalTimer(IStorageBlockBlob leaseBlob, string leaseId, string lockId, TimeSpan leasePeriod, 
+        private ITaskSeriesTimer CreateLeaseRenewalTimer(IStorageBlockBlob leaseBlob, string leaseId, string lockId, TimeSpan leasePeriod,
             IWebJobsExceptionHandler exceptionHandler)
         {
             // renew the lease when it is halfway to expiring   
             TimeSpan normalUpdateInterval = new TimeSpan(leasePeriod.Ticks / 2);
 
             IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, MinimumLeaseRenewalInterval);
-            ITaskSeriesCommand command = new RenewLeaseCommand(leaseBlob, leaseId, lockId, speedupStrategy, _trace);
+            ITaskSeriesCommand command = new RenewLeaseCommand(leaseBlob, leaseId, lockId, speedupStrategy, _trace, leasePeriod);
             return new TaskSeriesTimer(command, exceptionHandler, Task.Delay(normalUpdateInterval));
         }
 
-        private async Task<string> TryAcquireLeaseAsync(IStorageBlockBlob blob, TimeSpan leasePeriod, CancellationToken cancellationToken)
+        private static async Task<string> TryAcquireLeaseAsync(IStorageBlockBlob blob, TimeSpan leasePeriod, CancellationToken cancellationToken)
         {
             bool blobDoesNotExist = false;
             try
@@ -415,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return null;
         }
 
-        private async Task ReleaseLeaseAsync(IStorageBlockBlob blob, string leaseId, CancellationToken cancellationToken)
+        private static async Task ReleaseLeaseAsync(IStorageBlockBlob blob, string leaseId, CancellationToken cancellationToken)
         {
             try
             {
@@ -450,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
         }
 
-        private async Task<bool> TryCreateAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
+        private static async Task<bool> TryCreateAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             bool isContainerNotFoundException = false;
 
@@ -467,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Host
                     {
                         isContainerNotFoundException = true;
                     }
-                    else if (exception.RequestInformation.HttpStatusCode == 409 || 
+                    else if (exception.RequestInformation.HttpStatusCode == 409 ||
                              exception.RequestInformation.HttpStatusCode == 412)
                     {
                         // The blob already exists, or is leased by someone else
@@ -507,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
         }
 
-        private async Task WriteLeaseBlobMetadata(IStorageBlockBlob blob, string leaseId, string functionInstanceId, CancellationToken cancellationToken)
+        private static async Task WriteLeaseBlobMetadata(IStorageBlockBlob blob, string leaseId, string functionInstanceId, CancellationToken cancellationToken)
         {
             blob.Metadata.Add(FunctionInstanceMetadataKey, functionInstanceId);
 
@@ -518,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 cancellationToken: cancellationToken);
         }
 
-        private async Task ReadLeaseBlobMetadata(IStorageBlockBlob blob, CancellationToken cancellationToken)
+        private static async Task ReadLeaseBlobMetadata(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             try
             {
@@ -553,14 +550,19 @@ namespace Microsoft.Azure.WebJobs.Host
             private readonly string _lockId;
             private readonly IDelayStrategy _speedupStrategy;
             private readonly TraceWriter _trace;
+            private DateTimeOffset _lastRenewal;
+            private TimeSpan _lastRenewalLatency;
+            private TimeSpan _leasePeriod;
 
-            public RenewLeaseCommand(IStorageBlockBlob leaseBlob, string leaseId, string lockId, IDelayStrategy speedupStrategy, TraceWriter trace)
+            public RenewLeaseCommand(IStorageBlockBlob leaseBlob, string leaseId, string lockId, IDelayStrategy speedupStrategy, TraceWriter trace, TimeSpan leasePeriod)
             {
+                _lastRenewal = DateTimeOffset.UtcNow;
                 _leaseBlob = leaseBlob;
                 _leaseId = leaseId;
                 _lockId = lockId;
                 _speedupStrategy = speedupStrategy;
                 _trace = trace;
+                _leasePeriod = leasePeriod;
             }
 
             public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
@@ -569,13 +571,14 @@ namespace Microsoft.Azure.WebJobs.Host
 
                 try
                 {
-                    _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Renewing Singleton lock ({0})", _lockId), source: TraceSource.Execution);
-
                     AccessCondition condition = new AccessCondition
                     {
                         LeaseId = _leaseId
                     };
+                    DateTimeOffset requestStart = DateTimeOffset.UtcNow;
                     await _leaseBlob.RenewLeaseAsync(condition, null, null, cancellationToken);
+                    _lastRenewal = DateTime.UtcNow;
+                    _lastRenewalLatency = _lastRenewal - requestStart;
 
                     // The next execution should occur after a normal delay.
                     delay = _speedupStrategy.GetNextDelay(executionSucceeded: true);
@@ -586,16 +589,46 @@ namespace Microsoft.Azure.WebJobs.Host
                     {
                         // The next execution should occur more quickly (try to renew the lease before it expires).
                         delay = _speedupStrategy.GetNextDelay(executionSucceeded: false);
+                        _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Singleton lock renewal failed for blob '{0}' with error code {1}. Retry renewal in {2} milliseconds.",
+                            _lockId, FormatErrorCode(exception), delay.TotalMilliseconds), source: TraceSource.Execution);
                     }
                     else
                     {
-                        // If we've lost the lease or cannot restablish it, we want to fail any
+                        // Log the details we've been accumulating to help with debugging this scenario
+                        int leasePeriodMilliseconds = (int)_leasePeriod.TotalMilliseconds;
+                        string lastRenewalFormatted = _lastRenewal.ToString("yyyy-MM-ddTHH:mm:ss.FFFZ", CultureInfo.InvariantCulture);
+                        int millisecondsSinceLastSuccess = (int)(DateTime.UtcNow - _lastRenewal).TotalMilliseconds;
+                        int lastRenewalMilliseconds = (int)_lastRenewalLatency.TotalMilliseconds;
+
+                        _trace.Error(string.Format(CultureInfo.InvariantCulture, "Singleton lock renewal failed for blob '{0}' with error code {1}. The last successful renewal completed at {2} ({3} milliseconds ago) with a duration of {4} milliseconds. The lease period was {5} milliseconds.",
+                            _lockId, FormatErrorCode(exception), lastRenewalFormatted, millisecondsSinceLastSuccess, lastRenewalMilliseconds, leasePeriodMilliseconds));
+
+                        // If we've lost the lease or cannot re-establish it, we want to fail any
                         // in progress function execution
                         throw;
                     }
                 }
-
                 return new TaskSeriesCommandResult(wait: Task.Delay(delay));
+            }
+
+            private static string FormatErrorCode(StorageException exception)
+            {
+                int statusCode;
+                if (!exception.TryGetStatusCode(out statusCode))
+                {
+                    return "''";
+                }
+
+                string message = statusCode.ToString(CultureInfo.InvariantCulture);
+
+                string errorCode = exception.GetErrorCode();
+
+                if (errorCode != null)
+                {
+                    message += ": " + errorCode;
+                }
+
+                return message;
             }
         }
     }

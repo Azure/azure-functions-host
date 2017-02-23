@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             Assert.Equal(queuesConfig.BatchSize, context.BatchSize);
             Assert.Equal(queuesConfig.NewBatchThreshold, context.NewBatchThreshold);
             Assert.Equal(queuesConfig.MaxDequeueCount, context.MaxDequeueCount);
+            Assert.Equal(queuesConfig.MaxPollingInterval, context.MaxPollingInterval);
         }
     }
 }

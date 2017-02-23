@@ -215,6 +215,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration(storageAccountProvider);
+            JobHostBlobsConfiguration blobsConfiguration = new JobHostBlobsConfiguration();
             IWebJobsExceptionHandler exceptionHandler =
                 new TaskBackgroundExceptionHandler<TResult>(taskSource);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
@@ -234,9 +235,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
+                queueConfiguration, blobsConfiguration, exceptionHandler, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, sharedContextProvider, extensions, singletonManager, new TestTraceWriter(TraceLevel.Verbose));
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, extensions);
 
@@ -301,8 +302,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource, IEnumerable<string> ignoreFailureFunctions)
         {
-            return RunTrigger<TResult>(account, programType, setTaskSource, DefaultJobActivator.Instance,
-                ignoreFailureFunctions);
+            return RunTrigger<TResult>(account, programType, setTaskSource, DefaultJobActivator.Instance, ignoreFailureFunctions);
         }
 
         public static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
@@ -337,8 +337,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 host.Start();
 
                 // Act
-                completed = task.WaitUntilCompleted(25 * 1000);
-
+                if (Debugger.IsAttached)
+                {
+                    task.WaitUntilCompleted();
+                    completed = true;
+                }
+                else
+                {
+                    completed = task.WaitUntilCompleted(25 * 1000);
+                }
+                
                 // Assert
                 Assert.True(completed);
 

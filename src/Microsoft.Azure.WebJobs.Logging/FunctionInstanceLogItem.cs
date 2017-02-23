@@ -46,16 +46,39 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>If set, the time the function completed (either successfully or failure). </summary>
         public DateTime? EndTime { get; set; }
 
+        /// <summary>A function outputs a heartbeat while it's running. 
+        /// If EndTime = null and heartbeat is "old", then the function is likley abandoned (machine killed).
+        /// It's always possible a node loses network connectity, and so we appear abandoned, but 
+        /// the function successfully completes</summary>
+        /// <inheritdoc/>
+        public DateTime? FunctionInstanceHeartbeatExpiry { get; set; }
+
         /// <summary>
-        /// Current status of this instance. 
+        /// Given log item a chance to refresh. 
         /// </summary>
-        public FunctionInstanceStatus Status { get; set; }
+        /// <param name="pollingFrequency">Approximate frequency at which refresh is called. This can be used to determine the heartbeat expiration time. </param>
+        public virtual void Refresh(TimeSpan pollingFrequency)
+        {
+            var gracePeriod = pollingFrequency.TotalMilliseconds * 3;
+            this.FunctionInstanceHeartbeatExpiry = DateTime.UtcNow.AddMilliseconds(gracePeriod);
+        }
 
         /// <summary>
         /// Null on success.
         /// Else, set to some string with error details. 
         /// </summary>
         public string ErrorDetails { get; set; }
+
+        /// <summary>
+        /// True if we have an error. Implementation of <see cref="IFunctionInstanceBaseEntry"/> 
+        /// </summary>
+        public bool HasError
+        {
+            get
+            {
+                return this.ErrorDetails != null;
+            }
+        }
 
         /// <summary>Gets or sets the function's argument values and help strings.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
@@ -119,11 +142,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// </summary>
         public void Validate()
         {
-            if (this.Status == FunctionInstanceStatus.Unknown)
-            {
-                this.Status = InferStatus(); 
-            }
-
             if (this.FunctionInstanceId == Guid.Empty)
             {
                 throw new InvalidOperationException("Function Instance Id must be set.");
@@ -134,33 +152,11 @@ namespace Microsoft.Azure.WebJobs.Logging
                 throw new InvalidOperationException("Function Name must be set.");
             }
 
-            bool completedStatus = this.Status.IsCompleted();
             if (this.EndTime.HasValue)
             {
-                if (!completedStatus)
-                {
-                    throw new InvalidOperationException("End Time must be null for a function with non-completed status '" + completedStatus + "'.");
-                }
                 if (this.StartTime > this.EndTime)
                 {
                     throw new InvalidOperationException("End Time must be greater than start time");
-                }
-            }
-            else
-            {
-                if (completedStatus)
-                {
-                    throw new InvalidOperationException("End Time must be null for a completed-status '" + completedStatus + "'.");
-                }
-            }
-
-            bool hasSuccessStatus = this.Status == FunctionInstanceStatus.CompletedSuccess;
-                
-            if (this.ErrorDetails != null)
-            {
-                if (hasSuccessStatus)
-                {
-                    throw new InvalidOperationException("Status and Error Details are inconsistent.");
                 }
             }
         }
@@ -232,52 +228,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }
             }
             return value;
-        }
-
-        private FunctionInstanceStatus InferStatus()
-        {
-            if (!this.EndTime.HasValue)
-            {
-                return FunctionInstanceStatus.Running;
-            }
-            else {
-                if (this.ErrorDetails == null)
-                {
-                    return FunctionInstanceStatus.CompletedSuccess;
-                }
-                else
-                {
-                    return FunctionInstanceStatus.CompletedFailure;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Extension methods.
-    /// </summary>
-    public static class FunctionInstanceLogItemExtensions
-    {
-        /// <summary>
-        /// true if this function has completed (either success or failure)
-        /// </summary>
-        public static bool IsCompleted(this FunctionInstanceLogItem item)
-        {
-            if (item == null)
-            {
-                throw new ArgumentNullException("item");
-            }
-            return item.EndTime.HasValue;
-        }
-
-        /// <summary>true if this function succeeded.</summary>
-        public static bool IsSucceeded(this IFunctionInstanceBaseEntry item)
-        {
-            if (item == null)
-            {
-                throw new ArgumentNullException("item");
-            }
-            return item.Status == FunctionInstanceStatus.CompletedSuccess;
-        }
-    }
+        }     
+    }    
 }

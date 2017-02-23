@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IBlobPathSource _path;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly JobHostBlobsConfiguration _blobsConfiguration;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IBlobPathSource path,
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
+            JobHostBlobsConfiguration blobsConfiguration,
             IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
@@ -88,6 +90,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             if (queueConfiguration == null)
             {
                 throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (blobsConfiguration == null)
+            {
+                throw new ArgumentNullException("blobsConfiguration");
             }
 
             if (exceptionHandler == null)
@@ -133,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _path = path;
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
+            _blobsConfiguration = blobsConfiguration;
             _exceptionHandler = exceptionHandler;
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
@@ -231,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageBlobContainer container = _blobClient.GetContainerReference(_path.ContainerNamePattern);
 
-            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
+            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration, _blobsConfiguration,
                 _exceptionHandler, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
                 _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
 

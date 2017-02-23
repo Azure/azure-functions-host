@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             host.Start();
 
             MethodInfo method = typeof(TestJobs).GetMethod("SingletonJobA_HostScope");
-            await host.CallAsync(method, new {});
+            await host.CallAsync(method, new { });
 
             VerifyLeaseState(method, SingletonScope.Host, "TestValue", LeaseState.Available, LeaseStatus.Unlocked);
 
@@ -295,13 +295,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < 5; i++)
             {
-                tasks.Add(host.CallAsync(methodA, new {}));
+                tasks.Add(host.CallAsync(methodA, new { }));
             }
 
             MethodInfo methodB = typeof(TestJobs).GetMethod("SingletonJobB_HostScope");
             for (int i = 0; i < 5; i++)
             {
-                tasks.Add(host.CallAsync(methodB, new {}));
+                tasks.Add(host.CallAsync(methodB, new { }));
             }
             await Task.WhenAll(tasks);
 
@@ -390,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 VerifyLeaseState(
                     GetType().GetMethod("SingletonTriggerJob"),
                     SingletonScope.Function,
-                    string.Format("{0}/{1}", workItem.Region, workItem.Zone), 
+                    string.Format("{0}/{1}", workItem.Region, workItem.Zone),
                     LeaseState.Leased, LeaseStatus.Locked);
 
                 // When run concurrently, this job will fail very reliably
@@ -410,7 +410,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 VerifyLeaseState(
                     GetType().GetMethod("SingletonJob"),
                     SingletonScope.Function,
-                    "TestValue", 
+                    "TestValue",
                     LeaseState.Leased, LeaseStatus.Locked);
 
                 if (workItem.Category < 0)
@@ -483,7 +483,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 VerifyLeaseState(
                     GetType().GetMethod("TriggerJob_SingletonListener"),
                     SingletonScope.Function,
-                    "Listener", 
+                    "Listener",
                     LeaseState.Leased, LeaseStatus.Locked);
 
                 await Task.Delay(50);
@@ -588,7 +588,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             private static void UpdateScopeLock(string scope, bool isLocked)
             {
                 bool scopeIsLocked = false;
-                if (ScopeLocks.TryGetValue(scope, out scopeIsLocked) 
+                if (ScopeLocks.TryGetValue(scope, out scopeIsLocked)
                     && scopeIsLocked && isLocked)
                 {
                     FailureDetected = true;
@@ -732,9 +732,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                             get { return typeof(string); }
                         }
 
-                        public object GetValue()
+                        public Task<object> GetValueAsync()
                         {
-                            return "Test";
+                            return Task.FromResult<object>("Test");
                         }
 
                         public string ToInvokeString()

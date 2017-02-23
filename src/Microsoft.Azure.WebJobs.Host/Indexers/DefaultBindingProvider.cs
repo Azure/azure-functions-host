@@ -18,7 +18,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
-        public static IBindingProvider Create(INameResolver nameResolver,
+        public static IBindingProvider Create(
+            INameResolver nameResolver,
+            IConverterManager converterManager,
             IStorageAccountProvider storageAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
             IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter,
@@ -27,8 +29,12 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
 
+            if (converterManager == null)
+            {
+                converterManager = new ConverterManager();
+            }
+
             // Wire up new bindings 
-            IConverterManager converterManager = new ConverterManager();
             var ruleQueueOutput = QueueBindingProvider.Build(storageAccountProvider, messageEnqueuedWatcherGetter, nameResolver, converterManager);
             innerProviders.Add(ruleQueueOutput);
 

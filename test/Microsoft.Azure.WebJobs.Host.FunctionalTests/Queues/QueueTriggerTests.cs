@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Xunit;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -191,11 +192,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Exception innerException = exception.InnerException;
             Assert.IsType<InvalidOperationException>(innerException);
             const string expectedInnerMessage = "Binding parameters to complex objects (such as 'Poco') uses " +
-                "Json.NET serialization. \r\n1. Bind the parameter type as 'string' instead of 'Poco' to get the raw " +
-                "values and avoid JSON deserialization, or\r\n2. Change the queue payload to be valid json. The JSON " +
+                "Json.NET serialization. 1. Bind the parameter type as 'string' instead of 'Poco' to get the raw " +
+                "values and avoid JSON deserialization, or2. Change the queue payload to be valid json. The JSON " +
                 "parser failed: Unexpected character encountered while parsing value: n. Path '', line 0, position " +
-                "0.\r\n";
-            Assert.Equal(expectedInnerMessage, innerException.Message);
+                "0.";
+            string actual = Regex.Replace(innerException.Message, @"[\n\r]", "");
+            Assert.Equal(expectedInnerMessage, actual);
         }
 
         [Fact]
@@ -218,11 +220,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Exception innerException = exception.InnerException;
             Assert.IsType<InvalidOperationException>(innerException);
             string expectedInnerMessage = "Binding parameters to complex objects (such as 'Poco') uses Json.NET " +
-                "serialization. \r\n1. Bind the parameter type as 'string' instead of 'Poco' to get the raw values " +
-                "and avoid JSON deserialization, or\r\n2. Change the queue payload to be valid json. The JSON parser " +
+                "serialization. 1. Bind the parameter type as 'string' instead of 'Poco' to get the raw values " +
+                "and avoid JSON deserialization, or2. Change the queue payload to be valid json. The JSON parser " +
                 "failed: Error converting value 123 to type '" + typeof(Poco).FullName + "'. Path '', line 1, " +
-                "position 3.\r\n";
-            Assert.Equal(expectedInnerMessage, innerException.Message);
+                "position 3.";
+            string actual = Regex.Replace(innerException.Message, @"[\n\r]", "");
+            Assert.Equal(expectedInnerMessage, actual);
         }
 
         [Fact]
@@ -492,9 +495,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     new string[] { typeof(MaxDequeueCountProgram).FullName + ".PutInPoisonQueue" });
 
                 // Assert
-                IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider();
+                IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider()
+                {
+                    StorageAccount = new FakeStorageAccount()
+                };
                 Assert.Equal(new FakeQueueConfiguration(storageAccountProvider).MaxDequeueCount, MaxDequeueCountProgram.DequeueCount);
-
             }
             finally
             {

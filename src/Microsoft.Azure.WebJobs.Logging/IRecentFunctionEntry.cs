@@ -19,16 +19,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         string ContainerName { get; }
 
         /// <summary>
-        /// UTC Time the function begin running
-        /// </summary>
-        DateTimeOffset StartTime { get; }
-
-        /// <summary>
-        /// UTC Time the function completed.
-        /// </summary>
-        DateTimeOffset? EndTime{ get; }
-
-        /// <summary>
         /// Display name summary. 
         /// This can include per-instance information like parameters to aide in picking out the right instance in from a collection of many invocations.
         /// For example: "Foo(1,2,3)"

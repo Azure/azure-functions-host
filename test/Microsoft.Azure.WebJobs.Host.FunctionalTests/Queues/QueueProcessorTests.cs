@@ -37,10 +37,22 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [Fact]
         public void Constructor_DefaultsValues()
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, _queuesConfig);
+            var config = new JobHostQueuesConfiguration
+            {
+                BatchSize = 32,
+                MaxDequeueCount = 2,
+                NewBatchThreshold = 100,
+                VisibilityTimeout = TimeSpan.FromSeconds(30),
+                MaxPollingInterval = TimeSpan.FromSeconds(15)
+            };
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, config);
             QueueProcessor localProcessor = new QueueProcessor(context);
-            Assert.Equal(_queuesConfig.BatchSize, localProcessor.BatchSize);
-            Assert.Equal(_queuesConfig.NewBatchThreshold, localProcessor.NewBatchThreshold);
+
+            Assert.Equal(config.BatchSize, localProcessor.BatchSize);
+            Assert.Equal(config.MaxDequeueCount, localProcessor.MaxDequeueCount);
+            Assert.Equal(config.NewBatchThreshold, localProcessor.NewBatchThreshold);
+            Assert.Equal(config.VisibilityTimeout, localProcessor.VisibilityTimeout);
+            Assert.Equal(config.MaxPollingInterval, localProcessor.MaxPollingInterval);
         }
 
         [Fact]
@@ -88,6 +100,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             localProcessor.MessageAddedToPoisonQueue += (sender, e) =>
                 {
                     Assert.Same(sender, localProcessor);
+                    Assert.Same(_poisonQueue, e.PoisonQueue);
+                    Assert.NotNull(e.Message);
                     poisonMessageHandlerCalled = true;
                 };
 
@@ -109,6 +123,29 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(poisonMessage);
             Assert.Equal(messageContent, poisonMessage.AsString);
             Assert.True(poisonMessageHandlerCalled);
+        }
+
+        [Fact]
+        public async Task CompleteProcessingMessageAsync_Failure_AppliesVisibilityTimeout()
+        {
+            var queuesConfig = new JobHostQueuesConfiguration
+            {
+                // configure a non-zero visibility timeout
+                VisibilityTimeout = TimeSpan.FromMinutes(5)
+            };
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, queuesConfig, _poisonQueue);
+            QueueProcessor localProcessor = new QueueProcessor(context);
+
+            string messageContent = Guid.NewGuid().ToString();
+            CloudQueueMessage message = new CloudQueueMessage(messageContent);
+            await _queue.AddMessageAsync(message, CancellationToken.None);
+
+            var functionResult = new FunctionResult(false);
+            message = await _queue.GetMessageAsync();
+            await localProcessor.CompleteProcessingMessageAsync(message, functionResult, CancellationToken.None);
+
+            var delta = message.NextVisibleTime - DateTime.UtcNow;
+            Assert.True(delta.Value.TotalMinutes > 4);
         }
 
         public class TestFixture : IDisposable

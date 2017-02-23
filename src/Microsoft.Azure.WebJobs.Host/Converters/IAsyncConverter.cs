@@ -4,14 +4,14 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Host.Converters
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Interface defining methods for performing asynchronous conversion operations.
     /// </summary>
     /// <typeparam name="TInput">The type to convert from.</typeparam>
     /// <typeparam name="TOutput">The type to convert to.</typeparam>
-    internal interface IAsyncConverter<TInput, TOutput>
+    public interface IAsyncConverter<TInput, TOutput>
     {
         /// <summary>
         /// Convert the specified input value to the output type.

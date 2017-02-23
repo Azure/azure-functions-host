@@ -127,6 +127,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         }
 
         [Fact]
+        public void GetBindingData_WithDerivedValue_ReturnsValidBindingData()
+        {
+            // Arrange
+            IBindingDataProvider provider = BindingDataProvider.FromType(typeof(Base));
+
+            Derived value = new Derived { A = 1, B = 2 };
+
+            // Act
+            var bindingData = provider.GetBindingData(value);
+
+            // Assert
+            Assert.NotNull(bindingData);
+
+            // Get binding data for the type used when creating the provider
+            Assert.Equal(1, bindingData.Count);
+            Assert.Equal(1, bindingData["a"]);
+        }
+
+        [Fact]
         public void FromTemplate_IgnoreCase_CreatesCaseInsensitiveProvider()
         {
             var provider = BindingDataProvider.FromTemplate(@"A/b/{c}", ignoreCase: true);
@@ -201,6 +220,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         private class DerivedWithNew : Base
         {
             new public int A { get; set; }
+        }
+
+        private class Derived : Base
+        {
+            public int B { get; set; }
         }
     }
 }

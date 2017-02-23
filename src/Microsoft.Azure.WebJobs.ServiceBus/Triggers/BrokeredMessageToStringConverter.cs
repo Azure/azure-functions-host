@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -12,44 +14,60 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class BrokeredMessageToStringConverter : IAsyncConverter<BrokeredMessage, string>
     {
-        public Task<string> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
+        public async Task<string> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
             if (input == null)
             {
                 throw new ArgumentNullException("input");
             }
-
-            if (input.ContentType == ContentTypes.TextPlain ||
-                input.ContentType == ContentTypes.ApplicationOctetStream ||
-                input.ContentType == ContentTypes.ApplicationJson)
+            Stream stream = input.GetBody<Stream>();
+            if (stream == null)
             {
-                Stream stream = input.GetBody<Stream>();
-                if (stream == null)
-                {
-                    return Task.FromResult<string>(null);
-                }
+                return null;
+            }
 
+            TextReader reader = new StreamReader(stream, StrictEncodings.Utf8);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
-                    {
-                        stream = null;
-                        cancellationToken.ThrowIfCancellationRequested();
-                        return reader.ReadToEndAsync();
-                    }
+                    return await reader.ReadToEndAsync();
                 }
-                finally
+                catch (DecoderFallbackException)
                 {
-                    if (stream != null)
-                    {
-                        stream.Dispose();
-                    }
+                    // we'll try again below
+                }
+
+                // We may get here if the message is a string yet was DataContract-serialized when created. We'll
+                // try to deserialize it here using GetBody<string>(). This may fail as well, in which case we'll
+                // provide a decent error.
+
+                // Create a clone as you cannot call GetBody twice on the same BrokeredMessage.
+                BrokeredMessage clonedMessage = input.Clone();
+                try
+                {
+                    return clonedMessage.GetBody<string>();
+                }
+                catch (Exception exception)
+                {
+                    string contentType = input.ContentType ?? "null";
+                    string msg = string.Format(CultureInfo.InvariantCulture, "The BrokeredMessage with ContentType '{0}' failed to deserialize to a string with the message: '{1}'",
+                        contentType, exception.Message);
+
+                    throw new InvalidOperationException(msg, exception);
                 }
             }
-            else
+            finally
             {
-                string contents = input.GetBody<string>();
-                return Task.FromResult(contents);
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+                if (reader != null)
+                {
+                    reader.Dispose();
+                }
             }
         }
     }

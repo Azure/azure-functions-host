@@ -38,13 +38,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
             };
             var bindingContext = new BindingContext(valueBindingContext, bindingData);
             var valueProvider = await binding.BindAsync(bindingContext);
-            var value = valueProvider.GetValue();
+            var value = await valueProvider.GetValueAsync();
             Assert.Equal(123, value);
 
             bindingData["p"] = null;
             bindingContext = new BindingContext(valueBindingContext, bindingData);
             valueProvider = await binding.BindAsync(bindingContext);
-            value = valueProvider.GetValue();
+            value = await valueProvider.GetValueAsync();
             Assert.Null(value);
         }
 

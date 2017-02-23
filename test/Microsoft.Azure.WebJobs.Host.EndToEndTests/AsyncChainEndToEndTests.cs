@@ -104,20 +104,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.TimeoutJob_Throw_NoToken",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
-                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.RandGuidOutput",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.SystemParameterBindingOutput",
                     "Function 'AsyncChainEndToEndTests.DisabledJob' is disabled",
                     "Job host started",
-                    "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
-                    "Executed: 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded)",
-                    string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
-                    "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
+                    "Executing 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Reason='This function was programmatically called via the host APIs.', Id=",
+                    "Executed 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.QueueToQueueAsync' (Reason='New queue message detected on '{0}'.', Id=", firstQueueName),
+                    "Executed 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.QueueToBlobAsync' (Reason='New queue message detected on '{0}'.', Id=", secondQueueName),
+                    "Executed 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded, Id=",
+                    string.Format("Executing 'AsyncChainEndToEndTests.BlobToBlobAsync' (Reason='New blob detected: {0}/Blob1', Id=", blobContainerName),
+                    "Executed 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded, Id=",
                     "Job host stopped",
-                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
-                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)",
+                    "Executing 'AsyncChainEndToEndTests.ReadResultBlob' (Reason='This function was programmatically called via the host APIs.', Id=",
+                    "Executed 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded, Id=",
                     "User TraceWriter log",
                     "Another User TextWriter log",
                     "User TextWriter log (TestParam)"
@@ -126,10 +126,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = consoleOutputLines.Any(p => p.Contains("Function had errors"));
                 if (!hasError)
                 {
-                    Assert.Equal(
-                    string.Join(Environment.NewLine, expectedOutputLines),
-                    string.Join(Environment.NewLine, consoleOutputLines)
-                    );
+                    for (int i = 0; i < expectedOutputLines.Length; i++)
+                    {
+                        Assert.StartsWith(expectedOutputLines[i], consoleOutputLines[i]);
+                    }
                 }
 
                 Console.SetOut(hold);
@@ -154,11 +154,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.BeginProcessingCount) >= 2);
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
-                Assert.Equal(17, storageClientFactory.TotalBlobClientCount);
-                Assert.Equal(11, storageClientFactory.TotalQueueClientCount);
+                Assert.Equal(19, storageClientFactory.TotalBlobClientCount);
+                Assert.Equal(13, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
-                Assert.Equal(6, storageClientFactory.ParameterBlobClientCount);
+                Assert.Equal(8, storageClientFactory.ParameterBlobClientCount);
                 Assert.Equal(7, storageClientFactory.ParameterQueueClientCount);
                 Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
@@ -190,14 +190,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 bool hasError = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Message.Contains("Error"))).Any();
                 if (!hasError)
                 {
-                    Assert.Equal(18, trace.Traces.Count);
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TraceWriter log")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Message.Contains("Another User TextWriter log")));
                     ValidateTraceProperties(trace);
 
                     string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Assert.Equal(27, consoleOutputLines.Length);
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
                     Assert.NotNull(consoleOutputLines.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
@@ -212,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             foreach (var traceEvent in trace.Traces)
             {
                 var message = traceEvent.Message;
-                var startedOrEndedMessage = message.StartsWith("Executing: ") || message.StartsWith("Executed: ");
+                var startedOrEndedMessage = message.StartsWith("Executing ") || message.StartsWith("Executed ");
                 var userMessage = message.Contains("User TextWriter") || message.Contains("User TraceWriter");
 
                 if (startedOrEndedMessage || userMessage)
@@ -267,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
-        public void RandGuidOutput_GeneratesRandomIDs()
+        public void SystemParameterBindingOutput_GeneratesExpectedBlobs()
         {
             JobHost host = new JobHost(_hostConfig);
 
@@ -281,15 +279,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 }
             }
 
-            MethodInfo methodInfo = GetType().GetMethod("RandGuidOutput");
-            for (int i = 0; i < 3; i++)
+            MethodInfo methodInfo = GetType().GetMethod("SystemParameterBindingOutput");
+            var arguments = new Dictionary<string, object>
             {
-                var arguments = new Dictionary<string, object>
-                {
-                    { "input", i.ToString() }
-                };
-                host.Call(methodInfo, arguments);
-            }
+                { "input", "Test Value" }
+            };
+            host.Call(methodInfo, arguments);
 
             // We expect 3 separate blobs to have been written
             var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
@@ -297,8 +292,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             foreach (var blob in blobs)
             {
                 string content = blob.DownloadText(Encoding.UTF8);
-                int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
-                Assert.True(blobInt >= 0 && blobInt <= 3);
+                Assert.Equal("Test Value", content.Trim(new char[] { '\uFEFF', '\u200B' }));
             }
         }
 
@@ -359,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             TraceEvent[] traceErrors = trace.Traces.Where(p => p.Level == TraceLevel.Error).ToArray();
             Assert.Equal(3, traceErrors.Length);
             Assert.True(traceErrors[0].Message.StartsWith(string.Format("Timeout value of 00:00:01 exceeded by function 'AsyncChainEndToEndTests.{0}'", functionName)));
-            Assert.True(traceErrors[1].Message.StartsWith(string.Format("Executed: 'AsyncChainEndToEndTests.{0}' (Failed)", functionName)));
+            Assert.True(traceErrors[1].Message.StartsWith(string.Format("Executed 'AsyncChainEndToEndTests.{0}' (Failed, Id=", functionName)));
             Assert.True(traceErrors[2].Message.Trim().StartsWith("Function had errors. See Azure WebJobs SDK dashboard for details."));
         }
 
@@ -401,7 +395,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect no function output
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(5, traces.Length);
+                    Assert.Equal(4, traces.Length);
                     Assert.False(traces.Any(p => p.Message.Contains("test message")));
                 }
             }
@@ -435,13 +429,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                     // expect normal logs to be written (TraceLevel override is ignored)
                     TraceEvent[] traces = trace.Traces.ToArray();
-                    Assert.Equal(10, traces.Length);
+                    Assert.Equal(9, traces.Length);
 
                     string output = string.Join("\r\n", traces.Select(p => p.Message));
-                    Assert.True(output.Contains("Executing: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride'"));
-                    Assert.True(output.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride"));
-                    Assert.True(output.Contains("Executed: 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed)"));
-                    Assert.True(output.Contains("Message has reached MaxDequeueCount of 1"));
+                    Assert.Contains("Executing 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Reason='New queue message detected", output);
+                    Assert.Contains("Exception while executing function: AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride", output);
+                    Assert.Contains("Executed 'AsyncChainEndToEndTests.QueueTrigger_TraceLevelOverride' (Failed, Id=", output);
+                    Assert.Contains("Message has reached MaxDequeueCount of 1", output);
                 }
             }
             finally
@@ -469,11 +463,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [NoAutomaticTrigger]
-        public static void RandGuidOutput(
+        public static void SystemParameterBindingOutput(
             [QueueTrigger("test")] string input,
-            [Blob("test-output/{rand-guid}")] out string blob)
+            [Blob("test-output/{rand-guid}")] out string blob,
+            [Blob("test-output/{rand-guid:N}")] out string blob2,
+            [Blob("test-output/{datetime:yyyy-mm-dd}:{rand-guid:N}")] out string blob3)
         {
-            blob = input;
+            blob = blob2 = blob3 = input;
         }
 
         [Disable("Disable_DisabledJob")]
@@ -619,9 +615,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 // demonstrates how queue options can be customized
                 context.Queue.EncodeMessage = true;
 
-                // demonstrates how batch processing behavior can be customized
+                // demonstrates how batch processing behavior and other knobs
+                // can be customized
                 context.BatchSize = 30;
                 context.NewBatchThreshold = 100;
+                context.MaxPollingInterval = TimeSpan.FromSeconds(15);
 
                 CustomQueueProcessor processor = new CustomQueueProcessor(context);
                 CustomQueueProcessors.Add(processor);

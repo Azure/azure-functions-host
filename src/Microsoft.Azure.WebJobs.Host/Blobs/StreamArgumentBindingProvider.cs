@@ -50,9 +50,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             if (!actualAccess.HasValue)
             {
                 throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture,
-                    "FileAccess must be specified when binding the parameter '{0}' to a blob Stream. " + 
-                    "Add a FileAccess argument to the BlobAttribute constructor " + 
-                    @"(for example, [Blob(""..."", FileAccess.Read)]).", 
+                    "FileAccess must be specified when binding the parameter '{0}' to a blob Stream. " +
+                    "Add a FileAccess argument to the BlobAttribute constructor " +
+                    @"(for example, [Blob(""..."", FileAccess.Read)]).",
                     parameter.Name));
             }
 
@@ -147,15 +147,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     get { return _stream; }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _stream;
+                    return Task.FromResult<object>(_stream);
                 }
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
-                    Debug.Assert(value == null || value == GetValue(),
-                        "The value argument should be either the same instance as returned by GetValue() or null");
+                    Debug.Assert(value == null || value == await GetValueAsync(),
+                        "The value argument should be either the same instance as returned by GetValueAsync() or null");
 
                     // Not ByRef, so can ignore value argument.
 

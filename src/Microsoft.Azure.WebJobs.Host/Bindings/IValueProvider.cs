@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -18,8 +19,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <summary>
         /// Gets the value.
         /// </summary>
-        /// <returns>The value.</returns>
-        object GetValue();
+        /// <returns>A task that returns the value.</returns>
+        Task<object> GetValueAsync();
 
         /// <summary>
         /// Returns a string representation of the value.

@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.Config
     /// <summary>
     /// Helper Extension methods for extension configuration. 
     /// </summary>
+    [Obsolete("Not ready for public consumption.")]
     public static class ExtensionConfigContextExtensions
     {
         /// <summary>

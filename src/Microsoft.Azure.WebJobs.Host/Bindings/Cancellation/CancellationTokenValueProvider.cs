@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
 {
@@ -20,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
             get { return typeof(CancellationToken); }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _token;
+            return Task.FromResult<object>(_token);
         }
 
         public string ToInvokeString()

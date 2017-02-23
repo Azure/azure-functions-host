@@ -15,9 +15,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal class HostMessageListenerFactory : IListenerFactory
     {
-        private static readonly TimeSpan Minimum = QueuePollingIntervals.Minimum;
-        private static readonly TimeSpan DefaultMaximum = QueuePollingIntervals.DefaultMaximum;
-
         private readonly IStorageQueue _queue;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
@@ -83,20 +80,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         {
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(_executor, _functionLookup, _functionInstanceLogger);
 
-            TimeSpan configuredMaximum = _queueConfiguration.MaxPollingInterval;
             // Provide an upper bound on the maximum polling interval for run/abort from dashboard.
-            // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
-            TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
-            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(Minimum, maximum);
+            // This ensures that if users have customized this value the Dashboard will remain responsive.
+            TimeSpan maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
 
             IListener listener = new QueueListener(_queue,
                 poisonQueue: null,
                 triggerExecutor: triggerExecutor,
-                delayStrategy: delayStrategy,
                 exceptionHandler: _exceptionHandler,
                 trace: _trace,
                 sharedWatcher: null,
-                queueConfiguration: _queueConfiguration);
+                queueConfiguration: _queueConfiguration,
+                maxPollingInterval: maxPollingInterval);
 
             return Task.FromResult(listener);
         }

@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
 
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
-                host, StorageAccountProvider, config.Queues, typeLocator, DefaultJobActivator.Instance, nameResolver,
+                host, StorageAccountProvider, config.Queues, config.Blobs, typeLocator, DefaultJobActivator.Instance, nameResolver,
                 new NullConsoleProvider(), new JobHostConfiguration(), shutdownToken, cancellationToken, new WebJobsExceptionHandler(),
                 new FixedHostIdProvider(Guid.NewGuid().ToString("N")),
                 null, new EmptyFunctionIndexProvider(),

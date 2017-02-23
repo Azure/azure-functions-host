@@ -1,16 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
@@ -35,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             // Malformed 
             // Expect the 
-            public static void Func([FakeQueue(Prefix ="Error-{name%")] out string x)
+            public static void Func([FakeQueue(Prefix = "Error-{name%")] out string x)
             {
                 x = "x";
             }
@@ -70,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public class Functions
         {
             public static async Task SendDirectClient(
-                [FakeQueue] FakeQueueClient client)
+                [FakeQueue("CustomConstructor", CustomPolicy = "Custom")] FakeQueueClient client)
             {
                 await client.AddAsync(new FakeQueueData { Message = "abc", ExtraPropertery = "def" });
             }
@@ -182,11 +179,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             FakeQueueClient client = new FakeQueueClient();
             var host = TestHelpers.NewJobHost<Functions>(client);
-            
+
             var p7 = Invoke(host, client, "SendDirectClient");
             Assert.Equal(1, p7.Length);
             Assert.Equal("abc", p7[0].Message);
-            Assert.Equal("def", p7[0].ExtraPropertery);            
+            Assert.Equal("def", p7[0].ExtraPropertery);
 
             var p8 = Invoke(host, client, "SendOneDerivedNative");
             Assert.Equal(1, p8.Length);
@@ -199,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             // Single items
             var p1 = InvokeJson<Payload>(host, client, "SendOnePoco");
-            Assert.Equal(1, p1.Length);            
+            Assert.Equal(1, p1.Length);
             Assert.Equal(123, p1[0].val1);
 
             var p2 = Invoke(host, client, "SendOneNative");
@@ -211,14 +208,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(1, p3.Length);
             Assert.Equal("stringvalue", p3[0].Message);
 
-            foreach (string methodName in new string[] { "SendDontQueue", "SendArrayNull", "SendArrayLen0"})
+            foreach (string methodName in new string[] { "SendDontQueue", "SendArrayNull", "SendArrayLen0" })
             {
                 var p6 = Invoke(host, client, methodName);
                 Assert.Equal(0, p6.Length);
             }
 
             // batching 
-            foreach(string methodName in new string[] {
+            foreach (string methodName in new string[] {
                 "SendSyncCollectorBytes", "SendArrayString", "SendSyncCollectorString", "SendAsyncCollectorString", "SendCollectorNative" })
             {
                 var p4 = Invoke(host, client, methodName);
@@ -227,13 +224,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 Assert.Equal("second", p4[1].Message);
             }
 
-            foreach(string methodName in new string[] { "SendCollectorPoco", "SendArrayPoco" })
+            foreach (string methodName in new string[] { "SendCollectorPoco", "SendArrayPoco" })
             {
                 var p5 = InvokeJson<Payload>(host, client, methodName);
                 Assert.Equal(2, p5.Length);
                 Assert.Equal(100, p5[0].val1);
                 Assert.Equal(200, p5[1].val1);
-            }            
+            }
         }
 
         static FakeQueueData[] Invoke(JobHost host, FakeQueueClient client, string name)
@@ -256,6 +253,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var obj = Array.ConvertAll(data, x => JsonConvert.DeserializeObject<T>(x.Message));
             client._items.Clear();
             return obj;
-        }        
+        }
     }
 }

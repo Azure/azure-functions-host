@@ -45,6 +45,10 @@ namespace Dashboard.Data
 
         public DateTimeOffset? EndTime { get; set; }
 
+        // For fast-style logging. 
+        // This heartbeat is for the function-instance (not for the host).  
+        public DateTime? FunctionInstanceHeartbeatExpiry { get; set; }
+
         // If specified, text output is provided in the string. Ignore the OutputBlob. 
         public string InlineOutputText { get; set; }
 

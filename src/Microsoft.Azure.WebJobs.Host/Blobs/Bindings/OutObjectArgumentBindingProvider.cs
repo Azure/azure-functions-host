@@ -108,9 +108,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     get { return _stream; }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return default(TValue);
+                    return Task.FromResult<object>(default(TValue));
                 }
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)

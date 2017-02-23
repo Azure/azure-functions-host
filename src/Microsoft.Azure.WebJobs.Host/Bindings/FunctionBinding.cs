@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     bindingData[kv.Key] = kv.Value;
                 }
             }
-
+            
             BindingContext bindingContext = new BindingContext(context, bindingData);
             return bindingContext;
         }

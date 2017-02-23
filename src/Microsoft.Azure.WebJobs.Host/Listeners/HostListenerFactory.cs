@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 SingletonAttribute singletonAttribute = SingletonManager.GetListenerSingletonOrNull(listener.GetType(), method);
                 if (singletonAttribute != null)
                 {
-                    listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener);
+                    listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener, _trace);
                 }
 
                 listeners.Add(listener);

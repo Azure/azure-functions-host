@@ -35,9 +35,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             get { return typeof(TInput); }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return default(TInput);
+            return Task.FromResult<object>(default(TInput));
         }
 
         public string ToInvokeString()

@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class TestJobHost<TProgram> : JobHost
     {
-        internal TestJobHost(IServiceProvider serviceProvider)
+        public TestJobHost(IServiceProvider serviceProvider)
             : base(serviceProvider)
         {
         }
@@ -39,6 +41,24 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         public Task CallAsync(string methodName, object arguments)
         {
             return base.CallAsync(typeof(TProgram).GetMethod(methodName), arguments);
+        }
+
+        // Helper for quickly testing indexing errors 
+        public void AssertIndexingError(string methodName, string expectedErrorMessage)
+        {
+            try
+            {
+                // Indexing is lazy, so must actually try a call first. 
+                this.Call(methodName);
+            }
+            catch (FunctionIndexingException e)
+            {
+                string functionName = typeof(TProgram).Name + "." + methodName;
+                Assert.Equal("Error indexing method '" + functionName + "'", e.Message);
+                Assert.Equal(expectedErrorMessage, e.InnerException.Message);
+                return;
+            }
+            Assert.True(false, "Invoker should have failed");
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public CloudStorageAccount DashboardAccount { get; set; }
 
-        Task<IStorageAccount> IStorageAccountProvider.GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
+        Task<IStorageAccount> IStorageAccountProvider.TryGetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
             IStorageAccount account;
 

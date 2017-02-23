@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
@@ -40,9 +41,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return new BlobValueProvider(blob, value: null, valueType: typeof(T));
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _value;
+            return Task.FromResult(_value);
         }
 
         public string ToInvokeString()

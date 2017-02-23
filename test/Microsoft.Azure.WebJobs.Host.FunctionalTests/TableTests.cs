@@ -14,11 +14,12 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using Xunit;
 using Newtonsoft.Json.Linq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -31,19 +32,89 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string PropertyName = "Property";
 
         [Fact]
+        public void Table_IndexingFails()
+        {
+            // Verify we catch various indexing failures. 
+            Utility.AssertIndexingError<BadProgramTableName>("Run", "'$$' is not a valid name for an Azure table");
+
+            // Pocos must have a default ctor. 
+            Utility.AssertIndexingError<BadProgram4>("Run", "Table entity types must provide a default constructor.");
+
+            // When binding to Pocos, they must be structurally compatible with ITableEntity.
+            Utility.AssertIndexingError<BadProgram1>("Run", "Table entity types must implement the property RowKey.");
+            Utility.AssertIndexingError<BadProgram2>("Run", "Table entity types must implement the property RowKey.");
+            Utility.AssertIndexingError<BadProgram3>("Run", "Table entity types must implement the property PartitionKey.");
+        }
+
+        class BindToSingleOutProgram
+        {
+            public static void Run([Table(TableName)] out Poco x)
+            {
+                x = new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "1234" };
+            }
+        }
+
+        [Fact]
+        public void Table_SingleOut_Supported()
+        {
+            IStorageAccount account = new FakeStorageAccount();
+            var host = TestHelpers.NewJobHost<BindToSingleOutProgram>(account);
+
+            host.Call("Run");
+
+            AssertStringProperty(account, "Property", "1234");
+        }
+
+        // Helper to demonstrate that TableName property can include { } pairs. 
+        private class BindToICollectorITableEntityResolvedTableProgram
+        {
+            public static void Run(
+                [Table("Ta{t1}")] ICollector<Poco> table1,
+                [Table("{t1}x{t1}")] ICollector<Poco> table2)
+            {
+                table1.Add(new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "123" });
+                table2.Add(new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = "456" });
+            }
+        }
+
+        // TableName can have {  } pairs.
+        [Fact]
+        public void Table_ResolvedName()
+        {
+            IStorageAccount account = new FakeStorageAccount();
+            var host = TestHelpers.NewJobHost<BindToICollectorITableEntityResolvedTableProgram>(account);
+
+            host.Call("Run", new { t1 = "ZZ" });
+
+            AssertStringProperty(account, "Property", "123", "TaZZ");
+            AssertStringProperty(account, "Property", "456", "ZZxZZ");
+        }
+
+        private class CustomTableBindingConverter<T>
+            : IConverter<CloudTable, CustomTableBinding<T>>
+        {
+            public CustomTableBinding<T> Convert(CloudTable input)
+            {
+                return new CustomTableBinding<T>(input);
+            }
+        }
+
+        [Fact]
         public void Table_IfBoundToCustomTableBindingExtension_BindsCorrectly()
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
-            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
 
-            // register our custom table binding extension provider
-            DefaultExtensionRegistry extensions = new DefaultExtensionRegistry();
-            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(new CustomTableArgumentBindingProvider());
+            var config = TestHelpers.NewConfig(typeof(CustomTableBindingExtensionProgram), account);
 
-            // Act
-            RunTrigger(account, typeof(CustomTableBindingExtensionProgram), extensions);
+            IConverterManager cm = config.GetService<IConverterManager>();
+
+            // Add a rule for binding CloudTable --> CustomTableBinding<TEntity>
+            cm.AddConverter<CloudTable, CustomTableBinding<OpenType>, TableAttribute>(
+                typeof(CustomTableBindingConverter<>));
+
+            var host = new TestJobHost<CustomTableBindingExtensionProgram>(config);
+            host.Call("Run"); // Act
 
             // Assert
             Assert.Equal(TableName, CustomTableBinding<Poco>.Table.Name);
@@ -72,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
-        public void Table_IfBoundToICollectorJObject_AddInsertsEntity()    
+        public void Table_IfBoundToICollectorJObject_AddInsertsEntity()
         {
             // Arrange
             const string expectedValue = "abc";
@@ -92,7 +163,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(entity.Properties);
 
             AssertPropertyValue(entity, "ValueStr", "abcdef");
-            AssertPropertyValue(entity, "ValueNum", 123);         
+            AssertPropertyValue(entity, "ValueNum", 123);
+        }
+
+        // Partition and RowKey values are in the attribute
+        [Fact]
+        public void Table_IfBoundToICollectorJObject__WithAttrKeys_AddInsertsEntity()
+        {
+            // Arrange
+            const string expectedValue = "abcdef";
+            IStorageAccount account = CreateFakeStorageAccount();
+            var config = TestHelpers.NewConfig(typeof(BindToICollectorJObjectProgramKeysInAttr), account);
+
+            // Act
+            var host = new TestJobHost<BindToICollectorJObjectProgramKeysInAttr>(config);
+            host.Call("Run");
+
+            // Assert
+            AssertStringProperty(account, "ValueStr", expectedValue);            
         }
 
         [Fact]
@@ -108,17 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             RunTrigger(account, typeof(BindToICollectorITableEntityProgram));
 
             // Assert
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            Assert.True(table.Exists());
-            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
-            Assert.NotNull(entity);
-            Assert.NotNull(entity.Properties);
-            Assert.True(entity.Properties.ContainsKey(PropertyName));
-            EntityProperty property = entity.Properties[PropertyName];
-            Assert.NotNull(property);
-            Assert.Equal(EdmType.String, property.PropertyType);
-            Assert.Equal(expectedValue, property.StringValue);
+            AssertStringProperty(account, PropertyName, expectedValue);
         }
 
         [Fact]
@@ -134,17 +212,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             RunTrigger(account, typeof(BindToICollectorPocoProgram));
 
             // Assert
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            Assert.True(table.Exists());
-            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
-            Assert.NotNull(entity);
-            Assert.NotNull(entity.Properties);
-            Assert.True(entity.Properties.ContainsKey(PropertyName));
-            EntityProperty property = entity.Properties[PropertyName];
-            Assert.NotNull(property);
-            Assert.Equal(EdmType.String, property.PropertyType);
-            Assert.Equal(expectedValue, property.StringValue);
+            AssertStringProperty(account, PropertyName, expectedValue);
         }
 
         [Fact]
@@ -314,7 +382,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 Assert.Equal(EdmType.Int32, property.PropertyType);
                 Assert.Equal(expectedValue, property.Int32Value);
             }
-            else {
+            else
+            {
                 Assert.False(true, "test bug: unsupported property type: " + expectedValue.GetType().FullName);
             }
         }
@@ -346,6 +415,29 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(expectedType, property.PropertyType);
             Nullable<T> actualValue = actualAccessor.Invoke(property);
             Assert.False(actualValue.HasValue);
+        }
+
+        // Assert the given table has the given entity with PropertyName=ExpectedValue
+        void AssertStringProperty(
+            IStorageAccount account,
+            string propertyName,
+            string expectedValue,
+            string tableName = TableName,
+            string partitionKey = PartitionKey,
+            string rowKey = RowKey)
+        {
+            // Assert
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(tableName);
+            Assert.True(table.Exists());
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(partitionKey, rowKey);
+            Assert.NotNull(entity);
+            Assert.NotNull(entity.Properties);
+            Assert.True(entity.Properties.ContainsKey(propertyName));
+            EntityProperty property = entity.Properties[propertyName];
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Equal(expectedValue, property.StringValue);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()
@@ -383,16 +475,33 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
-        private class BindToICollectorJObjectProgram 
+        private class BindToICollectorJObjectProgram
         {
             public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage message,
                 [Table(TableName)] ICollector<JObject> table)
             {
-                table.Add(JObject.FromObject( new {
+                table.Add(JObject.FromObject(new
+                {
                     PartitionKey = PartitionKey,
                     RowKey = RowKey,
                     ValueStr = "abcdef",
-                    ValueNum = 123 
+                    ValueNum = 123
+                }));
+            }
+        }
+
+        // Partition and RowKey are missing from JObject, get them from the attribute. 
+        private class BindToICollectorJObjectProgramKeysInAttr
+        {
+            [NoAutomaticTrigger]
+            public static void Run(
+                [Table(TableName, PartitionKey, RowKey)] ICollector<JObject> table)
+            {
+                table.Add(JObject.FromObject(new
+                {
+                    // no partition and row key! USe from attribute instead. 
+                    ValueStr = "abcdef",
+                    ValueNum = 123
                 }));
             }
         }
@@ -442,14 +551,101 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private class CustomTableBindingExtensionProgram
         {
-            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
-                [Table(TableName)] CustomTableBinding<Poco> table)
+            public static void Run([Table(TableName)] CustomTableBinding<Poco> table)
             {
                 Poco entity = new Poco();
                 table.Add(entity);
                 table.Delete(entity);
             }
         }
+
+        private class BadProgramTableName
+        {
+            public static void Run([Table("$$")] ICollector<Poco> output)
+            {
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        private class BadProgram1
+        {
+            public static void Run([Table(TableName)] ICollector<BadPoco> output)
+            {
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        private class BadProgram2
+        {
+            public static void Run([Table(TableName)] ICollector<BadPocoMissingRowKey> output)
+            {
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        private class BadProgram3
+        {
+            public static void Run([Table(TableName)] ICollector<BadPocoMissingPartitionKey> output)
+            {
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        private class BadProgram4
+        {
+            public static void Run([Table(TableName, PartitionKey, RowKey)] BadPocoMissingDefaultCtor input)
+            {
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        // Poco that should fail at binding time:
+        // 1. Does not derive from ITableEntity, and 
+        // 2. Missing PartitionKey and RowKey values, so not structurally  compatible with ITableEntity 
+        private class BadPoco
+        {
+            public string Value { get; set; }
+        }
+
+        private class BadPocoMissingRowKey
+        {
+            public string PartitionKey { get; set; }
+            public string Value { get; set; }
+        }
+
+        private class BadPocoMissingPartitionKey
+        {
+            public string RowKey { get; set; }
+            public string Value { get; set; }
+        }
+
+        private class BadPocoMissingDefaultCtor
+        {
+            public BadPocoMissingDefaultCtor(string value)
+            {
+                this.Value = value;
+            }
+            public string Value { get; set; }
+        }
+
+        private class TableOutProgram
+        {
+            public static void Run([Table(TableName, PartitionKey, RowKey)] out Poco value)
+            {
+                value = null;
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
+        private class TableOutArrayProgram
+        {
+            public static void Run([Table(TableName, PartitionKey, RowKey)] out Poco[] value)
+            {
+                value = null;
+                Assert.True(false, "should have gotten error at indexing time.");
+            }
+        }
+
 
         private class Poco
         {
@@ -535,91 +731,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 // complete and flush all storage operations
                 return Task.FromResult(true);
-            }
-        }
-
-        /// <summary>
-        /// Demonstrates an example binding extension provider for Tables
-        /// </summary>
-        private class CustomTableArgumentBindingProvider : IArgumentBindingProvider<ITableArgumentBinding>
-        {
-            public ITableArgumentBinding TryCreate(ParameterInfo parameter)
-            {
-                // Determine whether the target is a Table paramter that we should bind to
-                TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
-                if (tableAttribute == null ||
-                    !parameter.ParameterType.IsGenericType ||
-                    (parameter.ParameterType.GetGenericTypeDefinition() != typeof(CustomTableBinding<>)))
-                {
-                    return null;
-                }
-
-                // create the binding
-                Type elementType = GetItemType(parameter.ParameterType);
-                Type bindingType = typeof(CustomTableBindingExtension<>).MakeGenericType(elementType);
-
-                return (ITableArgumentBinding)Activator.CreateInstance(bindingType);
-            }
-
-            private static Type GetItemType(Type queryableType)
-            {
-                Type[] genericArguments = queryableType.GetGenericArguments();
-                var itemType = genericArguments[0];
-                return itemType;
-            }
-
-            /// <summary>
-            /// Custom Table binding extension, responsible for binding a <see cref="CloudTable"/> to a
-            /// <see cref="CustomTableBinding<TElement>"/>
-            /// </summary>
-            /// <typeparam name="TElement"></typeparam>
-            private class CustomTableBindingExtension<TElement> : ITableArgumentBinding
-            {
-                public FileAccess Access
-                {
-                    get { return FileAccess.ReadWrite; }
-                }
-
-                public Type ValueType { get { return typeof(CustomTableBinding<TElement>); } }
-
-                public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
-                {
-                    return Task.FromResult<IValueProvider>(new CustomTableValueBinder(value, ValueType));
-                }
-
-                private class CustomTableValueBinder : IValueBinder
-                {
-                    private readonly CloudTable _table;
-                    private readonly Type _valueType;
-
-                    public CustomTableValueBinder(CloudTable table, Type valueType)
-                    {
-                        _table = table;
-                        _valueType = valueType;
-                    }
-
-                    public Type Type
-                    {
-                        get { return typeof(CustomTableBinding<TElement>); }
-                    }
-
-                    public object GetValue()
-                    {
-                        return new CustomTableBinding<TElement>(_table);
-                    }
-
-                    public Task SetValueAsync(object value, CancellationToken cancellationToken)
-                    {
-                        // this is where any queued up storage operations can be flushed
-                        CustomTableBinding<TElement> tableBinding = value as CustomTableBinding<TElement>;
-                        return tableBinding.FlushAsync(cancellationToken);
-                    }
-
-                    public string ToInvokeString()
-                    {
-                        return _table.Name;
-                    }
-                }
             }
         }
     }

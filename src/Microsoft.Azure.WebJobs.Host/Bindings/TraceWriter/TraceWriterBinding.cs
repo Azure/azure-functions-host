@@ -83,9 +83,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 get { return _type; }
             }
 
-            public object GetValue()
+            public Task<object> GetValueAsync()
             {
-                return _tracer;
+                return Task.FromResult(_tracer);
             }
 
             public string ToInvokeString()

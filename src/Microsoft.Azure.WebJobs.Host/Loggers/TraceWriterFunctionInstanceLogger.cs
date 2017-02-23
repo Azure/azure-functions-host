@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executing: '{0}' - Reason: '{1}'", message.Function.ShortName, message.FormatReason());
+            string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executing '{0}' (Reason='{1}', Id={2})", message.Function.ShortName, message.FormatReason(), message.FunctionInstanceId);
             Trace(TraceLevel.Info, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution);
             return Task.FromResult<string>(null);
         }
@@ -34,12 +34,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         {
             if (message.Succeeded)
             {
-                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Succeeded)", message.Function.ShortName);
+                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed '{0}' (Succeeded, Id={1})", message.Function.ShortName, message.FunctionInstanceId);
                 Trace(TraceLevel.Info, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution);
             }
             else
             {
-                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Failed)", message.Function.ShortName);
+                string traceMessage = string.Format(CultureInfo.InvariantCulture, "Executed '{0}' (Failed, Id={1})", message.Function.ShortName, message.FunctionInstanceId);
                 Trace(TraceLevel.Error, message.HostInstanceId, message.Function, message.FunctionInstanceId, traceMessage, TraceSource.Execution, message.Failure.Exception);
 
                 // Also log the eror message using TraceSource.Host, to ensure

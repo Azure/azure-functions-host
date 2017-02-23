@@ -13,6 +13,7 @@ using Xunit;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Newtonsoft.Json;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -187,9 +188,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void Fails_When_No_Storage_is_set()
         {
             var host = TestHelpers.NewJobHost<ProgramSimple>();  // no storage account!
-
+            string message = StorageAccountParser.FormatParseAccountErrorMessage(StorageAccountParseResult.MissingOrEmptyConnectionStringError, "Storage");            
             TestHelpers.AssertIndexingError(() => host.Call("Func"),
-                "ProgramSimple.Func", "Unable to bind Queue because no storage account has been configured.");
+                "ProgramSimple.Func", message);
         }
 
         public class ProgramBadContract

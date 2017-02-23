@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IStorageAccountProvider
     {
-        Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken);
+        Task<IStorageAccount> TryGetAccountAsync(string connectionStringName, CancellationToken cancellationToken);
     }
 }

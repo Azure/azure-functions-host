@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -20,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             get { return typeof(TElement); }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return default(TElement);
+            return Task.FromResult((object)default(TElement));
         }
 
         public string ToInvokeString()

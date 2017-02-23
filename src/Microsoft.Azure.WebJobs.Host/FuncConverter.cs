@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs
     /// <param name="src">source</param>
     /// <param name="attribute">attribute</param>
     /// <param name="context">binding context that may have additional parameters to influence conversion. </param>
+    [Obsolete("Not ready for public consumption.")]
     public delegate TDestination FuncConverter<TSource, TAttribute, TDestination>(TSource src, TAttribute attribute, ValueBindingContext context)
             where TAttribute : Attribute;
 }

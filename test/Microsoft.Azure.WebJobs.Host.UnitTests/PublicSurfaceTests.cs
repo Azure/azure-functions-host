@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
@@ -53,20 +52,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 "FunctionId",
                 "ActivationEvent",
-                "CloudTableInstanceCountLogger",
                 "FunctionInstanceLogItem",
-                "FunctionInstanceLogItemExtensions",
                 "FunctionInstanceStatus",
                 "FunctionStatusExtensions",
                 "FunctionVolumeTimelineEntry",
                 "IAggregateEntry",
                 "IFunctionDefinition",
                 "IFunctionInstanceBaseEntry",
+                "IFunctionInstanceBaseEntryExtensions",
                 "ILogReader",
                 "ILogWriter",
                 "ILogTableProvider",
                 "InstanceCountEntity",
-                "InstanceCountLoggerBase",
                 "IRecentFunctionEntry",
                 "LogFactory",
                 "ProjectionHelper",
@@ -128,7 +125,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "StorageAccountAttribute",
                 "DisableAttribute",
                 "TimeoutAttribute",
-                "TraceLevelAttribute"
+                "TraceLevelAttribute",
+                "ODataFilterResolutionPolicy"
             };
 
             AssertPublicTypes(expected, assembly);
@@ -143,6 +141,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 "DefaultNameResolver",
                 "FunctionInstanceLogEntry",
+                "IConverter`2",
+                "IAsyncConverter`2",
                 "IConverterManager",
                 "IConverterManagerExtensions",
                 "FuncConverter`3",
@@ -152,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "JobHost",
                 "JobHostConfiguration",
                 "JobHostQueuesConfiguration",
+                "JobHostBlobsConfiguration",
                 "IJobActivator",
                 "ITypeLocator",
                 "INameResolver",
@@ -160,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingProviderContext",
                 "BindingTemplate",
                 "BindStepOrder",
+                "OpenType",
                 "FunctionBindingContext",
                 "IBinding",
                 "IBindingProvider",
@@ -194,7 +196,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "FunctionResult",
                 "IArgumentBinding`1",
                 "IArgumentBindingProvider`1",
-                "ITableArgumentBinding",
                 "SingletonConfiguration",
                 "TraceWriter",
                 "JobHostTraceConfiguration",
@@ -209,7 +210,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "Binder",
                 "IWebJobsExceptionHandler",
                 "WebJobsExceptionHandler",
-                "FunctionTimeoutException"
+                "FunctionTimeoutException",
+                "PoisonMessageEventArgs",
+                "IResolutionPolicy"
             };
 
             AssertPublicTypes(expected, assembly);

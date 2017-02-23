@@ -8,7 +8,6 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -68,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
 
             private static async Task<IList> ConvertBlobs(Type targetType, IEnumerable<IStorageListBlobItem> blobItems)
-            { 
+            {
                 Type listType = typeof(List<>).MakeGenericType(targetType);
                 IList list = (IList)Activator.CreateInstance(listType);
                 foreach (var blobItem in blobItems)
@@ -126,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _value;
+                    return Task.FromResult(_value);
                 }
 
                 public string ToInvokeString()

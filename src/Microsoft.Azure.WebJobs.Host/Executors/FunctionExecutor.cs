@@ -303,8 +303,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     if (exceptionInfo != null)
                     {
                         // release any held singleton lock immediately
-                        SingletonLock singleton = null;
-                        if (TryGetSingletonLock(parameters, out singleton) && singleton.IsHeld)
+                        SingletonLock singleton = await GetSingletonLockAsync(parameters);
+                        if (singleton != null && singleton.IsHeld)
                         {
                             await singleton.ReleaseAsync(cancellationToken);
                         }
@@ -515,9 +515,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyList<string> parameterNames = invoker.ParameterNames;
-            IDelayedException delayedBindingException;
 
-            object[] invokeParameters = PrepareParameters(parameterNames, parameters, out delayedBindingException);
+            Tuple<object[], IDelayedException> preparedParameters = await PrepareParametersAsync(parameterNames, parameters);
+
+            object[] invokeParameters = preparedParameters.Item1;
+            IDelayedException delayedBindingException = preparedParameters.Item2;
 
             if (delayedBindingException != null)
             {
@@ -527,8 +529,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             // if the function is a Singleton, aquire the lock
-            SingletonLock singleton = null;
-            if (TryGetSingletonLock(parameters, out singleton))
+            SingletonLock singleton = await GetSingletonLockAsync(parameters);
+            if (singleton != null)
             {
                 await singleton.AcquireAsync(functionCancellationTokenSource.Token);
             }
@@ -661,21 +663,20 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return false;
         }
 
-        private static bool TryGetSingletonLock(IReadOnlyDictionary<string, IValueProvider> parameters, out SingletonLock singleton)
+        private static async Task<SingletonLock> GetSingletonLockAsync(IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             IValueProvider singletonValueProvider = null;
-            singleton = null;
+            SingletonLock singleton = null;
             if (parameters.TryGetValue(SingletonValueProvider.SingletonParameterName, out singletonValueProvider))
             {
-                singleton = (SingletonLock)singletonValueProvider.GetValue();
-                return true;
+                singleton = (SingletonLock)(await singletonValueProvider.GetValueAsync());
             }
 
-            return false;
+            return singleton;
         }
 
-        private static object[] PrepareParameters(IReadOnlyList<string> parameterNames,
-            IReadOnlyDictionary<string, IValueProvider> parameters, out IDelayedException delayedBindingException)
+        private static async Task<Tuple<object[], IDelayedException>> PrepareParametersAsync(IReadOnlyList<string> parameterNames,
+            IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             object[] reflectionParameters = new object[parameterNames.Count];
             List<Exception> bindingExceptions = new List<Exception>();
@@ -692,23 +693,20 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     bindingExceptions.Add(exceptionProvider.Exception);
                 }
 
-                reflectionParameters[index] = parameters[name].GetValue();
+                reflectionParameters[index] = await parameters[name].GetValueAsync();
             }
 
-            if (bindingExceptions.Count == 0)
-            {
-                delayedBindingException = null;
-            }
-            else if (bindingExceptions.Count == 1)
+            IDelayedException delayedBindingException = null;
+            if (bindingExceptions.Count == 1)
             {
                 delayedBindingException = new DelayedException(bindingExceptions[0]);
             }
-            else
+            else if (bindingExceptions.Count > 1)
             {
                 delayedBindingException = new DelayedException(new AggregateException(bindingExceptions));
             }
 
-            return reflectionParameters;
+            return new Tuple<object[], IDelayedException>(reflectionParameters, delayedBindingException);
         }
 
         private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance)

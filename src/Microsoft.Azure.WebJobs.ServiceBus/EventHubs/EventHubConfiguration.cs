@@ -60,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             if (options == null)
             {
                 options = EventProcessorOptions.DefaultOptions;
-                options.MaxBatchSize = 1000;
+                options.MaxBatchSize = 64;
+                options.PrefetchCount = options.MaxBatchSize * 4;
             }
             _partitionOptions = partitionOptions;
 
@@ -385,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
 
             // register our binding provider
-            var ruleOutput = bf.BindToAsyncCollector<EventHubAttribute, EventData>(BuildFromAttribute);
+            var ruleOutput = bf.BindToCollector<EventHubAttribute, EventData>(BuildFromAttribute);
             extensions.RegisterBindingRules<EventHubAttribute>(ruleOutput);
         }
 

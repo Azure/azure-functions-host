@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public Type Type
         {
-            get 
+            get
             {
                 return typeof(SingletonLock);
             }
@@ -40,15 +40,15 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public IWatcher Watcher
         {
-            get 
+            get
             {
-                return _watcher; 
+                return _watcher;
             }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _singletonLock;
+            return Task.FromResult<object>(_singletonLock);
         }
 
         public string ToInvokeString()

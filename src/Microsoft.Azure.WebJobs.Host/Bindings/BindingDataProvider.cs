@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <inheritdoc/>
         public IReadOnlyDictionary<string, object> GetBindingData(object value)
         {
-            if (value != null && value.GetType() != _type)
+            if (value != null && !_type.IsAssignableFrom(value.GetType()))
             {
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "The supplied value was not of type '{0}'.", _type), "value");
             }

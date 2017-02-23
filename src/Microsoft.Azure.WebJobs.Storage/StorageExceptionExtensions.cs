@@ -744,5 +744,60 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 
             return extendedInformation.ErrorCode == "LeaseLost";
         }
+
+        /// <summary>
+        /// Returns the status code from the storage exception, or null.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <param name="statusCode">When this method returns, contains the status code.</param>
+        /// <returns>Returns true if there was a status code; otherwise, false.</returns>
+        public static bool TryGetStatusCode(this StorageException exception, out int statusCode)
+        {
+            statusCode = 0;
+
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            statusCode = result.HttpStatusCode;
+            return true;
+        }
+
+        /// <summary>
+        /// Returns the error code from storage exception, or null.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>The error code, or null.</returns>
+        public static string GetErrorCode(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return null;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return null;
+            }
+
+            return extendedInformation.ErrorCode;
+        }
     }
 }

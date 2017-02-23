@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return _object;
+            return Task.FromResult<object>(_object);
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
@@ -52,6 +52,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         public string ToInvokeString()
         {
             return _invokeString;
-        }    
+        }
     }
 }

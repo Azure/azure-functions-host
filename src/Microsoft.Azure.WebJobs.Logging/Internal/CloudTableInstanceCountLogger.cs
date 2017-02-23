@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
     /// <summary>
     /// Log function instance counts to a Azure Table
     /// </summary>
-    public class CloudTableInstanceCountLogger : InstanceCountLoggerBase
+    internal class CloudTableInstanceCountLogger : InstanceCountLoggerBase
     {
         private readonly ILogTableProvider _tableLookup;
         private readonly string _containerName;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
                 CurrentActive = currentActive,
                 TotalThisPeriod = totalThisPeriod,
                 MachineSize = _containerSize,
-                DurationMilliseconds = (int) this.PollingInterval.TotalMilliseconds
+                DurationMilliseconds = (int)this.PollingInterval.TotalMilliseconds
             };
 
             TableOperation opInsert = TableOperation.Insert(entity);

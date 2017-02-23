@@ -103,15 +103,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     get { return _stream; }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _value;
+                    return Task.FromResult<object>(_value);
                 }
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
-                    Debug.Assert(value == null || value == GetValue(),
-                        "The value argument should be either the same instance as returned by GetValue() or null");
+                    Debug.Assert(value == null || value == await GetValueAsync(),
+                        "The value argument should be either the same instance as returned by GetValueAsync() or null");
 
                     // Not ByRef, so can ignore value argument.
                     cancellationToken.ThrowIfCancellationRequested();

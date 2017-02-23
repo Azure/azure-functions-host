@@ -56,9 +56,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     }
                 }
 
-                public object GetValue()
+                public Task<object> GetValueAsync()
                 {
-                    return _container;
+                    return Task.FromResult<object>(_container);
                 }
 
                 public string ToInvokeString()

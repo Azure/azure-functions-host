@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs
@@ -11,6 +12,7 @@ namespace Microsoft.Azure.WebJobs
     /// An attribute may implement this interface, or a default implementation may be inferred. 
     /// </summary>
     /// <typeparam name="TAttribute">Type of the attribute on this binding.</typeparam>
+    [Obsolete("Not ready for public consumption.")]
     public interface IAttributeInvokeDescriptor<TAttribute>
     {
         /// <summary>

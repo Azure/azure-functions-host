@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly TraceWriter _trace;
-        private readonly int _maxDequeueCount;
 
         /// <summary>
         /// Constructs a new instance.
@@ -42,16 +41,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             _queue = context.Queue;
             _poisonQueue = context.PoisonQueue;
             _trace = context.Trace;
-            _maxDequeueCount = context.MaxDequeueCount;
 
+            MaxDequeueCount = context.MaxDequeueCount;
             BatchSize = context.BatchSize;
             NewBatchThreshold = context.NewBatchThreshold;
+            VisibilityTimeout = context.VisibilityTimeout;
+            MaxPollingInterval = context.MaxPollingInterval;
         }
 
         /// <summary>
         /// Event raised when a message is added to the poison queue.
         /// </summary>
-        public event EventHandler MessageAddedToPoisonQueue;
+        public event EventHandler<PoisonMessageEventArgs> MessageAddedToPoisonQueue;
 
         /// <summary>
         /// Gets or sets the number of queue messages to retrieve and process in parallel.
@@ -59,9 +60,26 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         public int BatchSize { get; protected set; }
 
         /// <summary>
+        /// Gets or sets the number of times to try processing a message before moving it to the poison queue.
+        /// </summary>
+        public int MaxDequeueCount { get; protected set; }
+
+        /// <summary>
         /// Gets or sets the threshold at which a new batch of messages will be fetched.
         /// </summary>
         public int NewBatchThreshold { get; protected set; }
+
+        /// <summary>
+        /// Gets or sets the longest period of time to wait before checking for a message to arrive when a queue remains
+        /// empty.
+        /// </summary>
+        public TimeSpan MaxPollingInterval { get; protected set; }
+
+        /// <summary>
+        /// Gets or sets the default message visibility timeout that will be used
+        /// for messages that fail processing.
+        /// </summary>
+        public TimeSpan VisibilityTimeout { get; protected set; }
 
         /// <summary>
         /// This method is called when there is a new message to process, before the job function is invoked.
@@ -95,14 +113,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             }
             else if (_poisonQueue != null)
             {
-                if (message.DequeueCount >= _maxDequeueCount)
+                if (message.DequeueCount >= MaxDequeueCount)
                 {
-                    await CopyMessageToPoisonQueueAsync(message, cancellationToken);
+                    await CopyMessageToPoisonQueueAsync(message, _poisonQueue, cancellationToken);
                     await DeleteMessageAsync(message, cancellationToken);
                 }
                 else
                 {
-                    await ReleaseMessageAsync(message, result, TimeSpan.Zero, cancellationToken);
+                    await ReleaseMessageAsync(message, result, VisibilityTimeout, cancellationToken);
                 }
             }
             else
@@ -117,15 +135,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// Moves the specified message to the poison queue.
         /// </summary>
         /// <param name="message">The poison message</param>
+        /// <param name="poisonQueue">The poison queue to copy the message to</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use</param>
         /// <returns></returns>
-        protected virtual async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+        protected virtual async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CloudQueue poisonQueue, CancellationToken cancellationToken)
         {
-            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", _maxDequeueCount, _poisonQueue.Name), TraceSource.Execution);
+            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", MaxDequeueCount, poisonQueue.Name), TraceSource.Execution);
 
-            await AddMessageAndCreateIfNotExistsAsync(_poisonQueue, message, cancellationToken);
+            await AddMessageAndCreateIfNotExistsAsync(poisonQueue, message, cancellationToken);
 
-            OnMessageAddedToPoisonQueue(EventArgs.Empty);
+            var eventArgs = new PoisonMessageEventArgs(message, poisonQueue);
+            OnMessageAddedToPoisonQueue(eventArgs);
         }
 
         /// <summary>
@@ -200,13 +220,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// Called to raise the MessageAddedToPoisonQueue event
         /// </summary>
         /// <param name="e">The event arguments</param>
-        protected internal virtual void OnMessageAddedToPoisonQueue(EventArgs e)
+        protected internal virtual void OnMessageAddedToPoisonQueue(PoisonMessageEventArgs e)
         {
-            EventHandler handler = MessageAddedToPoisonQueue;
-            if (handler != null)
-            {
-                handler(this, e);
-            }
+            MessageAddedToPoisonQueue?.Invoke(this, e);
         }
 
         private static async Task AddMessageAndCreateIfNotExistsAsync(CloudQueue queue, CloudQueueMessage message, CancellationToken cancellationToken)

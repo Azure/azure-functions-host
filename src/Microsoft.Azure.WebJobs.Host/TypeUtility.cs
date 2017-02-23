@@ -4,6 +4,8 @@
 using System;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host
@@ -30,6 +32,22 @@ namespace Microsoft.Azure.WebJobs.Host
         internal static bool IsJObject(Type type)
         {
             return type == typeof(JObject);
+        }
+
+        // Task<T> --> T
+        // Task --> void
+        // T --> T
+        internal static Type UnwrapTaskType(Type type)
+        {
+            if (type == typeof(Task))
+            {
+                return typeof(void);
+            }
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
+            {
+                return type.GetGenericArguments()[0];
+            }
+            return type;
         }
 
         /// <summary>
@@ -73,6 +91,30 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             return null;
+        }
+
+        public static bool IsAsync(MethodInfo methodInfo)
+        {
+            if (methodInfo == null)
+            {
+                throw new ArgumentNullException(nameof(methodInfo));
+            }
+
+            var stateMachineAttribute = methodInfo.GetCustomAttribute<AsyncStateMachineAttribute>();
+            if (stateMachineAttribute != null)
+            {
+                var stateMachineType = stateMachineAttribute.StateMachineType;
+                if (stateMachineType != null)
+                {
+                    return stateMachineType.GetCustomAttribute<CompilerGeneratedAttribute>() != null;
+                }
+            }
+            return false;
+        }
+
+        public static bool IsAsyncVoid(MethodInfo methodInfo)
+        {
+            return IsAsync(methodInfo) && (methodInfo.ReturnType == typeof(void));
         }
     }
 }

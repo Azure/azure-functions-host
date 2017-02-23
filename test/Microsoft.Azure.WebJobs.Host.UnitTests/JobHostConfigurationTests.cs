@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.NotNull(config.Tracing);
             Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
             Assert.Equal(0, config.Tracing.Tracers.Count);
+            Assert.False(config.Blobs.CentralizedPoisonQueue);
 
             StorageClientFactory clientFactory = config.GetService<StorageClientFactory>();
             Assert.NotNull(clientFactory);
@@ -265,6 +266,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             configuration.StorageClientFactory = customFactory;
             Assert.Same(customFactory, configuration.StorageClientFactory);
             Assert.Same(customFactory, configuration.GetService<StorageClientFactory>());
+        }
+
+        [Fact]
+        public void ConverterManager_Getter()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            IConverterManager converterManager  = configuration.ConverterManager;
+            Assert.NotNull(converterManager);
+            Assert.Same(converterManager, configuration.GetService<IConverterManager>());
+
+            var property = configuration.GetType().GetProperty("ConverterManager");
+            Assert.True(property.CanRead);
+            Assert.False(property.CanWrite); // CM is read-only, although the collection itself can be mutated.
         }
 
         [Theory]

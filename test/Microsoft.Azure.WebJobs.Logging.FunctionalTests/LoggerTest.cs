@@ -35,6 +35,35 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
+        // Test abandonded status
+        [Fact]
+        public void StatusTest()
+        {
+            DateTime t1 = new DateTime(1950, 12, 1);
+
+            // Stale heart beat is abandoned 
+            var entity = new InstanceTableEntity
+            {
+                RowKey = Guid.NewGuid().ToString(),
+                StartTime =    t1, 
+                FunctionInstanceHeartbeatExpiry = t1, // stale heartbeat
+                
+            };
+            var item = entity.ToFunctionLogItem();
+
+            Assert.Equal(FunctionInstanceStatus.Abandoned, item.GetStatus());
+
+            // recent heartbeat means running . 
+            entity.FunctionInstanceHeartbeatExpiry = DateTime.UtcNow.AddMinutes(2);
+            item = entity.ToFunctionLogItem();
+            Assert.Equal(FunctionInstanceStatus.Running, item.GetStatus());
+
+            // endtime means complete
+            entity.EndTime = DateTime.UtcNow;
+            item = entity.ToFunctionLogItem();
+            Assert.Equal(FunctionInstanceStatus.CompletedSuccess, item.GetStatus());
+        }
+
         // End-2-end test that function instance counter can write to tables 
         [Fact] 
         public async Task FunctionInstance()
@@ -369,11 +398,10 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             var entries = await GetRecentAsync(reader, l1.FunctionId);
             Assert.Equal(1, entries.Length);
-            Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
+            Assert.Equal(entries[0].GetStatus(), FunctionInstanceStatus.Running);
             Assert.Equal(entries[0].EndTime, null);
 
             l1.EndTime = l1.StartTime.Add(TimeSpan.FromSeconds(1));
-            l1.Status = FunctionInstanceStatus.CompletedSuccess;
             await writer.AddAsync(l1);
 
             await writer.FlushAsync();
@@ -382,8 +410,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             entries = await GetRecentAsync(reader, l1.FunctionId);
             Assert.Equal(1, entries.Length);
-            Assert.Equal(entries[0].Status, FunctionInstanceStatus.CompletedSuccess);
-            Assert.Equal(entries[0].EndTime.Value.DateTime, l1.EndTime);
+            Assert.Equal(entries[0].GetStatus(), FunctionInstanceStatus.CompletedSuccess);
+            Assert.Equal(entries[0].EndTime.Value, l1.EndTime);
         }
 
         // Logs are case-insensitive, case-preserving
@@ -423,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             {
                 var entries = await GetRecentAsync(reader, l1.FunctionId);
                 Assert.Equal(1, entries.Length);
-                Assert.Equal(entries[0].Status, FunctionInstanceStatus.Running);
+                Assert.Equal(entries[0].GetStatus(), FunctionInstanceStatus.Running);
                 Assert.Equal(entries[0].EndTime, null);
                 Assert.Equal(entries[0].FunctionName, FuncOriginal); // preserving. 
             }
@@ -656,17 +684,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
         static async Task WriteAsync(ILogWriter writer, FunctionInstanceLogItem item)
         {
-            item.Status = FunctionInstanceStatus.Running;
             await writer.AddAsync(item); // Start
 
-            if (item.ErrorDetails == null)
-            {
-                item.Status = FunctionInstanceStatus.CompletedSuccess;
-            }
-            else
-            {
-                item.Status = FunctionInstanceStatus.CompletedFailure;
-            }
             item.EndTime = item.StartTime.AddSeconds(1);
             await writer.AddAsync(item); // end 
         }

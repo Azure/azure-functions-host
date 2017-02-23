@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
     public class TestTraceWriter : TraceWriter
     {
         public Collection<TraceEvent> Traces = new Collection<TraceEvent>();
+        private object _syncLock = new object();
 
         public TestTraceWriter(TraceLevel level) : base(level)
         {
@@ -16,7 +17,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public override void Trace(TraceEvent traceEvent)
         {
-            Traces.Add(traceEvent);
+            lock (_syncLock)
+            {
+                Traces.Add(traceEvent);
+            }
         }
     }
 }

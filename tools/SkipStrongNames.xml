@@ -7,6 +7,7 @@
   <assembly name="Microsoft.Azure.WebJobs.Protocols"/>
   <assembly name="Microsoft.Azure.WebJobs.ServiceBus"/>
   <assembly name="Microsoft.Azure.WebJobs.Storage"/>
+  <assembly name="Microsoft.Azure.WebJobs.Logging"/>
 
   <!-- Unit test assemblies -->
   <assembly name="Dashboard.UnitTests"/>

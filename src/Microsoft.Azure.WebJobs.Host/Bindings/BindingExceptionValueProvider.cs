@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -28,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return typeof(object); }
         }
 
-        public object GetValue()
+        public Task<object> GetValueAsync()
         {
-            return null;
+            return Task.FromResult<object>(null);
         }
 
         public string ToInvokeString()

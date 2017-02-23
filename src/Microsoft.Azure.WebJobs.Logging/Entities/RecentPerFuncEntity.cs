@@ -26,8 +26,9 @@ namespace Microsoft.Azure.WebJobs.Logging
                 DisplayName = item.GetDisplayTitle(),
                 FunctionInstanceId = item.FunctionInstanceId.ToString(),
                 StartTime = item.StartTime,
+                FunctionInstanceHeartbeatExpiry = item.FunctionInstanceHeartbeatExpiry,
                 EndTime = item.EndTime,
-                RawStatus = item.Status.ToString(),
+                HasError = item.HasError,
                 ContainerName = containerName
             };
         }
@@ -58,9 +59,11 @@ namespace Microsoft.Azure.WebJobs.Logging
             return rangeQuery;
         }
 
+        private bool _hasError;
+
         public DateTime GetEpoch()
         {
-            return this.StartTime.UtcDateTime;
+            return this.StartTime;
         }
 
         // No salt. This is a prefix, so we'll pick up all ranges.
@@ -87,9 +90,12 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public string ContainerName { get; set; }
 
-        public DateTimeOffset StartTime { get; set; }
+        public DateTime StartTime { get; set; }
 
-        public DateTimeOffset? EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
+
+        // Last heart beat. When EndTime is missing, this lets us know the function is still alive. 
+        public DateTime? FunctionInstanceHeartbeatExpiry { get; set; }
 
         Guid IFunctionInstanceBaseEntry.FunctionInstanceId
         {
@@ -108,20 +114,27 @@ namespace Microsoft.Azure.WebJobs.Logging
         public string FunctionName { get; set; }
 
         public string DisplayName { get; set; }
-
-        public string RawStatus { get; set;  }
-
-        FunctionInstanceStatus IFunctionInstanceBaseEntry.Status
+        
+        public bool HasError
         {
             get
             {
-                FunctionInstanceStatus e;
-                if (!Enum.TryParse<FunctionInstanceStatus>(this.RawStatus, out e))
-                {
-                    return FunctionInstanceStatus.Unknown;
-                }
-                return e;
+                // Use RawStatus for legacy check. 
+                return _hasError || (this.RawStatus == "CompletedFailed");
+            }
+            set
+            {
+                _hasError = value;
             }
         }
+
+        /// <summary>
+        ///  Legacy for errors.
+        ///  Original ("legacy") log writers would write out the function status. 
+        ///  Now, we write separate bits (start time, end time, HasError) and infer the status from that. 
+        ///  However, for the legacy case, it didn't have HasError and so we need to detect an error if the status field was set to "CompletedFailed".
+        ///  New cases don't even write this status field anymore.  
+        /// </summary>
+        public string RawStatus { get; set; }
     }
 }
