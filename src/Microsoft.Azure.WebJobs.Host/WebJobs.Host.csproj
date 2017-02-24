@@ -404,8 +404,11 @@
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="FuncConverter.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
+    <Compile Include="Exceptions\RecoverableException.cs" />
     <Compile Include="JobHostBlobsConfiguration.cs" />
+    <Compile Include="Listeners\FunctionListener.cs" />
     <Compile Include="Loggers\TraceEventExtensions.cs" />
+    <Compile Include="Exceptions\FunctionException.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
@@ -430,6 +433,7 @@
     <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
     <Compile Include="Bindings\ODataFilterResolutionPolicy.cs" />
     <Compile Include="Tables\TableFilterFormatter.cs" />
+    <Compile Include="Listeners\FunctionListenerException.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />
     <Compile Include="Bindings\ConverterManager.cs" />

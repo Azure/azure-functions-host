@@ -61,6 +61,8 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                     listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener, _trace);
                 }
 
+                // wrap the listener with a function listener to handle exceptions
+                listener = new FunctionListener(listener, functionDefinition.Descriptor, _trace);
                 listeners.Add(listener);
             }
 

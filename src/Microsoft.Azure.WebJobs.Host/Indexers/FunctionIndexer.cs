@@ -85,20 +85,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
                 catch (FunctionIndexingException fex)
                 {
-                    // Route the indexing exception through the TraceWriter pipeline
-                    _trace.Error(fex.Message, fex);
-
-                    // If the error has been marked as handled, ignore the indexing exception
-                    // and continue on to the rest of the methods. In this case the method in
-                    // error simply won't be running in the JobHost.
-                    if (fex.Handled)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    fex.TryRecover(_trace);
+                    // If recoverable, continue to the rest of the methods.
+                    // The method in error simply won't be running in the JobHost.
+                    continue;
                 }
             }
         }
@@ -284,7 +274,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             if (triggerBinding != null)
             {
-                functionDefinition = CreateTriggeredFunctionDefinition(triggerBinding, triggerParameterName, _executor, functionDescriptor, nonTriggerBindings, invoker, _singletonManager);
+                Type triggerValueType = triggerBinding.TriggerValueType;
+                var methodInfo = typeof(FunctionIndexer).GetMethod("CreateTriggeredFunctionDefinition", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(triggerValueType);
+                functionDefinition = (FunctionDefinition)methodInfo.Invoke(this, new object[] { triggerBinding, triggerParameterName, functionDescriptor, nonTriggerBindings, invoker });
 
                 if (hasNoAutomaticTriggerAttribute && functionDefinition != null)
                 {
@@ -300,23 +292,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             index.Add(functionDefinition, functionDescriptor, method);
         }
 
-        private static FunctionDefinition CreateTriggeredFunctionDefinition(ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, 
-            FunctionDescriptor descriptor, IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
+        private FunctionDefinition CreateTriggeredFunctionDefinition<TTriggerValue>(
+            ITriggerBinding triggerBinding, string parameterName, FunctionDescriptor descriptor,
+            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker)
         {
-            Type triggerValueType = triggerBinding.TriggerValueType;
-            MethodInfo createTriggeredFunctionDefinitionMethodInfo = typeof(FunctionIndexer).GetMethod("CreateTriggeredFunctionDefinitionImpl", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(triggerValueType);
-            FunctionDefinition functionDefinition = (FunctionDefinition)createTriggeredFunctionDefinitionMethodInfo.Invoke(null, new object[] { triggerBinding, parameterName, executor, descriptor, nonTriggerBindings, invoker, singletonManager });
-
-            return functionDefinition;
-        }
-
-        private static FunctionDefinition CreateTriggeredFunctionDefinitionImpl<TTriggerValue>(
-            ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, FunctionDescriptor descriptor,
-            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
-        {
-            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(descriptor, parameterName, triggerBinding, nonTriggerBindings, singletonManager);
+            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(descriptor, parameterName, triggerBinding, nonTriggerBindings, _singletonManager);
             ITriggeredFunctionInstanceFactory<TTriggerValue> instanceFactory = new TriggeredFunctionInstanceFactory<TTriggerValue>(functionBinding, invoker, descriptor);
-            ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
+            ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, _executor, instanceFactory);
             IListenerFactory listenerFactory = new ListenerFactory(descriptor, triggerExecutor, triggerBinding);
 
             return new FunctionDefinition(descriptor, instanceFactory, listenerFactory);

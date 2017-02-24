@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus;
@@ -66,12 +67,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 // Try running the tests using jobs that declare restricted access
                 // levels. We expect a failure.
-                MessagingEntityNotFoundException expectedException = null;
+                FunctionListenerException expectedException = null;
                 try
                 {
                     await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess));
                 }
-                catch (MessagingEntityNotFoundException e)
+                catch (FunctionListenerException e)
                 {
                     expectedException = e;
                 }

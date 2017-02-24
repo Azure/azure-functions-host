@@ -212,7 +212,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "WebJobsExceptionHandler",
                 "FunctionTimeoutException",
                 "PoisonMessageEventArgs",
-                "IResolutionPolicy"
+                "IResolutionPolicy",
+                "RecoverableException",
+                "FunctionException",
+                "FunctionListenerException"
             };
 
             AssertPublicTypes(expected, assembly);

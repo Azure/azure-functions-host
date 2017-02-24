@@ -191,6 +191,7 @@
     <Compile Include="FunctionInstanceTraceWriterTests.cs" />
     <Compile Include="JobHostContextTests.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
+    <Compile Include="Listeners\FunctionListenerTests.cs" />
     <Compile Include="Listeners\HostListenerFactoryTests.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />

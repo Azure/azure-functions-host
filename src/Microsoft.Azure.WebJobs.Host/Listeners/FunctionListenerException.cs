@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Microsoft.Azure.WebJobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     /// <summary>
     /// Exception that occurs when the <see cref="JobHost"/> encounters errors when trying
@@ -12,15 +12,15 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     /// </summary>
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [Serializable]
-    public class FunctionIndexingException : FunctionException
+    public class FunctionListenerException : FunctionException
     {
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
         /// <param name="methodName">The name of the method in error.</param>
         /// <param name="innerException">The inner exception.</param>
-        public FunctionIndexingException(string methodName, Exception innerException)
-            : base($"Error indexing method '{methodName}'", methodName, innerException)
+        public FunctionListenerException(string methodName, Exception innerException)
+            : base($"The listener for function '{methodName}' was unable to start.", methodName, innerException)
         {
         }
     }
