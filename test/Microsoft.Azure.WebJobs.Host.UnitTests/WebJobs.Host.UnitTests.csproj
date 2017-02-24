@@ -192,6 +192,7 @@
     <Compile Include="JobHostContextTests.cs" />
     <Compile Include="JobHostQueuesConfigurationTests.cs" />
     <Compile Include="Listeners\HostListenerFactoryTests.cs" />
+    <Compile Include="Listeners\ListenerFactoryTests.cs" />
     <Compile Include="Loggers\TraceWriterFunctionInstanceLoggerTests.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="Protocols\FunctionStartedMessageExtensionsTests.cs" />
