@@ -32,6 +32,7 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Immutable;
 using System.Configuration;
 using System.IO.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script
 {

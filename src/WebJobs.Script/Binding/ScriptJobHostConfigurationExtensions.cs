@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Host.Config;
 
-namespace Microsoft.Azure.WebJobs.Script.Binding.Http
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public static class ScriptJobHostConfigurationExtensions
     {

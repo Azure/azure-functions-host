@@ -5,7 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class SimpleValueProvider : IValueProvider
     {
