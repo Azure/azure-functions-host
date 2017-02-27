@@ -7,18 +7,15 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     /// <summary>
     /// Enables all Core SDK Triggers/Binders
     /// </summary>
-    [CLSCompliant(false)]
-    public class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
+    internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
         public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
             : base(config, hostMetadata, traceWriter)

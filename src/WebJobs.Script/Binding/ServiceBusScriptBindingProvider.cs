@@ -12,10 +12,9 @@ using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    [CLSCompliant(false)]
-    public class ServiceBusScriptBindingProvider : ScriptBindingProvider
+    internal class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
         private readonly string _serviceBusAssemblyName;
         private EventHubConfiguration _eventHubConfiguration;
