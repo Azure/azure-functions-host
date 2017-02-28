@@ -287,6 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private CancellationTokenSource _etwTaskCancellationSource = new CancellationTokenSource();
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
+            private bool _disposed = false;
 
             internal FunctionActivityTracker(IEventGenerator generator, int functionActivityFlushInterval)
             {
@@ -336,9 +337,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             protected virtual void Dispose(bool disposing)
             {
-                if (disposing)
+                if (!_disposed)
                 {
-                    _etwTaskCancellationSource.Dispose();
+                    if (disposing)
+                    {
+                        _etwTaskCancellationSource.Dispose();
+                    }
+                    _disposed = true;
                 }
             }
 
