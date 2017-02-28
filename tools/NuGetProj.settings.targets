@@ -4,7 +4,7 @@
     <WebJobsRootPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</WebJobsRootPath>
     <WebJobsToolsPath>$(MSBuildThisFileDirectory)</WebJobsToolsPath>
     <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
-    <Version>2.1.0</Version>
+    <Version>2.0.1</Version>
     <PrereleaseTag>-alpha1</PrereleaseTag>
   </PropertyGroup>
   <Choose>
