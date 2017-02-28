@@ -41,6 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         [JsonConverter(typeof(StringEnumConverter))]
         public DataType? DataType { get; set; }
 
+        [JsonConverter(typeof(StringEnumConverter))]
+        public Cardinality? Cardinality { get; set; }
+
         /// <summary>
         /// Gets a value indicating whether this binding is a trigger binding.
         /// </summary>
@@ -49,6 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             get
             {
                 return Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public bool IsReturn
+        {
+            get
+            {
+                return string.Compare(Name, ScriptConstants.SystemReturnParameterBindingName, StringComparison.OrdinalIgnoreCase) == 0;
             }
         }
 
@@ -83,16 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 case "httptrigger":
                     bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                case "http":
-                    bindingMetadata = raw.ToObject<HttpBindingMetadata>();
-                    break;
-                case "table":
-                    bindingMetadata = raw.ToObject<TableBindingMetadata>();
-                    break;
-                case "manualtrigger":
-                    bindingMetadata = raw.ToObject<BindingMetadata>();
-                    break;
+                    break;             
                 default:
                     bindingMetadata = raw.ToObject<BindingMetadata>();
                     break;

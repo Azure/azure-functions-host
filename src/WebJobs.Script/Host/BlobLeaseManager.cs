@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private string _leaseId;
         private bool _disposed;
         private bool _processingLease;
+        private DateTime _lastRenewal;
+        private TimeSpan _lastRenewalLatency;
 
         internal BlobLeaseManager(ICloudBlob lockBlob, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter, TimeSpan? renewalInterval = null)
         {
@@ -108,21 +111,26 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     _processingLease = false;
-                });
+                }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         private async Task AcquireOrRenewLeaseAsync()
         {
             try
             {
+                DateTime requestStart = DateTime.UtcNow;
                 if (HasLease)
                 {
                     await _lockBlob.RenewLeaseAsync(new AccessCondition { LeaseId = LeaseId });
-                    _traceWriter.Verbose("Host lock lease renewed.");
+                    _lastRenewal = DateTime.UtcNow;
+                    _lastRenewalLatency = _lastRenewal - requestStart;
                 }
                 else
                 {
                     LeaseId = await _lockBlob.AcquireLeaseAsync(_leaseTimeout, _instanceId);
+                    _lastRenewal = DateTime.UtcNow;
+                    _lastRenewalLatency = _lastRenewal - requestStart;
+
                     _traceWriter.Info($"Host lock lease acquired by instance ID '{_instanceId}'.");
 
                     // We've successfully acquired the lease, change the timer to use our renewal interval
@@ -130,10 +138,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             catch (StorageException exc)
-            {
+            {                
                 if (exc.RequestInformation.HttpStatusCode == 409)
                 {
-                    ProcessLeaseError("Another host has an active lease.");
+                    // If we did not have the lease already, a 409 indicates that another host had it. This is 
+                    // normal and does not warrant any logging.
+
+                    if (HasLease)
+                    {
+                        // The lease was 'stolen'. Log details for debugging.
+                        string lastRenewalFormatted = _lastRenewal.ToString("yyyy-MM-ddTHH:mm:ss.FFFZ", CultureInfo.InvariantCulture);
+                        int millisecondsSinceLastSuccess = (int)(DateTime.UtcNow - _lastRenewal).TotalMilliseconds;
+                        int lastRenewalMilliseconds = (int)_lastRenewalLatency.TotalMilliseconds;
+                        ProcessLeaseError($"Another host has acquired the lease. The last successful renewal completed at {lastRenewalFormatted} ({millisecondsSinceLastSuccess} milliseconds ago) with a duration of {lastRenewalMilliseconds} milliseconds.");
+                    }
                 }
                 else if (exc.RequestInformation.HttpStatusCode >= 500)
                 {
@@ -156,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static string GetBlobName(string hostId) => $"locks/{hostId}/{LockBlobName}";
-        
+
         private void ProcessLeaseError(string reason)
         {
             if (HasLease)

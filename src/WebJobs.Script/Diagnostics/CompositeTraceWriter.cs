@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     // TODO: The core WebJobs SDK also defines a CompositeTraceWriter, but that is internal.
     // We should consider exposing the core SDK CompositeTraceWriter and adopting that instead.
-    internal sealed class CompositeTraceWriter : TraceWriter
+    public class CompositeTraceWriter : TraceWriter
     {
         private readonly IEnumerable<TraceWriter> _innerTraceWriters;
 

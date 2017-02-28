@@ -1,8 +1,6 @@
-﻿using System;
-
-public static void Run(string input, out Item newItem)
+﻿public static Item Run(string input)
 {
-    newItem = new Item
+    return new Item
     {
         Text = "Hello from C#! " + input
     };    

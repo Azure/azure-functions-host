@@ -35,20 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             HttpRequestMessage request = controllerContext.Request;
 
             // First see if the request maps to an HTTP function
-            FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request.RequestUri);
+            FunctionDescriptor function = _scriptHostManager.GetHttpFunctionOrNull(request);
             if (function == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
             // Determine the authorization level of the request
-            SecretManager secretManager = controllerContext.Configuration.DependencyResolver.GetService<SecretManager>();
-            AuthorizationLevel authorizationLevel = AuthorizationLevelAttribute.GetAuthorizationLevel(request, secretManager, functionName: function.Name);
+            ISecretManager secretManager = controllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
+            var settings = controllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
+            var authorizationLevel = settings.IsAuthDisabled
+                ? AuthorizationLevel.Admin
+                : await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: function.Name);
 
             if (function.Metadata.IsExcluded ||
                 (function.Metadata.IsDisabled && authorizationLevel != AuthorizationLevel.Admin))
             {
-                // disabled functions are not publically addressable w/o Admin level auth,
+                // disabled functions are not publicly addressable w/o Admin level auth,
                 // and excluded functions are also ignored here (though the check above will
                 // already exclude them)
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -89,17 +92,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }
 
-                // Validate the HttpMethod
-                // Note that for WebHook requests, WebHook receiver does its own validation
-                if (httpFunctionMetadata.Methods != null && !httpFunctionMetadata.Methods.Contains(request.Method))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
-                }
-
                 // Not a WebHook request so dispatch directly
                 response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
             }
-            
+
             return response;
         }
     }

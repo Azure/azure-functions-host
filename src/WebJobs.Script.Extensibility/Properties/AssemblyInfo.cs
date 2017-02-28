@@ -14,3 +14,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("479b0873-cbdc-4ae9-85ba-dd6cf2dca29d")]
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]

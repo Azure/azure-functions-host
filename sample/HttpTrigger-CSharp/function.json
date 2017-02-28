@@ -8,7 +8,7 @@
         },
         {
             "type": "http",
-            "name": "res",
+            "name": "$return",
             "direction": "out"
         }
     ]

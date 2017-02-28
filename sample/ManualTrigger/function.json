@@ -7,15 +7,15 @@
         },
         {
             "type": "blob",
-            "name": "status",
+            "name": "blobIn",
             "direction": "in",
-            "path": "samples-input/status"
+            "path": "samples-output/{inId}"
         },
         {
             "type": "blob",
-            "name": "result",
+            "name": "$return",
             "direction": "out",
-            "path": "samples-output/result"
+            "path": "samples-output/{outId}"
         }
     ]
 }

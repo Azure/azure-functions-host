@@ -1,0 +1,16 @@
+{
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "name": "triggerInput",
+            "direction": "in",
+            "path": "test-input-powershell/{name}"
+        },
+        {
+            "type": "blob",
+            "name": "output",
+            "direction": "out",
+            "path": "test-output-powershell/{name}"
+        }
+    ]
+}

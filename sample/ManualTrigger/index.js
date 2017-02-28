@@ -1,10 +1,10 @@
-﻿module.exports = function (context, input) {
+﻿var util = require('util');
+
+module.exports = function (context, input) {
     context.log('Node.js manually triggered function called with input', input);
 
-    var status = context.bindings.status;
-    context.log('Status: Level:%d Detail:%s', status.level, status.detail);
+    var blobIn = context.bindings.blobIn;
+    context.log('First: %s Last:%s', blobIn.first, blobIn.last);
 
-    context.bindings.result = status.detail;
-
-    context.done();
+    context.done(null, util.format(blobIn.first, blobIn.last));
 }

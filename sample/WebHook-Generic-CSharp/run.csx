@@ -1,15 +1,13 @@
 ﻿#r "Newtonsoft.Json"
 
-using System;
-using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-public static JObject Run(Payload payload)
+public static JObject Run(Payload payload, string action)
 {
     JObject body = new JObject()
     {
-        { "result", $"Value: {payload.Value}" }
+        { "result", $"Value: {payload.Value} Action: {action}" }
     };
     return body;
 }

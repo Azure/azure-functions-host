@@ -9,8 +9,9 @@
         },
         {
             "type": "sendGrid",
-            "name": "message",
+            "name": "$return",
             "direction": "out",
+            "apiKey": "MySendGridKey",
             "to": "{CustomerEmail}"
         }
     ]

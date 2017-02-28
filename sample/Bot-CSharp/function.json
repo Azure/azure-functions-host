@@ -1,0 +1,22 @@
+{
+    "bindings": [
+        {
+            "authLevel": "anonymous",
+            "type": "httpTrigger",
+            "name": "input",
+            "direction": "in",
+            "methods": [ "post" ]
+        },
+        {
+            "type": "bot",
+            "name": "message",
+            "direction": "out",
+            "botId": "testbot"
+        },
+        {
+            "type": "http",
+            "name": "res",
+            "direction": "out"
+        }
+    ]
+}

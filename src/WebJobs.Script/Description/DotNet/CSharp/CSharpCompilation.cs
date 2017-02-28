@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers;
@@ -23,6 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly Compilation _compilation;
 
+        // Simply getting the built in analyzers for now.
+        // This should eventually be enhanced to dynamically discover/load analyzers.
+        private static ImmutableArray<DiagnosticAnalyzer> _analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(new InvalidFileMetadataReferenceAnalyzer(), new AsyncVoidAnalyzer());
+
         public CSharpCompilation(Compilation compilation)
         {
             _compilation = compilation;
@@ -30,8 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
         {
-            var diagnostics = _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
-            return diagnostics.AddRange(_compilation.GetDiagnostics());
+            return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
         }
 
         public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
@@ -47,10 +51,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .Select(m => new MethodReference<IMethodSymbol>(m.Name, m.DeclaredAccessibility == Accessibility.Public, m));
 
             IMethodSymbol entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
-            bool hasLocalTypeReferences = entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
+            bool hasLocalTypeReferences = HasLocalTypeReferences(entryPointReference);
             var functionParameters = entryPointReference.Parameters.Select(p => new FunctionParameter(p.Name, GetFullTypeName(p.Type), p.IsOptional, p.RefKind));
 
-            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name, ImmutableArray.CreateRange(functionParameters.ToArray()), hasLocalTypeReferences);
+            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name,
+                ImmutableArray.CreateRange(functionParameters.ToArray()), GetFullTypeName(entryPointReference.ReturnType), hasLocalTypeReferences);
+        }
+
+        private static bool HasLocalTypeReferences(IMethodSymbol entryPointReference)
+        {
+            return IsOrUsesAssemblyType(entryPointReference.ReturnType, entryPointReference.ContainingAssembly)
+                || entryPointReference.Parameters.Any(p => IsOrUsesAssemblyType(p.Type, entryPointReference.ContainingAssembly));
         }
 
         private static string GetFullTypeName(ITypeSymbol type)
@@ -77,25 +88,42 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
-        public void Emit(Stream assemblyStream, Stream pdbStream, CancellationToken cancellationToken)
+        public Assembly EmitAndLoad(CancellationToken cancellationToken)
         {
-            var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
-            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
-            var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, cancellationToken: cancellationToken);
-
-            diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
-
-            if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
+            using (var assemblyStream = new MemoryStream())
             {
-                throw new CompilationErrorException("Script compilation failed.", diagnostics);
-            }            
+                using (var pdbStream = new MemoryStream())
+                {
+                    var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
+                    var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+                    var emitOptions = new EmitOptions().WithDebugInformationFormat(
+#if WINDOWS
+                        DebugInformationFormat.Pdb
+#else
+                        DebugInformationFormat.PortablePdb
+#endif
+                    );
+                    var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
+
+                    diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
+
+                    if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
+                    {
+                        throw new CompilationErrorException("Script compilation failed.", diagnostics);
+                    }
+
+                    // Check if cancellation was requested while we were compiling, 
+                    // and if so quit here. 
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
+                }
+            }
         }
 
         private static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers()
         {
-            // Simply getting the built in analyzers for now.
-            // This should eventually be enhanced to dynamically discover/load analyzers.
-            return ImmutableArray.Create<DiagnosticAnalyzer>(new InvalidFileMetadataReferenceAnalyzer());
+            return _analyzers;
         }
     }
 }

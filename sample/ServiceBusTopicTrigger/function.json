@@ -1,0 +1,18 @@
+﻿{
+    "bindings": [
+        {
+            "type": "serviceBusTrigger",
+            "name": "message",
+            "direction": "in",
+            "topicName": "samples-topic",
+            "subscriptionName": "samples",
+            "accessRights": "manage"
+        },
+        {
+            "type": "blob",
+            "name": "$return",
+            "direction": "out",
+            "path": "samples-output/{id}"
+        }
+    ]
+}

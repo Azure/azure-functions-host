@@ -1,0 +1,11 @@
+﻿{
+    "excluded": true,
+    "bindings": [
+        {
+            "type": "timerTrigger",
+            "name": "timerInfo",
+            "schedule": "0 * * * * *",
+            "direction": "in"
+        }
+    ]
+}

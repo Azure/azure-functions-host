@@ -4,10 +4,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
@@ -18,25 +16,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly ILogWriter _writer;
 
-        public FastLogger(string accountConnectionString)
+        public FastLogger(string hostName, string accountConnectionString)
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             var client = account.CreateCloudTableClient();
-            var table = client.GetTableReference(LogFactory.DefaultLogTableName);
-            table.CreateIfNotExists();
-
+            var tableProvider = LogFactory.NewLogTableProvider(client);
+                        
             string containerName = Environment.MachineName;
-            this._writer = LogFactory.NewWriter(containerName, table);
+            this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider);
         }
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Convert Host to Protocol so we can log it 
-            var settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
-            var jsonClone = JsonConvert.SerializeObject(item, settings);
-            var item2 = JsonConvert.DeserializeObject<FunctionInstanceLogItem>(jsonClone);
-            item2.FunctionName = Utility.GetFunctionShortName(item2.FunctionName);
-            await _writer.AddAsync(item2);
+            await _writer.AddAsync(new FunctionInstanceLogItem
+            {
+                FunctionInstanceId = item.FunctionInstanceId,
+                FunctionName = Utility.GetFunctionShortName(item.FunctionName),
+                StartTime = item.StartTime,
+                EndTime = item.EndTime,
+                TriggerReason = item.TriggerReason,
+                Arguments = item.Arguments,
+                ErrorDetails = item.ErrorDetails,
+                LogOutput = item.LogOutput,
+                ParentId = item.ParentId
+            });
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))

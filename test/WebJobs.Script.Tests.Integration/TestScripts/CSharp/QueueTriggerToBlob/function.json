@@ -1,0 +1,16 @@
+﻿{
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "queueName": "test-input-csharp",
+            "direction": "in"
+        },
+        {
+            "type": "blob",
+            "name": "$return",
+            "path": "test-output-csharp/{id}",
+            "direction": "out"
+        }
+    ]
+}

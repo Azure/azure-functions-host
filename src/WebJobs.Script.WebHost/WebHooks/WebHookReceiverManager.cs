@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using Autofac;
@@ -15,6 +16,7 @@ using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
 {
@@ -24,14 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
     /// </summary>
     public class WebHookReceiverManager : IDisposable
     {
+        public const string FunctionsClientIdHeaderName = "x-functions-clientid";
+        public const string FunctionsClientIdQueryStringName = "clientid";
         internal const string AzureFunctionsCallbackKey = "MS_AzureFunctionsCallback";
-        
+
         private readonly Dictionary<string, IWebHookReceiver> _receiverLookup;
         private HttpConfiguration _httpConfiguration;
-        private SecretManager _secretManager;
+        private ISecretManager _secretManager;
         private bool disposedValue = false;
 
-        public WebHookReceiverManager(SecretManager secretManager)
+        public WebHookReceiverManager(ISecretManager secretManager)
         {
             _secretManager = secretManager;
             _httpConfiguration = new HttpConfiguration();
@@ -65,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
             }
 
+            // if the code value is specified via header rather than query string
+            // promote it to the query string (that's what the WebHook library expects)
+            ApplyHeaderValuesToQuery(request);
+
             HttpRequestContext context = new HttpRequestContext
             {
                 Configuration = _httpConfiguration
@@ -80,7 +88,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             await request.Content.LoadIntoBufferAsync();
 
             string receiverId = function.Name.ToLowerInvariant();
-            return await receiver.ReceiveAsync(receiverId, context, request);
+
+            // Get an optional client ID. This information is passed as the receiver ID, allowing
+            // the receiver config to map configuration based on the client ID (primarily used for secret resolution).
+            string clientId = GetClientID(request);
+
+            string webhookId = $"{receiverId},{clientId}";
+
+            return await receiver.ReceiveAsync(webhookId, context, request);
+        }
+
+        internal static void ApplyHeaderValuesToQuery(HttpRequestMessage request)
+        {
+            var query = HttpUtility.ParseQueryString(request.RequestUri.Query);
+            IEnumerable<string> values = null;
+            if (request.Headers.TryGetValues(AuthorizationLevelAttribute.FunctionsKeyHeaderName, out values) &&
+                string.IsNullOrEmpty(query.Get("code")))
+            {
+                string value = values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    query["code"] = value;
+                }
+
+                UriBuilder builder = new UriBuilder(request.RequestUri);
+                builder.Query = query.ToString();
+                request.RequestUri = builder.Uri;
+            }
+        }
+
+        private static string GetClientID(HttpRequestMessage request)
+        {
+            string keyValue = null;
+            IEnumerable<string> headerValues;
+            if (request.Headers.TryGetValues(FunctionsClientIdHeaderName, out headerValues))
+            {
+                keyValue = headerValues.FirstOrDefault();
+            }
+            else
+            {
+                keyValue = request.GetQueryNameValuePairs()
+                      .FirstOrDefault(q => string.Compare(q.Key, FunctionsClientIdQueryStringName, StringComparison.OrdinalIgnoreCase) == 0)
+                      .Value;
+            }
+
+            return keyValue;
         }
 
         protected virtual void Dispose(bool disposing)
@@ -89,15 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
             {
                 if (disposing)
                 {
-                    if (_httpConfiguration != null)
-                    {
-                        _httpConfiguration.Dispose();
-                    }
-
-                    if (_secretManager != null)
-                    {
-                        _secretManager.Dispose();
-                    }
+                    _httpConfiguration?.Dispose();
+                    (_secretManager as IDisposable)?.Dispose();
                 }
 
                 disposedValue = true;

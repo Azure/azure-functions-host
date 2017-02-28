@@ -22,5 +22,6 @@
     <Rule Id="CA1307" Action="None" />
     <Rule Id="CA1305" Action="None" />
     <Rule Id="CA2204" Action="None" />
+    <Rule Id="CS0618" Action="None" /> <!-- Ignore Obsolete attributes for 2.0 release -->
   </Rules>
 </RuleSet>

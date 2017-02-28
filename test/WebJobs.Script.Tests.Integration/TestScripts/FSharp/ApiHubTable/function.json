@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+        "type": "queueTrigger",
+        "name": "input",
+        "direction": "in",
+        "queueName": "apihub-table-test"
+    },
+    {
+      "type": "apiHubTable",
+      "name": "table",
+      "direction": "out",
+      "connection": "AzureWebJobsSql",
+      "tableName": "SampleTable"
+    }
+  ]
+}

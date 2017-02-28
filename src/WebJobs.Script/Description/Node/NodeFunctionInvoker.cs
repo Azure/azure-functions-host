@@ -4,61 +4,58 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
-using Binder = Microsoft.Azure.WebJobs.Host.Bindings.Runtime.Binder;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
+    [CLSCompliant(false)]
     public class NodeFunctionInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly string _script;
-        private readonly DictionaryJsonConverter _dictionaryJsonConverter = new DictionaryJsonConverter();
         private readonly BindingMetadata _trigger;
-        private readonly IMetricsLogger _metrics;
         private readonly string _entryPoint;
 
         private Func<object, Task<object>> _scriptFunc;
-        private Func<object, Task<object>> _clearRequireCache;
+        private static Func<object, Task<object>> _clearRequireCache;
         private static Func<object, Task<object>> _globalInitializationFunc;
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
+        private static bool _initialized = false;
+        private static readonly object _initializationSyncRoot = new object();
 
         static NodeFunctionInvoker()
         {
-            _functionTemplate = ReadResourceString("functionTemplate.js");
-            _clearRequireCacheScript = ReadResourceString("clearRequireCache.js");
-            _globalInitializationScript = ReadResourceString("globalInitialization.js");
-
-            Initialize();
+            // node cwd is edge nuget package (double_edge.js)
+            _functionTemplate = @"return require('../azurefunctions/functions.js').createFunction(require('{0}'));";
+            _clearRequireCacheScript = @"return require('../azurefunctions/functions.js').clearRequireCache;";
+            _globalInitializationScript = @"return require('../azurefunctions/functions.js').globalInitialization;";
         }
 
-        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
-            : base(host, functionMetadata)
+        internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
+            : base(host, functionMetadata, traceWriterFactory)
         {
             _trigger = trigger;
             string scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
             _script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, scriptFilePath);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _entryPoint = functionMetadata.EntryPoint;
 
             InitializeFileWatcherIfEnabled();
@@ -97,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Func<object, Task<object>> ClearRequireCacheFunc
+        private static Func<object, Task<object>> ClearRequireCacheFunc
         {
             get
             {
@@ -109,43 +106,37 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public override async Task Invoke(object[] parameters)
+        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            EnsureInitialized();
+
             object input = parameters[0];
-            TraceWriter traceWriter = (TraceWriter)parameters[1];
-            Binder binder = (Binder)parameters[2];
-            ExecutionContext functionExecutionContext = (ExecutionContext)parameters[3];
-            string invocationId = functionExecutionContext.InvocationId.ToString();
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            DataType dataType = _trigger.DataType ?? DataType.String;
 
-            FunctionStartedEvent startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-            _metrics.BeginEvent(startedEvent);
+            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
+            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, userTraceWriter, context);
+            var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
 
-            try
+            await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
+
+            object functionResult = await ScriptFunc(scriptExecutionContext);
+
+            await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
+        }
+
+        private static void EnsureInitialized()
+        {
+            if (!_initialized)
             {
-                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
-
-                DataType dataType = _trigger.DataType ?? DataType.String;
-                var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, binder, traceWriter, TraceWriter, functionExecutionContext);
-                var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
-                bindingData["InvocationId"] = invocationId;
-
-                await ProcessInputBindingsAsync(binder, scriptExecutionContext, bindingData);
-
-                object functionResult = await ScriptFunc(scriptExecutionContext);
-
-                await ProcessOutputBindingsAsync(_outputBindings, input, binder, bindingData, scriptExecutionContext, functionResult);
-
-                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
-            }
-            catch
-            {
-                startedEvent.Success = false;
-                TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-                throw;
-            }
-            finally
-            {
-                _metrics.EndEvent(startedEvent);
+                lock (_initializationSyncRoot)
+                {
+                    if (!_initialized)
+                    {
+                        Initialize();
+                        _initialized = true;
+                    }
+                }
             }
         }
 
@@ -166,7 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     Binder = binder,
                     BindingData = bindingData,
-                    DataType = inputBinding.Metadata.DataType ?? DataType.String
+                    DataType = inputBinding.Metadata.DataType ?? DataType.String,
+                    Cardinality = inputBinding.Metadata.Cardinality ?? Cardinality.One
                 };
                 await inputBinding.BindAsync(bindingContext);
 
@@ -183,10 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 inputs.Add(value);
             }
 
-            executionContext["inputs"] = inputs;
+            executionContext["_inputs"] = inputs;
         }
 
-        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder, 
+        private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder,
             Dictionary<string, object> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
         {
             if (outputBindings == null)
@@ -194,15 +186,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
-            // if the function returned binding values via the function result,
-            // apply them to context.bindings
             var bindings = (Dictionary<string, object>)scriptExecutionContext["bindings"];
-            IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
-            if (functionOutputs != null)
+            var returnValueBinding = outputBindings.SingleOrDefault(p => p.Metadata.IsReturn);
+            if (returnValueBinding != null)
             {
-                foreach (var output in functionOutputs)
+                // if there is a $return binding, bind the entire function return to it
+                // if additional output bindings need to be bound, they'll have to use the explicit
+                // context.bindings mechanism to set values, not return value.
+                bindings[ScriptConstants.SystemReturnParameterBindingName] = functionResult;
+            }
+            else
+            {
+                // if the function returned binding values via the function result,
+                // apply them to context.bindings
+                IDictionary<string, object> functionOutputs = functionResult as IDictionary<string, object>;
+                if (functionOutputs != null)
                 {
-                    bindings[output.Key] = output.Value;
+                    foreach (var output in functionOutputs)
+                    {
+                        bindings[output.Key] = output.Value;
+                    }
                 }
             }
 
@@ -210,14 +213,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // get the output value from the script
                 object value = null;
-                if (bindings.TryGetValue(binding.Metadata.Name, out value) && value != null)
+                bool haveValue = bindings.TryGetValue(binding.Metadata.Name, out value);
+                if (!haveValue && string.Compare(binding.Metadata.Type, "http", StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    if (value.GetType() == typeof(ExpandoObject) ||
-                        (value is Array && value.GetType() != typeof(byte[])))
-                    {
-                        value = JsonConvert.SerializeObject(value);
-                    }
+                    // http bindings support a special context.req/context.res programming
+                    // model, so we must map that back to the actual binding name if a value
+                    // wasn't provided using the binding name itself
+                    haveValue = bindings.TryGetValue("res", out value);
+                }
 
+                // apply the value to the binding
+                if (haveValue && value != null)
+                {
                     BindingContext bindingContext = new BindingContext
                     {
                         TriggerValue = input,
@@ -230,6 +237,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        internal static void OnHostRestart()
+        {
+            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
+        }
+
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
         {
             if (_scriptFunc == null)
@@ -237,6 +249,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // we're not loaded yet, so nothing to reload
                 return;
             }
+
+            // clear the node module cache
+            // This is done for any files to ensure that, if a file change triggers 
+            // a host restart, we leave the cache clean.
+            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
@@ -246,24 +263,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // force a reload on next execution
                 _scriptFunc = null;
 
-                // clear the node module cache
-                ClearRequireCacheFunc(null).GetAwaiter().GetResult();
-
-                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
+                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, Binder binder, TraceWriter traceWriter, TraceWriter fileTraceWriter, ExecutionContext functionExecutionContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
             {
-                string text = p as string;
-                if (text != null)
+                var logData = (IDictionary<string, object>)p;
+                string message = (string)logData["msg"];
+                if (message != null)
                 {
-                    traceWriter.Info(text);
-                    fileTraceWriter.Info(text);
-                } 
+                    try
+                    {
+                        TraceLevel level = (TraceLevel)logData["lvl"];
+                        var evt = new TraceEvent(level, message);
+                        traceWriter.Trace(evt);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // if a function attempts to write to a disposed
+                        // TraceWriter. Might happen if a function tries to
+                        // log after calling done()
+                    }
+                }
 
                 return Task.FromResult<object>(null);
             });
@@ -281,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var context = new Dictionary<string, object>()
             {
-                { "invocationId", functionExecutionContext.InvocationId },
+                { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "log", log },
                 { "bindings", bindings },
                 { "bind", bind }
@@ -289,14 +314,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!string.IsNullOrEmpty(_entryPoint))
             {
-                context["entryPoint"] = _entryPoint;
+                context["_entryPoint"] = _entryPoint;
             }
-
-            // This is the input value that we will use to extract binding data.
-            // Since binding data extraction is based on JSON parsing, in the
-            // various conversions below, we set this to the appropriate JSON
-            // string when possible.
-            object bindDataInput = input;
 
             if (input is HttpRequestMessage)
             {
@@ -309,7 +328,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (rawBody != null)
                 {
                     requestObject["rawBody"] = rawBody;
-                    bindDataInput = rawBody;
                 }
 
                 // If this is a WebHook function, the input should be the
@@ -318,15 +336,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (httpBinding != null &&
                     !string.IsNullOrEmpty(httpBinding.WebHookType))
                 {
-                    input = requestObject["body"];
-
-                    // make the entire request object available as well
-                    // this is symmetric with context.res which we also support
-                    context["req"] = requestObject;
+                    requestObject.TryGetValue("body", out input);
                 }
+
+                // make the entire request object available as well
+                // this is symmetric with context.res which we also support
+                context["req"] = requestObject;
             }
             else if (input is TimerInfo)
             {
+                // TODO: Need to generalize this model rather than hardcode
+                // so other extensions can also express their Node.js object model
                 TimerInfo timerInfo = (TimerInfo)input;
                 var inputValues = new Dictionary<string, object>()
                 {
@@ -344,22 +364,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 FunctionBinding.ConvertStreamToValue((Stream)input, dataType, ref input);
             }
 
-            ApplyBindingData(bindDataInput, binder);
-
-            // normalize the bindingData object passed into Node
-            // we must convert values to types supported by Edge
-            // marshalling as needed
-            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
-            foreach (var pair in binder.BindingData)
-            {
-                var value = pair.Value;
-                if (value != null && !IsEdgeSupportedType(value.GetType()))
-                {
-                    value = value.ToString();
-                }
-                normalizedBindingData[pair.Key] = value;
-            }
-            context["bindingData"] = normalizedBindingData;
+            Utility.ApplyBindingData(input, invocationContext.Binder.BindingData);
+            var bindingData = NormalizeBindingData(invocationContext.Binder.BindingData);
+            bindingData["invocationId"] = invocationContext.ExecutionContext.InvocationId.ToString();
+            context["bindingData"] = bindingData;
 
             // if the input is json, try converting to an object or array
             object converted;
@@ -370,15 +378,45 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             bindings.Add(_trigger.Name, input);
 
+            context.Add("_triggerType", _trigger.Type);
+
             return context;
         }
 
-        private static bool IsEdgeSupportedType(Type type)
+        private static Dictionary<string, object> NormalizeBindingData(Dictionary<string, object> bindingData)
         {
-            if (type == typeof(int) || 
-                type == typeof(double) || 
-                type == typeof(string) || 
-                type == typeof(bool) || 
+            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
+
+            foreach (var pair in bindingData)
+            {
+                var name = pair.Key;
+                var value = pair.Value;
+                if (value != null && !IsEdgeSupportedType(value.GetType()))
+                {
+                    // we must convert values to types supported by Edge
+                    // marshalling as needed
+                    value = value.ToString();
+                }
+
+                // "camel case" the normally Pascal cased properties by
+                // converting the first letter to lower if needed
+                // While for binding purposes case doesn't matter,
+                // we want to normalize the case to something Node
+                // users would expect to reference in code (e.g. "dequeueCount" not "DequeueCount")
+                name = Utility.ToLowerFirstCharacter(name);
+
+                normalizedBindingData[name] = value;
+            }
+
+            return normalizedBindingData;
+        }
+
+        internal static bool IsEdgeSupportedType(Type type)
+        {
+            if (type == typeof(int) ||
+                type == typeof(double) ||
+                type == typeof(string) ||
+                type == typeof(bool) ||
                 type == typeof(byte[]) ||
                 type == typeof(object[]))
             {
@@ -388,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        private Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
+        private static Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
         {
             rawBody = null;
 
@@ -396,15 +434,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Dictionary<string, object> requestObject = new Dictionary<string, object>();
             requestObject["originalUrl"] = request.RequestUri.ToString();
             requestObject["method"] = request.Method.ToString().ToUpperInvariant();
-            requestObject["query"] = request.GetQueryNameValuePairs().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+            requestObject["query"] = request.GetQueryParameterDictionary();
 
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            foreach (var header in request.Headers)
-            {
-                // since HTTP headers are case insensitive, we lower-case the keys
-                // as does Node.js request object
-                headers.Add(header.Key.ToLowerInvariant(), header.Value.First());
-            }
+            // since HTTP headers are case insensitive, we lower-case the keys
+            // as does Node.js request object
+            var headers = request.GetRawHeaders().ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value);
             requestObject["headers"] = headers;
 
             // if the request includes a body, add it to the request object 
@@ -440,14 +474,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 requestObject["body"] = body;
             }
 
+            // Apply any captured route parameters to the params collection
+            object value = null;
+            if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            {
+                Dictionary<string, object> routeData = (Dictionary<string, object>)value;
+                requestObject["params"] = routeData;
+            }
+
             return requestObject;
         }
 
         /// <summary>
-        /// If the specified input is a JSON string or JToken, attempt to deserialize it into
+        /// If the specified input is a JSON string, an array of JSON strings, or JToken, attempt to deserialize it into
         /// an object or array.
         /// </summary>
-        private bool TryConvertJson(object input, out object result)
+        internal static bool TryConvertJson(object input, out object result)
         {
             if (input is JToken)
             {
@@ -456,7 +498,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             result = null;
             string inputString = input as string;
-            if (inputString == null)
+            string[] inputStrings = input as string[];
+            if (inputString == null && inputStrings == null)
             {
                 return false;
             }
@@ -464,30 +507,62 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (Utility.IsJson(inputString))
             {
                 // if the input is json, try converting to an object or array
-                Dictionary<string, object> jsonObject;
-                Dictionary<string, object>[] jsonObjectArray;
-                if (TryDeserializeJson(inputString, out jsonObject))
+                if (TryDeserializeJsonObjectOrArray(inputString, out result))
                 {
-                    result = jsonObject;
                     return true;
                 }
-                else if (TryDeserializeJson(inputString, out jsonObjectArray))
+            }
+            else if (inputStrings != null && inputStrings.All(p => Utility.IsJson(p)))
+            {
+                // if the input is an array of json strings, try converting to
+                // an array
+                object[] results = new object[inputStrings.Length];
+                for (int i = 0; i < inputStrings.Length; i++)
                 {
-                    result = jsonObjectArray;
-                    return true;
+                    if (TryDeserializeJsonObjectOrArray(inputStrings[i], out result))
+                    {
+                        results[i] = result;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
+                result = results;
+                return true;
             }
 
             return false;
         }
 
-        private bool TryDeserializeJson<TResult>(string json, out TResult result)
+        private static bool TryDeserializeJsonObjectOrArray(string json, out object result)
+        {
+            result = null;
+
+            // if the input is json, try converting to an object or array
+            ExpandoObject obj;
+            ExpandoObject[] objArray;
+            if (TryDeserializeJson(json, out obj))
+            {
+                result = obj;
+                return true;
+            }
+            else if (TryDeserializeJson(json, out objArray))
+            {
+                result = objArray;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryDeserializeJson<TResult>(string json, out TResult result)
         {
             result = default(TResult);
 
             try
             {
-                result = JsonConvert.DeserializeObject<TResult>(json, _dictionaryJsonConverter);
+                result = JsonConvert.DeserializeObject<TResult>(json);
                 return true;
             }
             catch
@@ -521,16 +596,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             GlobalInitializationFunc(context).GetAwaiter().GetResult();
-        }
-
-        private static string ReadResourceString(string fileName)
-        {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.Description.Node.Script.{0}", fileName);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
-            {
-                return reader.ReadToEnd();
-            }
         }
     }
 }

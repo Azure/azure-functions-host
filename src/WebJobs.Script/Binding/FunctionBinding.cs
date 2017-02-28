@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -35,34 +37,27 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
-        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
+        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> functions, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
 
             if (bindings != null)
             {
-                foreach (var bindingMetadata in bindingMetadatas)
+                foreach (var function in functions)
                 {
-                    string type = bindingMetadata.Type.ToLowerInvariant();
+                    string type = function.Type.ToLowerInvariant();
                     switch (type)
                     {
-                        case "table":
-                            TableBindingMetadata tableBindingMetadata = (TableBindingMetadata)bindingMetadata;
-                            bindings.Add(new TableBinding(config, tableBindingMetadata, fileAccess));
-                            break;
                         case "http":
                             if (fileAccess != FileAccess.Write)
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
-                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
-                            break;
-                        case "httptrigger":
-                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Read));
+                            bindings.Add(new HttpBinding(config, function, FileAccess.Write));
                             break;
                         default:
                             FunctionBinding binding = null;
-                            if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
+                            if (TryParseFunctionBinding(config, function.Raw, out binding))
                             {
                                 bindings.Add(binding);
                             }
@@ -74,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return bindings;
         }
 
-        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, Newtonsoft.Json.Linq.JObject metadata, out FunctionBinding functionBinding)
+        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, JObject metadata, out FunctionBinding functionBinding)
         {
             functionBinding = null;            
 
@@ -117,20 +112,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             attributes.Add(attribute);
         }
 
-        internal static ICollection ReadAsCollection(object value)
+        internal static IEnumerable ReadAsEnumerable(object value)
         {
-            ICollection values = null;
+            IEnumerable values = null;
 
             if (value is Stream)
             {
                 // first deserialize the stream as a string
-                byte[] bytes;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ((Stream)value).CopyTo(ms);
-                    bytes = ms.ToArray();
-                }
-                value = Encoding.UTF8.GetString(bytes);
+                ConvertStreamToValue((Stream)value, DataType.String, ref value);
             }
 
             string stringValue = value as string;
@@ -150,10 +139,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     values = (JArray)token;
                 }
             }
+            else if (value is Array && !(value is byte[]))
+            {
+                values = (IEnumerable)value;
+            }
             else
             {
-                // not json, so add the singleton value
-                values = new Collection<object>() { value };
+                // not a collection, so just add the singleton value
+                values = new object[] { value };
             }
 
             return values;
@@ -163,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             IAsyncCollector<T> collector = await context.Binder.BindAsync<IAsyncCollector<T>>(context.Attributes);
 
-            IEnumerable values = ReadAsCollection(context.Value);
+            IEnumerable values = ReadAsEnumerable(context.Value);
 
             // convert values as necessary and add to the collector
             foreach (var value in values)
@@ -171,18 +164,41 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 object converted = null;
                 if (typeof(T) == typeof(string))
                 {
-                    converted = value.ToString();
+                    if (value is ExpandoObject)
+                    {
+                        converted = Utility.ToJson((ExpandoObject)value, Formatting.None);
+                    }
+                    else
+                    {
+                        converted = value.ToString();
+                    }
                 }
                 else if (typeof(T) == typeof(JObject))
                 {
-                    converted = (JObject)value;
+                    if (value is JObject)
+                    {
+                        converted = (JObject)value;
+                    }
+                    else if (value is ExpandoObject)
+                    {
+                        converted = Utility.ToJObject((ExpandoObject)value);
+                    }
                 }
                 else if (typeof(T) == typeof(byte[]))
                 {
                     byte[] bytes = value as byte[];
                     if (bytes == null)
                     {
-                        string stringValue = value.ToString();
+                        string stringValue = null;
+                        if (value is ExpandoObject)
+                        {
+                            stringValue = Utility.ToJson((ExpandoObject)value, Formatting.None);
+                        }
+                        else
+                        {
+                            stringValue = value.ToString();
+                        }
+                        
                         bytes = Encoding.UTF8.GetBytes(stringValue);
                     }
                     converted = bytes;
@@ -193,6 +209,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
 
                 await collector.AddAsync((T)converted);
+            }
+        }
+
+        internal static async Task BindJTokenAsync<T>(BindingContext context, FileAccess access)
+        {
+            var result = await context.Binder.BindAsync<T>(context.Attributes);
+
+            if (access == FileAccess.Read)
+            {
+                if (context.DataType == DataType.Stream)
+                {
+                    ConvertValueToStream(result, (Stream)context.Value);
+                }
+
+                context.Value = result;
             }
         }
 
@@ -207,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             else
             {
                 // Read the value into the context Value converting based on data type
-                object converted = null;
+                object converted = context.Value;
                 ConvertStreamToValue(stream, context.DataType, ref converted);
                 context.Value = converted;
             }
@@ -242,6 +273,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     bytes = BitConverter.GetBytes((double)value);
                 }
+                else if (value is JToken)
+                {
+                    JToken jToken = (JToken)value;
+                    string json = jToken.ToString(Formatting.None);
+                    bytes = Encoding.UTF8.GetBytes(json);
+                }
+                else if (value is ExpandoObject)
+                {
+                    string json = Utility.ToJson((ExpandoObject)value, Formatting.None);
+                    bytes = Encoding.UTF8.GetBytes(json);
+                }
 
                 using (valueStream = new MemoryStream(bytes))
                 {
@@ -275,8 +317,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 case DataType.Stream:
                     // when the target value is a Stream, we copy the value
                     // into the Stream passed in
-                    Stream targetStream = converted as Stream;
-                    stream.CopyTo(targetStream);
+                    if (converted != null)
+                    {
+                        Stream targetStream = converted as Stream;
+                        stream.CopyTo(targetStream);
+                    }
                     break;
             }
         }

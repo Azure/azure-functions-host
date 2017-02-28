@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -29,6 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// Gets or sets the data type hint for the binding.
         /// </summary>
         public DataType DataType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the cardinality hint for the binding.
+        /// </summary>
+        public Cardinality Cardinality { get; set; }
 
         /// <summary>
         /// Gets or sets the target value the binding is binding to.

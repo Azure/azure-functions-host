@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+  },
+  "frameworks": {
+    "net46":{
+      "dependencies": {
+        "Microsoft.Azure.Mobile.Client": "2.1.1"
+      }
+    }
+   }
+}

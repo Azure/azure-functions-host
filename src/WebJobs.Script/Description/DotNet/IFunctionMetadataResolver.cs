@@ -22,7 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string baseFilePath, MetadataReferenceProperties properties);
 
-        Task RestorePackagesAsync();
+        Task<PackageRestoreResult> RestorePackagesAsync();
+
+        bool RequiresPackageRestore(FunctionMetadata metadata);
 
         bool TryGetPackageReference(string referenceName, out PackageReference package);
     }

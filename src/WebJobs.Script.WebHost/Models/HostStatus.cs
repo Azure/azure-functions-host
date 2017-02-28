@@ -9,22 +9,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class HostStatus
     {
+        public HostStatus()
+        {
+            Version = ScriptHost.Version;
+        }
+
         /// <summary>
-        /// Gets the host version.
+        /// Gets or sets the host id.
         /// </summary>
-        [JsonProperty(PropertyName = "version")]
-        public static readonly string Version = GetAssemblyFileVersion(Assembly.GetExecutingAssembly());
+        [JsonProperty(PropertyName = "id", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the host version.
+        /// </summary>
+        [JsonProperty(PropertyName = "version", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string Version { get; set; }
 
         /// <summary>
         /// Gets or sets the collection of errors for the host.
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
-
-        internal static string GetAssemblyFileVersion(Assembly assembly)
-        {
-            AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-            return fileVersionAttr?.Version ?? "Unknown";
-        }
     }
 }

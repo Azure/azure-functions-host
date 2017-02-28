@@ -4,7 +4,8 @@
             "type": "httpTrigger",
             "name": "payload",
             "direction": "in",
-            "webHookType": "genericJson"
+            "webHookType": "genericJson",
+            "route": "hooks/csharp/generic/{action}"
         },
         {
             "type": "http",

@@ -1,4 +1,6 @@
-﻿module.exports = function (context, req) {
+﻿var test = require('../Shared/test');
+
+module.exports = function (context, req) {
     context.log('Node.js HTTP trigger function processed a request. Name=%s', req.query.name);
 
     var headerValue = req.headers['test-header'];
@@ -6,21 +8,26 @@
         context.log('test-header=' + headerValue);
     }
 
+    var res;
     if (typeof req.query.name == 'undefined') {
-        context.res = {
+        res = {
             status: 400,
-            body: "Please pass a name on the query string"
+            body: "Please pass a name on the query string",
+            headers: {
+                'Content-Type': 'text/plain'
+            }
         };
     }
     else {
-        context.res = {
+        res = {
             status: 200,
-            body: "Hello " + req.query.name
-        };
-        context.res.headers = {
-            'Content-Type': 'text/plain'
+            body: test.greeting(req.query.name),
+            headers: {
+                'Content-Type': 'text/plain',
+                'Shared-Module': test.timestamp
+            }
         };
     }
 
-    context.done();
+    context.done(null, res);
 }

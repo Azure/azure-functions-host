@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Dynamic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,6 +14,7 @@ using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding, IResultProcessingBinding
     {
-        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) : 
+        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) :
             base(config, metadata, access)
         {
         }
@@ -30,86 +33,226 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return null;
         }
 
-        public override async Task BindAsync(BindingContext context)
+        public override Task BindAsync(BindingContext context)
         {
             HttpRequestMessage request = (HttpRequestMessage)context.TriggerValue;
 
-            // TODO: Find a better place for this code
-            string content = string.Empty;
-            if (context.Value is Stream)
+            object content = context.Value;
+            if (content is Stream)
             {
-                using (StreamReader streamReader = new StreamReader((Stream)context.Value))
+                // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                // will be a Stream which we need to convert to string
+                ConvertStreamToValue((Stream)content, DataType.String, ref content);
+            }
+
+            HttpResponseMessage response = CreateResponse(request, content);
+            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+
+            return Task.CompletedTask;
+        }
+
+        internal static HttpResponseMessage CreateResponse(HttpRequestMessage request, object content)
+        {
+            string stringContent = content as string;
+            if (stringContent != null)
+            {
+                try
                 {
-                    content = await streamReader.ReadToEndAsync();
+                    // attempt to read the content as JObject/JArray
+                    content = JsonConvert.DeserializeObject(stringContent);
+                }
+                catch (JsonException)
+                {
+                    // not a json response
                 }
             }
-            else if (context.Value is string)
+
+            // see if the content is a response object, defining http response properties
+            IDictionary<string, object> responseObject = null;
+            if (content is JObject)
             {
-                content = (string)context.Value;
+                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
             }
-            
-            HttpResponseMessage response = null;
-            try
+            else
             {
-                // attempt to read the content as a JObject
-                JObject jsonObject = JObject.Parse(content);
+                // Handle ExpandoObjects
+                responseObject = content as ExpandoObject;
+            }
 
-                // TODO: This logic needs to be made more robust
-                // E.g. we might decide to use a Regex to determine if
-                // the json is a response body or not
-                if (jsonObject["body"] != null)
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            IDictionary<string, object> responseHeaders = null;
+            bool isRawResponse = false;
+            if (responseObject != null)
+            {
+                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out isRawResponse);
+            }
+
+            HttpResponseMessage response = CreateResponse(request, statusCode, content, responseHeaders, isRawResponse);
+
+            if (responseHeaders != null)
+            {
+                // apply any user specified headers
+                foreach (var header in responseHeaders)
                 {
-                    HttpStatusCode statusCode = HttpStatusCode.OK;
-                    if (jsonObject["status"] != null)
-                    {
-                        statusCode = (HttpStatusCode)jsonObject.Value<int>("status");
-                    }
-
-                    string body = jsonObject["body"].ToString();
-
-                    response = new HttpResponseMessage(statusCode);
-                    response.Content = new StringContent(body);
-
-                    // we default the Content-Type here, but we override below with any
-                    // Content-Type header the user might have set themselves
-                    // TODO: rather than newing up an HttpResponseMessage investigate using
-                    // request.CreateResponse, which should allow WebApi Content negotiation to
-                    // take place.
-                    if (Utility.IsJson(body))
-                    {
-                        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                    }
-
-                    // apply any user specified headers
-                    JObject headers = (JObject)jsonObject["headers"];
-                    if (headers != null)
-                    {
-                        foreach (var header in headers)
-                        {
-                            AddResponseHeader(response, header);
-                        }
-                    }
+                    AddResponseHeader(response, header);
                 }
             }
-            catch (JsonException)
+
+            return response;
+        }
+
+        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out HttpStatusCode statusCode, out bool isRawResponse)
+        {
+            headers = null;
+            statusCode = HttpStatusCode.OK;
+            isRawResponse = false;
+
+            // TODO: Improve this logic
+            // Sniff the object to see if it looks like a response object
+            // by convention
+            object bodyValue = null;
+            if (responseObject.TryGetValue("body", out bodyValue, ignoreCase: true))
             {
-                // not a json response
+                // the response content becomes the specified body value
+                content = bodyValue;
+
+                IDictionary<string, object> headersValue = null;
+                if (responseObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
+                {
+                    headers = headersValue;
+                }
+
+                HttpStatusCode responseStatusCode;
+                if (TryParseStatusCode(responseObject, out responseStatusCode))
+                {
+                    statusCode = responseStatusCode;
+                }
+
+                bool isRawValue;
+                if (responseObject.TryGetValue<bool>("isRaw", out isRawValue, ignoreCase: true))
+                {
+                    isRawResponse = isRawValue;
+                }
+            }
+        }
+
+        internal static bool TryParseStatusCode(IDictionary<string, object> responseObject, out HttpStatusCode statusCode)
+        {
+            statusCode = HttpStatusCode.OK;
+            object statusValue;
+
+            if (!responseObject.TryGetValue("statusCode", out statusValue, ignoreCase: true) &&
+                !responseObject.TryGetValue("status", out statusValue, ignoreCase: true))
+            {
+                return false;
             }
 
-            if (response == null)
+            if (statusValue is HttpStatusCode ||
+                statusValue is int)
             {
-                // if unable to parse a json response just send
-                // the raw content
-                response = new HttpResponseMessage
+                statusCode = (HttpStatusCode)statusValue;
+                return true;
+            }
+
+            if (statusValue is uint ||
+                statusValue is short ||
+                statusValue is ushort ||
+                statusValue is long ||
+                statusValue is ulong)
+            {
+                statusCode = (HttpStatusCode)Convert.ToInt32(statusValue);
+                return true;
+            }
+
+            var stringValue = statusValue as string;
+            int parsedStatusCode;
+            if (stringValue != null && int.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedStatusCode))
+            {
+                statusCode = (HttpStatusCode)parsedStatusCode;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static HttpResponseMessage CreateResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content, IDictionary<string, object> headers, bool isRawResponse)
+        {
+            if (isRawResponse)
+            {
+                // We only write the response through one of the formatters if
+                // the function hasn't indicated that it wants to write the raw response
+                return new HttpResponseMessage(statusCode) { Content = CreateResultContent(content) };
+            }
+
+            string contentType = null;
+            MediaTypeHeaderValue mediaType = null;
+            if (content != null &&
+                (headers?.TryGetValue<string>("content-type", out contentType, ignoreCase: true) ?? false) &&
+                MediaTypeHeaderValue.TryParse((string)contentType, out mediaType))
+            {
+                var writer = request.GetConfiguration().Formatters.FindWriter(content.GetType(), mediaType);
+                if (writer != null)
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(content)
+                    return new HttpResponseMessage(statusCode)
+                    {
+                        Content = new ObjectContent(content.GetType(), content, writer, mediaType)
+                    };
+                }
+
+                // create a non-negotiated result content
+                HttpContent resultContent = CreateResultContent(content, mediaType.MediaType);
+                return new HttpResponseMessage(statusCode)
+                {
+                    Content = resultContent
                 };
             }
 
-            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+            return CreateNegotiatedResponse(request, statusCode, content);
         }
-        
+
+        internal static HttpContent CreateResultContent(object content, string mediaType = null)
+        {
+            if (content is byte[])
+            {
+                return new ByteArrayContent((byte[])content);
+            }
+            else if (content is Stream)
+            {
+                return new StreamContent((Stream)content);
+            }
+
+            string stringContent;
+            if (content is ExpandoObject)
+            {
+                stringContent = Utility.ToJson((ExpandoObject)content, Formatting.None);
+            }
+            else
+            {
+                stringContent = content?.ToString() ?? string.Empty;
+            }
+
+            return new StringContent(stringContent, null, mediaType);
+        }
+
+        private static HttpResponseMessage CreateNegotiatedResponse(HttpRequestMessage request, HttpStatusCode statusCode, object content)
+        {
+            HttpResponseMessage result = request.CreateResponse(statusCode);
+
+            if (content == null)
+            {
+                return result;
+            }
+
+            var configuration = request.GetConfiguration();
+            IContentNegotiator negotiator = configuration.Services.GetContentNegotiator();
+            var negotiationResult = negotiator.Negotiate(content.GetType(), request, configuration.Formatters);
+
+            // ObjectContent can handle ExpandoObjects as well
+            result.Content = new ObjectContent(content.GetType(), content, negotiationResult.Formatter, negotiationResult.MediaType);
+
+            return result;
+        }
+
         public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
         {
             if (result == null)
@@ -117,26 +260,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return;
             }
 
-            HttpRequestMessage request = null;
-            object argValue = null;
-            if (functionArguments.TryGetValue(triggerInputName, out argValue) && argValue is HttpRequestMessage)
-            {
-                request = (HttpRequestMessage)argValue;
-            }
-            else
-            {
-                // No argument is bound to the request message, so we should have 
-                // it in the system arguments
-                request = systemArguments.FirstOrDefault(a => a is HttpRequestMessage) as HttpRequestMessage;
-            }
-
+            HttpRequestMessage request = (HttpRequestMessage)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequestMessage);
             if (request != null)
             {
                 HttpResponseMessage response = result as HttpResponseMessage;
                 if (response == null)
                 {
-                    response = request.CreateResponse(HttpStatusCode.OK);
-                    response.Content = new ObjectContent(result.GetType(), result, new JsonMediaTypeFormatter());
+                    response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
                 }
 
                 request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
@@ -148,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result != null;
         }
 
-        private static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, JToken> header)
+        internal static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)
         {
             if (header.Value != null)
             {
@@ -158,7 +288,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // The following content headers must be added to the response
                     // content header collection
                     case "content-type":
-                        response.Content.Headers.ContentType = new MediaTypeHeaderValue(header.Value.ToString());
+                        MediaTypeHeaderValue mediaType = null;
+                        if (MediaTypeHeaderValue.TryParse(header.Value.ToString(), out mediaType))
+                        {
+                            response.Content.Headers.ContentType = mediaType;
+                        }
                         break;
                     case "content-length":
                         long contentLength;
@@ -168,7 +302,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         break;
                     case "content-disposition":
-                        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue(header.Value.ToString());
+                        ContentDispositionHeaderValue contentDisposition = null;
+                        if (ContentDispositionHeaderValue.TryParse(header.Value.ToString(), out contentDisposition))
+                        {
+                            response.Content.Headers.ContentDisposition = contentDisposition;
+                        }
                         break;
                     case "content-encoding":
                     case "content-language":
@@ -183,7 +321,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         break;
                     case "content-md5":
-                        response.Content.Headers.ContentMD5 = header.Value.Value<byte[]>();
+                        byte[] value;
+                        if (header.Value is string)
+                        {
+                            value = Convert.FromBase64String((string)header.Value);
+                        }
+                        else
+                        {
+                            value = header.Value as byte[];
+                        }
+                        response.Content.Headers.ContentMD5 = value;
                         break;
                     case "expires":
                         if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))

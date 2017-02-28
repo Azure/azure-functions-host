@@ -1,7 +1,5 @@
 ﻿#r "Microsoft.WindowsAzure.Storage"
 
-using System;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 public static void Run(CloudBlockBlob blob, CloudBlockBlob output, TraceWriter log)

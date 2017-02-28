@@ -61,30 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {
-        ///  &quot;status&quot;: &quot;Resolved&quot;,
-        ///  &quot;context&quot;: {
-        ///    &quot;id&quot;: &quot;/subscriptions/&lt;your-subscriptionId&gt;/resourceGroups/functionsWebhooks/providers/microsoft.insights/alertrules/webhooksdemo&quot;,
-        ///    &quot;name&quot;: &quot;webhooksdemo&quot;,
-        ///    &quot;description&quot;: &quot;webhooksdemo&quot;,
-        ///    &quot;conditionType&quot;: &quot;Metric&quot;,
-        ///    &quot;condition&quot;: {
-        ///      &quot;metricName&quot;: &quot;Requests&quot;,
-        ///      &quot;metricUnit&quot;: &quot;Count&quot;,
-        ///      &quot;metricValue&quot;: &quot;1&quot;,
-        ///      &quot;threshold&quot;: &quot;1&quot;,
-        ///      &quot;windowSize&quot;: &quot;5&quot;,
-        ///      &quot;timeAggregation&quot;: &quot;Total&quot;,
-        ///      &quot;operator&quot;: &quot;GreaterThan&quot;
-        ///    } [rest of string was truncated]&quot;;.
-        /// </summary>
-        internal static string AzureWebHookEventRequest {
-            get {
-                return ResourceManager.GetString("AzureWebHookEventRequest", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {{
         ///  &quot;locked&quot;: false,
         ///  &quot;version&quot;: 1,

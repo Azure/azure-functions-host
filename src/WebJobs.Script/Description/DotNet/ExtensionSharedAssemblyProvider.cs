@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -17,13 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public class ExtensionSharedAssemblyProvider : ISharedAssemblyProvider
     {
-        private readonly Collection<ScriptBindingProvider> _bindingProviders;
+        private readonly ICollection<ScriptBindingProvider> _bindingProviders;
         
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
         /// <param name="bindingProviders">The collection of <see cref="ScriptBindingProvider"/>s.</param>
-        public ExtensionSharedAssemblyProvider(Collection<ScriptBindingProvider> bindingProviders)
+        public ExtensionSharedAssemblyProvider(ICollection<ScriptBindingProvider> bindingProviders)
         {
             _bindingProviders = bindingProviders;
         }

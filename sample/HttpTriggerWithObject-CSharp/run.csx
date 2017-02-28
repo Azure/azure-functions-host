@@ -1,7 +1,4 @@
-﻿using System;
-using System.Net;
-
-public static TestObject Run(TestObject req)
+﻿public static TestObject Run(TestObject req)
 {
     req.Greeting = $"Hello, {req.SenderName}";
     

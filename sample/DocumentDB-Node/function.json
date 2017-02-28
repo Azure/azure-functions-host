@@ -9,7 +9,7 @@
         {
             "type": "documentDB",
             "direction": "out",
-            "name": "item",
+            "name": "$return",
             "databaseName": "ItemDb",
             "collectionName": "ItemCollection",
             "createIfNotExists": false

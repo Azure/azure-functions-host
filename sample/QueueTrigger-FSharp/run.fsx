@@ -1,7 +1,5 @@
 open System
-open System.IO
+open Microsoft.Azure.WebJobs.Host
 
-let inputPath = Environment.GetEnvironmentVariable("input")
-let input = File.ReadAllText(inputPath)
-let message = sprintf "F# script processed queue message '%s'" input
-Console.Out.WriteLine(message)
+let Run (input: string, log: TraceWriter) =  
+    log.Info(sprintf "F# script processed queue message '%s'" input)

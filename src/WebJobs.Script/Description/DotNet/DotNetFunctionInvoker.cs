@@ -21,6 +21,7 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
+    [CLSCompliant(false)]
     public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
@@ -28,43 +29,45 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
-        private readonly IMetricsLogger _metrics;
-        private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly ICompilationService _compilationService;
+        private readonly FunctionLoader<MethodInfo> _functionLoader;
+        private readonly IMetricsLogger _metricsLogger;
 
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
         private Action _reloadScript;
+        private Action _shutdown;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
-        private FunctionValueLoader _functionValueLoader;
         private string[] _watchedFileTypes;
-
-        private static readonly string[] AssemblyFileTypes = { ".dll", ".exe" };
 
         internal DotNetFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader, 
-            ICompilationServiceFactory compilationServiceFactory)
-            : base(host, functionMetadata)
+            IFunctionEntryPointResolver functionEntryPointResolver, FunctionAssemblyLoader assemblyLoader,
+            ICompilationServiceFactory compilationServiceFactory, ITraceWriterFactory traceWriterFactory = null,
+            IFunctionMetadataResolver metadataResolver = null)
+            : base(host, functionMetadata, traceWriterFactory)
         {
+            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
+            _metadataResolver = metadataResolver ?? new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             InitializeFileWatcher();
 
             _resultProcessor = CreateResultProcessor();
 
-            _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
+            _functionLoader = new FunctionLoader<MethodInfo>(CreateFunctionTarget);
 
             _reloadScript = ReloadScript;
             _reloadScript = _reloadScript.Debounce();
+
+            _shutdown = () => Host.Shutdown();
+            _shutdown = _shutdown.Debounce();
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
@@ -74,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (InitializeFileWatcherIfEnabled())
             {
-                _watchedFileTypes = AssemblyFileTypes
+                _watchedFileTypes = ScriptConstants.AssemblyFileTypes
                     .Concat(_compilationService.SupportedFileTypes)
                     .ToArray();
             }
@@ -84,7 +87,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileExtension = Path.GetExtension(e.Name);
-            if (_watchedFileTypes.Contains(fileExtension))
+            if (ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+            {
+                TraceWriter.Info("Assembly changes detected. Restarting host...");
+
+                // As a result of an assembly change, we initiate a full host shutdown
+                _shutdown();
+            }
+            else if (_watchedFileTypes.Contains(fileExtension))
             {
                 _reloadScript();
             }
@@ -113,10 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private void ReloadScript()
         {
             // Reset cached function
-            ResetFunctionValue();
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name));
-
-            TraceWriter.Info("Compiling function script.");
+            _functionLoader.Reset();
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
 
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
             FunctionSignature signature = null;
@@ -127,19 +135,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 compilationResult = compilation.GetDiagnostics();
 
                 signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
-                compilationResult = ValidateFunctionBindingArguments(signature, compilationResult.ToBuilder());
+                compilationResult = ValidateFunctionBindingArguments(signature, _triggerInputName, _inputBindings, _outputBindings, compilationResult.ToBuilder());
             }
             catch (CompilationErrorException exc)
             {
-                compilationResult = compilationResult.AddRange(exc.Diagnostics);
+                compilationResult = AddFunctionDiagnostics(compilationResult.AddRange(exc.Diagnostics));
             }
 
-            TraceCompilationDiagnostics(compilationResult);
+            TraceCompilationDiagnostics(compilationResult, LogTargets.User);
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.",
-                compilationSucceeded ? "succeeded" : "failed"));
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
 
             // If the compilation succeeded, AND:
             //  - We haven't cached a function (failed to compile on load), OR
@@ -149,111 +156,103 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                Host.RestartEvent.Set();
+                Host.Restart();
             }
         }
 
-        private void ResetFunctionValue()
+        internal async Task<MethodInfo> GetFunctionTargetAsync()
         {
-            _functionValueLoaderLock.EnterWriteLock();
             try
             {
-                if (_functionValueLoader != null)
-                {
-                    _functionValueLoader.Dispose();
-                }
-
-                _functionValueLoader = FunctionValueLoader.Create(CreateFunctionTarget);
+                return await _functionLoader.GetFunctionTargetAsync().ConfigureAwait(false);
             }
-            finally
+            catch (CompilationErrorException exc)
             {
-                _functionValueLoaderLock.ExitWriteLock();
+                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User);
+                throw;
             }
         }
 
         private void RestorePackages()
         {
-            TraceWriter.Info("Restoring packages.");
-
-            _metadataResolver.RestorePackagesAsync()
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        TraceWriter.Info("Package restore failed:");
-                        TraceWriter.Info(t.Exception.ToString());
-                        return;
-                    }
-
-                    TraceWriter.Info("Packages restored.");
-                    _reloadScript();
-                });
+            // Kick off the package restore and return.
+            // Any errors will be logged in RestorePackagesAsync
+            RestorePackagesAsync(true)
+                .ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
-        public override async Task Invoke(object[] parameters)
+        internal async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
         {
-            FunctionStartedEvent startedEvent = null;
-            string invocationId = null;
+            TraceOnPrimaryHost("Restoring packages.", TraceLevel.Info);
 
             try
             {
-                // Separate system parameters from the actual method parameters
-                object[] originalParameters = parameters;
-                MethodInfo function = await GetFunctionTargetAsync();
-                int actualParameterCount = function.GetParameters().Length;
-                object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
-                parameters = parameters.Take(actualParameterCount).ToArray();
+                PackageRestoreResult result = await _metadataResolver.RestorePackagesAsync();
 
-                ExecutionContext functionExecutionContext = (ExecutionContext)systemParameters[0];
-                invocationId = functionExecutionContext.InvocationId.ToString();
+                TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
 
-                startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-                _metrics.BeginEvent(startedEvent);
-
-                TraceWriter.Info(string.Format("Function started (Id={0})", invocationId));
-
-                parameters = ProcessInputParameters(parameters);
-
-                object functionResult = function.Invoke(null, parameters);
-
-                // after the function executes, we have to copy values back into the original
-                // array to ensure object references are maintained (since we took a copy above)
-                for (int i = 0; i < parameters.Length; i++)
+                if (reloadScriptOnSuccess)
                 {
-                    originalParameters[i] = parameters[i];
-                }
+                    if (!result.IsInitialInstall && result.ReferencesChanged)
+                    {
+                        TraceOnPrimaryHost("Package references have changed. Restarting host...", TraceLevel.Info);
 
-                if (functionResult is Task)
-                {
-                    functionResult = await((Task)functionResult).ContinueWith(t => GetTaskResult(t));
+                        // If this is not the initial package install and references changed,
+                        // shutdown the host, which will cause it to have a clean start and load the new
+                        // assembly references
+                        _shutdown();
+                    }
+                    else
+                    {
+                        _reloadScript();
+                    }
                 }
-
-                if (functionResult != null)
-                {
-                    _resultProcessor(function, parameters, systemParameters, functionResult);
-                }
-
-                TraceWriter.Info(string.Format("Function completed (Success, Id={0})", invocationId));
             }
-            catch
+            catch (Exception exc)
             {
-                if (startedEvent != null)
-                {
-                    startedEvent.Success = false;
-                    TraceWriter.Error(string.Format("Function completed (Failure, Id={0})", invocationId));
-                }
-                else
-                {
-                    TraceWriter.Error("Function completed (Failure)");
-                }
-                throw;
+                TraceOnPrimaryHost("Package restore failed:", TraceLevel.Error);
+                TraceOnPrimaryHost(exc.ToString(), TraceLevel.Error);
             }
-            finally
+        }
+
+        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        {
+            // Separate system parameters from the actual method parameters
+            object[] originalParameters = parameters;
+            MethodInfo function = await GetFunctionTargetAsync();
+
+            int actualParameterCount = function.GetParameters().Length;
+            object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
+            parameters = parameters.Take(actualParameterCount).ToArray();
+
+            parameters = ProcessInputParameters(parameters);
+
+            object result = function.Invoke(null, parameters);
+
+            // after the function executes, we have to copy values back into the original
+            // array to ensure object references are maintained (since we took a copy above)
+            for (int i = 0; i < parameters.Length; i++)
             {
-                if (startedEvent != null)
-                {
-                    _metrics.EndEvent(startedEvent);
-                }
+                originalParameters[i] = parameters[i];
+            }
+
+            if (result is Task)
+            {
+                result = await ((Task)result).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
+            }
+
+            if (result != null)
+            {
+                _resultProcessor(function, parameters, systemParameters, result);
+            }
+
+            // if a return value binding was specified, copy the return value
+            // into the output binding slot (by convention the last parameter)
+            var returnValueBinding = Metadata.Bindings.SingleOrDefault(p => p.IsReturn);
+            if (returnValueBinding != null && !(returnValueBinding is IResultProcessingBinding))
+            {
+                originalParameters[originalParameters.Length - 1] = result;
             }
         }
 
@@ -264,100 +263,112 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 TraceWriter writer = parameters[i] as TraceWriter;
                 if (writer != null)
                 {
-                    parameters[i] = new CompositeTraceWriter(new[] { writer, TraceWriter });
+                    parameters[i] = CreateUserTraceWriter(writer);
                 }
             }
 
             return parameters;
         }
 
-        internal async Task<MethodInfo> GetFunctionTargetAsync(int attemptCount = 0)
+        private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)
         {
-            FunctionValueLoader currentValueLoader;
-            _functionValueLoaderLock.EnterReadLock();
             try
             {
-                currentValueLoader = _functionValueLoader;
-            }
-            finally
-            {
-                _functionValueLoaderLock.ExitReadLock();
-            }
+                await VerifyPackageReferencesAsync();
 
-            try
-            {
-                return await currentValueLoader;
-            }
-            catch (OperationCanceledException)
-            {
-                // If the current task we were awaiting on was cancelled due to a
-                // cache refresh, retry, which will use the new loader
-                if (attemptCount > 2)
+                string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
+                using (_metricsLogger.LatencyEvent(eventName))
                 {
-                    throw;
+                    ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
+
+                    Assembly assembly = compilation.EmitAndLoad(cancellationToken);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+
+                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+
+                    ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
+                    TraceCompilationDiagnostics(bindingDiagnostics);
+
+                    // Set our function entry point signature
+                    _functionSignature = functionSignature;
+
+                    return _functionSignature.GetMethod(assembly);
                 }
             }
-
-            return await GetFunctionTargetAsync(++attemptCount);
-        }
-
-        private MethodInfo CreateFunctionTarget(CancellationToken cancellationToken)
-        {
-            MemoryStream assemblyStream = null;
-            MemoryStream pdbStream = null;
-
-            try
+            catch (CompilationErrorException exc)
             {
-                ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
-                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                ImmutableArray<Diagnostic> diagnostics = AddFunctionDiagnostics(exc.Diagnostics);
 
-                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, throwIfFailed: true);
-                TraceCompilationDiagnostics(bindingDiagnostics);
+                // Here we only need to trace to system logs
+                TraceCompilationDiagnostics(diagnostics, LogTargets.System);
 
-                using (assemblyStream = new MemoryStream())
-                {
-                    using (pdbStream = new MemoryStream())
-                    {
-                        compilation.Emit(assemblyStream, pdbStream, cancellationToken);
-                
-                        // Check if cancellation was requested while we were compiling, 
-                        // and if so quit here. 
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        Assembly assembly = Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
-                        _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
-
-                        // Get our function entry point
-                        _functionSignature = functionSignature;
-                        System.Reflection.TypeInfo scriptType = assembly.DefinedTypes
-                            .FirstOrDefault(t => string.Compare(t.Name, functionSignature.ParentTypeName, StringComparison.Ordinal) == 0);
-
-                        return _functionEntryPointResolver.GetFunctionEntryPoint(scriptType.DeclaredMethods.ToList());
-                    }
-                }
-            }
-            catch (CompilationErrorException ex)
-            {
-                TraceWriter.Error("Function compilation error");
-                TraceCompilationDiagnostics(ex.Diagnostics);
-                throw;
+                throw new CompilationErrorException(exc.Message, diagnostics);
             }
         }
 
-        private void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        private async Task VerifyPackageReferencesAsync()
         {
+            try
+            {
+                if (_metadataResolver.RequiresPackageRestore(Metadata))
+                {
+                    TraceOnPrimaryHost("Package references have been updated.", TraceLevel.Info);
+                    await RestorePackagesAsync(false);
+                }
+            }
+            catch (Exception exc)
+            {
+                // There was an issue processing the package references,
+                // wrap the exception in a CompilationErrorException and retrow
+                TraceOnPrimaryHost("Error processing package references.", TraceLevel.Error);
+                TraceOnPrimaryHost(exc.Message, TraceLevel.Error);
+
+                throw new CompilationErrorException("Unable to restore packages", ImmutableArray<Diagnostic>.Empty);
+            }
+        }
+
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
+        {
+            if (logTarget == LogTargets.None)
+            {
+                return;
+            }
+
+            TraceWriter traceWriter = TraceWriter;
+            IDictionary<string, object> properties = PrimaryHostTraceProperties;
+
+            if (!logTarget.HasFlag(LogTargets.User))
+            {
+                traceWriter = Host.TraceWriter;
+                properties = PrimaryHostSystemTraceProperties;
+            }
+            else if (!logTarget.HasFlag(LogTargets.System))
+            {
+                properties = PrimaryHostUserTraceProperties;
+            }
+
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
-                TraceLevel level = GetTraceLevelFromDiagnostic(diagnostic);
-                TraceWriter.Trace(new TraceEvent(level, diagnostic.ToString()));
-
-                ImmutableArray<Diagnostic> scriptDiagnostics = GetFunctionDiagnostics(diagnostic);
-
-                if (!scriptDiagnostics.IsEmpty)
-                {
-                    TraceCompilationDiagnostics(scriptDiagnostics);
-                }
+                traceWriter.Trace(diagnostic.ToString(), diagnostic.Severity.ToTraceLevel(), properties);
             }
+        }
+
+        private ImmutableArray<Diagnostic> AddFunctionDiagnostics(ImmutableArray<Diagnostic> diagnostics)
+        {
+            var result = diagnostics.Aggregate(new List<Diagnostic>(), (a, d) =>
+            {
+                a.Add(d);
+                ImmutableArray<Diagnostic> functionsDiagnostics = GetFunctionDiagnostics(d);
+
+                if (!functionsDiagnostics.IsEmpty)
+                {
+                    a.AddRange(functionsDiagnostics);
+                }
+
+                return a;
+            });
+
+            return ImmutableArray.CreateRange(result);
         }
 
         private ImmutableArray<Diagnostic> GetFunctionDiagnostics(Diagnostic diagnostic)
@@ -387,21 +398,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<Diagnostic>.Empty;
         }
 
-        private ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature,
+        internal static ImmutableArray<Diagnostic> ValidateFunctionBindingArguments(FunctionSignature functionSignature, string triggerInputName,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
             ImmutableArray<Diagnostic>.Builder builder = null, bool throwIfFailed = false)
         {
             var resultBuilder = builder ?? ImmutableArray<Diagnostic>.Empty.ToBuilder();
 
-            if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, _triggerInputName, StringComparison.Ordinal) == 0))
+            if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, triggerInputName, StringComparison.Ordinal) == 0))
             {
-                string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", _triggerInputName);
+                string message = string.Format(CultureInfo.InvariantCulture, "Missing a trigger argument named '{0}'.", triggerInputName);
                 var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingTriggerArgumentCompilationCode,
                     "Missing trigger argument", message, "AzureFunctions", DiagnosticSeverity.Error, true);
 
                 resultBuilder.Add(Diagnostic.Create(descriptor, Location.None));
             }
 
-            var bindings = _inputBindings.Where(b => !b.Metadata.IsTrigger).Union(_outputBindings);
+            var bindings = inputBindings.Where(b => !b.Metadata.IsTrigger).Union(outputBindings);
 
             foreach (var binding in bindings)
             {
@@ -410,9 +422,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     continue;
                 }
 
+                if (binding.Metadata.IsReturn)
+                {
+                    continue;
+                }
+
                 if (!functionSignature.Parameters.Any(p => string.Compare(p.Name, binding.Metadata.Name, StringComparison.Ordinal) == 0))
                 {
-                    string message = string.Format(CultureInfo.InvariantCulture, 
+                    string message = string.Format(CultureInfo.InvariantCulture,
                         "Missing binding argument named '{0}'. Mismatched binding argument names may lead to function indexing errors.", binding.Metadata.Name);
 
                     var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingBindingArgumentCompilationCode,
@@ -449,6 +466,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return null;
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _functionLoader.Dispose();
+            }
+        }
+
         private Action<MethodInfo, object[], object[], object> CreateResultProcessor()
         {
             var bindings = _inputBindings.Union(_outputBindings).OfType<IResultProcessingBinding>();
@@ -458,9 +485,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 processor = (function, args, systemArgs, result) =>
                 {
-                    // Find the binding parameter input by
-                    // checking if we have the raw value (passed as the DefaultSystemTriggerParameterName)
-                    // or getting the function input parameter
                     ParameterInfo[] parameters = function.GetParameters();
                     IDictionary<string, object> functionArguments = parameters.ToDictionary(p => p.Name, p => args[p.Position]);
                     foreach (var processingBinding in bindings)
@@ -477,26 +501,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return processor ?? ((_, __, ___, ____) => { /*noop*/ });
         }
 
-        private static TraceLevel GetTraceLevelFromDiagnostic(Diagnostic diagnostic)
+        [Flags]
+        internal enum LogTargets
         {
-            var level = TraceLevel.Off;
-            switch (diagnostic.Severity)
-            {
-                case DiagnosticSeverity.Hidden:
-                    level = TraceLevel.Verbose;
-                    break;
-                case DiagnosticSeverity.Info:
-                    level = TraceLevel.Info;
-                    break;
-                case DiagnosticSeverity.Warning:
-                    level = TraceLevel.Warning;
-                    break;
-                case DiagnosticSeverity.Error:
-                    level = TraceLevel.Error;
-                    break;
-            }
-
-            return level;
+            None = 0,
+            System = 1,
+            User = 2,
+            All = System | User
         }
     }
 }

@@ -33,36 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Resolves the method that should be used as the entry point.
         /// </summary>
-        /// <param name="declaredMethods">The list of methods to evaluate.</param>
-        /// <returns>The best match from the provided method list.</returns>
-        public MethodInfo GetFunctionEntryPoint(IList<MethodInfo> declaredMethods)
-        {
-            if (declaredMethods == null)
-            {
-                throw new ArgumentNullException("declaredMethods");
-            }
-
-            if (declaredMethods.Count == 1)
-            {
-                return declaredMethods[0];
-            }
-
-            var methods = declaredMethods.Select(m => new MethodReference<MethodInfo>(m.Name, m.IsPublic, m));
-            MethodReference<MethodInfo> entryPoint = GetFunctionEntryPoint(methods);
-
-            return entryPoint.Value;
-        }
-
-        /// <summary>
-        /// Resolves the method that should be used as the entry point.
-        /// </summary>
         /// <typeparam name="T">The type that implements <see cref="IMethodReference"/>.</typeparam>
         /// <param name="methods">A collection of method references, containing the methods defined in the function.</param>
         /// <returns>The function entry point, if a match is found.</returns>
         public T GetFunctionEntryPoint<T>(IEnumerable<T> methods) where T : class, IMethodReference
         {
             T method = default(T);
-            
+
             if (!string.IsNullOrEmpty(_entryPointName))
             {
                 method = GetNamedMethod(methods, _entryPointName, StringComparison.Ordinal);
@@ -87,14 +64,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Check if we have a public method named "Run"
                     method = GetNamedMethod(methods, DefaultEntryPointMethodName, StringComparison.OrdinalIgnoreCase);
                 }
-                
+
                 if (method == null)
                 {
                     // No methods were found, throw a compilation exception with the appropriate code and message
                     throw CreateCompilationException(DotNetConstants.MissingFunctionEntryPointCompilationCode,
                        "Missing function entry point", Resources.DotNetFunctionEntryPointRulesMessage);
                 }
-            }        
+            }
 
             return method;
         }

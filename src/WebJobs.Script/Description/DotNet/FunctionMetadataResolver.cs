@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Policy;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -42,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Configuration",
                 "System.Xml",
                 "System.Net.Http",
+                "System.Runtime",
+                "System.Threading.Tasks",
                 "Microsoft.CSharp",
-                typeof(object).Assembly.Location,
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
@@ -54,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
+                new DirectSharedAssemblyProvider(typeof(ServiceBusAttribute).Assembly), /* Microsoft.Azure.WebJobs.ServiceBus */
                 new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
                 new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
             };
@@ -70,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.Azure.WebJobs.Host"
             };
 
-        public FunctionMetadataResolver(FunctionMetadata metadata, Collection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
+        public FunctionMetadataResolver(FunctionMetadata metadata, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
         {
             _functionMetadata = metadata;
             _traceWriter = traceWriter;
@@ -115,13 +118,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IReadOnlyCollection<string> GetCompilationReferences()
         {
-            // Add package reference assemblies
-            var result = new List<string>(_packageAssemblyResolver.AssemblyReferences);
+            // Combine our default references with package references
+            var combinedReferences = DefaultAssemblyReferences
+                .Union(_packageAssemblyResolver.AssemblyReferences);
 
-            // Add default references
-            result.AddRange(DefaultAssemblyReferences);
-
-            return result.AsReadOnly();
+            return new ReadOnlyCollection<string>(combinedReferences.ToList());
         }
 
         /// <summary>
@@ -187,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 bool externalReference = false;
                 string basePath = _privateAssembliesPath;
-                
+
                 // If this is a relative assembly reference, use the function directory as the base probing path
                 if (reference.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) > -1)
                 {
@@ -221,8 +222,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // When loading shared assemblies, load into the load-from context and load assembly dependencies
                 assembly = Assembly.LoadFrom(assemblyPath);
             }
-            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath) ||
-                _packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
+            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath))
+            {
+                assembly = Assembly.Load(File.ReadAllBytes(assemblyPath));
+                assembly.MapCodeBase(assemblyPath);
+            }
+            else if (_packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
             {
                 // Use LoadFile here to load into the correct context
                 assembly = Assembly.LoadFile(assemblyPath);
@@ -250,13 +255,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _assemblyExtensions.Select(ext => Path.Combine(_privateAssembliesPath, assemblyName.Name + ext));
         }
 
-        public async Task RestorePackagesAsync()
+        public async Task<PackageRestoreResult> RestorePackagesAsync()
         {
             var packageManager = new PackageManager(_functionMetadata, _traceWriter);
-            await packageManager.RestorePackagesAsync();
+            PackageRestoreResult result = await packageManager.RestorePackagesAsync();
 
             // Reload the resolver
             _packageAssemblyResolver = new PackageAssemblyResolver(_functionMetadata);
+
+            return result;
+        }
+
+        public bool RequiresPackageRestore(FunctionMetadata metadata)
+        {
+            return PackageManager.RequiresPackageRestore(Path.GetDirectoryName(metadata.ScriptFile));
         }
     }
 }

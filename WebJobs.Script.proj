@@ -7,7 +7,7 @@
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <SiteExtensionVersion>0.4.$(BuildNumber)</SiteExtensionVersion>
+    <SiteExtensionVersion>1.0.$(BuildNumber)</SiteExtensionVersion>
     <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
     <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
     <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
@@ -30,6 +30,10 @@
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
     <Build Include="src\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.WebHost.NuGet\WebJobs.Script.WebHost.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
@@ -108,11 +112,13 @@
       <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
     </PropertyGroup>
     <ItemGroup>
-      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*"/>
+      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*;$(ScriptHostOutput)\*.optdata;$(ScriptHostOutput)\*.sigdata"/>
       <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
+      <StaticContent Include="$(ScriptHostOutput)\azurefunctions\**\*.*"/>
     </ItemGroup>
     <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
     <Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(StaticContent)" DestinationFiles="@(StaticContent->'$(PublishPath)\Binaries\WebJobs.Script.Host\azurefunctions\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Zip
       InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
       OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"
@@ -152,18 +158,42 @@
   <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
       <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
+	  <IntegrationTestProjects Include="test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"
-     
              Properties="$(SetConfiguration); $(SetPlatform)"
              BuildInParallel="$(BuildInParallel)">
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
+    </MSBuild>
+    <MSBuild Projects="@(IntegrationTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="IntegrationTestAssemblies"/>
     </MSBuild>
   </Target>
   
   <Target Name="UnitTest" DependsOnTargets="TestBuild">
     <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
+  </Target>
+  
+  <Target Name="IntegrationTest" DependsOnTargets="TestBuild">
+    <xunit Assemblies="@(IntegrationTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
+  </Target>
+
+  <PropertyGroup Condition=" '$(APPVEYOR_API_URL)' != '' ">
+    <AppveyorModules>mocha-appveyor-reporter</AppveyorModules>
+    <AppveyorReporter>--reporter mocha-appveyor-reporter</AppveyorReporter>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildConfiguration>Debug</BuildConfiguration>
+    <BuildConfiguration Condition=" $(Configuration) != '' ">$(Configuration)</BuildConfiguration>
+  </PropertyGroup>
+
+  <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
+    <Exec Command="npm i mocha chai $(AppveyorModules)" />
+    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">

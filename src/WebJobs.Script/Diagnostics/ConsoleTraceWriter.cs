@@ -15,6 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public override void Trace(TraceEvent traceEvent)
         {
+            if (Level < traceEvent.Level)
+            {
+                return;
+            }
+
             Console.WriteLine(traceEvent.Message);
         }
     }

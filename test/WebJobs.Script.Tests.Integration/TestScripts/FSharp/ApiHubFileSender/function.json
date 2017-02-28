@@ -1,0 +1,16 @@
+{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "input",
+            "direction": "in"
+        },
+        {
+            "type": "apiHubFile",
+            "name": "$return",
+            "connection": "AzureWebJobsDropBox",
+            "direction": "out",
+            "path": "teste2e/test.txt"
+        }
+    ]
+}

@@ -68,12 +68,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Bash", "QueueT
 		sample\QueueTrigger-Bash\run.sh = sample\QueueTrigger-Bash\run.sh
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-FSharp", "QueueTrigger-FSharp", "{644AFFC7-46C5-483A-812E-F5C9B93CBA86}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-FSharp\function.json = sample\QueueTrigger-FSharp\function.json
-		sample\QueueTrigger-FSharp\run.fsx = sample\QueueTrigger-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResizeImage", "ResizeImage", "{1B6E0EA1-DB38-431C-864A-2A553DACB8DA}"
 	ProjectSection(SolutionItems) = preProject
 		sample\ResizeImage\function.json = sample\ResizeImage\function.json
@@ -136,16 +130,34 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp", "HttpT
 		sample\HttpTrigger-CSharp\run.csx = sample\HttpTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-FSharp", "HttpTrigger-FSharp", "{4AE9E7EF-C992-4B44-AFBF-3671BD1D6108}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-FSharp\function.json = sample\HttpTrigger-FSharp\function.json
+		sample\HttpTrigger-FSharp\run.fsx = sample\HttpTrigger-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger-CSharp", "TimerTrigger-CSharp", "{9B95236B-987B-4928-B2CB-561823B38FA1}"
 	ProjectSection(SolutionItems) = preProject
 		sample\TimerTrigger-CSharp\function.json = sample\TimerTrigger-CSharp\function.json
 		sample\TimerTrigger-CSharp\run.csx = sample\TimerTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger-FSharp", "TimerTrigger-FSharp", "{9B95236B-987B-4928-B2CB-561823B38FA2}"
+	ProjectSection(SolutionItems) = preProject
+		sample\TimerTrigger-FSharp\function.json = sample\TimerTrigger-FSharp\function.json
+		sample\TimerTrigger-FSharp\run.fsx = sample\TimerTrigger-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-CSharp", "BlobTrigger-CSharp", "{15BA01AE-580C-4FBB-A117-F3B112B4BD02}"
 	ProjectSection(SolutionItems) = preProject
 		sample\BlobTrigger-CSharp\function.json = sample\BlobTrigger-CSharp\function.json
 		sample\BlobTrigger-CSharp\run.csx = sample\BlobTrigger-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-FSharp", "BlobTrigger-FSharp", "{15BA01AE-580C-4FBB-A117-F3B112B4BD03}"
+	ProjectSection(SolutionItems) = preProject
+		sample\BlobTrigger-FSharp\function.json = sample\BlobTrigger-FSharp\function.json
+		sample\BlobTrigger-FSharp\run.fsx = sample\BlobTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{B80C88CF-68EE-4400-A68D-216F1F85179C}"
@@ -172,6 +184,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-CSharp", "Docume
 		sample\DocumentDB-CSharp\run.csx = sample\DocumentDB-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-FSharp", "DocumentDB-FSharp", "{437EB182-8CB9-42BD-9019-E5F6E69D1DB4}"
+	ProjectSection(SolutionItems) = preProject
+		sample\DocumentDB-FSharp\function.json = sample\DocumentDB-FSharp\function.json
+		sample\DocumentDB-FSharp\run.fsx = sample\DocumentDB-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-Node", "DocumentDB-Node", "{8811DCFB-1023-4577-AB9C-B4F191200082}"
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-Node\function.json = sample\DocumentDB-Node\function.json
@@ -184,10 +202,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-CSharp", "Queu
 		sample\QueueTrigger-CSharp\run.csx = sample\QueueTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-FSharp", "QueueTrigger-FSharp", "{C11EBC32-877C-4EBA-85B2-14720555BB72}"
+	ProjectSection(SolutionItems) = preProject
+		sample\QueueTrigger-FSharp\function.json = sample\QueueTrigger-FSharp\function.json
+		sample\QueueTrigger-FSharp\run.fsx = sample\QueueTrigger-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-CSharp", "NotificationHub-CSharp", "{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7}"
 	ProjectSection(SolutionItems) = preProject
 		sample\NotificationHub-CSharp\function.json = sample\NotificationHub-CSharp\function.json
 		sample\NotificationHub-CSharp\run.csx = sample\NotificationHub-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-FSharp", "NotificationHub-FSharp", "{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC8}"
+	ProjectSection(SolutionItems) = preProject
+		sample\NotificationHub-FSharp\function.json = sample\NotificationHub-FSharp\function.json
+		sample\NotificationHub-FSharp\run.fsx = sample\NotificationHub-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-Node", "NotificationHub-Node", "{ACEE40C6-DA72-422E-99B6-2FA3824733CE}"
@@ -202,6 +232,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp", "W
 		sample\WebHook-Generic-CSharp\run.csx = sample\WebHook-Generic-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-FSharp", "WebHook-Generic-FSharp", "{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7F}"
+	ProjectSection(SolutionItems) = preProject
+		sample\WebHook-Generic-FSharp\function.json = sample\WebHook-Generic-FSharp\function.json
+		sample\WebHook-Generic-FSharp\run.fsx = sample\WebHook-Generic-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "HttpTrigger-Disabled", "{97B9DB7D-8014-46A0-9E51-6C02A99E4D38}"
 	ProjectSection(SolutionItems) = preProject
 		sample\HttpTrigger-Disabled\function.json = sample\HttpTrigger-Disabled\function.json
@@ -212,6 +248,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-CSharp", 
 	ProjectSection(SolutionItems) = preProject
 		sample\ApiHubFileTrigger-CSharp\function.json = sample\ApiHubFileTrigger-CSharp\function.json
 		sample\ApiHubFileTrigger-CSharp\run.csx = sample\ApiHubFileTrigger-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-FSharp", "ApiHubFileTrigger-FSharp", "{A308340E-16AC-47DA-9402-A279F681D5F4}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ApiHubFileTrigger-FSharp\function.json = sample\ApiHubFileTrigger-FSharp\function.json
+		sample\ApiHubFileTrigger-FSharp\run.fsx = sample\ApiHubFileTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-Batch", "ApiHubFileTrigger-Batch", "{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB}"
@@ -232,10 +274,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-CShar
 		sample\HttpTriggerWithObject-CSharp\run.csx = sample\HttpTriggerWithObject-CSharp\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-FSharp", "HttpTriggerWithObject-FSharp", "{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0F}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTriggerWithObject-FSharp\function.json = sample\HttpTriggerWithObject-FSharp\function.json
+		sample\HttpTriggerWithObject-FSharp\run.fsx = sample\HttpTriggerWithObject-FSharp\run.fsx
+	EndProjectSection
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MobileTable-CSharp", "MobileTable-CSharp", "{C963B824-334A-4905-9AC7-2F373E5BC9CA}"
 	ProjectSection(SolutionItems) = preProject
 		sample\MobileTable-CSharp\function.json = sample\MobileTable-CSharp\function.json
 		sample\MobileTable-CSharp\run.csx = sample\MobileTable-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MobileTable-FSharp", "MobileTable-FSharp", "{C963B824-334A-4905-9AC7-2F373E5BC9CB}"
+	ProjectSection(SolutionItems) = preProject
+		sample\MobileTable-FSharp\function.json = sample\MobileTable-FSharp\function.json
+		sample\MobileTable-FSharp\run.fsx = sample\MobileTable-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Azure-CSharp", "WebHook-Azure-CSharp", "{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0}"
@@ -289,7 +343,99 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Poco", "
 		sample\HttpTrigger-CSharp-Poco\run.csx = sample\HttpTrigger-CSharp-Poco\run.csx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Azure-FSharp", "WebHook-Azure-FSharp", "{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1}"
+	ProjectSection(SolutionItems) = preProject
+		sample\WebHook-Azure-FSharp\function.json = sample\WebHook-Azure-FSharp\function.json
+		sample\WebHook-Azure-FSharp\run.fsx = sample\WebHook-Azure-FSharp\run.fsx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Shared\Message.csx = sample\Shared\Message.csx
+		sample\Shared\Order.csx = sample\Shared\Order.csx
+		sample\Shared\test.js = sample\Shared\test.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManualTrigger-CSharp", "ManualTrigger-CSharp", "{EB3A602B-4B32-4742-B4A2-39445BD2FBE3}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ManualTrigger-CSharp\function.json = sample\ManualTrigger-CSharp\function.json
+		sample\ManualTrigger-CSharp\run.csx = sample\ManualTrigger-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Node-Promise", "HttpTrigger-Node-Promise", "{8E4F0ED5-75E0-4D0C-9469-05F738B1EC38}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Node-Promise\function.json = sample\HttpTrigger-Node-Promise\function.json
+		sample\HttpTrigger-Node-Promise\index.js = sample\HttpTrigger-Node-Promise\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusTopicTrigger", "ServiceBusTopicTrigger", "{EE27035A-633D-48AE-BB86-597BBDBA706E}"
+	ProjectSection(SolutionItems) = preProject
+		sample\ServiceBusTopicTrigger\function.json = sample\ServiceBusTopicTrigger\function.json
+		sample\ServiceBusTopicTrigger\index.js = sample\ServiceBusTopicTrigger\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute-Get", "HttpTrigger-CustomRoute-Get", "{02FF2DFF-D7FA-4823-9E91-56C93FB2D447}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CustomRoute-Get\function.json = sample\HttpTrigger-CustomRoute-Get\function.json
+		sample\HttpTrigger-CustomRoute-Get\index.js = sample\HttpTrigger-CustomRoute-Get\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-CustomRoute", "HttpTrigger-CSharp-CustomRoute", "{5957100B-2FAA-4D67-8CB3-C30D30FD92F8}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CSharp-CustomRoute\function.json = sample\HttpTrigger-CSharp-CustomRoute\function.json
+		sample\HttpTrigger-CSharp-CustomRoute\run.csx = sample\HttpTrigger-CSharp-CustomRoute\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CustomRoute-Post", "HttpTrigger-CustomRoute-Post", "{ADE3C399-6996-4677-89A8-60EDA27BF9C2}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CustomRoute-Post\function.json = sample\HttpTrigger-CustomRoute-Post\function.json
+		sample\HttpTrigger-CustomRoute-Post\index.js = sample\HttpTrigger-CustomRoute-Post\index.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bot-CSharp", "Bot-CSharp", "{EF36E33B-646C-4EF4-B0E2-517E14F6DC38}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Bot-CSharp\function.json = sample\Bot-CSharp\function.json
+		sample\Bot-CSharp\run.csx = sample\Bot-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bot", "Bot", "{98DBDE0D-364C-4865-9A4A-B17410D771F6}"
+	ProjectSection(SolutionItems) = preProject
+		sample\Bot\function.json = sample\Bot\function.json
+		sample\Bot\run.js = sample\Bot\run.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp-Dynamic", "WebHook-Generic-CSharp-Dynamic", "{2F6EF597-6586-4F59-BBB6-BA7146FEFD27}"
+	ProjectSection(SolutionItems) = preProject
+		sample\WebHook-Generic-CSharp-Dynamic\function.json = sample\WebHook-Generic-CSharp-Dynamic\function.json
+		sample\WebHook-Generic-CSharp-Dynamic\run.csx = sample\WebHook-Generic-CSharp-Dynamic\run.csx
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Integration", "test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj", "{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{67174433-2838-460C-9880-419476D02994}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A}"
+	ProjectSection(SolutionItems) = preProject
+		schemas\json\function.json = schemas\json\function.json
+		schemas\json\host.json = schemas\json\host.json
+		schemas\json\README.md = schemas\json\README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Extensibility.Tests", "test\WebJobs.Extensibility.Tests\WebJobs.Extensibility.Tests.csproj", "{9A8111D1-A7A1-4D60-98D1-705D1C849588}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerShared", "HttpTriggerShared", "{EB76E1C8-C823-4707-BD83-20304425EFC4}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTriggerShared\function.json = sample\HttpTriggerShared\function.json
+	EndProjectSection
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{38c609d3-b126-43b0-b9d8-6d62faee2abc}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -319,6 +465,14 @@ Global
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479B0873-CBDC-4AE9-85BA-DD6CF2DCA29D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -336,7 +490,6 @@ Global
 		{C9E1FA6F-B62F-4CC6-B4AB-B1E3D46EF23A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A36EED66-E934-4A43-864D-DF89A6A6ED0D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{2EC32A23-907C-40E1-A3E4-BDB425653873} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{644AFFC7-46C5-483A-812E-F5C9B93CBA86} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{1B6E0EA1-DB38-431C-864A-2A553DACB8DA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -347,23 +500,33 @@ Global
 		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{844FBB84-D62F-49D4-A28B-BB900DA3C32B} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{4AE9E7EF-C992-4B44-AFBF-3671BD1D6107} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{4AE9E7EF-C992-4B44-AFBF-3671BD1D6108} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{9B95236B-987B-4928-B2CB-561823B38FA1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{9B95236B-987B-4928-B2CB-561823B38FA2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{15BA01AE-580C-4FBB-A117-F3B112B4BD03} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B80C88CF-68EE-4400-A68D-216F1F85179C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{437EB182-8CB9-42BD-9019-E5F6E69D1DB4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{C11EBC32-877C-4EBA-85B2-14720555BB72} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC8} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{ACEE40C6-DA72-422E-99B6-2FA3824733CE} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{A308340E-16AC-47DA-9402-A279F681D5F4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C963B824-334A-4905-9AC7-2F373E5BC9CA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{C963B824-334A-4905-9AC7-2F373E5BC9CB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -373,5 +536,21 @@ Global
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EB3A602B-4B32-4742-B4A2-39445BD2FBE3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{8E4F0ED5-75E0-4D0C-9469-05F738B1EC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EE27035A-633D-48AE-BB86-597BBDBA706E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{02FF2DFF-D7FA-4823-9E91-56C93FB2D447} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{5957100B-2FAA-4D67-8CB3-C30D30FD92F8} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{ADE3C399-6996-4677-89A8-60EDA27BF9C2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{EF36E33B-646C-4EF4-B0E2-517E14F6DC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{98DBDE0D-364C-4865-9A4A-B17410D771F6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{2F6EF597-6586-4F59-BBB6-BA7146FEFD27} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A} = {67174433-2838-460C-9880-419476D02994}
+		{9A8111D1-A7A1-4D60-98D1-705D1C849588} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{EB76E1C8-C823-4707-BD83-20304425EFC4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 EndGlobal

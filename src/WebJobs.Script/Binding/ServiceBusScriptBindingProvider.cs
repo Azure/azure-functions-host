@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
@@ -11,17 +12,17 @@ using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    [CLSCompliant(false)]
-    public class ServiceBusScriptBindingProvider : ScriptBindingProvider
+    internal class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
-        private readonly EventHubConfiguration _eventHubConfiguration;
+        private readonly string _serviceBusAssemblyName;
+        private EventHubConfiguration _eventHubConfiguration;
 
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
-            _eventHubConfiguration = new EventHubConfiguration();
+            _serviceBusAssemblyName = typeof(BrokeredMessage).Assembly.GetName().Name;
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -55,11 +56,33 @@ namespace Microsoft.Azure.WebJobs.Script
                     serviceBusConfig.MessageOptions.MaxConcurrentCalls = (int)value;
                 }
 
+                if (configSection.TryGetValue("autoRenewTimeout", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    serviceBusConfig.MessageOptions.AutoRenewTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+                }
+
                 if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
                 {
                     serviceBusConfig.PrefetchCount = (int)value;
                 }
             }
+
+            EventProcessorOptions eventProcessorOptions = EventProcessorOptions.DefaultOptions;
+            eventProcessorOptions.MaxBatchSize = 1000;
+            configSection = (JObject)Metadata.GetValue("eventHub", StringComparison.OrdinalIgnoreCase);
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("maxBatchSize", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    eventProcessorOptions.MaxBatchSize = (int)value;
+                }
+
+                if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    eventProcessorOptions.PrefetchCount = (int)value;
+                }
+            }
+            _eventHubConfiguration = new EventHubConfiguration(eventProcessorOptions);
 
             Config.UseServiceBus(serviceBusConfig);
             Config.UseEventHub(_eventHubConfiguration);
@@ -69,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, "Microsoft.ServiceBus", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(assemblyName, _serviceBusAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
             {
                 assembly = typeof(BrokeredMessage).Assembly;
             }
@@ -79,14 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private class EventHubScriptBinding : ScriptBinding
         {
-            private readonly string _storageConnectionString;
             private readonly EventHubConfiguration _eventHubConfiguration;
             private readonly INameResolver _nameResolver;
 
             public EventHubScriptBinding(JobHostConfiguration hostConfig, EventHubConfiguration eventHubConfig, ScriptBindingContext context) : base(context)
             {
                 _eventHubConfiguration = eventHubConfig;
-                _storageConnectionString = hostConfig.StorageConnectionString;
                 _nameResolver = hostConfig.NameResolver;
             }
 
@@ -96,8 +117,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (Context.Access == FileAccess.Read)
                     {
-                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
+                        Type type = string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
                             ? typeof(byte[]) : typeof(string);
+
+                        if (string.Compare("many", Context.Cardinality, StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            // arrays are supported for both trigger input as well
+                            // as output bindings
+                            type = type.MakeArrayType();
+                        }
+
+                        return type;
                     }
                     else
                     {
@@ -124,32 +154,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (Context.IsTrigger)
                 {
-                    attributes.Add(new EventHubTriggerAttribute(eventHubName));
-
-                    string eventProcessorHostName = Guid.NewGuid().ToString();
-                    string storageConnectionString = _storageConnectionString;
-
+                    var attribute = new EventHubTriggerAttribute(eventHubName);
                     string consumerGroup = Context.GetMetadataValue<string>("consumerGroup");
-                    if (consumerGroup == null)
+                    if (consumerGroup != null)
                     {
-                        consumerGroup = Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName;
+                        consumerGroup = _nameResolver.ResolveWholeString(consumerGroup);
+                        attribute.ConsumerGroup = consumerGroup;
                     }
-
-                    var eventProcessorHost = new Microsoft.ServiceBus.Messaging.EventProcessorHost(
-                         eventProcessorHostName,
-                         eventHubName,
-                         consumerGroup,
-                         connectionString,
-                         storageConnectionString);
-
-                    _eventHubConfiguration.AddEventProcessorHost(eventHubName, eventProcessorHost);
+                    attributes.Add(attribute);
+                    _eventHubConfiguration.AddReceiver(eventHubName, connectionString);
                 }
                 else
                 {
                     attributes.Add(new EventHubAttribute(eventHubName));
 
-                    var client = Microsoft.ServiceBus.Messaging.EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
-                    _eventHubConfiguration.AddEventHubClient(eventHubName, client);
+                    _eventHubConfiguration.AddSender(eventHubName, connectionString);
                 }
 
                 return attributes;

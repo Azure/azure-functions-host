@@ -1,0 +1,16 @@
+﻿{
+    "excluded": true,
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "direction": "in",
+            "queueName": "samples-notificationHub-fsharp"
+        },
+        {
+            "type": "notificationHub",
+            "name": "$return",
+            "direction": "out"
+        }
+    ]
+}

@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>$NuGetPackageId$</id>
+    <title>Microsoft.Azure.WebJobs.Script.WebHost</title>
+    <version>$NuGetPackageVersion$</version>
+    <authors>Microsoft</authors>
+    <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
+    <summary>Microsoft.Azure.WebJobs.Script.WebHost is the web based host for the WebJobs script runtime.</summary>
+    <description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Script.WebHost. For more information, please visit http://github.com/Azure/azure-webjobs-sdk-script</description>
+    <language>en-US</language>
+    <projectUrl>https://azure.microsoft.com/en-us/documentation/articles/websites-webjobs-resources</projectUrl>
+    <licenseUrl>$PackageEULA$</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <tags>Microsoft Azure WebJobs Jobs Script WebHost</tags>
+    <dependencies>
+      <dependency id="Microsoft.Azure.WebJobs.Script" version="[$WebJobsPackageVersion$]" />
+    </dependencies>
+  </metadata>
+</package>

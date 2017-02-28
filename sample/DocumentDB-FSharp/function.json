@@ -1,0 +1,19 @@
+﻿{
+    "excluded": true,
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "direction": "in",
+            "queueName": "samples-documentdb-fsharp"
+        },
+        {
+            "type": "documentdb",
+            "direction": "out",
+            "name": "$return",
+            "databaseName": "ItemDb",
+            "collectionName": "ItemCollection",
+            "createIfNotExists": false
+        }
+    ]
+}

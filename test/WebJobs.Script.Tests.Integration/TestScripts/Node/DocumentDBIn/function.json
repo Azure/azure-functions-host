@@ -1,0 +1,26 @@
+﻿{
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "queueName": "documentdb-input-node",
+            "direction": "in"
+        },
+        {
+            "type": "documentDB",
+            "name": "itemIn",
+            "direction": "in",
+            "databaseName": "ItemDb",
+            "collectionName": "ItemCollection",
+            "id": "{documentId}"
+        },
+        {
+            "type": "documentDB",
+            "name": "itemOut",
+            "direction": "out",
+            "databaseName": "ItemDb",
+            "collectionName": "ItemCollection",
+            "createIfNotExists": true
+        }
+    ]
+}

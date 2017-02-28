@@ -1,0 +1,17 @@
+{
+    "bindings": [
+        {
+            "type": "apiHubFileTrigger",
+            "name": "input",
+            "connection": "AzureWebJobsDropBox",
+            "direction": "in",
+            "path": "teste2e/test.txt"
+        },
+        {
+            "type": "blob",
+            "name": "$return",
+            "direction": "out",
+            "path": "test-output-fsharp/teste2e"
+        }
+    ]
+}

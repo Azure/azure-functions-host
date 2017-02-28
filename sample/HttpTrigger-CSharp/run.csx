@@ -1,21 +1,15 @@
-﻿using System;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Host;
+﻿using System.Net;
 
 public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
-    var queryParamms = req.GetQueryNameValuePairs()
+    var queryParams = req.GetQueryNameValuePairs()
         .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
 
-    log.Info(string.Format("C# HTTP trigger function processed a request. Name={0}", req.RequestUri));
+    log.Info(string.Format("C# HTTP trigger function processed a request. {0}", req.RequestUri));
 
     HttpResponseMessage res = null;
     string name;
-    if (queryParamms.TryGetValue("name", out name))
+    if (queryParams.TryGetValue("name", out name))
     {
         res = new HttpResponseMessage(HttpStatusCode.OK)
         {

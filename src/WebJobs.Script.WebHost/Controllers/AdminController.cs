@@ -3,11 +3,14 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -22,10 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class AdminController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
+        private readonly WebHostSettings _webHostSettings;
 
-        public AdminController(WebScriptHostManager scriptHostManager)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings)
         {
             _scriptHostManager = scriptHostManager;
+            _webHostSettings = webHostSettings;
         }
 
         [HttpPost]
@@ -43,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            ParameterDescriptor inputParameter = function.Parameters.First();
+            ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { inputParameter.Name, invocation.Input }
@@ -83,8 +88,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/status")]
         public HostStatus GetHostStatus()
         {
-            HostStatus status = new HostStatus();
-            
+            HostStatus status = new HostStatus
+            {
+                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
+            };
+
             var lastError = _scriptHostManager.LastError;
             if (lastError != null)
             {
@@ -93,6 +101,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return status;
+        }
+
+        [HttpPost]
+        [Route("admin/host/debug")]
+        public HttpResponseMessage LaunchDebugger()
+        {
+            if (_webHostSettings.IsSelfHost)
+            {
+                // If debugger is already running, this will be a no-op returning true.
+                if (Debugger.Launch())
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+                else
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Conflict);
+                }
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotImplemented);
+        }
+
+        public override Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
+        {
+            // For all admin api requests, we'll update the ScriptHost debug timeout
+            // For now, we'll enable debug mode on ANY admin requests. Since the Portal interacts through
+            // the admin API this is sufficient for identifying when the Portal is connected.
+            _scriptHostManager.Instance?.NotifyDebug();
+
+            return base.ExecuteAsync(controllerContext, cancellationToken);
         }
     }
 }

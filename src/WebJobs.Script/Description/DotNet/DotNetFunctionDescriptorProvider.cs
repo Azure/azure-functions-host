@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -20,11 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ICompilationServiceFactory _compilationServiceFactory;
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-           : this(host, config, new DotNetCompilationServiceFactory())
+           : this(host, config, new DotNetCompilationServiceFactory(host.TraceWriter))
         {
         }
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, 
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
             ICompilationServiceFactory compilationServiceFactory)
             : base(host, config)
         {
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
-                bool addHttpRequestSystemParameter = false;
+                ParameterDescriptor descriptor = null;
                 foreach (var parameter in parameters)
                 {
                     // Is it the trigger parameter?
@@ -110,22 +111,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         ParameterDescriptor triggerParameter = CreateTriggerParameter(triggerMetadata, parameter.ParameterType);
                         descriptors.Add(triggerParameter);
-
-                        if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 && 
-                            parameter.ParameterType != typeof(HttpRequestMessage))
-                        {
-                            addHttpRequestSystemParameter = true;
-                        }
                     }
                     else
                     {
                         Type parameterType = parameter.ParameterType;
-                        if (parameterType.IsByRef)
+                        bool parameterIsByRef = parameterType.IsByRef;
+                        if (parameterIsByRef)
                         {
                             parameterType = parameterType.GetElementType();
                         }
 
-                        var descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
+                        descriptor = new ParameterDescriptor(parameter.Name, parameter.ParameterType);
                         var binding = bindings.FirstOrDefault(b => string.Compare(b.Metadata.Name, parameter.Name, StringComparison.Ordinal) == 0);
                         if (binding != null)
                         {
@@ -139,7 +135,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             }
                         }
 
-                        if (parameter.IsOut)
+                        // In the C# programming model, IsOut is set for out parameters
+                        // In the F# programming model, neither IsOut nor IsIn are set for byref parameters (which are used as out parameters).
+                        //   Justification for this cariation of the programming model is that declaring 'out' parameters is (deliberately)
+                        //   awkward in F#, they require opening System.Runtime.InteropServices and adding the [<Out>] attribute, and using 
+                        //   a byref parameter. In contrast declaring a byref parameter alone (neither labelled In nor Out) is simple enough.
+                        if (parameter.IsOut || (functionMetadata.ScriptType == ScriptType.FSharp && parameterIsByRef && !parameter.IsIn))
                         {
                             descriptor.Attributes |= ParameterAttributes.Out;
                         }
@@ -148,15 +149,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
 
-                // Add any additional common System parameters
-                // Add ExecutionContext to provide access to InvocationId, etc.
-                descriptors.Add(new ParameterDescriptor("context", typeof(ExecutionContext)));
-                
-                // If we have an HTTP trigger binding but we're not binding
-                // to the HttpRequestMessage, require it as a system parameter
-                if (addHttpRequestSystemParameter)
+                // Add any additional required System parameters (if they haven't already been defined by the user)
+                if (!descriptors.Any(p => p.Type == typeof(ExecutionContext)))
                 {
-                    descriptors.Add(new ParameterDescriptor(ScriptConstants.DefaultSystemTriggerParameterName, typeof(HttpRequestMessage)));
+                    // Add ExecutionContext to provide access to InvocationId, etc.
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
+                }
+
+                // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequestMessage,
+                // add it as a system parameter so it is accessible later in the pipeline.
+                if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 &&
+                    !descriptors.Any(p => p.Type == typeof(HttpRequestMessage)))
+                {
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequestMessage)));
+                }
+
+                if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))
+                {
+                    // If a return value binding has been specified, set up an output
+                    // binding to map it to. By convention, this is set up as the last
+                    // parameter.
+                    descriptors.Add(descriptor);
                 }
 
                 return descriptors;
@@ -176,6 +189,41 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // setup the descriptor with the default parameters
             methodAttributes.Clear();
             return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+        }
+
+        internal static bool TryCreateReturnValueParameterDescriptor(Type functionReturnType, IEnumerable<FunctionBinding> bindings, out ParameterDescriptor descriptor)
+        {
+            descriptor = null;
+
+            var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
+            if (returnBinding == null || returnBinding is IResultProcessingBinding)
+            {
+                return false;
+            }
+
+            if (typeof(Task).IsAssignableFrom(functionReturnType))
+            {
+                if (!(functionReturnType.IsGenericType && functionReturnType.GetGenericTypeDefinition() == typeof(Task<>)))
+                {
+                    throw new InvalidOperationException($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {functionReturnType.Name}.");
+                }
+                functionReturnType = functionReturnType.GetGenericArguments()[0];
+            }
+
+            var byRefType = functionReturnType.MakeByRefType();
+            descriptor = new ParameterDescriptor(ScriptConstants.SystemReturnParameterName, byRefType);
+            descriptor.Attributes |= ParameterAttributes.Out;
+
+            Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
+            if (customAttributes != null)
+            {
+                foreach (var customAttribute in customAttributes)
+                {
+                    descriptor.CustomAttributes.Add(customAttribute);
+                }
+            }
+
+            return true;
         }
     }
 }

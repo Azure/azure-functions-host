@@ -1,5 +1,4 @@
-﻿using System;
-public static void Run(string input, out string messageProperties)
+﻿public static string Run(string input)
 {
-    messageProperties = "{\"message\":\"Hello from C# ! \",\"location\":\"Redmond\"}";
+    return "{\"message\":\"Hello from C# ! \",\"location\":\"Redmond\"}";
 }

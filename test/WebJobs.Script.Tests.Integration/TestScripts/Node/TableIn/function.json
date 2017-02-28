@@ -1,0 +1,32 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "input",
+            "direction": "in"
+        },
+        {
+            "type": "table",
+            "name": "single",
+            "direction": "in",
+            "tableName": "test",
+            "partitionKey": "AAA",
+            "rowKey": "001"
+        },
+        {
+            "type": "table",
+            "name": "partition",
+            "direction": "in",
+            "tableName": "test",
+            "partitionKey": "BBB"
+        },
+        {
+            "type": "table",
+            "name": "query",
+            "direction": "in",
+            "tableName": "test",
+            "partitionKey": "AAA",
+            "filter": "(Region eq '{Region}') and (Status eq {Status})"
+        }
+    ]
+}

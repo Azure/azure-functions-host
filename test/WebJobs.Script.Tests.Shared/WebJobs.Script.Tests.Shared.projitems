@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>Microsoft.WebJobs.Script.Tests</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestInvoker.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestScopedEnvironmentVariable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestScopedSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestSecretManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestSecretManagerFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestTraceWriter.cs" />
+  </ItemGroup>
+</Project>

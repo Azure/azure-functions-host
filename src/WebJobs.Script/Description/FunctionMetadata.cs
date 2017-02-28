@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// Gets or sets a value indicating whether the function is disabled.
         /// <remarks>
         /// A disabled function is still compiled and loaded into the host, but it will not
-        /// be triggered automatically, and is not publically addressable (except via admin invoke requests).
+        /// be triggered automatically, and is not publicly addressable (except via admin invoke requests).
         /// </remarks>
         /// </summary>
         public bool IsDisabled { get; set; }
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsExcluded { get; set; }
 
-        public Collection<BindingMetadata> Bindings { get; private set; }
+        public Collection<BindingMetadata> Bindings { get; }
 
         public IEnumerable<BindingMetadata> InputBindings
         {
