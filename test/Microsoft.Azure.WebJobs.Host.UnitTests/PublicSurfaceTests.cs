@@ -108,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var expected = new[]
             {
                 "IAttributeInvokeDescriptor`1",
+                "BindingAttribute",
                 "AutoResolveAttribute",
                 "AppSettingAttribute",
                 "BinderExtensions",
@@ -166,6 +167,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingProviderContext",
                 "BindingTemplate",
                 "BindStepOrder",
+                "FluentBindingRule`1",
+                "IJobHostMetadataProvider",
+                "FluentConverterRules`2",
+                "IWebHookProvider",
                 "OpenType",
                 "FunctionBindingContext",
                 "IBinding",

@@ -19,6 +19,8 @@ namespace SampleHost
                 config.UseDevelopmentSettings();
             }
 
+            config.CreateMetadataProvider().DebugDumpGraph(Console.Out);
+
             var host = new JobHost(config);
             host.RunAndBlock();
         }

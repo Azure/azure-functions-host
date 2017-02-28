@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
+    [Binding]
     public class TableAttribute : Attribute, IConnectionProvider
     {
         private readonly string _tableName;

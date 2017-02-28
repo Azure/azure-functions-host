@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{BlobPath,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
+    [Binding]
     public sealed class BlobTriggerAttribute : Attribute, IConnectionProvider
     {
         private readonly string _blobPath;

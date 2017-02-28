@@ -369,25 +369,22 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             _defaultStorageString = context.Config.StorageConnectionString;
 
-            // get the services we need to construct our binding providers
-            INameResolver nameResolver = context.Config.NameResolver;
-            IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
-
-            IConverterManager cm = context.Config.GetService<IConverterManager>();
-            cm.AddConverter<string, EventData>(ConvertString2EventData);
-            cm.AddConverter<EventData, string>(ConvertEventData2String);
-            cm.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations
-            cm.AddConverter<EventData, byte[]>(ConvertEventData2Bytes); // direct, handles non-string representations
-
-            var bf = new BindingFactory(nameResolver, cm);
+            // get the services we need to construct our binding providers           
+            context.AddConverter<string, EventData>(ConvertString2EventData);
+            context.AddConverter<EventData, string>(ConvertEventData2String);
+            context.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations
+            context.AddConverter<EventData, byte[]>(ConvertEventData2Bytes); // direct, handles non-string representations
 
             // register our trigger binding provider
+            INameResolver nameResolver = context.Config.NameResolver;
+            IConverterManager cm = context.Config.GetService<IConverterManager>();
             var triggerBindingProvider = new EventHubTriggerAttributeBindingProvider(nameResolver, cm, this);
-            extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
+            context.AddBindingRule<EventHubTriggerAttribute>()
+                .BindToTrigger(triggerBindingProvider);
 
             // register our binding provider
-            var ruleOutput = bf.BindToCollector<EventHubAttribute, EventData>(BuildFromAttribute);
-            extensions.RegisterBindingRules<EventHubAttribute>(ruleOutput);
+            context.AddBindingRule<EventHubAttribute>()
+                .BindToCollector<EventData>(BuildFromAttribute);            
         }
 
         private IAsyncCollector<EventData> BuildFromAttribute(EventHubAttribute attribute)

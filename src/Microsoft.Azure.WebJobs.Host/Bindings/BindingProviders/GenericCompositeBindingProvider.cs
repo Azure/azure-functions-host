@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -11,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // Composite binder for a specific attribute. 
     // Ignore parameters that don't have the attribute - other binders will get them. 
     // If it does have the attribue, but none of the binders handle it, then throw an error. 
-    internal class GenericCompositeBindingProvider<TAttribute> : IBindingProvider
+    internal class GenericCompositeBindingProvider<TAttribute> : IBindingProvider, IRuleProvider
         where TAttribute : Attribute
     {
         private readonly IEnumerable<IBindingProvider> _providers;
@@ -66,6 +68,29 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 resourceName = resourceName.Substring(0, resourceName.Length - Suffix.Length);
             }
             throw new InvalidOperationException("Can't bind " + resourceName + " to type '" + context.Parameter.ParameterType + "'.");
+        }
+
+        public IEnumerable<Rule> GetRules()
+        {
+            return _providers.OfType<IRuleProvider>().SelectMany(rule => rule.GetRules());
+        }
+
+        public Type GetDefaultType(Attribute attribute, FileAccess access, Type requestedType)
+        {
+            if (!(attribute is TAttribute))
+            {
+                return null;
+            }
+
+            foreach (var provider in _providers.OfType<IRuleProvider>())
+            {
+                var type = provider.GetDefaultType(attribute, access, requestedType);
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+            return null;
         }
     }
 }

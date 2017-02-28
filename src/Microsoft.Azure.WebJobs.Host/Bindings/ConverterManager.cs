@@ -44,6 +44,29 @@ namespace Microsoft.Azure.WebJobs
             this._openConverters.Add(entry);
         }
 
+        // If somebody registered a converter from Src-->Dest, then both those types  can be used to 
+        // resolve assemblies. 
+        // The attribute type always points to the extension's assembly. 
+        // Whereas some of the Src,Dest types will point to the resource's "native sdk"
+        internal void AddAssemblies(Action<Type> funcAddType)
+        {
+            foreach (var func in _funcsWithAttr.Values)
+            {
+                var t = func.GetType();
+                if (t.IsGenericType)
+                {
+                    var dt = t.GetGenericTypeDefinition();
+                    if (dt == typeof(FuncConverter<,,>))
+                    {
+                        foreach (var genericArg in t.GetGenericArguments())
+                        {
+                            funcAddType(genericArg);
+                        }
+                    }
+                }
+            }
+        }
+
         private Func<Type, Type, Func<object, object>> TryGetOpenConverter(Type typeSource, Type typeDest, Type typeAttribute)
         {
             foreach (var entry in _openConverters)
@@ -68,6 +91,25 @@ namespace Microsoft.Azure.WebJobs
         private static string GetKey<TSrc, TDest, TAttribute>()
         {
             return typeof(TSrc).FullName + "|" + typeof(TDest).FullName + "|" + typeof(TAttribute).FullName;
+        }
+
+        // Decode the types from a FuncConverter entry 
+        private static Tuple<Type, Type, Type> DecodeFuncEntry(object func)
+        {
+            var t = func.GetType();
+            if (t.IsGenericType)
+            {
+                var dt = t.GetGenericTypeDefinition();
+                if (dt == typeof(FuncConverter<,,>))
+                {
+                    var typeSource = t.GetGenericArguments()[0];
+                    var typeAttribute = t.GetGenericArguments()[1];
+                    var typeDest = t.GetGenericArguments()[2];
+
+                    return Tuple.Create(typeSource, typeAttribute, typeDest);
+                }
+            }
+            return null;
         }
 
         internal static OpenType GetTypeValidator<T>()
@@ -140,6 +182,76 @@ namespace Microsoft.Azure.WebJobs
             }
 
             return null;
+        }
+
+        // Get list of possible destination types given a source. 
+        public OpenType[] GetPossibleDestinationTypesFromSource(Type typeAttribute, Type typeSource)
+        {
+            List<OpenType> typeDestinations = new List<OpenType>();
+
+            // Look at concrete types. 
+            foreach (var kv in _funcsWithAttr)
+            {
+                var types = DecodeFuncEntry(kv.Value);
+
+                if (types != null)
+                {
+                    var typeSource2 = types.Item1;
+                    var typeAttribute2 = types.Item2;
+                    var typeDest2 = types.Item3;
+
+                    if (typeAttribute2.IsAssignableFrom(typeAttribute))
+                    {
+                        if (typeSource == typeSource2)
+                        {
+                            typeDestinations.Add(new ExactMatch(typeDest2));
+                        }
+                    }
+                }
+            }
+                    
+            // Look at generic types.                 
+            foreach (var entry in this._openConverters)
+            {
+                if (entry.Source.IsMatch(typeSource))
+                {
+                    if (entry.Attribute.IsAssignableFrom(typeAttribute))
+                    {
+                        typeDestinations.Add(entry.Dest);
+                    }
+                }
+            }
+                        
+            return typeDestinations.ToArray();
+        }
+
+        // Get list of possible source types given a destination. 
+        public Type[] GetPossibleSourceTypesFromDestination(Type typeAttribute, Type typeDest)
+        {
+            var typeSources = new List<Type>();
+
+            // Look at concrete types. 
+            foreach (var kv in _funcsWithAttr)
+            {
+                var types = DecodeFuncEntry(kv.Value);
+
+                if (types != null)
+                {
+                    var typeSource2 = types.Item1;
+                    var typeAttribute2 = types.Item2;
+                    var typeDest2 = types.Item3;
+
+                    if (typeAttribute2.IsAssignableFrom(typeAttribute))
+                    {
+                        if (typeDest == typeDest2)
+                        {
+                            typeSources.Add(typeSource2);
+                        }
+                    }
+                }
+            }
+
+            return typeSources.ToArray();
         }
 
         public void AddConverter<TSrc, TDest, TAttribute>(
@@ -394,6 +506,12 @@ namespace Microsoft.Azure.WebJobs
 
                 return false;
             }
+
+            internal override string GetDisplayName()
+            {
+                var name = _outerType.GetGenericTypeDefinition().Name;
+                return name + "<" + _inner.GetDisplayName() + ">";
+            }
         }
 
         // Bind to any type
@@ -405,7 +523,7 @@ namespace Microsoft.Azure.WebJobs
             }
         }
                 
-        private class ExactMatch : OpenType
+        internal class ExactMatch : OpenType
         {
             private readonly Type _type;
             public ExactMatch(Type type)
@@ -415,6 +533,40 @@ namespace Microsoft.Azure.WebJobs
             public override bool IsMatch(Type type)
             {
                 return type == _type;
+            }
+
+            internal override string GetDisplayName()
+            {
+                return TypeToString(_type);
+            }
+            public static string TypeToString(Type t)
+            {
+                if (t.IsByRef)
+                {
+                    var element = t.GetElementType();
+                    return "out " + TypeToString(element);
+                }
+                if (t.IsGenericType)
+                {
+                    var def = t.GetGenericTypeDefinition();
+
+                    string name = def.Name + "<";
+
+                    int i = 0;
+                    foreach (var arg in t.GetGenericArguments())
+                    {
+                        if (i > 0)
+                        {
+                            name += ",";
+                        }
+
+                        name += TypeToString(arg);
+                        i++;
+                    }
+                    name += ">";
+                    return name;
+                }
+                return t.Name;
             }
         }
 
@@ -438,6 +590,11 @@ namespace Microsoft.Azure.WebJobs
                     return _inner.IsMatch(elementType);
                 }
                 return false;
+            }
+
+            internal override string GetDisplayName()
+            {
+                return _inner.GetDisplayName() + "[]";
             }
         }
     } // end class ConverterManager

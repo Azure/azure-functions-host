@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 throw new InvalidOperationException("Can't figure out which ctor to call.");
             }
-
+           
             _matchedCtor = ctorAndParams.ctor;
 
             // Get appropriate binding data resolver (appsetting, autoresolve, or originalValue) for each constructor parameter

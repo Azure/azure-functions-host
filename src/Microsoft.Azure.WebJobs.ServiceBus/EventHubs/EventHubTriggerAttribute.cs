@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -9,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// Setup an 'trigger' on a parameter to listen on events from an event hub. 
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
+    [Binding]
     public sealed class EventHubTriggerAttribute : Attribute
     {
         /// <summary>

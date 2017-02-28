@@ -115,6 +115,17 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public static void AddServices(this JobHostConfiguration config, params object[] services)
         {
+            // Set extensionRegistry first since other services may depend on it. 
+            foreach (var obj in services)
+            {
+                IExtensionRegistry extensionRegistry = obj as IExtensionRegistry;
+                if (extensionRegistry != null)
+                {
+                    config.AddService<IExtensionRegistry>(extensionRegistry);
+                    break;
+                }
+            }
+
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
 
             var types = new Type[] {
@@ -130,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 typeof(SingletonManager),
                 typeof(IHostIdProvider),
                 typeof(IQueueConfiguration),
+                typeof(IExtensionRegistry),
                 typeof(IFunctionIndexProvider) // set to unit test indexing. 
             };
 

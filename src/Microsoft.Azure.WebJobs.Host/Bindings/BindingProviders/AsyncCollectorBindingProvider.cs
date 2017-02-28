@@ -3,15 +3,19 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     // General rule for binding parameters to an AsyncCollector. 
     // Supports the various flavors like IAsyncCollector, ICollector, out T, out T[]. 
-    internal class AsyncCollectorBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider
+    internal class AsyncCollectorBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IRuleProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
@@ -135,6 +139,91 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
             public Mode Mode { get; set; }
             public Type ElementType { get; set; }
+        }
+
+        private static Type[] MakeArray(params Type[] types)
+        {
+            return types.Where(type => type != null).ToArray();
+        }
+
+        private static void AddRulesForType(Type type, List<Rule> rules)
+        {
+            var typeIAC = typeof(IAsyncCollector<>).MakeGenericType(type);
+
+            Type intermediateType = null;
+            if (type != typeof(TType))
+            {
+                // Use a converter 
+                intermediateType = typeof(IAsyncCollector<TType>);
+            }
+
+            rules.Add(
+                new Rule
+                {
+                    SourceAttribute = typeof(TAttribute),
+                    Converters = MakeArray(intermediateType),
+                    UserType = new ConverterManager.ExactMatch(typeIAC)
+                });
+
+            rules.Add(
+                  new Rule
+                  {
+                      SourceAttribute = typeof(TAttribute),
+                      Converters = MakeArray(intermediateType, typeIAC),                      
+                      UserType = new ConverterManager.ExactMatch(typeof(ICollector<>).MakeGenericType(type))
+                  });
+
+            rules.Add(
+                  new Rule
+                  {
+                      SourceAttribute = typeof(TAttribute),
+                      Converters = MakeArray(intermediateType, typeIAC),
+                      UserType = new ConverterManager.ExactMatch(type.MakeByRefType())
+                  });
+
+            rules.Add(
+                  new Rule
+                  {
+                      SourceAttribute = typeof(TAttribute),
+                      Converters = MakeArray(intermediateType, typeIAC),
+                      UserType = new ConverterManager.ExactMatch(type.MakeArrayType().MakeByRefType())
+                  });
+        }
+
+        public IEnumerable<Rule> GetRules()
+        {
+            var rules = new List<Rule>();
+            AddRulesForType(typeof(TType), rules);
+                        
+            var cm = (ConverterManager)_converterManager;
+            var types = cm.GetPossibleSourceTypesFromDestination(typeof(TAttribute), typeof(TType));
+                        
+            foreach (var type in types)
+            {
+                AddRulesForType(type, rules);
+            }
+
+            return rules;
+        }
+
+        public Type GetDefaultType(Attribute attribute, FileAccess access, Type requestedType)
+        {
+            if (access == FileAccess.Write)
+            {              
+                var cm = (ConverterManager)this._converterManager;
+                var types = cm.GetPossibleSourceTypesFromDestination(attribute.GetType(), typeof(TType));
+
+                // search in precedence 
+                foreach (var target in new Type[] { typeof(JObject), typeof(byte[]), typeof(string) })
+                {
+                    if (types.Contains(target))
+                    {
+                        return typeof(IAsyncCollector<>).MakeGenericType(target);
+                    }
+                }
+                return null;
+            }
+            return null;
         }
 
         // TType - specified in the rule. 

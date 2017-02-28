@@ -24,6 +24,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     {
         public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null, TraceWriter traceWriter = null)
         {
+            IStorageAccountProvider storageAccountProvider = GetStorageAccountProvider(account);
+
+            var config = TestHelpers.NewConfig(storageAccountProvider, nameResolver, extensionRegistry);
+            var services = config.CreateStaticServices();
+
+            ITriggerBindingProvider triggerBindingProvider = services.GetService<ITriggerBindingProvider>();
+            IBindingProvider bindingProvider = services.GetService<IBindingProvider>();
+            IJobActivator activator = services.GetService<IJobActivator>();
+            extensionRegistry = services.GetService<IExtensionRegistry>();
+
+            SingletonManager singletonManager = new SingletonManager();
+            TraceWriter logger = traceWriter ?? new TestTraceWriter(TraceLevel.Verbose);
+            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
+            IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
+            IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
+
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger);
+
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, singletonManager, logger);
+        }
+
+        private static IStorageAccountProvider GetStorageAccountProvider(CloudStorageAccount account)
+        {
             Mock<IServiceProvider> services = new Mock<IServiceProvider>(MockBehavior.Strict);
             StorageClientFactory clientFactory = new StorageClientFactory();
             services.Setup(p => p.GetService(typeof(StorageClientFactory))).Returns(clientFactory);
@@ -32,36 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 StorageAccount = account
             };
-            IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
-            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
-                new ContextAccessor<IMessageEnqueuedWatcher>();
-            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
-                new ContextAccessor<IBlobWrittenWatcher>();
-            ISharedContextProvider sharedContextProvider = new SharedContextProvider();
-            TraceWriter logger = traceWriter ?? new TestTraceWriter(TraceLevel.Verbose);
-            SingletonManager singletonManager = new SingletonManager();
-            IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
-            var blobsConfiguration = new JobHostBlobsConfiguration();
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5), blobsConfiguration,
-                exceptionHandler, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                sharedContextProvider, new DefaultExtensionRegistry(), singletonManager, logger);
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, null, storageAccountProvider,
-                extensionTypeLocator, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
-
-            IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
-            IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
-
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger);
-
-            if (extensionRegistry == null)
-            {
-                extensionRegistry = new DefaultExtensionRegistry();
-            }
-
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager(), logger);
+            return storageAccountProvider;
         }
     }
 }

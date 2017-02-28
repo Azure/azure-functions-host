@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -9,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// Setup an 'output' binding to an EventHub. This can be any output type compatible with an IAsyncCollector.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
+    [Binding]
     public sealed class EventHubAttribute : Attribute
     {
         /// <summary>

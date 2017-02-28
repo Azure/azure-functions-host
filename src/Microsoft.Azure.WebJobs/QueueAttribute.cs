@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{QueueName,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
+    [Binding]
     public class QueueAttribute : Attribute, IConnectionProvider
     {
         private readonly string _queueName;

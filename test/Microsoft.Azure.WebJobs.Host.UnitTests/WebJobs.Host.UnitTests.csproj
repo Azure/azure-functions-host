@@ -154,6 +154,8 @@
     <Compile Include="Blobs\UncompletedAsyncResult.cs" />
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
+    <Compile Include="ExtensionConfigContextTests.cs" />
+    <Compile Include="ToolingTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
     <Compile Include="AttributeClonerTests.cs" />
     <Compile Include="Common\BindingProviderFilterTests.cs" />

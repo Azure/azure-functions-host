@@ -18,10 +18,12 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Queues.Bindings;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 
@@ -81,8 +83,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             AzureStorageDeploymentValidator.Validate();
 
-            var converterManager = services.GetService<IConverterManager>();
-
             IExtensionTypeLocator extensionTypeLocator = services.GetService<IExtensionTypeLocator>();
             if (extensionTypeLocator == null)
             {
@@ -91,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor = new ContextAccessor<IMessageEnqueuedWatcher>();
+            services.AddService(messageEnqueuedWatcherAccessor);
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor = new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
 
@@ -99,10 +100,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             TraceWriter trace = new ConsoleTraceWriter(config.Tracing, consoleProvider.Out);
             services.AddService<TraceWriter>(trace);
 
+            // Add built-in extensions 
+            config.AddAttributesFromAssembly(typeof(TableAttribute).Assembly);
+
+            var exts = config.GetExtensions();
+            bool builtinsAdded = exts.GetExtensions<IExtensionConfigProvider>().OfType<TableExtension>().Any();
+            if (!builtinsAdded)
+            {
+                config.AddExtension(new TableExtension());
+                config.AddExtension(new QueueExtension());
+            }
+
             ExtensionConfigContext context = new ExtensionConfigContext
             {
                 Config = config,
-                Trace = trace
+                Trace = trace,
+                PerHostServices = services
             };
             InvokeExtensionConfigProviders(context);
 
@@ -120,20 +133,23 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (bindingProvider == null)
             {
-                bindingProvider = DefaultBindingProvider.Create(nameResolver, converterManager, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
+                bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, blobWrittenWatcherAccessor, extensions);
                 services.AddService<IBindingProvider>(bindingProvider);
             }
 
             return services;
         }
-
+     
         // Do the full runtime intitialization. This includes static initialization. 
         // This mainly means:
         // - indexing the functions 
         // - spinning up the listeners (so connecting to the services)
         private static async Task<JobHostContext> CreateJobHostContextAsync(this JobHostConfiguration config, JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
-            var services = config.CreateStaticServices();
+            // If we already initialized the services, get the previous initialization so that 
+            // we don't double-execute the extension Initialize() methods. 
+            var partialInit = config.TakeOwnershipOfPartialInitialization();
+            var services = partialInit ?? config.CreateStaticServices();
 
             FunctionExecutor functionExecutor = services.GetService<FunctionExecutor>();
             IFunctionIndexProvider functionIndexProvider = services.GetService<IFunctionIndexProvider>();
@@ -327,7 +343,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IEnumerable<IExtensionConfigProvider> configProviders = extensions.GetExtensions(typeof(IExtensionConfigProvider)).Cast<IExtensionConfigProvider>();
             foreach (IExtensionConfigProvider configProvider in configProviders)
             {
+                context.Current = configProvider;
                 configProvider.Initialize(context);
+                context.ApplyRules();
             }
         }
 
