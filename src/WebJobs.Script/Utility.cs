@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
@@ -20,6 +21,33 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+        public const string AzureWebsiteSku = "WEBSITE_SKU";
+        public const string DynamicSku = "Dynamic";
+
+        /// <summary>
+        /// Gets a value indicating whether the JobHost is running in a Dynamic
+        /// App Service WebApp.
+        /// </summary>
+        public static bool IsDynamic
+        {
+            get
+            {
+                string value = GetSettingFromConfigOrEnvironment(AzureWebsiteSku);
+                return string.Compare(value, DynamicSku, StringComparison.OrdinalIgnoreCase) == 0;
+            }
+        }
+
+        public static string GetSettingFromConfigOrEnvironment(string settingName)
+        {
+            string configValue = ConfigurationManager.AppSettings[settingName];
+            if (!string.IsNullOrEmpty(configValue))
+            {
+                // config values take precedence over environment values
+                return configValue;
+            }
+
+            return Environment.GetEnvironmentVariable(settingName) ?? configValue;
+        }
 
         /// <summary>
         /// Implements a configurable exponential backoff strategy.
