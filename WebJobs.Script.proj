@@ -121,7 +121,7 @@
     <Copy SourceFiles="@(StaticContent)" DestinationFiles="@(StaticContent->'$(PublishPath)\Binaries\WebJobs.Script.Host\azurefunctions\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Zip
       InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
-      OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.zip"
+      OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.$(SiteExtensionVersion).zip"
       OverwriteExistingFile="true"
 	/>
   </Target>
@@ -132,7 +132,7 @@
     </MSBuild>
     <Zip
       InputPath=".\src\WebJobs.Script.WebHost\Publish"
-      OutputFileName="$(PublishPath)\Packages\Functions.Private.zip"
+      OutputFileName="$(PublishPath)\Packages\Functions.Private.$(SiteExtensionVersion).zip"
       OverwriteExistingFile="true"/>
     
     <!--Create site extension package  -->
