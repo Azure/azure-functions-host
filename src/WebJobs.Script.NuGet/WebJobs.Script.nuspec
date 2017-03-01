@@ -19,7 +19,7 @@
       <dependency id="Microsoft.Azure.WebJobs.Extensions" version="2.0.0" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="2.0.0" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.Twilio" version="1.0.0" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.BotFramework" version="1.0.10-beta" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.BotFramework" version="1.0.11-beta" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta3" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.0.0" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.0.0" />
