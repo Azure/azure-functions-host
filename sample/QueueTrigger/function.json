@@ -1,16 +1,16 @@
 ﻿{
-    "bindings": [
-        {
-            "type": "queueTrigger",
-            "name": "workItem",
-            "direction": "in",
-            "queueName": "samples-workitems"
-        },
-        {
-            "type": "blob",
-            "name": "$return",
-            "direction": "out",
-            "path": "samples-workitems/{id}"
-        }
-    ]
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "name": "workItem",
+      "direction": "in",
+      "queueName": "samples-workitems"
+    },
+    {
+      "type": "blob",
+      "name": "$return",
+      "direction": "out",
+      "path": "samples-workitems/{id}"
+    }
+  ]
 }

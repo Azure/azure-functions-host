@@ -1,0 +1,357 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;PackageWebHost" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
+    <NuGetExe Condition=" '$(NuGetExe)' == ''">tools\NuGet.exe</NuGetExe>
+    <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
+    <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
+    <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
+    <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
+    <SiteExtensionVersion>1.0.$(BuildNumber)</SiteExtensionVersion>
+    <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
+    <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
+    <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
+    <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
+    <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Assembly items below MUST be kept in dependency order. -->
+    <Build Include="src\WebJobs.Script\WebJobs.Script.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.Host\WebJobs.Script.Host.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.NuGet\WebJobs.Script.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\WebJobs.Script.WebHost.NuGet\WebJobs.Script.WebHost.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+  </ItemGroup>
+
+  <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
+
+  <Target Name="DownloadNuGet">
+    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="3.3.0" />
+  </Target>
+
+  <Target Name="RestoreSkipStrongNames" DependsOnTargets="DownloadNuGet">
+    <Exec Command='"$(NuGetExe)" restore .nuget\packages.config -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
+  </Target>
+
+  <Target Name="CheckSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Error Text="Unit tests will not run correctly unless SkipStrongNames is Enabled. Current status: $(Status). Run the EnableSkipStrongNames target to fix this problem." Condition="'$(Status)' != 'Enabled'" />
+  </Target>
+
+  <Target Name="EnableSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <Exec Command='"$(SkipStrongNamesExe)" -e "$(SkipStrongNamesXml)"' />
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Message Text="SkipStrongNames: $(Status)" Importance="High" />
+  </Target>
+
+  <Target Name="DisableSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <Exec Command='"$(SkipStrongNamesExe)" -d "$(SkipStrongNamesXml)"' />
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Message Text="SkipStrongNames: $(Status)" Importance="High" />
+  </Target>
+
+  <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
+    <Message Text="Restoring NuGet packages..." Importance="High" />
+    <Exec Command='"$(NuGetExe)" restore WebJobs.Script.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
+  </Target>
+
+  <Target Name="GetBinplace">
+    <PropertyGroup>
+      <NestedBuildProperties Condition=" '$(SetConfiguration)' != '' or '$(SetPlatform)' != ''">$(SetConfiguration); $(SetPlatform)</NestedBuildProperties>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Binplace Include="tools\Binplace\%(Build.PublishType).proj">
+        <Properties>ProjectFile=%(FullPath); BinplaceOutputPath=$([System.IO.Path]::GetFullPath('%(PublishPath)')); Properties=$(NestedBuildProperties)</Properties>
+      </Binplace>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="UpdateAssemblyInfo" Condition="'$(BuildNumber)' != '0'">   
+    <PropertyGroup>
+      <CommonAssemblyInfoFile>$(MSBuildProjectDirectory)\src\Common\CommonAssemblyInfo.cs</CommonAssemblyInfoFile>
+    </PropertyGroup>
+    
+    <Message Text="Updating the AssemblyFileVersion to include the build number: $(BuildNumber)" />
+    
+    <ReplaceFileText 
+      FileName="$(CommonAssemblyInfoFile)"
+      MatchExpression="(?&lt;=\[assembly: AssemblyFileVersion\(&quot;\d+.\d+.)\d+(?=.\d+&quot;\)\])" 
+      ReplacementText="$(BuildNumber)" />         
+  </Target>
+  
+  <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace;UpdateAssemblyInfo">
+    <MSBuild Projects="@(Binplace)"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="PackageScriptHost" DependsOnTargets="Build">
+    <PropertyGroup>
+      <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
+    </PropertyGroup>
+    <ItemGroup>
+      <ScriptHostBinaries Include="$(ScriptHostOutput)\*.dll;$(ScriptHostOutput)\*.exe*;$(ScriptHostOutput)\*.optdata;$(ScriptHostOutput)\*.sigdata"/>
+      <EdgeJsFiles Include="$(ScriptHostOutput)\edge\**\*.*"/>
+      <StaticContent Include="$(ScriptHostOutput)\azurefunctions\**\*.*"/>
+    </ItemGroup>
+    <Copy SourceFiles="@(ScriptHostBinaries)" DestinationFolder="$(PublishPath)\Binaries\WebJobs.Script.Host" />
+    <Copy SourceFiles="@(EdgeJsFiles)" DestinationFiles="@(EdgeJsFiles->'$(PublishPath)\Binaries\WebJobs.Script.Host\edge\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(StaticContent)" DestinationFiles="@(StaticContent->'$(PublishPath)\Binaries\WebJobs.Script.Host\azurefunctions\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Zip
+      InputPath="$(PublishPath)\Binaries\WebJobs.Script.Host"
+      OutputFileName="$(PublishPath)\Packages\WebJobs.Script.Host.$(SiteExtensionVersion).zip"
+      OverwriteExistingFile="true"
+	/>
+  </Target>
+
+  <Target Name="PackageWebHost" DependsOnTargets="Build">
+    <MSBuild Projects="src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
+             Properties="DeployOnBuild=true; PublishProfile=FileSystem">
+    </MSBuild>
+    <Zip
+      InputPath=".\src\WebJobs.Script.WebHost\Publish"
+      OutputFileName="$(PublishPath)\Packages\Functions.Private.$(SiteExtensionVersion).zip"
+      OverwriteExistingFile="true"/>
+    
+    <!--Create site extension package  -->
+    <MakeDir Directories="@(SiteExtensionPath)"/>
+    
+    <ItemGroup>
+        <SiteExtensionSource Include=".\src\WebJobs.Script.WebHost\Publish\SiteExtensions\Functions\**\*.*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(SiteExtensionSource)" DestinationFiles="@(SiteExtensionSource->'$(SiteExtensionPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(ExtensionXml)" DestinationFolder="$(SiteExtensionBasePath)" />
+    
+    <Zip
+      InputPath="$(SiteExtensionBasePath)"
+      OutputFileName="$(PublishPath)\Packages\Functions.$(SiteExtensionVersion).zip"
+      OverwriteExistingFile="true"/>
+      
+    <RemoveDir Directories="$(SiteExtensionBasePath)" />
+  </Target>
+
+  <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
+
+  <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
+    <ItemGroup>
+      <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
+	  <IntegrationTestProjects Include="test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj"/>
+    </ItemGroup>
+
+    <MSBuild Projects="@(UnitTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
+    </MSBuild>
+    <MSBuild Projects="@(IntegrationTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="IntegrationTestAssemblies"/>
+    </MSBuild>
+  </Target>
+  
+  <Target Name="UnitTest" DependsOnTargets="TestBuild">
+    <xunit Assemblies="@(UnitTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
+  </Target>
+  
+  <Target Name="IntegrationTest" DependsOnTargets="TestBuild">
+    <xunit Assemblies="@(IntegrationTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
+  </Target>
+
+  <PropertyGroup Condition=" '$(APPVEYOR_API_URL)' != '' ">
+    <AppveyorModules>mocha-appveyor-reporter</AppveyorModules>
+    <AppveyorReporter>--reporter mocha-appveyor-reporter</AppveyorReporter>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildConfiguration>Debug</BuildConfiguration>
+    <BuildConfiguration Condition=" $(Configuration) != '' ">$(Configuration)</BuildConfiguration>
+  </PropertyGroup>
+
+  <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
+    <Exec Command="npm i mocha chai $(AppveyorModules)" />
+    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
+  </Target>
+
+  <Target Name="Clean" DependsOnTargets="GetBinplace">
+    <MSBuild Projects="@(Binplace)"
+             Targets="Clean"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
+
+  <Target Name="GetOfficialProjects" Returns="@(OfficialProjects)">
+    <ItemGroup>
+      <OfficialProjects Include="%(Build.FullPath)">
+        <PublishType>%(Build.PublishType)</PublishType>
+        <PublishPath>$([System.IO.Path]::GetFullPath('%(Build.PublishPath)'))</PublishPath>
+      </OfficialProjects>
+    </ItemGroup>
+  </Target>
+
+  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
+    <ParameterGroup>
+      <OutputFileName ParameterType="System.String" Required="true" />
+      <MinimumVersion ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.Net" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+                Version minimumRequiredVersion;
+                
+                if (!Version.TryParse(MinimumVersion, out minimumRequiredVersion))
+                {
+                    Log.LogError("MinimumVersion '{0}' is not a valid Version.", MinimumVersion);
+                }
+        
+                try
+                {
+                    OutputFileName = Path.GetFullPath(OutputFileName);
+                    
+                    if (File.Exists(OutputFileName))
+                    {
+                        // If NuGet.exe exists but is less than the minimum required version, delete it so that the
+                        // latest version will be downloaded.
+                        FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(OutputFileName);
+                        
+                        string toParse;
+                        
+                        if (versionInfo != null && versionInfo.ProductVersion != null)
+                        {
+                            toParse = versionInfo.ProductVersion;
+                        }
+                        else
+                        {
+                            toParse = null;
+                        }
+                        
+                        Version current;
+                        Version parsed;
+                        
+                        if (toParse != null && Version.TryParse(toParse, out parsed))
+                        {
+                            current = parsed;
+                        }
+                        else
+                        {
+                            // Treat a missing or invalid version like V0.0 (which will trigger a delete and download).
+                            current = new Version(0, 0);
+                        }
+                        
+                        if (current < minimumRequiredVersion)
+                        {
+                            File.Delete(OutputFileName);
+                        }
+                    }
+                    
+                    if (!File.Exists(OutputFileName))
+                    {
+                        Log.LogMessage("Downloading latest version of NuGet.exe...");
+                        WebClient webClient = new WebClient();
+                        webClient.DownloadFile("https://dist.nuget.org/win-x86-commandline/latest/nuget.exe", OutputFileName);
+                    }
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Log.LogErrorFromException(ex);
+                    return false;
+                }
+            ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <InputPath ParameterType="System.String" Required="true" />
+      <OutputFileName ParameterType="System.String" Required="true" />
+      <OverwriteExistingFile ParameterType="System.Boolean" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System.IO.Compression" />
+      <Using Namespace="System.IO.Compression" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[        
+        const int BufferSize = 64 * 1024;
+ 
+        var buffer = new byte[BufferSize];
+        var fileMode = OverwriteExistingFile ? FileMode.Create : FileMode.CreateNew;
+ 
+        string[] InputFileNames = Directory.GetFiles(InputPath, "*.*", SearchOption.AllDirectories);
+
+		using (var outputFileStream = new FileStream(OutputFileName, fileMode))
+		{
+			using (var archive = new ZipArchive(outputFileStream, ZipArchiveMode.Create))
+			{
+				foreach (var inputFileName in InputFileNames)
+				{
+					string relativeFileName = inputFileName.Substring(InputPath.Length + 1);
+					var archiveEntry = archive.CreateEntry(relativeFileName);
+
+					using (var fs = new FileStream(inputFileName, FileMode.Open))
+					{
+						using (var zipStream = archiveEntry.Open())
+						{
+							int bytesRead = -1;
+							while ((bytesRead = fs.Read(buffer, 0, BufferSize)) > 0)
+							{
+								zipStream.Write(buffer, 0, bytesRead);
+							}
+						}
+					}
+				}
+			}
+		}   
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  
+  <UsingTask TaskName="ReplaceFileText" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+  <ParameterGroup>
+    <FileName ParameterType="System.String" Required="true" />    
+    <MatchExpression ParameterType="System.String" Required="true" />
+    <ReplacementText ParameterType="System.String" Required="true" />
+  </ParameterGroup>
+  <Task>
+    <Reference Include="System.Core" />
+    <Using Namespace="System" />
+    <Using Namespace="System.IO" />
+    <Using Namespace="System.Text.RegularExpressions" />
+    <Code Type="Fragment" Language="cs">
+      <![CDATA[
+            File.WriteAllText(FileName, Regex.Replace(File.ReadAllText(FileName), MatchExpression, ReplacementText));
+          ]]>
+    </Code>
+  </Task>
+</UsingTask>
+
+</Project>

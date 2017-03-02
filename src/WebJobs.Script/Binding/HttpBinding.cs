@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 try
                 {
-                    // attempt to read the content as JObject/JArray
                     content = JsonConvert.DeserializeObject(stringContent);
                 }
                 catch (JsonException)
@@ -115,24 +114,23 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // the response content becomes the specified body value
                 content = bodyValue;
+            }
+            IDictionary<string, object> headersValue = null;
+            if (responseObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
+            {
+               headers = headersValue;
+            }
 
-                IDictionary<string, object> headersValue = null;
-                if (responseObject.TryGetValue<IDictionary<string, object>>("headers", out headersValue, ignoreCase: true))
-                {
-                    headers = headersValue;
-                }
+            HttpStatusCode responseStatusCode;
+            if (TryParseStatusCode(responseObject, out responseStatusCode))
+            {
+                statusCode = responseStatusCode;
+            }
 
-                HttpStatusCode responseStatusCode;
-                if (TryParseStatusCode(responseObject, out responseStatusCode))
-                {
-                    statusCode = responseStatusCode;
-                }
-
-                bool isRawValue;
-                if (responseObject.TryGetValue<bool>("isRaw", out isRawValue, ignoreCase: true))
-                {
-                    isRawResponse = isRawValue;
-                }
+            bool isRawValue;
+            if (responseObject.TryGetValue<bool>("isRaw", out isRawValue, ignoreCase: true))
+            {
+                isRawResponse = isRawValue;
             }
         }
 
