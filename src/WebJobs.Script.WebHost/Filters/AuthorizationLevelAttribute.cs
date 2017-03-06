@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 
@@ -29,6 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             if (actionContext == null)
             {
                 throw new ArgumentNullException("actionContext");
+            }
+
+            if (SkipAuthorization(actionContext))
+            {
+                return;
             }
 
             ISecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
@@ -98,6 +104,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             }
 
             return AuthorizationLevel.Anonymous;
+        }
+
+        internal static bool SkipAuthorization(HttpActionContext actionContext)
+        {
+            return actionContext.ActionDescriptor.GetCustomAttributes<AllowAnonymousAttribute>().Count > 0
+                || actionContext.ControllerContext.ControllerDescriptor.GetCustomAttributes<AllowAnonymousAttribute>().Count > 0;
         }
     }
 }

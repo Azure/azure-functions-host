@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -35,11 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public AuthorizationLevelAttributeTests()
         {
-            _actionContext = new HttpActionContext();
-            HttpControllerContext controllerContext = new HttpControllerContext();
-            _actionContext.ControllerContext = controllerContext;
-            HttpConfiguration httpConfig = new HttpConfiguration();
-            controllerContext.Configuration = httpConfig;
+            var httpConfig = new HttpConfiguration();
+            _actionContext = CreateActionContext(typeof(TestController).GetMethod("Get"), httpConfig);
+
             Mock<IDependencyResolver> mockDependencyResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             httpConfig.DependencyResolver = mockDependencyResolver.Object;
             _mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
@@ -300,6 +299,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
+        }
+
+        [Fact]
+        public static void SkipAuthorization_AllowAnonymous_MethodLevel_ReturnsTrue()
+        {
+            var actionContext = CreateActionContext(typeof(TestController).GetMethod("GetAnonymous"));
+            Assert.True(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
+        }
+
+        [Fact]
+        public static void SkipAuthorization_AllowAnonymous_ClassLevel_ReturnsTrue()
+        {
+            var actionContext = CreateActionContext(typeof(AnonymousTestController).GetMethod("Get"));
+            Assert.True(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
+
+            actionContext = CreateActionContext(typeof(AnonymousTestController).GetMethod("GetAnonymous"));
+            Assert.True(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
+        }
+
+        [Fact]
+        public static void SkipAuthorization_AllowAnonymousNotSpecified_ReturnsFalse()
+        {
+            var actionContext = CreateActionContext(typeof(TestController).GetMethod("Get"));
+            Assert.False(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
+        }
+
+        private static HttpActionContext CreateActionContext(MethodInfo action, HttpConfiguration config = null)
+        {
+            config = config ?? new HttpConfiguration();
+            var actionContext = new HttpActionContext();
+            var controllerDescriptor = new HttpControllerDescriptor(config, action.ReflectedType.Name, action.ReflectedType);
+            var controllerContext = new HttpControllerContext();
+            controllerContext.ControllerDescriptor = controllerDescriptor;
+            actionContext.ControllerContext = controllerContext;
+            var actionDescriptor = new ReflectedHttpActionDescriptor(controllerDescriptor, action);
+            actionContext.ActionDescriptor = actionDescriptor;
+            controllerContext.Configuration = config;
+
+            return actionContext;
+        }
+
+        public class TestController : ApiController
+        {
+            public void Get()
+            {
+            }
+
+            [AllowAnonymous]
+            public void GetAnonymous()
+            {
+            }
+        }
+
+        [AllowAnonymous]
+        public class AnonymousTestController : ApiController
+        {
+            public void Get()
+            {
+            }
+
+            [AllowAnonymous]
+            public void GetAnonymous()
+            {
+            }
         }
     }
 }

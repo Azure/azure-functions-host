@@ -104,6 +104,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpPost]
+        [Route("admin/host/ping")]
+        [AllowAnonymous]
+        public HttpResponseMessage Ping()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+
+        [HttpPost]
         [Route("admin/host/debug")]
         public HttpResponseMessage LaunchDebugger()
         {
