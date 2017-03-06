@@ -45,6 +45,10 @@ module.exports = function (context, req) {
             context.bindings.res = { status: 202, body: "test" };
             break;
 
+        case "nullbody":
+            context.res = { status: 204, body: null, headers: { 'content-type': 'application/json' } };
+            break;
+
         default:
             context.res = {
                 status: 400
