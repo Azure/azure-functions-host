@@ -289,21 +289,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // content header collection
                     case "content-type":
                         MediaTypeHeaderValue mediaType = null;
-                        if (MediaTypeHeaderValue.TryParse(header.Value.ToString(), out mediaType))
+                        if (response.Content != null && MediaTypeHeaderValue.TryParse(header.Value.ToString(), out mediaType))
                         {
                             response.Content.Headers.ContentType = mediaType;
                         }
                         break;
                     case "content-length":
                         long contentLength;
-                        if (long.TryParse(header.Value.ToString(), out contentLength))
+                        if (response.Content != null && long.TryParse(header.Value.ToString(), out contentLength))
                         {
                             response.Content.Headers.ContentLength = contentLength;
                         }
                         break;
                     case "content-disposition":
                         ContentDispositionHeaderValue contentDisposition = null;
-                        if (ContentDispositionHeaderValue.TryParse(header.Value.ToString(), out contentDisposition))
+                        if (response.Content != null && ContentDispositionHeaderValue.TryParse(header.Value.ToString(), out contentDisposition))
                         {
                             response.Content.Headers.ContentDisposition = contentDisposition;
                         }
@@ -311,35 +311,41 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     case "content-encoding":
                     case "content-language":
                     case "content-range":
-                        response.Content.Headers.Add(header.Key, header.Value.ToString());
+                        if (response.Content != null)
+                        {
+                            response.Content.Headers.Add(header.Key, header.Value.ToString());
+                        }
                         break;
                     case "content-location":
                         Uri uri;
-                        if (Uri.TryCreate(header.Value.ToString(), UriKind.Absolute, out uri))
+                        if (response.Content != null && Uri.TryCreate(header.Value.ToString(), UriKind.Absolute, out uri))
                         {
                             response.Content.Headers.ContentLocation = uri;
                         }
                         break;
                     case "content-md5":
                         byte[] value;
-                        if (header.Value is string)
+                        if (response.Content != null)
                         {
-                            value = Convert.FromBase64String((string)header.Value);
+                            if (header.Value is string)
+                            {
+                                value = Convert.FromBase64String((string)header.Value);
+                            }
+                            else
+                            {
+                                value = header.Value as byte[];
+                            }
+                            response.Content.Headers.ContentMD5 = value;
                         }
-                        else
-                        {
-                            value = header.Value as byte[];
-                        }
-                        response.Content.Headers.ContentMD5 = value;
                         break;
                     case "expires":
-                        if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
+                        if (response.Content != null && DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
                         {
                             response.Content.Headers.Expires = dateTimeOffset;
                         }
                         break;
                     case "last-modified":
-                        if (DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
+                        if (response.Content != null && DateTimeOffset.TryParse(header.Value.ToString(), out dateTimeOffset))
                         {
                             response.Content.Headers.LastModified = dateTimeOffset;
                         }

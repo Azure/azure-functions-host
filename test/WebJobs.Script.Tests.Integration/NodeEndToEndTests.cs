@@ -606,6 +606,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_Scenarios_NullBody()
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger-scenarios")),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(new HttpConfiguration());
+            request.Headers.Add("scenario", "nullbody");
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.Null(response.Content);
+        }
+
+        [Fact]
         public async Task HttpTrigger_Scenarios_ScalarReturn_InBody()
         {
             HttpRequestMessage request = new HttpRequestMessage
