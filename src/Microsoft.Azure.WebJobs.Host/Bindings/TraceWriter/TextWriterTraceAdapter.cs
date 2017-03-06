@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly StringBuilder _text;
         private readonly TraceWriter _traceWriter;
 
-        public TextWriterTraceAdapter(TraceWriter traceWriter)
+        private TextWriterTraceAdapter(TraceWriter traceWriter)
             : base(CultureInfo.InvariantCulture)
         {
             _text = new StringBuilder();
@@ -27,6 +27,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             get { return Encoding.Default; }
         }
+        public static TextWriter Synchronized(TraceWriter traceWriter)
+        {
+            return TextWriter.Synchronized(new TextWriterTraceAdapter(traceWriter));
+        }
 
         public override void Write(char value)
         {
@@ -34,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _text.Append(value);
 
             int len = _text.Length;
-            if (len > 2 && _text[len - 2] == '\r' && _text[len - 1] == '\n')
+            if (len >= 2 && _text[len - 2] == '\r' && _text[len - 1] == '\n')
             {
                 // when we see a newline, flush the output
                 // flushing often is very important - we need to ensure that output

@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             else
             {
                 // bind to an adapter
-                tracer = new TextWriterTraceAdapter(context.Trace);
+                tracer = TextWriterTraceAdapter.Synchronized(context.Trace);
             }
 
             return BindAsync(tracer, context.ValueContext);
