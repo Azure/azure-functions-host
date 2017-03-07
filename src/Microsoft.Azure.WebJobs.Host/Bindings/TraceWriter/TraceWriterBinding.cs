@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             public Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
-                TextWriterTraceAdapter traceAdapter = value as TextWriterTraceAdapter;
+                TextWriter traceAdapter = value as TextWriter;
                 if (traceAdapter != null)
                 {
                     traceAdapter.Flush();
