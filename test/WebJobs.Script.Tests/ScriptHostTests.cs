@@ -934,6 +934,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("The specified route conflicts with one or more built in routes.", functionError);
         }
 
+        [Fact]
+        public void IsFunction_ReturnsExpectedResult()
+        {
+            Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
+            var config = new ScriptHostConfiguration();
+
+            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, config, null });
+
+            var functions = new Collection<FunctionDescriptor>();
+            var functionErrors = new Dictionary<string, Collection<string>>();
+            mockHost.Setup(p => p.Functions).Returns(functions);
+            mockHost.Setup(p => p.FunctionErrors).Returns(functionErrors);
+
+            var parameters = new Collection<ParameterDescriptor>();
+            parameters.Add(new ParameterDescriptor("param1", typeof(string)));
+            var metadata = new FunctionMetadata();
+            var invoker = new TestInvoker();
+            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters);
+            functions.Add(function);
+
+            var errors = new Collection<string>();
+            errors.Add("A really really bad error!");
+            functionErrors.Add("ErrorFunction", errors);
+
+            var host = mockHost.Object;
+            Assert.True(host.IsFunction("TestFunction"));
+            Assert.True(host.IsFunction("ErrorFunction"));
+            Assert.False(host.IsFunction("DoesNotExist"));
+            Assert.False(host.IsFunction(""));
+            Assert.False(host.IsFunction(null));
+        }
+
         public class AssemblyMock : Assembly
         {
             public override object[] GetCustomAttributes(Type attributeType, bool inherit)

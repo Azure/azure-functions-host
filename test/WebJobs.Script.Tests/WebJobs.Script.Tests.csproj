@@ -446,6 +446,7 @@
     <Compile Include="Binding\SendGridScriptBindingProviderTests.cs" />
     <Compile Include="Binding\TwilioScriptBindingProviderTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
+    <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
