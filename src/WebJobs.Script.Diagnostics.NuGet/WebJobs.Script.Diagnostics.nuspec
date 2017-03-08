@@ -13,8 +13,5 @@
     <licenseUrl>$PackageEULA$</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs Script WebHost</tags>
-    <dependencies>
-      <dependency id="Microsoft.Azure.WebJobs.Script" version="[$WebJobsPackageVersion$]" />
-    </dependencies>
   </metadata>
 </package>

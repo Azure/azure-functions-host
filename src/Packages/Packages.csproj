@@ -49,11 +49,11 @@
     <None Include="..\..\tools\NuGetProj.settings.targets">
       <Link>NuGetProj.settings.targets</Link>
     </None>
-    <None Include="..\WebJobs.Script.Diagnostics.NuGet\WebJobs.Script.WebHost.nuproj">
-      <Link>WebJobs.Script.Diagnostics\WebJobs.Script.WebHost.nuproj</Link>
+    <None Include="..\WebJobs.Script.Diagnostics.NuGet\WebJobs.Script.Diagnostics.nuproj">
+      <Link>WebJobs.Script.Diagnostics\WebJobs.Script.Diagnostics.nuproj</Link>
     </None>
-    <None Include="..\WebJobs.Script.Diagnostics.NuGet\WebJobs.Script.WebHost.nuspec">
-      <Link>WebJobs.Script.Diagnostics\WebJobs.Script.WebHost.nuspec</Link>
+    <None Include="..\WebJobs.Script.Diagnostics.NuGet\WebJobs.Script.Diagnostics.nuspec">
+      <Link>WebJobs.Script.Diagnostics\WebJobs.Script.Diagnostics.nuspec</Link>
     </None>
     <None Include="app.config" />
     <None Include="tools\install.ps1" />
