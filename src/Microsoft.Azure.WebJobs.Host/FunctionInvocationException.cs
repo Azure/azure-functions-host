@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Host
@@ -10,10 +9,24 @@ namespace Microsoft.Azure.WebJobs.Host
     /// <summary>
     /// Exception thrown when a job function invocation fails.
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [Serializable]
-    public class FunctionInvocationException : FunctionException
+    public class FunctionInvocationException : Exception
     {
+        /// <inheritdoc/>
+        public FunctionInvocationException() : base()
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionInvocationException(string message) : base(message)
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionInvocationException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
@@ -27,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             InstanceId = Guid.Parse(info.GetString("InstanceId"));
+            MethodName = info.GetString("MethodName");
         }
 
         /// <summary>
@@ -37,9 +51,10 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <param name="methodName">The fully qualified method name.</param>
         /// <param name="innerException">The exception that is the cause of the current exception (or null).</param>
         public FunctionInvocationException(string message, Guid instanceId, string methodName, Exception innerException)
-            : base(methodName, message, innerException)
+            : base(message, innerException)
         {
             InstanceId = instanceId;
+            MethodName = methodName;
         }
 
         /// <summary>
@@ -47,6 +62,11 @@ namespace Microsoft.Azure.WebJobs.Host
         /// to the Dashboard logs.
         /// </summary>
         public Guid InstanceId { get; set; }
+
+        /// <summary>
+        /// Gets the fully qualified name of the function.
+        /// </summary>
+        public string MethodName { get; set; }
 
         /// <inheritdoc/>
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -57,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             info.AddValue("InstanceId", this.InstanceId);
+            info.AddValue("MethodName", this.MethodName);
 
             base.GetObjectData(info, context);
         }
