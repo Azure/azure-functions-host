@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // get the output value from the script
                 object value = null;
                 bool haveValue = bindings.TryGetValue(binding.Metadata.Name, out value);
-                if (!haveValue && string.Compare(binding.Metadata.Type, "http", StringComparison.OrdinalIgnoreCase) == 0)
+                if (value == null && string.Compare(binding.Metadata.Type, "http", StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     // http bindings support a special context.req/context.res programming
                     // model, so we must map that back to the actual binding name if a value

@@ -107,7 +107,7 @@ function getEntryPoint(f, context) {
             f = f[context._entryPoint];
             delete context._entryPoint;
         }
-        else if (Object.keys(f).length == 1) {
+        else if (Object.keys(f).length === 1) {
             // a single named function was exported
             var name = Object.keys(f)[0];
             f = f[name];
