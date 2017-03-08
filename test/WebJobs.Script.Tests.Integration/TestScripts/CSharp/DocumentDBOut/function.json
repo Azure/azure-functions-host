@@ -1,17 +1,25 @@
 ﻿{
-    "bindings": [
-        {
-            "type": "manualTrigger",
-            "name": "input",
-            "direction": "in"
-        },
-        {
-            "type": "documentDB",
-            "name": "$return",
-            "direction": "out",
-            "databaseName": "ItemDb",
-            "collectionName": "ItemCollection",
-            "createIfNotExists": true
-        }
-    ]
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "name": "input",
+      "direction": "in"
+    },
+    {
+      "type": "documentDB",
+      "name": "relatedItems",
+      "direction": "out",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "createIfNotExists": true
+    },
+    {
+      "type": "documentDB",
+      "name": "$return",
+      "direction": "out",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "createIfNotExists": true
+    }
+  ]
 }
