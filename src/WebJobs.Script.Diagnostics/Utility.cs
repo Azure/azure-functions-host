@@ -15,6 +15,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script;
 
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
