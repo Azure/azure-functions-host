@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/keys")]
         public async Task<IHttpActionResult> Get(string name)
         {
-            if (!_scriptHostManager.Instance.Functions.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)))
+            if (!_scriptHostManager.Instance.IsFunction(name))
             {
                 return NotFound();
             }
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private async Task<IHttpActionResult> AddOrUpdateFunctionSecretAsync(string keyName, string value, string functionName = null)
         {
             if (functionName != null &&
-                !_scriptHostManager.Instance.Functions.Any(f => string.Equals(f.Name, functionName, StringComparison.OrdinalIgnoreCase)))
+                !_scriptHostManager.Instance.IsFunction(functionName))
             {
                 return NotFound();
             }
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Invalid key name.");
             }
 
-            if ((functionName != null && !_scriptHostManager.Instance.Functions.Any(f => string.Equals(f.Name, functionName, StringComparison.OrdinalIgnoreCase))) ||
+            if ((functionName != null && !_scriptHostManager.Instance.IsFunction(functionName)) ||
                 !await _secretManager.DeleteSecretAsync(keyName, functionName))
             {
                 // Either the function or the key were not found
