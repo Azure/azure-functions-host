@@ -103,11 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return delay;
         }
 
-        public static IScriptSettingsManagner ScriptSettings;
 
-        public static string GetSubscriptionId()
+        public static string GetSubscriptionId(IScriptSettingsManagner settings)
         {
-            string ownerName = ScriptSettings.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
+            string ownerName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
             if (!string.IsNullOrEmpty(ownerName))
             {
                 int idx = ownerName.IndexOf('+');

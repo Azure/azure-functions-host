@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
 using WebJobs.Script;
@@ -19,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             _settingsManager = settingsManager;
             _appName = _settingsManager.AzureWebsiteDefaultSubdomain;
-            _subscriptionId = Utility.GetSubscriptionId();
+            _subscriptionId = Utility.GetSubscriptionId(settingsManager);
             _eventGenerator = eventGenerator;
         }
 
