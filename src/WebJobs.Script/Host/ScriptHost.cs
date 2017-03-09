@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -14,14 +17,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
-using Microsoft.Azure.WebJobs.Extensions.ApiHub;
-using Microsoft.Azure.WebJobs.Extensions.Bindings;
 using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
-using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
-using Microsoft.Azure.WebJobs.Extensions.MobileApps;
-using Microsoft.Azure.WebJobs.Extensions.NotificationHubs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -55,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
 
-        protected ScriptHost(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+        protected internal ScriptHost(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -99,9 +98,35 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
+<<<<<<< HEAD
         public virtual ICollection<IFunctionDescriptor> Functions { get; private set; }
+=======
+        /// <summary>
+        /// Gets the collection of all valid Functions. For functions that are in error
+        /// and were unable to load successfully, consult the <see cref="FunctionErrors"/> collection.
+        /// </summary>
+        public virtual Collection<FunctionDescriptor> Functions { get; private set; }
+>>>>>>> upstream/dev
 
-        public Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
+        public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
+
+        /// <summary>
+        /// Returns true if the specified name is the name of a known function,
+        /// regardless of whether the function is in error.
+        /// </summary>
+        /// <param name="name">The name of the function to check for.</param>
+        /// <returns></returns>
+        public bool IsFunction(string name)
+        {
+            if (!string.IsNullOrEmpty(name) &&
+                (Functions.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) ||
+                FunctionErrors.ContainsKey(name)))
+            {
+                return true;
+            };
+
+            return false;
+        }
 
         public virtual bool IsPrimary
         {

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private static readonly string DocumentDBAssemblyName = typeof(DocumentClient).Assembly.GetName().Name;
 
         /// <inheritdoc/>
-        public DocumentDBScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+        public DocumentDBScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
         }
@@ -74,6 +74,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     if (Context.Access == FileAccess.Read)
                     {
+                        if (Context.Cardinality == "many")
+                        {
+                            return typeof(JArray);
+                        }
+
                         return typeof(JObject);
                     }
                     else
@@ -105,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 attribute.Id = Context.GetMetadataValue<string>("id");
                 attribute.PartitionKey = Context.GetMetadataValue<string>("partitionKey");
                 attribute.CollectionThroughput = Context.GetMetadataValue<int>("collectionThroughput");
+                attribute.SqlQuery = Context.GetMetadataValue<string>("sqlQuery");
 
                 attributes.Add(attribute);
 
