@@ -174,16 +174,28 @@ namespace Microsoft.Azure.WebJobs.Script
             // file. However, we leave this here for assurances.
             LastDebugNotify = DateTime.UtcNow;
 
-            // create or update the debug sentinel file to trigger a
-            // debug timeout update across all instances
-            string debugSentinelFileName = Path.Combine(ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
-            if (!File.Exists(debugSentinelFileName))
+            try
             {
-                File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
+                // create or update the debug sentinel file to trigger a
+                // debug timeout update across all instances
+                string debugSentinelFileName = Path.Combine(ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+                if (!File.Exists(debugSentinelFileName))
+                {
+                    File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
+                }
+                else
+                {
+                    File.SetLastWriteTimeUtc(debugSentinelFileName, DateTime.UtcNow);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                File.SetLastWriteTimeUtc(debugSentinelFileName, DateTime.UtcNow);
+                // best effort
+                TraceWriter.Error("Unable to update the debug sentinel file.", ex);
+                if (ex.IsFatal())
+                {
+                    throw;
+                }
             }
         }
 

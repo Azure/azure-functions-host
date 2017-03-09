@@ -150,6 +150,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void NotifyDebug_HandlesExceptions()
+        {
+            ScriptHost host = _fixture.Host;
+            string debugSentinelFileName = Path.Combine(host.ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+
+            try
+            {
+                host.NotifyDebug();
+                Assert.True(host.InDebugMode);
+
+                var attributes = File.GetAttributes(debugSentinelFileName);
+                attributes |= FileAttributes.ReadOnly;
+                File.SetAttributes(debugSentinelFileName, attributes);
+                Assert.True(host.InDebugMode);
+
+                host.NotifyDebug();
+            }
+            finally
+            {
+                File.SetAttributes(debugSentinelFileName, FileAttributes.Normal);
+                File.Delete(debugSentinelFileName);
+            }
+        }
+
+        [Fact]
         public void Version_ReturnsAssemblyVersion()
         {
             Assembly assembly = typeof(ScriptHost).Assembly;
