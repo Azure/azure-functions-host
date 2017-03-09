@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host.Diagnostics;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -135,11 +136,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private class TestClass
         {
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public void Run()
             {
                 Run("Test1");
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public void Run(string arg)
             {
                 if (string.Equals(arg, "Test1"))
@@ -164,37 +167,44 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 }
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             private void Run1()
             {
                 throw new Exception("Sync crash!");
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task Run1Async()
             {
                 await Run2Async();
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task Run2Async()
             {
                 await CrashAsync();
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task CrashAsync()
             {
                 await Task.Yield();
                 throw new Exception("Crash!");
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task Run4Async(string arg)
             {
                 await Run5Async();
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task Run5Async()
             {
                 await CrashAsync();
             }
 
+            [MethodImpl(MethodImplOptions.NoInlining)]
             public async Task Run5Async(string arg)
             {
                 await CrashAsync();

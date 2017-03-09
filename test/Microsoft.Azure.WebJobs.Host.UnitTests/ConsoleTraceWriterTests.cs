@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             _mockTextWriter.Setup(p => p.WriteLine("Test Warning"));
             _mockTextWriter.Setup(p => p.WriteLine("Test Error"));
             _mockTextWriter.Setup(p => p.WriteLine("Test Error With Exception"));
-            _mockTextWriter.Setup(p => p.WriteLine("System.Exception: Kaboom!"));
+            _mockTextWriter.Setup(p => p.WriteLine("System.Exception : Kaboom!"));
             _mockTextWriter.Setup(p => p.WriteLine("Test Information With Source"));
             _mockTextWriter.Setup(p => p.WriteLine("Test Information No Source"));
 

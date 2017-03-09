@@ -79,7 +79,13 @@ namespace Microsoft.Azure.WebJobs.Host.Diagnostics
                 }
             }
 
-            return stackText + Environment.NewLine + GetAsyncStackTrace(exception);
+            string stackTrace = GetAsyncStackTrace(exception);
+            if (!string.IsNullOrEmpty(stackTrace))
+            {
+                stackText += Environment.NewLine + stackTrace;
+            }
+
+            return stackText;
         }
 
         private static string GetAsyncStackTrace(Exception exception)

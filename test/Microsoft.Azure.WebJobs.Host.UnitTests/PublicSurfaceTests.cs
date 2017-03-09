@@ -215,7 +215,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IResolutionPolicy",
                 "RecoverableException",
                 "FunctionException",
-                "FunctionListenerException"
+                "FunctionListenerException",
+                "ExceptionFormatter"
             };
 
             AssertPublicTypes(expected, assembly);
