@@ -28,10 +28,6 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Immutable;
-using System.Configuration;
-using System.IO.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -98,15 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
-<<<<<<< HEAD
-        public virtual ICollection<IFunctionDescriptor> Functions { get; private set; }
-=======
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
         /// and were unable to load successfully, consult the <see cref="FunctionErrors"/> collection.
         /// </summary>
-        public virtual Collection<FunctionDescriptor> Functions { get; private set; }
->>>>>>> upstream/dev
+        public virtual ICollection<IFunctionDescriptor> Functions { get; private set; }
 
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 

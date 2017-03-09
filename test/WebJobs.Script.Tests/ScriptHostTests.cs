@@ -943,7 +943,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, config, null });
 
-            var functions = new Collection<FunctionDescriptor>();
+            var functions = new Collection<IFunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();
             mockHost.Setup(p => p.Functions).Returns(functions);
             mockHost.Setup(p => p.FunctionErrors).Returns(functionErrors);
