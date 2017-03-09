@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                     {                        
                         // 0123456789
                         // abcdefghij
-                        str = "..." + str.Substring(str.Length - (FunctionInstanceLogEntry.MaxLogOutputLength - 3));
+                        str = str.Substring(0, FunctionInstanceLogEntry.MaxLogOutputLength - 1) + "…";
                     }
 
                     item.LogOutput = str;

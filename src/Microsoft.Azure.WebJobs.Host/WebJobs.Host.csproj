@@ -400,8 +400,8 @@
     <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
     <Compile Include="Config\ServiceProviderWrapper.cs" />
     <Compile Include="DefaultNameResolver.cs" />
+    <Compile Include="Diagnostics\ExceptionFormatter.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
-    <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="FuncConverter.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
     <Compile Include="Exceptions\RecoverableException.cs" />
@@ -780,7 +780,7 @@
     <Compile Include="Listeners\IListenerFactory.cs" />
     <Compile Include="Queues\Listeners\QueueListener.cs" />
     <Compile Include="Listeners\TimerListener.cs" />
-    <Compile Include="Executors\ExceptionExtensions.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Executors\IFunctionExecutor.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />
