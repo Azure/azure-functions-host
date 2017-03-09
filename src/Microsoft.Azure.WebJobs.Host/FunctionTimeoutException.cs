@@ -11,10 +11,24 @@ namespace Microsoft.Azure.WebJobs.Host
     /// <summary>
     /// Exception thrown when a job function invocation fails due to a timeout.
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [Serializable]
     public class FunctionTimeoutException : FunctionInvocationException
     {
+        /// <inheritdoc/>
+        public FunctionTimeoutException() : base()
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionTimeoutException(string message) : base(message)
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionTimeoutException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
         /// <inheritdoc/>
         protected FunctionTimeoutException(SerializationInfo info, StreamingContext context) : base(info, context)
         {

@@ -10,10 +10,24 @@ namespace Microsoft.Azure.WebJobs.Host
     /// <summary>
     /// Exception that is tied to a specific job method
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [Serializable]
     public class FunctionException : RecoverableException
     {
+        /// <inheritdoc/>
+        public FunctionException() : base()
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionException(string message) : base(message)
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>

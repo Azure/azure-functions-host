@@ -10,10 +10,24 @@ namespace Microsoft.Azure.WebJobs.Host
     /// <summary>
     /// Exception thrown when a job function invocation fails.
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [Serializable]
     public class FunctionInvocationException : FunctionException
     {
+        /// <inheritdoc/>
+        public FunctionInvocationException() : base()
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionInvocationException(string message) : base(message)
+        {
+        }
+
+        /// <inheritdoc/>
+        public FunctionInvocationException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
