@@ -28,10 +28,11 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptHost : JobHost
+    public class ScriptHost : JobHost, IScriptHost
     {
         internal const int DebugModeTimeoutMinutes = 15;
         private const string HostAssemblyName = "ScriptHost";
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets the collection of all valid Functions. For functions that are in error
         /// and were unable to load successfully, consult the <see cref="FunctionErrors"/> collection.
         /// </summary>
-        public virtual Collection<FunctionDescriptor> Functions { get; private set; }
+        public virtual ICollection<IFunctionDescriptor> Functions { get; private set; }
 
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
@@ -371,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // read all script functions and apply to JobHostConfiguration
-                Collection<FunctionDescriptor> functions = GetFunctionDescriptors();
+                ICollection<IFunctionDescriptor> functions = GetFunctionDescriptors();
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
                 string defaultNamespace = "Host";
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
@@ -601,7 +602,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
+                    BindingMetadata bindingMetadata = BindingMetadata.Create<HttpTriggerBindingMetadata>(binding);
                     functionMetadata.Bindings.Add(bindingMetadata);
                     if (bindingMetadata.IsTrigger)
                     {
@@ -872,7 +873,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private Collection<FunctionDescriptor> GetFunctionDescriptors()
+        private ICollection<IFunctionDescriptor> GetFunctionDescriptors()
         {
             var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, FunctionErrors, _settingsManager);
 
@@ -891,9 +892,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return GetFunctionDescriptors(functions, descriptorProviders);
         }
 
-        internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal ICollection<IFunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
-            Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
+            Collection<IFunctionDescriptor> functionDescriptors = new Collection<IFunctionDescriptor>();
             foreach (FunctionMetadata metadata in functions)
             {
                 try
@@ -1105,7 +1106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // See if we can identify which function caused the error, and if we can
                 // log the error as needed to its function specific logs.
-                FunctionDescriptor function = null;
+                IFunctionDescriptor function = null;
                 if (TryGetFunctionFromException(Functions, exception, out function))
                 {
                     NotifyInvoker(function.Name, exception);
@@ -1113,7 +1114,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static bool TryGetFunctionFromException(Collection<FunctionDescriptor> functions, Exception exception, out FunctionDescriptor function)
+        internal static bool TryGetFunctionFromException(ICollection<IFunctionDescriptor> functions, Exception exception, out IFunctionDescriptor function)
         {
             function = null;
 
@@ -1143,7 +1144,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             functionName = Utility.GetFunctionShortName(functionName);
 
-            FunctionDescriptor functionDescriptor = this.Functions.SingleOrDefault(p => string.Compare(functionName, p.Name, StringComparison.OrdinalIgnoreCase) == 0);
+            var functionDescriptor = this.Functions.SingleOrDefault(p => string.Compare(functionName, p.Name, StringComparison.OrdinalIgnoreCase) == 0);
             if (functionDescriptor != null)
             {
                 functionDescriptor.Invoker.OnError(ex);

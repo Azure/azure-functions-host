@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GenerateHttpTriggerFunction()
         {
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<HttpTriggerBindingMetadata>(new JObject
             {
                 { "type", "HttpTrigger" },
                 { "name", "req" }
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GenerateQueueTriggerFunction()
         {
             string inputBindingName = "inputData";
-            BindingMetadata trigger = BindingMetadata.Create(new JObject
+            BindingMetadata trigger = BindingMetadata.Create<BindingMetadata>(new JObject
             {
                 { "type", "QueueTrigger" },
                 { "name", inputBindingName },

@@ -3,14 +3,6 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public enum ExecutionStage
-    {
-        Started,
-        InProgress,
-        Finished,
-        Failed,
-        Succeeded
-    }
 
     public class FunctionMetrics
     {

@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -17,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WebJobs.Script.Tests;
+using WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
             FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters);
-            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            ICollection<IFunctionDescriptor> functions = new Collection<IFunctionDescriptor>();
             functions.Add(function);
 
             // Get the Type Attributes (in this case, a TimeoutAttribute)
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
                 var request = new HttpRequestMessage(HttpMethod.Get, String.Format("http://localhost/api/httptrigger-{0}", fixture));
-                FunctionDescriptor function = manager.GetHttpFunctionOrNull(request);
+                FunctionDescriptor function = manager.GetHttpFunctionOrNull(request) as FunctionDescriptor;
 
                 SynchronizationContext currentContext = SynchronizationContext.Current;
                 var resetEvent = new ManualResetEventSlim();

@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Moq.Protected;
+using WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

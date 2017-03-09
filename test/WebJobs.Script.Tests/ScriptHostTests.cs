@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -712,11 +713,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                            "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js:7:35)\n" +
                            "at tryOnTimeout (timers.js:224:11)\n" +
                            "at Timer.listOnTimeout(timers.js:198:5)";
-            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            Collection<IFunctionDescriptor> functions = new Collection<IFunctionDescriptor>();
             var exception = new InvalidOperationException(stack);
 
             // no match - empty functions
-            FunctionDescriptor functionResult = null;
+            IFunctionDescriptor functionResult = null;
             bool result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.False(result);
             Assert.Null(functionResult);
@@ -967,7 +968,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, config, null });
 
-            var functions = new Collection<FunctionDescriptor>();
+            var functions = new Collection<IFunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();
             mockHost.Setup(p => p.Functions).Returns(functions);
             mockHost.Setup(p => p.FunctionErrors).Returns(functionErrors);

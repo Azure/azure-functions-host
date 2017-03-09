@@ -10,12 +10,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http.Results;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private Mock<ScriptHost> _hostMock;
         private Mock<WebScriptHostManager> _managerMock;
-        private Collection<FunctionDescriptor> _testFunctions;
+        private ICollection<IFunctionDescriptor> _testFunctions;
         private Dictionary<string, Collection<string>> _testFunctionErrors;
         private KeysController _testController;
         private Mock<ISecretManager> _secretsManagerMock;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public KeysControllerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            _testFunctions = new Collection<FunctionDescriptor>();
+            _testFunctions = new Collection<IFunctionDescriptor>();
             _testFunctionErrors = new Dictionary<string, Collection<string>>();
 
             var config = new ScriptHostConfiguration();
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
 
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            
+
             _testController = new KeysController(_managerMock.Object, _secretsManagerMock.Object, traceWriter);
 
             // setup some test functions
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var key = new Key("key2", "secret2");
             var keyOperationResult = new KeyOperationResult(key.Value, OperationResult.Updated);
             _secretsManagerMock.Setup(p => p.AddOrUpdateFunctionSecretAsync(key.Name, key.Value, "ErrorFunction")).ReturnsAsync(keyOperationResult);
-            
+
             var result = (OkNegotiatedContentResult<ApiModel>)(await _testController.Put("ErrorFunction", key.Name, key));
             var content = (JObject)result.Content;
             Assert.Equal("key2", content["name"]);

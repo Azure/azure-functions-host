@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return false;
             }
 
-            BindingMetadata bindingMetadata = BindingMetadata.Create(metadata);
+            BindingMetadata bindingMetadata = BindingMetadata.Create<HttpTriggerBindingMetadata>(metadata);
             functionBinding = new ExtensionBinding(config, scriptBinding, bindingMetadata);
 
             return true;

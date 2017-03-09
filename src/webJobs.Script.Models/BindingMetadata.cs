@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         /// <param name="raw">The raw binding metadata.</param>
         /// <returns>The new <see cref="BindingMetadata"/> instance.</returns>
-        public static BindingMetadata Create(JObject raw)
+        public static BindingMetadata Create<T>(JObject raw) where T : BindingMetadata
         {
             BindingMetadata bindingMetadata = null;
             string bindingDirectionValue = (string)raw["direction"];
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             switch (bindingType.ToLowerInvariant())
             {
                 case "httptrigger":
-                    bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
+                    bindingMetadata = raw.ToObject<T>();
                     break;             
                 default:
                     bindingMetadata = raw.ToObject<BindingMetadata>();

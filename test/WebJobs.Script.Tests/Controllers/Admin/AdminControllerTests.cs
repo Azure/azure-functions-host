@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
+using WebJobs.Script;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -28,13 +29,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private Mock<ScriptHost> hostMock;
         private Mock<WebScriptHostManager> managerMock;
-        private Collection<FunctionDescriptor> testFunctions;
+        private ICollection<IFunctionDescriptor> testFunctions;
         private AdminController testController;
 
         public AdminControllerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            testFunctions = new Collection<FunctionDescriptor>();
+            testFunctions = new Collection<IFunctionDescriptor>();
 
             var config = new ScriptHostConfiguration();
             var environment = new NullScriptHostEnvironment();

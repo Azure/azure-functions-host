@@ -3,10 +3,11 @@
 
 using System;
 using System.Collections.Concurrent;
+using WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
-    public class ScriptSettingsManager
+    public class ScriptSettingsManager : IScriptSettingsManagner
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
         private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
@@ -52,12 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             _settingsCache.Clear();
         }
 
-        public virtual string GetSetting(string settingKey)
+        public virtual string GetSetting(string key)
         {
             string settingValue = null;
-            if (!string.IsNullOrEmpty(settingKey))
+            if (!string.IsNullOrEmpty(key))
             {
-                settingValue = Environment.GetEnvironmentVariable(settingKey);
+                settingValue = Environment.GetEnvironmentVariable(key);
             }
 
             return settingValue;

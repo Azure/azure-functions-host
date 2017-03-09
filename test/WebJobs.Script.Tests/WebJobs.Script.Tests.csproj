@@ -536,6 +536,14 @@
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\WebJobs.Script.Diagnostics\WebJobs.Script.Diagnostics.csproj">
+      <Project>{f91ce9f9-caf1-472c-829c-0dbe91650a3a}</Project>
+      <Name>WebJobs.Script.Diagnostics</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\webJobs.Script.Models\WebJobs.Script.Models.csproj">
+      <Project>{ec562cc0-e593-4b16-ad00-1168c1284835}</Project>
+      <Name>WebJobs.Script.Models</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj">
       <Project>{63c9b2f4-f122-4acc-968f-9b8f0880a72f}</Project>
       <Name>WebJobs.Script.WebHost</Name>
