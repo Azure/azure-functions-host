@@ -12,57 +12,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     public class ExceptionFormatterTests
     {
         [Fact]
-        public void FormatException_WithAsyncMethods_ReturnsExpectedStackTrace()
-        {
-            string expectedTracePattern = @"System\.AggregateException : One or more errors occurred\. ---> Crash!
-   at System\.Threading\.Tasks\.Task\.ThrowIfExceptional\(Boolean includeTaskCanceledExceptions\)
-   at System\.Threading\.Tasks\.Task\.Wait\(Int32 millisecondsTimeout,CancellationToken cancellationToken\)
-   at System\.Threading\.Tasks\.Task\.Wait\(\)
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run\(String arg\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.FormatException_WithAsyncMethods_ReturnsExpectedStackTrace\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?
----> \(Inner Exception #0\) System\.Exception : Crash!
-   at async Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.CrashAsync\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*
-   at async Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run2Async\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*
-   at async Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run1Async\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*<---";
-
-            try
-            {
-                var test = new TestClass();
-                test.Run();
-            }
-            catch (Exception exc)
-            {
-                string formattedException = ExceptionFormatter.GetFormattedException(exc);
-
-                Assert.Matches(expectedTracePattern, formattedException);
-            }
-        }
-
-        [Fact]
-        public void FormatException_WithNonAsyncMethods_ReturnsExpectedStackTrace()
-        {
-            string expectedTracePattern = @"System\.Exception : Crash! ---> System\.Exception : Sync crash!
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run1\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run\(String arg\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*? 
-   End of inner exception
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.TestClass\.Run\(String arg\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?
-   at Microsoft\.Azure\.WebJobs\.Host\.UnitTests\.ExceptionFormatterTests\.FormatException_WithNonAsyncMethods_ReturnsExpectedStackTrace\(\) at .*?\\test\\Microsoft\.Azure\.WebJobs\.Host\.UnitTests\\ExceptionFormatterTests\.cs : \d*?";
-
-            try
-            {
-                var test = new TestClass();
-                test.Run("Test3");
-            }
-            catch (Exception exc)
-            {
-                string formattedException = ExceptionFormatter.GetFormattedException(exc);
-
-                Assert.Matches(expectedTracePattern, formattedException);
-            }
-        }
-
-        [Fact]
         public void FormatException_RemovesAsyncFrames()
         {
             try
