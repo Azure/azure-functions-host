@@ -86,29 +86,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/status")]
+        [AllowAnonymous]
         public HostStatus GetHostStatus()
         {
-            HostStatus status = new HostStatus
-            {
-                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
-            };
+            var status = new HostStatus();
 
-            var lastError = _scriptHostManager.LastError;
-            if (lastError != null)
+            // based on the authorization level we determine
+            // the additional level of detail to return
+            var authorizationLevel = Request.GetAuthorizationLevel();
+            if (authorizationLevel == AuthorizationLevel.Admin)
             {
-                status.Errors = new Collection<string>();
-                status.Errors.Add(Utility.FlattenException(lastError));
+                status.State = _scriptHostManager.State.ToString();
+                status.Version = ScriptHost.Version;
+                status.Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId;
+
+                var lastError = _scriptHostManager.LastError;
+                if (lastError != null)
+                {
+                    status.Errors = new Collection<string>();
+                    status.Errors.Add(Utility.FlattenException(lastError));
+                }
+
+                return status;
             }
-
-            return status;
-        }
-
-        [HttpPost]
-        [Route("admin/host/ping")]
-        [AllowAnonymous]
-        public HttpResponseMessage Ping()
-        {
-            return new HttpResponseMessage(HttpStatusCode.OK);
+            else
+            {
+                // for Anonymous requests, we don't return any
+                // detailed info
+                return status;
+            }
         }
 
         [HttpPost]

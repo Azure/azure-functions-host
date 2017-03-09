@@ -907,16 +907,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HostPing_Succeeds()
-        {
-            string uri = "admin/host/ping";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task HostStatus_Succeeds()
+        public async Task HostStatus_AdminLevel_Succeeds()
         {
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -948,28 +939,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedVersion, node.Value);
             node = doc.Descendants(XName.Get("Id", ns)).Single();
             Assert.Equal(expectedId, node.Value);
+            node = doc.Descendants(XName.Get("State", ns)).Single();
+            Assert.True(node.Value == "Running" || node.Value == "Created");
 
             node = doc.Descendants(XName.Get("Errors", ns)).Single();
             Assert.True(node.IsEmpty);
         }
 
         [Fact]
-        public async Task HostStatus_FunctionLevelRequest_Fails()
+        public async Task HostStatus_FunctionLevelRequest_Succeeds()
         {
             string uri = "admin/host/status";
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add("x-functions-key", "zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc");
             var response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string json = await response.Content.ReadAsStringAsync();
+            JObject obj = JObject.Parse(json);
+            Assert.Equal(0, obj.Properties().Count());
         }
 
         [Fact]
-        public async Task HostStatus_AnonymousLevelRequest_Fails()
+        public async Task HostStatus_AnonymousLevelRequest_Succeeds()
         {
             string uri = "admin/host/status";
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string json = await response.Content.ReadAsStringAsync();
+            JObject obj = JObject.Parse(json);
+            Assert.Equal(0, obj.Properties().Count());
         }
 
         private async Task<HttpResponseMessage> GetHostStatusAsync()

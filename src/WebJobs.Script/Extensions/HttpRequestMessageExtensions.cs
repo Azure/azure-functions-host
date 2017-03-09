@@ -10,6 +10,21 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class HttpRequestMessageExtensions
     {
+        public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
+        {
+            return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel);
+        }
+
+        public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequestMessage request, string key)
+        {
+            object value = null;
+            if (request.Properties.TryGetValue(key, out value))
+            {
+                return (TValue)value;
+            }
+            return default(TValue);
+        }
+
         public static IDictionary<string, string> GetQueryParameterDictionary(this HttpRequestMessage request)
         {
             var keyValuePairs = request.GetQueryNameValuePairs();

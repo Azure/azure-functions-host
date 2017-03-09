@@ -32,35 +32,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
-            if (SkipAuthorization(actionContext))
+            // determine the authorization level for the function and set it
+            // as a request property
+            var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
+            var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
+            var requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager);
+            actionContext.Request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel] = requestAuthorizationLevel;
+
+            if (settings.IsAuthDisabled || 
+                SkipAuthorization(actionContext) ||
+                Level == AuthorizationLevel.Anonymous)
             {
                 return;
             }
 
-            ISecretManager secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
-            var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
-
-            if (!settings.IsAuthDisabled && !await IsAuthorizedAsync(actionContext.Request, Level, secretManager))
+            if (requestAuthorizationLevel < Level)
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
         }
 
-        public static async Task<bool> IsAuthorizedAsync(HttpRequestMessage request, AuthorizationLevel level, ISecretManager secretManager, string functionName = null)
-        {
-            if (level == AuthorizationLevel.Anonymous)
-            {
-                return true;
-            }
-
-            AuthorizationLevel requestLevel = await GetAuthorizationLevelAsync(request, secretManager, functionName);
-            return requestLevel >= level;
-        }
-
         internal static async Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequestMessage request, ISecretManager secretManager, string functionName = null)
         {
-            // TODO: Add support for validating "EasyAuth" headers
-
             // first see if a key value is specified via headers or query string (header takes precedence)
             IEnumerable<string> values;
             string keyValue = null;
