@@ -427,6 +427,7 @@
     <Compile Include="Models\ApiModel.cs" />
     <Compile Include="Models\ApiModelUtility.cs" />
     <Compile Include="Models\Link.cs" />
+    <Compile Include="Models\LoadStatus.cs" />
     <Compile Include="OperationResult.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

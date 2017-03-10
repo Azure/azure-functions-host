@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.ObjectModel;
-using System.Reflection;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -32,5 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
+
+        /// <summary>
+        /// Gets or sets a the <see cref="LoadStatus"/>.
+        /// </summary>
+        [JsonProperty(PropertyName = "load", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public LoadStatus Load { get; set; }
     }
 }

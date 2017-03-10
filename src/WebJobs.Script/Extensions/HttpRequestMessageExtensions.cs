@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -13,6 +14,19 @@ namespace Microsoft.Azure.WebJobs.Script
         public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
         {
             return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel);
+        }
+
+        public static bool IsAntaresInternalRequest(this HttpRequestMessage request)
+        {
+            if (!ScriptSettingsManager.Instance.IsAzureEnvironment)
+            {
+                return false;
+            }
+
+            // this header will *always* be present on requests originating externally (i.e. going
+            // through the Anatares front end). For requests originating internally it will NOT be
+            // present.
+            return !request.Headers.Contains(ScriptConstants.AntaresExternalRequestHeaderName);
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequestMessage request, string key)
