@@ -443,12 +443,19 @@
     <Compile Include="Host\ScriptHostManagerTests.cs" />
     <Compile Include="Host\StandbyModeTests.cs" />
     <Compile Include="Host\WebScriptHostManagerTests.cs" />
+    <Compile Include="ListenerFailureTests.cs" />
     <Compile Include="WindowsBatchEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(OS)'!='Unix'">
     <Compile Include="PowerShellEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="TestScripts\ListenerExceptions\ListenerStartupException\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\ListenerExceptions\TimerTrigger\index.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="TestScripts\Node\ApiHubTableEntityIn\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -566,6 +573,15 @@
     <None Include="TestScripts\DotNet\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Content Include="TestScripts\ListenerExceptions\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\ListenerExceptions\ListenerStartupException\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestScripts\ListenerExceptions\TimerTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="TestScripts\Node\HttpTriggerShared\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
