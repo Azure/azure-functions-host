@@ -2,7 +2,7 @@
 <Project ToolsVersion="12.0" DefaultTargets="PackageScriptHost;PackageWebHost;UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
-    <NuGetExe>tools\NuGet.exe</NuGetExe>
+    <NuGetExe Condition=" '$(NuGetExe)' == ''">tools\NuGet.exe</NuGetExe>
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
