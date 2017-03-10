@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly IListener _listener;
         private readonly FunctionDescriptor _descriptor;
         private readonly TraceWriter _trace;
+        private bool _started = false;
 
         /// <summary>
         /// Wraps a listener. If the listener throws an exception OnStart,
@@ -43,16 +44,21 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             try
             {
                 await _listener.StartAsync(cancellationToken);
+                _started = true;
             }
             catch (Exception e)
             {
                 new FunctionListenerException(_descriptor.ShortName, e).TryRecover(_trace);
             }
         }
-
-        public Task StopAsync(CancellationToken cancellationToken)
+        
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            return _listener.StopAsync(cancellationToken);
+            if (_started)
+            {
+                await _listener.StopAsync(cancellationToken);
+                _started = false;
+            }
         }
     }
 }

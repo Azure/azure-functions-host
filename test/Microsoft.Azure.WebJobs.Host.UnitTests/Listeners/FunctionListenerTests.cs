@@ -20,41 +20,81 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
     {
         CancellationToken ct = default(CancellationToken);
 
-        private IListener GetListener(TraceWriter trace)
+        FunctionDescriptor fd = new FunctionDescriptor()
         {
-            var fd = new FunctionDescriptor()
-            {
-                ShortName = "testfunc"
-            };
+            ShortName = "testfunc"
+        };
 
+        [Fact]
+        public async Task FunctionListener_Throws_IfUnhandledListenerExceptionOnStartAsync()
+        {
+            var trace = new TestTraceWriter(TraceLevel.Error);
             Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
             badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
                 .Throws(new Exception("listener"));
+            var listener = new FunctionListener(badListener.Object, fd, trace);
 
-            return new FunctionListener(badListener.Object, fd, trace);
-        }
-
-        [Fact]
-        public async Task GeneratedListener_Throws_IfListenerExceptionOnStartAsync()
-        {
-            var trace = new TestTraceWriter(TraceLevel.Error);
-            var listener = GetListener(trace);
             var e = await Assert.ThrowsAsync<FunctionListenerException>(async () => await listener.StartAsync(ct));
             var exc = trace.Traces[0].Exception as FunctionException;
             Assert.Equal("testfunc", exc.MethodName);
             Assert.False(exc.Handled);
+            badListener.VerifyAll();
         }
 
         [Fact]
-        public async Task GeneratedListener_DoesNotThrow_IfHandled()
+        public async Task FunctionListener_DoesNotThrow_IfHandled()
         {
             HandlingTraceWriter trace = new HandlingTraceWriter(TraceLevel.Error, (te) => (te.Exception as RecoverableException).Handled = true);
-            var listener = GetListener(trace);
+            Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
+            badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
+                .Throws(new Exception("listener"));
+            var listener = new FunctionListener(badListener.Object, fd, trace);
+
             await listener.StartAsync(ct);
+
             Assert.Equal("The listener for function 'testfunc' was unable to start.", trace.Traces[0].Message);
             var exc = trace.Traces[0].Exception as FunctionException;
             Assert.Equal("testfunc", exc.MethodName);
             Assert.True(exc.Handled);
+            badListener.VerifyAll();
+        }
+
+        [Fact]
+        public async Task FunctionListener_DoesNotStop_IfNotStarted()
+        {
+            HandlingTraceWriter trace = new HandlingTraceWriter(TraceLevel.Error, (te) => (te.Exception as RecoverableException).Handled = true);
+            Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
+            badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
+                .Throws(new Exception("listener"));
+            var listener = new FunctionListener(badListener.Object, fd, trace);
+
+            await listener.StartAsync(ct);
+            // these should do nothing, as function listener had an exception on start
+            await listener.StopAsync(ct);
+            await listener.StopAsync(ct);
+            await listener.StopAsync(ct);
+
+            // ensure that badListener.StopAsync is not called on a disabled function listener
+            badListener.VerifyAll();
+        }
+
+        [Fact]
+        public async Task FunctionListener_RunsStop_IfStarted()
+        {
+            HandlingTraceWriter trace = new HandlingTraceWriter(TraceLevel.Error, (te) => (te.Exception as RecoverableException).Handled = true);
+            Mock<IListener> goodListener = new Mock<IListener>(MockBehavior.Strict);
+            goodListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false));
+            goodListener.Setup(bl => bl.StopAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false));
+            var listener = new FunctionListener(goodListener.Object, fd, trace);
+
+            await listener.StartAsync(ct);
+            await listener.StopAsync(ct);
+
+            Assert.Empty(trace.Traces);
+
+            goodListener.VerifyAll();
         }
 
         private class HandlingTraceWriter : TraceWriter
