@@ -16,9 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script
         User,
 
         /// <summary>
-        /// Allow access to requests that include the function key
+        /// Allow access to requests that include a function key
         /// </summary>
         Function,
+
+        /// <summary>
+        /// Allows access to requests that include a system key
+        /// </summary>
+        System,
 
         /// <summary>
         /// Allow access to requests that include the master key

@@ -27,10 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public override bool HasStaleKeys => Keys?.Any(k => k.IsStale) ?? false;
 
         [JsonIgnore]
-        protected override ICollection<Key> InnerFunctionKeys => Keys;
-
-        [JsonIgnore]
         public override ScriptSecretsType SecretsType => ScriptSecretsType.Function;
+
+        protected override ICollection<Key> GetKeys(string keyScope) => Keys;
 
         public override ScriptSecrets Refresh(IKeyValueConverterFactory factory)
         {

@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var key = new Key("key2", "secret2");
             var keyOperationResult = new KeyOperationResult(key.Value, OperationResult.Updated);
-            _secretsManagerMock.Setup(p => p.AddOrUpdateFunctionSecretAsync(key.Name, key.Value, "ErrorFunction")).ReturnsAsync(keyOperationResult);
+            _secretsManagerMock.Setup(p => p.AddOrUpdateFunctionSecretAsync(key.Name, key.Value, "ErrorFunction", ScriptSecretsType.Function)).ReturnsAsync(keyOperationResult);
             
             var result = (OkNegotiatedContentResult<ApiModel>)(await _testController.Put("ErrorFunction", key.Name, key));
             var content = (JObject)result.Content;
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/functions/keys/key2");
 
-            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "ErrorFunction")).ReturnsAsync(true);
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "ErrorFunction", ScriptSecretsType.Function)).ReturnsAsync(true);
 
             var result = (StatusCodeResult)(await _testController.Delete("ErrorFunction", "key2"));
             Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);

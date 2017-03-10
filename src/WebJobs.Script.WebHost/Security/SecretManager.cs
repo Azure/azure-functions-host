@@ -89,7 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _hostSecrets = new HostSecretsInfo
                 {
                     MasterKey = hostSecrets.MasterKey.Value,
-                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value)
+                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value),
+                    SystemKeys = hostSecrets.SystemKeys.ToDictionary(s => s.Name, s => s.Value)
                 };
             }
 
@@ -152,25 +153,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return functionSecrets;
         }
 
-        public async Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string functionName = null)
+        public async Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType)
         {
-            ScriptSecretsType secretsType;
             Func<ScriptSecrets> secretsFactory = null;
 
-            if (functionName != null)
-            {
-                secretsType = ScriptSecretsType.Function;
+            if (secretsType == ScriptSecretsType.Function)
+            { 
                 secretsFactory = () => new FunctionSecrets(new List<Key>());
             }
-            else
+            else if (secretsType == ScriptSecretsType.Host)
             {
                 secretsType = ScriptSecretsType.Host;
                 secretsFactory = GenerateHostSecrets;
             }
+            else
+            {
+                throw new NotSupportedException($"Secrets type {secretsType.ToString("G")} not supported.");
+            }
 
-            KeyOperationResult result = await AddOrUpdateSecretAsync(secretsType, functionName, secretName, secret, secretsFactory);
+            KeyOperationResult result = await AddOrUpdateSecretAsync(secretsType, keyScope, secretName, secret, secretsFactory);
 
-            _traceWriter.InfoFormat(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, functionName ?? "host", result.Result);
+            _traceWriter.InfoFormat(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, keyScope ?? "host", result.Result);
 
             return result;
         }
@@ -209,49 +212,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new KeyOperationResult(masterKey, result);
         }
 
-        public async Task<bool> DeleteSecretAsync(string secretName, string functionName = null)
+        public async Task<bool> DeleteSecretAsync(string secretName, string keyScope, ScriptSecretsType secretsType)
         {
-            ScriptSecretsType secretsType = functionName == null
-                ? ScriptSecretsType.Host
-                : ScriptSecretsType.Function;
-
-            bool deleted = await ModifyFunctionSecretAsync(secretsType, functionName, secretName, (secrets, key) =>
+            bool deleted = await ModifyFunctionSecretAsync(secretsType, keyScope, secretName, (secrets, key) =>
             {
-                secrets?.RemoveKey(key);
+                secrets?.RemoveKey(key, keyScope);
                 return secrets;
             });
 
             if (deleted)
             {
                 string target = secretsType == ScriptSecretsType.Function
-                    ? $"Function ('{functionName}')"
-                    : "Host";
+                    ? $"Function ('{keyScope}')"
+                    : $"Host (scope: '{keyScope}')";
                 _traceWriter.InfoFormat(Resources.TraceSecretDeleted, target, secretName);
             }
 
             return deleted;
         }
 
-        private async Task<KeyOperationResult> AddOrUpdateSecretAsync(ScriptSecretsType secretsType, string functionName, string secretName, string secret, Func<ScriptSecrets> secretsFactory)
+        private async Task<KeyOperationResult> AddOrUpdateSecretAsync(ScriptSecretsType secretsType, string keyScope, 
+            string secretName, string secret, Func<ScriptSecrets> secretsFactory)
         {
             OperationResult result = OperationResult.NotFound;
 
             secret = secret ?? GenerateSecret();
 
-            await ModifyFunctionSecretsAsync(secretsType, functionName, secrets =>
+            await ModifyFunctionSecretsAsync(secretsType, keyScope, secrets =>
             {
-                Key key = secrets.GetFunctionKey(secretName);
+                Key key = secrets.GetFunctionKey(secretName, keyScope);
 
                 if (key == null)
                 {
                     key = new Key(secretName, secret);
-                    secrets.AddKey(key);
+                    secrets.AddKey(key, keyScope);
                     result = OperationResult.Created;
                 }
-                else if (secrets.RemoveKey(key))
+                else if (secrets.RemoveKey(key, keyScope))
                 {
                     key = CreateKey(secretName, secret);
-                    secrets.AddKey(key);
+                    secrets.AddKey(key, keyScope);
 
                     result = OperationResult.Updated;
                 }
@@ -262,13 +262,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new KeyOperationResult(secret, result);
         }
 
-        private async Task<bool> ModifyFunctionSecretAsync(ScriptSecretsType secretsType, string functionName, string secretName, Func<ScriptSecrets, Key, ScriptSecrets> keyChangeHandler, Func<ScriptSecrets> secretFactory = null)
+        private async Task<bool> ModifyFunctionSecretAsync(ScriptSecretsType secretsType, string keyScope, string secretName, Func<ScriptSecrets, Key, ScriptSecrets> keyChangeHandler, Func<ScriptSecrets> secretFactory = null)
         {
             bool secretFound = false;
 
-            await ModifyFunctionSecretsAsync(secretsType, functionName, secrets =>
+            await ModifyFunctionSecretsAsync(secretsType, keyScope, secrets =>
             {
-                Key key = secrets?.GetFunctionKey(secretName);
+                Key key = secrets?.GetFunctionKey(secretName, keyScope);
 
                 if (key != null)
                 {
@@ -283,9 +283,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return secretFound;
         }
 
-        private async Task ModifyFunctionSecretsAsync(ScriptSecretsType secretsType, string functionName, Func<ScriptSecrets, ScriptSecrets> changeHandler, Func<ScriptSecrets> secretFactory)
+        private async Task ModifyFunctionSecretsAsync(ScriptSecretsType secretsType, string keyScope, Func<ScriptSecrets, ScriptSecrets> changeHandler, Func<ScriptSecrets> secretFactory)
         {
-            ScriptSecrets currentSecrets = await LoadSecretsAsync(secretsType, functionName);
+            ScriptSecrets currentSecrets = await LoadSecretsAsync(secretsType, keyScope);
 
             if (currentSecrets == null)
             {
@@ -296,28 +296,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (newSecrets != null)
             {
-                await PersistSecretsAsync(newSecrets, functionName);
+                await PersistSecretsAsync(newSecrets, keyScope);
             }
         }
 
         private Task<FunctionSecrets> LoadFunctionSecretsAsync(string functionName)
             => LoadSecretsAsync<FunctionSecrets>(functionName);
 
-        private Task<ScriptSecrets> LoadSecretsAsync(ScriptSecretsType secretsType, string functionName)
-            => LoadSecretsAsync(secretsType, functionName, s => ScriptSecretSerializer.DeserializeSecrets(secretsType, s));
+        private Task<ScriptSecrets> LoadSecretsAsync(ScriptSecretsType secretsType, string keyScope)
+            => LoadSecretsAsync(secretsType, keyScope, s => ScriptSecretSerializer.DeserializeSecrets(secretsType, s));
 
-        private async Task<T> LoadSecretsAsync<T>(string functionName = null) where T : ScriptSecrets
+        private async Task<T> LoadSecretsAsync<T>(string keyScope = null) where T : ScriptSecrets
         {
             ScriptSecretsType type = GetSecretsType<T>();
 
-            var result = await LoadSecretsAsync(type, functionName, ScriptSecretSerializer.DeserializeSecrets<T>);
+            var result = await LoadSecretsAsync(type, keyScope, ScriptSecretSerializer.DeserializeSecrets<T>);
 
             return result as T;
         }
 
-        private async Task<ScriptSecrets> LoadSecretsAsync(ScriptSecretsType type, string functionName, Func<string, ScriptSecrets> deserializationHandler)
+        private async Task<ScriptSecrets> LoadSecretsAsync(ScriptSecretsType type, string keyScope, Func<string, ScriptSecrets> deserializationHandler)
         {
-            string secretsJson = await _repository.ReadAsync(type, functionName).ConfigureAwait(false);
+            string secretsJson = await _repository.ReadAsync(type, keyScope).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(secretsJson))
             {
@@ -342,21 +342,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FunctionKeys = new List<Key>
                 {
                     GenerateKey(ScriptConstants.DefaultFunctionKeyName)
-                }
+                },
+                SystemKeys = new List<Key>()
             };
         }
 
-        private Task RefreshSecretsAsync<T>(T secrets, string functionName = null) where T : ScriptSecrets
+        private Task RefreshSecretsAsync<T>(T secrets, string keyScope = null) where T : ScriptSecrets
         {
             var refreshedSecrets = secrets.Refresh(_keyValueConverterFactory);
 
-            return PersistSecretsAsync(refreshedSecrets, functionName);
+            return PersistSecretsAsync(refreshedSecrets, keyScope);
         }
 
-        private Task PersistSecretsAsync<T>(T secrets, string functionName = null) where T : ScriptSecrets
+        private Task PersistSecretsAsync<T>(T secrets, string keyScope = null) where T : ScriptSecrets
         {
             string secretsContent = ScriptSecretSerializer.SerializeSecrets<T>(secrets);
-            return _repository.WriteAsync(secrets.SecretsType, functionName, secretsContent);
+            return _repository.WriteAsync(secrets.SecretsType, keyScope, secretsContent);
         }
 
         private HostSecrets ReadHostSecrets(HostSecrets hostSecrets)
@@ -364,7 +365,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new HostSecrets
             {
                 MasterKey = _keyValueConverterFactory.ReadKey(hostSecrets.MasterKey),
-                FunctionKeys = hostSecrets.FunctionKeys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList()
+                FunctionKeys = hostSecrets.FunctionKeys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList(),
+                SystemKeys = hostSecrets.SystemKeys?.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList() ?? new List<Key>()
             };
         }
 

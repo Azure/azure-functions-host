@@ -13,9 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Deletes a function secret.
         /// </summary>
         /// <param name="secretName">The name of the secret to be deleted.</param>
-        /// <param name="functionName">The function name, in case of a function level secret; <see cref="null"/> if this is a host level function secret.</param>
+        /// <param name="keyScope">The target scope for the key. In case of a function level secrets, this will be the name of the function,
+        /// for host level secrets, this will identify the host secret type.</param>
+        /// <param name="secretsType">The target secrets type.</param>
         /// <returns>True if the secret was successfully deleted; otherwise, false.</returns>
-        Task<bool> DeleteSecretAsync(string secretName, string functionName = null);
+        Task<bool> DeleteSecretAsync(string secretName, string keyScope, ScriptSecretsType secretsType);
 
         /// <summary>
         /// Retrieves function secrets.
@@ -37,9 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         /// <param name="secretName">The name of the secret to be created or updated.</param>
         /// <param name="secret">The secret value.</param>
-        /// <param name="functionName">The optional function name. If not provided, the function secret will be created at the host level.</param>
+        /// <param name="keyScope">The target scope for the key. For function level secrets, this will be the name of the function,
+        /// for host level secrets, this will identify the host secret type.</param>
+        /// <param name="secretsType">The target secrets type.</param>
         /// <returns>A <see cref="Task"/> that completes when the operation is finished.</returns>
-        Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string functionName = null);
+        Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType);
 
         /// <summary>
         /// Updates the host master key.

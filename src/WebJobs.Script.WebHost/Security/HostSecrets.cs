@@ -15,21 +15,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [JsonProperty(PropertyName = "functionKeys")]
         public IList<Key> FunctionKeys { get; set; }
 
-        [JsonIgnore]
-        public override bool HasStaleKeys => (MasterKey?.IsStale ?? false) || (FunctionKeys?.Any(k => k.IsStale) ?? false);
+        [JsonProperty(PropertyName = "systemKeys")]
+        public IList<Key> SystemKeys { get; set; }
 
         [JsonIgnore]
-        protected override ICollection<Key> InnerFunctionKeys => FunctionKeys;
+        public override bool HasStaleKeys => (MasterKey?.IsStale ?? false)
+            || (FunctionKeys?.Any(k => k.IsStale) ?? false) || (SystemKeys?.Any(k => k.IsStale) ?? false);
 
         [JsonIgnore]
         public override ScriptSecretsType SecretsType => ScriptSecretsType.Host;
+
+        protected override ICollection<Key> GetKeys(string keyScope)
+        {
+            if (string.Equals(keyScope, HostKeyScopes.FunctionKeys, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return FunctionKeys;
+            }
+            else if (string.Equals(keyScope, HostKeyScopes.SystemKeys, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return SystemKeys;
+            }
+
+            return null;
+        }
 
         public override ScriptSecrets Refresh(IKeyValueConverterFactory factory)
         {
             var secrets = new HostSecrets
             {
                 MasterKey = factory.WriteKey(MasterKey),
-                FunctionKeys = FunctionKeys.Select(k => factory.WriteKey(k)).ToList()
+                FunctionKeys = FunctionKeys.Select(k => factory.WriteKey(k)).ToList(),
+                SystemKeys = SystemKeys.Select(k => factory.WriteKey(k)).ToList()
             };
 
             return secrets;

@@ -437,6 +437,7 @@
     <Compile Include="Security\FileSystemSecretsRepository.cs" />
     <Compile Include="Security\FunctionSecrets.cs" />
     <Compile Include="Security\DataProtectionKeyValueConverter.cs" />
+    <Compile Include="Security\HostKeyScopes.cs" />
     <Compile Include="Security\HostSecretsInfo.cs" />
     <Compile Include="Security\IKeyValueWriter.cs" />
     <Compile Include="Security\ISecretManager.cs" />

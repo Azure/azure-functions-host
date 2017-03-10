@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         [Fact(DisplayName = "The function keys are retrieved from the secret manager.")]
         public void FunctionKeysAreRetrievedFromSecretManager()
         {
-            _fixture.SecretManagerMock.Verify(s => s.GetFunctionSecretsAsync(_fixture.TestFunctionName, false));
+            _fixture.SecretManagerMock.Verify(s => s.GetFunctionSecretsAsync(_fixture.TestKeyScope, false));
         }
 
         [Fact(DisplayName = "Response body is a valid list of keys.")]
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             public HttpResponseMessage HttpResponse { get; }
 
-            public string FormattedRequestUri => string.Format(RequestUriFormat, TestFunctionName);
+            public string FormattedRequestUri => string.Format(RequestUriFormat, TestKeyScope);
 
             protected virtual string RequestUriFormat => _requestUri;
         }

@@ -21,13 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AuthorizationLevelAttributeTests
     {
+        private const string TestHostFunctionKeyName1 = "hostfunckey1";
         private const string TestHostFunctionKeyValue1 = "jkl012";
+        private const string TestHostFunctionKeyName2 = "hostfunckey2";
         private const string TestHostFunctionKeyValue2 = "mno345";
+        private const string TestFunctionKeyName1 = "funckey1";
         private const string TestFunctionKeyValue1 = "def456";
+        private const string TestFunctionKeyName2 = "funckey2";
         private const string TestFunctionKeyValue2 = "ghi789";
-
-        private readonly string testMasterKeyValue = "abc123";
-
+        private const string TestSystemKeyName1 = "syskey1";
+        private const string TestSystemKeyValue1 = "sysabc123";
+        private const string TestSystemKeyName2 = "syskey2";
+        private const string TestSystemKeyValue2 = "sysdef123";
+        private const string TestMasterKeyValue = "abc123";
+        
         private HttpActionContext _actionContext;
         private HostSecretsInfo _hostSecrets;
         private Dictionary<string, string> _functionSecrets;
@@ -44,18 +51,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
             _hostSecrets = new HostSecretsInfo
             {
-                MasterKey = testMasterKeyValue,
+                MasterKey = TestMasterKeyValue,
                 FunctionKeys = new Dictionary<string, string>
                 {
-                    { "1", TestHostFunctionKeyValue1 },
-                    { "2", TestHostFunctionKeyValue2 }
+                    { TestHostFunctionKeyName1, TestHostFunctionKeyValue1 },
+                    { TestHostFunctionKeyName2, TestHostFunctionKeyValue2 }
+                },
+                SystemKeys = new Dictionary<string, string>
+                {
+                    { TestSystemKeyName1, TestSystemKeyValue1 },
+                    { TestSystemKeyName2, TestSystemKeyValue2 }
                 }
             };
             _mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_hostSecrets);
             _functionSecrets = new Dictionary<string, string>
             {
-                { "1",  TestFunctionKeyValue1 },
-                { "2",  TestFunctionKeyValue2 }
+                { TestFunctionKeyName1,  TestFunctionKeyValue1 },
+                { TestFunctionKeyName2,  TestFunctionKeyValue2 }
             };
             _mockSecretManager.Setup(p => p.GetFunctionSecretsAsync(It.IsAny<string>(), false)).ReturnsAsync(_functionSecrets);
             mockDependencyResolver.Setup(p => p.GetService(typeof(ISecretManager))).Returns(_mockSecretManager.Object);
@@ -105,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostSecrets.MasterKey = null;
 
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
             _actionContext.ControllerContext.Request = request;
 
             await attribute.OnAuthorizationAsync(_actionContext, CancellationToken.None);
@@ -130,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetAuthorizationLevel_ValidKeyHeader_MasterKey_ReturnsAdmin()
         {
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, testMasterKeyValue);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
 
             AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
@@ -265,12 +277,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetAuthorizationLevel_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
         {
-            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", testMasterKeyValue));
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
             AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Admin, level);
+        }
+
+        [Fact]
+        public async Task GetAuthorizationLevel_ValidCodeQueryParam_SystemKey_ReturnsSystem()
+        {
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestSystemKeyValue1));
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+
+            Assert.Equal(AuthorizationLevel.System, level);
+        }
+
+        [Theory]
+        [InlineData(TestHostFunctionKeyName1, TestHostFunctionKeyValue1, AuthorizationLevel.Function, null)]
+        [InlineData(TestHostFunctionKeyName2, TestHostFunctionKeyValue2, AuthorizationLevel.Function, null)]
+        [InlineData(TestFunctionKeyName1, TestFunctionKeyValue1, AuthorizationLevel.Function, "TestFunction")]
+        [InlineData(null, TestFunctionKeyValue1, AuthorizationLevel.Function, "TestFunction")]
+        [InlineData(TestFunctionKeyName2, TestFunctionKeyValue2, AuthorizationLevel.Function, "TestFunction")]
+        [InlineData(null, TestFunctionKeyValue2, AuthorizationLevel.Function, "TestFunction")]
+        [InlineData("", TestMasterKeyValue, AuthorizationLevel.Admin, null)]
+        [InlineData(TestSystemKeyName1, TestSystemKeyValue1, AuthorizationLevel.System, null)]
+        [InlineData(TestSystemKeyName2, TestSystemKeyValue2, AuthorizationLevel.System, null)]
+        [InlineData("foo", TestSystemKeyValue1, AuthorizationLevel.Anonymous, null)]
+        [InlineData(TestSystemKeyName1, "bar", AuthorizationLevel.Anonymous, null)]
+        public async Task GetAuthorizationLevel_ValidCodeQueryParam_WithNamedKeyRequirement_ReturnsExpectedLevel(string keyName, string keyValue, AuthorizationLevel expectedLevel, string functionName = null)
+        {
+            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", keyValue));
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: functionName, keyName: keyName);
+
+            Assert.Equal(expectedLevel, level);
         }
 
         [Theory]

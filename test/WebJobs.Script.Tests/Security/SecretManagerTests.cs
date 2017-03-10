@@ -147,6 +147,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             'value': 'HostValue3',
             'encrypted': false
         }
+    ],
+    'systemKeys': [
+        {
+            'name': 'SystemKey1',
+            'value': 'SystemHostValue1',
+            'encrypted': false
+        },
+        {
+            'name': 'SystemKey2',
+            'value': 'SystemHostValue2',
+            'encrypted': false
+        }
     ]
 }";
                 File.WriteAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName), hostSecretsJson);
@@ -164,10 +176,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 // Read the persisted content
                 var result = JsonConvert.DeserializeObject<HostSecrets>(File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName)));
                 bool functionSecretsConverted = hostSecrets.FunctionKeys.Values.Zip(result.FunctionKeys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
+                bool systemSecretsConverted = hostSecrets.SystemKeys.Values.Zip(result.SystemKeys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);
 
                 Assert.Equal(2, result.FunctionKeys.Count);
+                Assert.Equal(2, result.SystemKeys.Count);
                 Assert.Equal("!" + hostSecrets.MasterKey, result.MasterKey.Value);
                 Assert.True(functionSecretsConverted, "Function secrets were not persisted");
+                Assert.True(systemSecretsConverted, "System secrets were not persisted");
                 Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
@@ -195,6 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets);
                 Assert.Equal(1, hostSecrets.FunctionKeys.Count);
                 Assert.NotNull(hostSecrets.MasterKey);
+                Assert.NotNull(hostSecrets.SystemKeys);
+                Assert.Equal(0, hostSecrets.SystemKeys.Count);
                 Assert.Equal(persistedSecrets.MasterKey.Value, hostSecrets.MasterKey);
                 Assert.Equal(persistedSecrets.FunctionKeys.First().Value, hostSecrets.FunctionKeys.First().Value);
                 Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
@@ -247,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
                 using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName);
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
@@ -279,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
                 using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", functionName);
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", functionName, ScriptSecretsType.Function);
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
@@ -298,10 +315,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         [Fact]
         public async Task AddOrUpdateFunctionSecrets_WithNoFunctionNameAndProvidedSecret_UsesSecretAndPersistsHostFile()
         {
+            await AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(HostKeyScopes.FunctionKeys, h => h.FunctionKeys);
+        }
+
+        [Fact]
+        public async Task AddOrUpdateFunctionSecrets_WithSystemSecretScopeAndProvidedSecret_UsesSecretAndPersistsHostFile()
+        {
+            await AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(HostKeyScopes.SystemKeys, h => h.SystemKeys);
+        }
+
+        public async Task AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(string scope, Func<HostSecrets, IList<Key>> keySelector)
+        {
             using (var directory = new TempDirectory())
             {
                 string secretName = "TestSecret";
-                string expectedTraceMessage = string.Format(Resources.TraceAddOrUpdateFunctionSecret, "Host", secretName, "host", "Created");
+                string expectedTraceMessage = string.Format(Resources.TraceAddOrUpdateFunctionSecret, "Host", secretName, scope, "Created");
 
                 Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
 
@@ -310,12 +338,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
                 using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue");
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", scope, ScriptSecretsType.Host);
                 }
 
                 string secretsJson = File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName));
                 HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-                Key newSecret = persistedSecrets.FunctionKeys.FirstOrDefault(k => string.Equals(k.Name, secretName, StringComparison.Ordinal));
+                Key newSecret = keySelector(persistedSecrets).FirstOrDefault(k => string.Equals(k.Name, secretName, StringComparison.Ordinal));
 
                 Assert.Equal(OperationResult.Created, result.Result);
                 Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);

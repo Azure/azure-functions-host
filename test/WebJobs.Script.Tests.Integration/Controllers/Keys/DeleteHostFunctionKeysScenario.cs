@@ -29,7 +29,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             protected override string RequestUriFormat => _requestUri;
 
-            public override string TestFunctionName => null;
+            public override string TestKeyScope => HostKeyScopes.FunctionKeys;
+
+            public override ScriptSecretsType SecretsType => ScriptSecretsType.Host;
+        }
+    }
+
+    [Trait("A DELETE request is made against the host function key (functionKeys) resource endpoint", "")]
+    public class DeleteHostFunctionKeysNewEndpointScenario : DeleteFunctionKeysScenario, IClassFixture<DeleteHostFunctionKeysNewEndpointScenario.HostFixture>
+    {
+        private readonly Fixture _fixture;
+
+        public DeleteHostFunctionKeysNewEndpointScenario(HostFixture fixture)
+            : base(fixture)
+        {
+            _fixture = fixture;
+        }
+
+        public class HostFixture : DeleteFunctionKeysScenario.Fixture
+        {
+            private readonly string _requestUri = "http://localhost/admin/host/functionkeys/TestKey";
+
+            protected override string RequestUriFormat => _requestUri;
+
+            public override string TestKeyScope => HostKeyScopes.FunctionKeys;
+
+            public override ScriptSecretsType SecretsType => ScriptSecretsType.Host;
         }
     }
 }

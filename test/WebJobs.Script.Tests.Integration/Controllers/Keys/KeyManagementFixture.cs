@@ -16,7 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public Mock<TestSecretManager> SecretManagerMock { get; set; }
 
-        public virtual string TestFunctionName => _testFunctionName;
+        public virtual string TestKeyScope => _testFunctionName;
+
+        public virtual ScriptSecretsType SecretsType => ScriptSecretsType.Function;
 
         protected override void RegisterDependencies(ContainerBuilder builder, WebHostSettings settings)
         {

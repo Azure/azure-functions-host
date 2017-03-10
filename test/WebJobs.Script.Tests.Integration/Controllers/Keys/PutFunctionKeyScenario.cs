@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             public HttpResponseMessage HttpResponse { get; }
 
-            public string FormattedRequestUri => string.Format(RequestUriFormat, TestFunctionName);
+            public string FormattedRequestUri => string.Format(RequestUriFormat, TestKeyScope);
 
             protected virtual string RequestUriFormat => _requestUri;
         }

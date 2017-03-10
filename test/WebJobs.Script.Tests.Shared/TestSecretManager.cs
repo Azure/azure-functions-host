@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             throw new NotImplementedException();
         }
 
-        public virtual Task<bool> DeleteSecretAsync(string secretName, string functionName)
+        public virtual Task<bool> DeleteSecretAsync(string secretName, string keyScope, ScriptSecretsType secretsType)
         {
             return Task.FromResult(true);
         }
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
         }
 
-        public virtual Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string functionName)
+        public virtual Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType)
         {
             string resultSecret = secret ?? "generated";
             return Task.FromResult(new KeyOperationResult(resultSecret, OperationResult.Created));

@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private const string MasterKeyName = "_master";
 
+        private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
         private readonly TraceWriter _traceWriter;
@@ -45,39 +46,54 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/host/keys")]
+        [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}")]
         public async Task<IHttpActionResult> Get()
         {
-            var hostSecrets = await _secretManager.GetHostSecretsAsync();
-            return GetKeysResult(hostSecrets.FunctionKeys);
+            string hostKeyScope = GetHostKeyScopeForRequest();
+
+            Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope);
+            return GetKeysResult(keys);
         }
 
         [HttpPost]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Post(string name, string keyName) => AddOrUpdateFunctionSecretAsync(keyName, null, name);
+        public Task<IHttpActionResult> Post(string name, string keyName) => AddOrUpdateSecretAsync(keyName, null, name, ScriptSecretsType.Function);
 
         [HttpPost]
-        [Route("admin/host/keys/{keyName}")]
-        public Task<IHttpActionResult> Post(string keyName) => AddOrUpdateFunctionSecretAsync(keyName, null);
+        [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+        public Task<IHttpActionResult> Post(string keyName) => AddOrUpdateSecretAsync(keyName, null, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpPut]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name);
+        public Task<IHttpActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
 
         [HttpPut]
-        [Route("admin/host/keys/{keyName}")]
-        public Task<IHttpActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key);
+        [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+        public Task<IHttpActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpDelete]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Delete(string name, string keyName) => DeleteFunctionSecretAsync(keyName, name);
+        public Task<IHttpActionResult> Delete(string name, string keyName) => DeleteFunctionSecretAsync(keyName, name, ScriptSecretsType.Function);
 
         [HttpDelete]
-        [Route("admin/host/keys/{keyName}")]
-        public Task<IHttpActionResult> Delete(string keyName) => DeleteFunctionSecretAsync(keyName);
+        [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+        public Task<IHttpActionResult> Delete(string keyName) => DeleteFunctionSecretAsync(keyName, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+
+        private string GetHostKeyScopeForRequest()
+        {
+            string keyScope = ControllerContext.RouteData.Values.GetValueOrDefault<string>("keys");
+
+            if (string.Equals(keyScope, "keys", StringComparison.OrdinalIgnoreCase))
+            {
+                keyScope = HostKeyScopes.FunctionKeys;
+            }
+
+            return keyScope;
+        }
 
         private IHttpActionResult GetKeysResult(IDictionary<string, string> keys)
         {
+            keys = keys ?? EmptyKeys.Value;
             var keysContent = new
             {
                 keys = keys.Select(k => new { name = k.Key, value = k.Value })
@@ -88,35 +104,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(keyResponse);
         }
 
-        private async Task<IHttpActionResult> PutKeyAsync(string keyName, Key key, string functionName = null)
+        private async Task<IHttpActionResult> PutKeyAsync(string keyName, Key key, string keyScope, ScriptSecretsType secretsType)
         {
             if (key?.Value == null)
             {
                 return BadRequest("Invalid key value");
             }
 
-            return await AddOrUpdateFunctionSecretAsync(keyName, key.Value, functionName);
+            return await AddOrUpdateSecretAsync(keyName, key.Value, keyScope, secretsType);
         }
 
-        private async Task<IHttpActionResult> AddOrUpdateFunctionSecretAsync(string keyName, string value, string functionName = null)
+        private async Task<IHttpActionResult> AddOrUpdateSecretAsync(string keyName, string value, string keyScope, ScriptSecretsType secretsType)
         {
-            if (functionName != null &&
-                !_scriptHostManager.Instance.IsFunction(functionName))
+            if (secretsType == ScriptSecretsType.Function && keyScope != null && !_scriptHostManager.Instance.IsFunction(keyScope))
             {
                 return NotFound();
             }
 
             KeyOperationResult operationResult;
-            if (functionName == null && string.Equals(keyName, MasterKeyName, StringComparison.OrdinalIgnoreCase))
+            if (secretsType == ScriptSecretsType.Host && string.Equals(keyName, MasterKeyName, StringComparison.OrdinalIgnoreCase))
             {
                 operationResult = await _secretManager.SetMasterKeyAsync(value);
             }
             else
             {
-                operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, functionName);
+                operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
             }
 
-            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, functionName ?? "host", operationResult.Result);
+            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result);
 
             switch (operationResult.Result)
             {
@@ -139,7 +154,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
-        private async Task<IHttpActionResult> DeleteFunctionSecretAsync(string keyName, string functionName = null)
+        private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope)
+        {
+            var hostSecrets = await _secretManager.GetHostSecretsAsync();
+
+            if (string.Equals(secretsScope, HostKeyScopes.FunctionKeys, StringComparison.OrdinalIgnoreCase))
+            {
+                return hostSecrets.FunctionKeys;
+            } 
+            else if (string.Equals(secretsScope, HostKeyScopes.SystemKeys, StringComparison.OrdinalIgnoreCase))
+            {
+                return hostSecrets.SystemKeys;
+            }
+            
+            return null;
+        }
+
+        private async Task<IHttpActionResult> DeleteFunctionSecretAsync(string keyName, string keyScope, ScriptSecretsType secretsType)
         {
             if (keyName == null || keyName.StartsWith("_"))
             {
@@ -147,14 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Invalid key name.");
             }
 
-            if ((functionName != null && !_scriptHostManager.Instance.IsFunction(functionName)) ||
-                !await _secretManager.DeleteSecretAsync(keyName, functionName))
+            if ((secretsType == ScriptSecretsType.Function && !_scriptHostManager.Instance.IsFunction(keyScope)) ||
+                !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
             {
                 // Either the function or the key were not found
                 return NotFound();
             }
 
-            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, functionName ?? "host", "Deleted");
+            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted");
 
             return StatusCode(HttpStatusCode.NoContent);
         }

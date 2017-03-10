@@ -21,19 +21,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public abstract bool HasStaleKeys { get; }
 
         [JsonIgnore]
-        protected abstract ICollection<Key> InnerFunctionKeys { get; }
-
-        [JsonIgnore]
         public abstract ScriptSecretsType SecretsType { get; }
+
+        protected abstract ICollection<Key> GetKeys(string keyScope);
 
         public abstract ScriptSecrets Refresh(IKeyValueConverterFactory factory);
 
         public abstract IEnumerator<Key> GetEnumerator();
 
-        public virtual void AddKey(Key item) => InnerFunctionKeys?.Add(item);
+        public virtual void AddKey(Key item, string keyScope) => GetKeys(keyScope)?.Add(item);
 
-        public virtual bool RemoveKey(Key item) => InnerFunctionKeys?.Remove(item) ?? false;
+        public virtual bool RemoveKey(Key item, string keyScope) => GetKeys(keyScope)?.Remove(item) ?? false;
 
-        public virtual Key GetFunctionKey(string name) => InnerFunctionKeys?.FirstOrDefault(k => string.Equals(k.Name, name, StringComparison.OrdinalIgnoreCase));
+        public virtual Key GetFunctionKey(string name, string keyScope) => GetKeys(keyScope)?.FirstOrDefault(k => string.Equals(k.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 }
