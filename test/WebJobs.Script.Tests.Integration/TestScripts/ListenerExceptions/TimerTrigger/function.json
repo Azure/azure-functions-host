@@ -1,0 +1,11 @@
+﻿{
+    "bindings": [
+        {
+            "type": "timerTrigger",
+            "name": "timerInfo",
+            "direction": "in",
+            "runOnStartup": true,
+            "schedule": "*/2 * * * * *"
+        }
+    ]
+}

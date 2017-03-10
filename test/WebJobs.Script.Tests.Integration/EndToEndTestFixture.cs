@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Reset the timer logs first, since one of the tests will
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
+            TestHelpers.ClearFunctionLogs("ListenerStartupException");
             Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, config, _settingsManager);
             Host.Start();
         }

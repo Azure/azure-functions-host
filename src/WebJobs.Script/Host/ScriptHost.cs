@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -1087,19 +1088,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 FunctionInvocationException invocationException = exception as FunctionInvocationException;
                 NotifyInvoker(invocationException.MethodName, invocationException);
             }
-            else if (exception is FunctionIndexingException)
+            else if (exception is FunctionIndexingException || exception is FunctionListenerException)
             {
-                // For all startup time indexing errors, we accumulate them per function
-                FunctionIndexingException indexingException = exception as FunctionIndexingException;
-                string formattedError = Utility.FlattenException(indexingException);
-                AddFunctionError(FunctionErrors, indexingException.MethodName, formattedError);
+                // For all startup time indexing/listener errors, we accumulate them per function
+                FunctionException functionException = exception as FunctionException;
+                string formattedError = Utility.FlattenException(functionException);
+                AddFunctionError(FunctionErrors, functionException.MethodName, formattedError);
 
                 // Also notify the invoker so the error can also be written to the function
                 // log file
-                NotifyInvoker(indexingException.MethodName, indexingException);
+                NotifyInvoker(functionException.MethodName, functionException);
 
-                // Mark the error as handled so indexing will continue
-                indexingException.Handled = true;
+                // Mark the error as handled so execution will continue with this function disabled
+                functionException.Handled = true;
             }
             else
             {
