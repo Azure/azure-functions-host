@@ -1,13 +1,39 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Net.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpRequestMessageExtensions
     {
+        [Fact]
+        public void IsAntaresInternalRequest_ReturnsExpectedResult()
+        {
+            // not running under Azure
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");
+            Assert.False(request.IsAntaresInternalRequest());
+
+            // running under Azure
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                // with header
+                request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");
+                request.Headers.Add(ScriptConstants.AntaresExternalRequestHeaderName, "123");
+                Assert.False(request.IsAntaresInternalRequest());
+
+                request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");
+                Assert.True(request.IsAntaresInternalRequest());
+            }
+        }
+
         [Fact]
         public void GetQueryParameterDictionary_ReturnsExpectedParameters()
         {

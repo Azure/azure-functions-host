@@ -15,6 +15,7 @@ using System.Web.Http;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -919,11 +920,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
+            Assert.Equal(3, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             string expectedVersion = fileVersionAttr.Version;
             string expectedId = "5a709861cab44e68bfed5d2c2fe7fc0c";
             Assert.Equal(expectedId, jsonContent["id"].ToString());
             Assert.Equal(expectedVersion, jsonContent["version"].ToString());
+            var state = (string)jsonContent["state"];
+            Assert.True(state == "Running" || state == "Created");
 
             // Now ensure XML content works
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -947,6 +951,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HostStatus_AnonymousAntaresInteral_CheckLoad_Succeeds()
+        {
+            string uri = "admin/host/status?checkLoad=1";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
+                { EnvironmentSettingNames.AzureWebsiteAppCountersName, "{\"connections\": 290, \"connectionLimit\": 300}" }
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string content = await response.Content.ReadAsStringAsync();
+                var jsonContent = JObject.Parse(content);
+
+                Assert.Equal(4, jsonContent.Properties().Count());
+                AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+                string expectedVersion = fileVersionAttr.Version;
+                string expectedId = "5a709861cab44e68bfed5d2c2fe7fc0c";
+                Assert.Equal(expectedId, jsonContent["id"].ToString());
+                Assert.Equal(expectedVersion, jsonContent["version"].ToString());
+                var state = (string)jsonContent["state"];
+                Assert.True(state == "Running" || state == "Created");
+                JObject loadStatus = (JObject)jsonContent["load"];
+                Assert.True((bool)loadStatus["isHigh"]);
+            }
+        }
+
+        [Fact]
         public async Task HostStatus_FunctionLevelRequest_Succeeds()
         {
             string uri = "admin/host/status";
@@ -954,10 +990,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add("x-functions-key", "zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc");
             var response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            string json = await response.Content.ReadAsStringAsync();
-            JObject obj = JObject.Parse(json);
-            Assert.Equal(0, obj.Properties().Count());
+            Assert.Null(response.Content);
         }
 
         [Fact]
@@ -967,10 +1000,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Null(response.Content);
 
-            string json = await response.Content.ReadAsStringAsync();
-            JObject obj = JObject.Parse(json);
-            Assert.Equal(0, obj.Properties().Count());
+            // issue the request again, specifying a load check - expect
+            // this to not return load details
+            uri = "admin/host/status?checkLoad=1";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Null(response.Content);
+        }
+
+        [Fact]
+        public async Task HostStatus_AdminLevelRequest_WithLoad_Succeeds()
+        {
+            try
+            {
+                var counters = new JObject
+                {
+                    { "connections", 289 },
+                    { "connectionLimit", 300 }
+                };
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName, counters.ToString());
+
+                string uri = "admin/host/status?checkLoad=1";
+                var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
+                var response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                string json = await response.Content.ReadAsStringAsync();
+                JObject jsonContent = JObject.Parse(json);
+                Assert.Equal(4, jsonContent.Properties().Count());
+                JObject loadStatus = (JObject)jsonContent["load"];
+                Assert.True((bool)loadStatus["isHigh"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName, string.Empty);
+            }
         }
 
         private async Task<HttpResponseMessage> GetHostStatusAsync()

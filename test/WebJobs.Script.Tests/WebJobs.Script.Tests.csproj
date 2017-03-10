@@ -278,10 +278,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.AppContext.4.1.0\lib\net46\System.AppContext.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Collections.Immutable, Version=1.2.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Collections.Immutable.1.3.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
       <Private>True</Private>
@@ -449,6 +445,7 @@
     <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
+    <Compile Include="Diagnostics\HostPerformanceManagerTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriterTests.cs" />

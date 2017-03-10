@@ -10,7 +10,7 @@ module.exports = {
     globalInitialization: globalInitialization,
     clearRequireCache: clearRequireCache,
     createFunction: createFunction
-}
+};
 
 function globalInitialization(context, callback) {
     process.on('uncaughtException', function (err) {
@@ -40,7 +40,7 @@ function createFunction(f) {
                 var message = util.format.apply(null, arguments);
                 origLog({ lvl: traceLevel, msg: message });
             };
-        }
+        };
         // set default log to 'info'
         var log = logLevel(3);
         ['error', 'warn', 'info', 'verbose'].forEach((level, index) => {

@@ -220,10 +220,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.AppContext.4.1.0\lib\net46\System.AppContext.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Collections.Immutable, Version=1.2.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Collections.Immutable.1.3.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
       <Private>True</Private>
@@ -397,6 +393,7 @@
     <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
@@ -421,6 +418,7 @@
     <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
+    <Compile Include="Diagnostics\HostPerformanceManager.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\InterceptingTraceWriter.cs" />
     <Compile Include="Diagnostics\ITraceWriterFactory.cs" />
