@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly TraceWriter _trace;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
         private readonly IStorageAccount _hostAccount;
+        private readonly ILoggerFactory _loggerFactory;
 
         public SharedBlobQueueListenerFactory(
             IStorageAccount hostAccount,
@@ -32,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IQueueConfiguration queueConfiguration,
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
+            ILoggerFactory loggerFactory,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
             if (hostAccount == null)
@@ -75,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _queueConfiguration = queueConfiguration;
             _exceptionHandler = exceptionHandler;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
@@ -93,11 +97,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             // this special queue bypasses the QueueProcessorFactory - we don't want people to
             // override this
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_hostBlobTriggerQueue.SdkObject, _trace, _queueConfiguration, defaultPoisonQueue.SdkObject);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_hostBlobTriggerQueue.SdkObject, _trace, _loggerFactory,
+                _queueConfiguration, defaultPoisonQueue.SdkObject);
             SharedBlobQueueProcessor queueProcessor = new SharedBlobQueueProcessor(context, triggerExecutor);
 
             IListener listener = new QueueListener(_hostBlobTriggerQueue, defaultPoisonQueue, triggerExecutor,
-                _exceptionHandler, _trace, _sharedQueueWatcher, _queueConfiguration, queueProcessor);
+                _exceptionHandler, _trace, _loggerFactory, _sharedQueueWatcher, _queueConfiguration, queueProcessor);
 
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }

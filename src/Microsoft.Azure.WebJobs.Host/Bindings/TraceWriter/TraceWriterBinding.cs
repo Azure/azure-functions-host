@@ -7,17 +7,21 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class TraceWriterBinding : IBinding
     {
         private readonly ParameterInfo _parameter;
+        private ILoggerFactory _loggerFactory;
 
-        public TraceWriterBinding(ParameterInfo parameter)
+        public TraceWriterBinding(ParameterInfo parameter, ILoggerFactory loggerFactory)
         {
             _parameter = parameter;
+            _loggerFactory = loggerFactory;
         }
 
         public bool FromAttribute
@@ -45,16 +49,24 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 throw new ArgumentNullException("context");
             }
 
+            TraceWriter trace = context.Trace;
+
+            // If logger functionality is enabled, wrap an ILogger
+            if (_loggerFactory != null)
+            {
+                ILogger logger = _loggerFactory.CreateLogger(LogCategories.Function);
+                trace = new CompositeTraceWriter(new[] { trace, new LoggerTraceWriter(context.Trace.Level, logger) }, null, context.Trace.Level);
+            }
+
             object tracer = null;
             if (_parameter.ParameterType == typeof(TraceWriter))
             {
-                // bind directly to the context TraceWriter
-                tracer = context.Trace;
+                tracer = trace;
             }
             else
             {
                 // bind to an adapter
-                tracer = TextWriterTraceAdapter.Synchronized(context.Trace);
+                tracer = TextWriterTraceAdapter.Synchronized(trace);
             }
 
             return BindAsync(tracer, context.ValueContext);

@@ -5,16 +5,14 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 
@@ -22,7 +20,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal static class FunctionIndexerFactory
     {
-        public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null, TraceWriter traceWriter = null)
+        public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null,
+            IExtensionRegistry extensionRegistry = null, TraceWriter traceWriter = null, ILoggerFactory loggerFactory = null)
         {
             IStorageAccountProvider storageAccountProvider = GetStorageAccountProvider(account);
 
@@ -42,7 +41,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger);
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, singletonManager, logger);
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor,
+                extensionRegistry, singletonManager, logger, loggerFactory);
         }
 
         private static IStorageAccountProvider GetStorageAccountProvider(CloudStorageAccount account)

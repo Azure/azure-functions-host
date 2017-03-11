@@ -4,14 +4,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -43,6 +46,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             SingletonManager singletonManager = new SingletonManager();
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
             // create a bunch of function definitions that are disabled
             List<FunctionDefinition> functions = new List<FunctionDefinition>();
             FunctionDescriptor descriptor = new FunctionDescriptor
@@ -55,13 +62,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
 
             // Create the composite listener - this will fail if any of the
             // function definitions indicate that they are not disabled
-            HostListenerFactory factory = new HostListenerFactory(functions, singletonManager, DefaultJobActivator.Instance, null, traceWriter);
+            HostListenerFactory factory = new HostListenerFactory(functions, singletonManager, DefaultJobActivator.Instance, null, traceWriter, loggerFactory);
             IListener listener = await factory.CreateAsync(CancellationToken.None);
 
+            string expectedMessage = $"Function '{descriptor.ShortName}' is disabled";
+
+            // Validate TraceWriter
             Assert.Equal(1, traceWriter.Traces.Count);
             Assert.Equal(TraceLevel.Info, traceWriter.Traces[0].Level);
             Assert.Equal(TraceSource.Host, traceWriter.Traces[0].Source);
-            Assert.Equal(string.Format("Function '{0}' is disabled", descriptor.ShortName), traceWriter.Traces[0].Message);
+            Assert.Equal(expectedMessage, traceWriter.Traces[0].Message);
+
+            // Validate Logger
+            var logMessage = loggerProvider.CreatedLoggers.Single().LogMessages.Single();
+            Assert.Equal(LogLevel.Information, logMessage.Level);
+            Assert.Equal(LogCategories.Startup, logMessage.Category);
+            Assert.Equal(expectedMessage, logMessage.FormattedMessage);
 
             Environment.SetEnvironmentVariable("EnvironmentSettingTrue", null);
         }

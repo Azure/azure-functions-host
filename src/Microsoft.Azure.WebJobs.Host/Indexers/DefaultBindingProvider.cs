@@ -15,17 +15,19 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Bindings;
 using Microsoft.Azure.WebJobs.Host.Tables;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
         public static IBindingProvider Create(
-            INameResolver nameResolver,            
+            INameResolver nameResolver,
+            ILoggerFactory loggerFactory,
             IStorageAccountProvider storageAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
             IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter,
-            IExtensionRegistry extensions)            
+            IExtensionRegistry extensions)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
                      
@@ -43,7 +45,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             // The TraceWriter binder handles all remaining TraceWriter/TextWriter parameters. It must come after the
             // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
-            innerProviders.Add(new TraceWriterBindingProvider());
+            innerProviders.Add(new TraceWriterBindingProvider(loggerFactory));
+
+            innerProviders.Add(new LoggerBindingProvider(loggerFactory));
 
             ContextAccessor<IBindingProvider> bindingProviderAccessor = new ContextAccessor<IBindingProvider>();
             innerProviders.Add(new RuntimeBindingProvider(bindingProviderAccessor));

@@ -6,5 +6,7 @@ namespace Microsoft.Azure.WebJobs.Host
     internal static class WebSitesKnownKeyNames
     {
         public const string JobDataPath = "WEBJOBS_DATA_PATH";
+
+        public const string WebSiteInstanceIdKey = "WEBSITE_INSTANCE_ID";
     }
 }

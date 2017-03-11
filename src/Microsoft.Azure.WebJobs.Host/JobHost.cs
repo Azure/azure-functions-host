@@ -12,7 +12,9 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
@@ -36,7 +38,7 @@ namespace Microsoft.Azure.WebJobs
         private Task<JobHostContext> _contextTask;
         private bool _contextTaskInitialized;
         private object _contextTaskLock = new object();
-                
+
         private JobHostContext _context;
         private IListener _listener;
         private object _contextLock = new object();
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs
         private Task _stopTask;
         private object _stopTaskLock = new object();
         private bool _disposed;
+
+        private ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -114,7 +118,10 @@ namespace Microsoft.Azure.WebJobs
             await EnsureHostStartedAsync(cancellationToken);
 
             await _listener.StartAsync(cancellationToken);
-            _context.Trace.Info("Job host started", Host.TraceSource.Host);
+
+            string msg = "Job host started";
+            _context.Trace.Info(msg, Host.TraceSource.Host);
+            _logger?.LogInformation(msg);
 
             _state = StateStarted;
         }
@@ -156,13 +163,15 @@ namespace Microsoft.Azure.WebJobs
             await _listener.StopAsync(cancellationToken);
 
             // Flush remaining logs
-            var fastLogger = _context.FastLogger;
-            if (fastLogger != null)
+            var functionEventCollector = _context.FunctionEventCollector;
+            if (functionEventCollector != null)
             {
-                await fastLogger.FlushAsync(cancellationToken);
+                await functionEventCollector.FlushAsync(cancellationToken);
             }
 
-            _context.Trace.Info("Job host stopped", Host.TraceSource.Host);
+            string msg = "Job host stopped";
+            _context.Trace.Info(msg, Host.TraceSource.Host);
+            _logger?.LogInformation(msg);
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>
@@ -321,7 +330,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
-        {            
+        {
             JobHostContext context = await _config.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
 
             lock (_contextLock)
@@ -332,6 +341,8 @@ namespace Microsoft.Azure.WebJobs
                     _listener = context.Listener;
                 }
             }
+
+            _logger = _context.LoggerFactory?.CreateLogger(LogCategories.Startup);
 
             return _context;
         }

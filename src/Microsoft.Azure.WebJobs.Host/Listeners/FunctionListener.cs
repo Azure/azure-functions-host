@@ -4,7 +4,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
@@ -13,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly IListener _listener;
         private readonly FunctionDescriptor _descriptor;
         private readonly TraceWriter _trace;
+        private readonly ILogger _logger;
         private bool _started = false;
 
         /// <summary>
@@ -22,11 +25,13 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         /// <param name="listener"></param>
         /// <param name="descriptor"></param>
         /// <param name="trace"></param>
-        public FunctionListener(IListener listener, FunctionDescriptor descriptor, TraceWriter trace)
+        /// <param name="loggerFactory"></param>
+        public FunctionListener(IListener listener, FunctionDescriptor descriptor, TraceWriter trace, ILoggerFactory loggerFactory)
         {
             _listener = listener;
             _descriptor = descriptor;
             _trace = trace;
+            _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public void Cancel()
@@ -48,10 +53,10 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             }
             catch (Exception e)
             {
-                new FunctionListenerException(_descriptor.ShortName, e).TryRecover(_trace);
+                new FunctionListenerException(_descriptor.ShortName, e).TryRecover(_trace, _logger);
             }
         }
-        
+
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             if (_started)

@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -71,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Host
         /// Recovers if exception is handled by trace pipeline, else throws.
         /// </summary>
         /// <param name="trace"></param>
-        internal void TryRecover(TraceWriter trace)
+        /// <param name="logger"></param>
+        internal void TryRecover(TraceWriter trace, ILogger logger)
         {
             if (trace == null)
             {
@@ -79,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             trace.Error(Message, this);
+            logger?.LogError(0, this, Message);
             if (!Handled)
             {
                 throw this;

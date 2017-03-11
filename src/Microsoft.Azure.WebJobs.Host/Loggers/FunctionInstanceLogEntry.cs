@@ -3,9 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -42,13 +39,18 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         public DateTime? EndTime { get; set; }
 
         /// <summary>
+        /// The duration of the function execution.
+        /// </summary>
+        public TimeSpan Duration { get; set; }
+
+        /// <summary>
         /// Null on success.
         /// Else, set to some string with error details. 
         /// </summary>
         public string ErrorDetails { get; set; }
 
         /// <summary>Gets or sets the function's argument values and help strings.</summary>        
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]        
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, string> Arguments { get; set; }
 
         /// <summary>Direct inline capture for output written to the per-function instance TextWriter log. 

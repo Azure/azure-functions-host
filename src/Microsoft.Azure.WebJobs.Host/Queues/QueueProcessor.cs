@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly TraceWriter _trace;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Constructs a new instance.
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             _queue = context.Queue;
             _poisonQueue = context.PoisonQueue;
             _trace = context.Trace;
+            _logger = context.Logger;
 
             MaxDequeueCount = context.MaxDequeueCount;
             BatchSize = context.BatchSize;
@@ -106,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use</param>
         /// <returns></returns>
         public virtual async Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
-        {            
+        {
             if (result.Succeeded)
             {
                 await DeleteMessageAsync(message, cancellationToken);
@@ -140,7 +143,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <returns></returns>
         protected virtual async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CloudQueue poisonQueue, CancellationToken cancellationToken)
         {
-            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", MaxDequeueCount, poisonQueue.Name), TraceSource.Execution);
+            string msg = string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", MaxDequeueCount, poisonQueue.Name);
+            _trace.Warning(msg, TraceSource.Execution);
+            _logger?.LogWarning(msg);
 
             await AddMessageAndCreateIfNotExistsAsync(poisonQueue, message, cancellationToken);
 

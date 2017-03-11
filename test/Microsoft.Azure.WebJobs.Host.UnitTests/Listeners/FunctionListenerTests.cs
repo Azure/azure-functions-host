@@ -2,17 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using System.Collections.ObjectModel;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
 {
@@ -25,6 +25,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             ShortName = "testfunc"
         };
 
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly TestLoggerProvider _loggerProvider;
+
+        public FunctionListenerTests()
+        {
+            _loggerFactory = new LoggerFactory();
+            _loggerProvider = new TestLoggerProvider();
+            _loggerFactory.AddProvider(_loggerProvider);
+        }
+
         [Fact]
         public async Task FunctionListener_Throws_IfUnhandledListenerExceptionOnStartAsync()
         {
@@ -32,12 +42,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
             badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
                 .Throws(new Exception("listener"));
-            var listener = new FunctionListener(badListener.Object, fd, trace);
+            var listener = new FunctionListener(badListener.Object, fd, trace, _loggerFactory);
 
             var e = await Assert.ThrowsAsync<FunctionListenerException>(async () => await listener.StartAsync(ct));
-            var exc = trace.Traces[0].Exception as FunctionException;
-            Assert.Equal("testfunc", exc.MethodName);
-            Assert.False(exc.Handled);
+
+            // Validate TraceWriter
+            var traceEx = trace.Traces[0].Exception as FunctionException;
+            Assert.Equal("testfunc", traceEx.MethodName);
+            Assert.False(traceEx.Handled);
+
+            // Validate Logger
+            var loggerEx = _loggerProvider.CreatedLoggers.Single().LogMessages.Single().Exception as FunctionException;
+            Assert.Equal("testfunc", loggerEx.MethodName);
+            Assert.False(loggerEx.Handled);
+
             badListener.VerifyAll();
         }
 
@@ -48,14 +66,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
             badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
                 .Throws(new Exception("listener"));
-            var listener = new FunctionListener(badListener.Object, fd, trace);
+            var listener = new FunctionListener(badListener.Object, fd, trace, _loggerFactory);
 
             await listener.StartAsync(ct);
 
-            Assert.Equal("The listener for function 'testfunc' was unable to start.", trace.Traces[0].Message);
-            var exc = trace.Traces[0].Exception as FunctionException;
-            Assert.Equal("testfunc", exc.MethodName);
-            Assert.True(exc.Handled);
+            string expectedMessage = "The listener for function 'testfunc' was unable to start.";
+
+            // Validate TraceWriter
+            Assert.Equal(expectedMessage, trace.Traces[0].Message);
+            var traceEx = trace.Traces[0].Exception as FunctionException;
+            Assert.Equal("testfunc", traceEx.MethodName);
+            Assert.True(traceEx.Handled);
+
+            // Validate Logger
+            var logMessage = _loggerProvider.CreatedLoggers.Single().LogMessages.Single();
+            Assert.Equal(expectedMessage, logMessage.FormattedMessage);
+            var loggerEx = logMessage.Exception as FunctionException;
+            Assert.Equal("testfunc", loggerEx.MethodName);
+            Assert.True(loggerEx.Handled);
+
             badListener.VerifyAll();
         }
 
@@ -66,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             Mock<IListener> badListener = new Mock<IListener>(MockBehavior.Strict);
             badListener.Setup(bl => bl.StartAsync(It.IsAny<CancellationToken>()))
                 .Throws(new Exception("listener"));
-            var listener = new FunctionListener(badListener.Object, fd, trace);
+            var listener = new FunctionListener(badListener.Object, fd, trace, _loggerFactory);
 
             await listener.StartAsync(ct);
             // these should do nothing, as function listener had an exception on start
@@ -87,12 +116,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
                 .Returns(Task.FromResult(false));
             goodListener.Setup(bl => bl.StopAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
-            var listener = new FunctionListener(goodListener.Object, fd, trace);
+            var listener = new FunctionListener(goodListener.Object, fd, trace, _loggerFactory);
 
             await listener.StartAsync(ct);
             await listener.StopAsync(ct);
 
             Assert.Empty(trace.Traces);
+            Assert.Empty(_loggerProvider.CreatedLoggers.Single().LogMessages);
 
             goodListener.VerifyAll();
         }

@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
@@ -46,9 +47,9 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return UpdateOutputLogCommand.Create(blob);
         }
 
-        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)
+        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace, ILogger logger)
         {
-            return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), trace);
+            return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), trace, logger);
         }
 
         private IStorageBlockBlob GetBlockBlobReference(LocalBlobDescriptor descriptor)

@@ -8,7 +8,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -17,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
@@ -47,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             SingletonManager singletonManager,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (accountProvider == null)
             {
@@ -116,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _sharedContextProvider = sharedContextProvider;
             _singletonManager = singletonManager;
             _trace = trace;
+            _loggerFactory = loggerFactory;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -172,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             ITriggerBinding binding = new BlobTriggerBinding(parameter, argumentBinding, hostAccount, dataAccount, path,
                 _hostIdProvider, _queueConfiguration, _blobsConfiguration, _exceptionHandler, _blobWrittenWatcherSetter,
-                _messageEnqueuedWatcherSetter, _sharedContextProvider, _singletonManager, _trace);
+                _messageEnqueuedWatcherSetter, _sharedContextProvider, _singletonManager, _trace, _loggerFactory);
 
             return binding;
         }

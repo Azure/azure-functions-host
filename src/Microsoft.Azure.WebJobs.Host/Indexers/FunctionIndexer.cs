@@ -12,8 +12,10 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -28,8 +30,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly HashSet<Assembly> _jobAttributeAssemblies;
         private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
+        private readonly ILogger _logger;
 
-        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager, TraceWriter trace)
+        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager,
+            TraceWriter trace, ILoggerFactory loggerFactory)
         {
             if (triggerBindingProvider == null)
             {
@@ -73,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _singletonManager = singletonManager;
             _jobAttributeAssemblies = GetJobAttributeAssemblies(extensions);
             _trace = trace;
+            _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
@@ -85,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
                 catch (FunctionIndexingException fex)
                 {
-                    fex.TryRecover(_trace);
+                    fex.TryRecover(_trace, _logger);
                     // If recoverable, continue to the rest of the methods.
                     // The method in error simply won't be running in the JobHost.
                     continue;
@@ -123,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             // create a set containing our own core assemblies
             HashSet<Assembly> assemblies = new HashSet<Assembly>();
             assemblies.Add(typeof(BlobAttribute).Assembly);
-       
+
             // add any extension assemblies
             assemblies.UnionWith(extensions.GetExtensionAssemblies());
 
@@ -206,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     if (triggerBinding != null && !hasNoAutomaticTriggerAttribute)
                     {
                         throw new InvalidOperationException(
-                            string.Format(Constants.UnableToBindParameterFormat, 
+                            string.Format(Constants.UnableToBindParameterFormat,
                             parameter.Name, parameter.ParameterType.Name, Constants.ExtensionInitializationMessage));
                     }
                     else
@@ -246,7 +251,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             if (TypeUtility.IsAsyncVoid(method))
             {
-                this._trace.Warning($"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.");
+                string msg = $"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.";
+                _trace.Warning(msg);
+                _logger?.LogWarning(msg);
             }
 
             Type returnType = method.ReturnType;

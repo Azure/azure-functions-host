@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -15,6 +16,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// </summary>
     internal class TraceWriterBindingProvider : IBindingProvider
     {
+        private ILoggerFactory _loggerFactory;
+
+        public TraceWriterBindingProvider(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+        }
+
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             if (context == null)
@@ -29,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 return Task.FromResult<IBinding>(null);
             }
 
-            IBinding binding = new TraceWriterBinding(parameter);
+            IBinding binding = new TraceWriterBinding(parameter, _loggerFactory);
             return Task.FromResult(binding);
         }
     }

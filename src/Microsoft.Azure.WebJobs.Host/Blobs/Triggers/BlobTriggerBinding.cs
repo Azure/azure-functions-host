@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
         private readonly SingletonManager _singletonManager;
@@ -55,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             SingletonManager singletonManager,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (parameter == null)
             {
@@ -147,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _sharedContextProvider = sharedContextProvider;
             _singletonManager = singletonManager;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _converter = CreateConverter(_blobClient);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -263,9 +267,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageBlobContainer container = _blobClient.GetContainerReference(_path.ContainerNamePattern);
 
-            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration, _blobsConfiguration,
-                _exceptionHandler, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
+            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration, _blobsConfiguration, _exceptionHandler,
+                _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, _loggerFactory,
+                context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
 
             return factory.CreateAsync(context.CancellationToken);
         }

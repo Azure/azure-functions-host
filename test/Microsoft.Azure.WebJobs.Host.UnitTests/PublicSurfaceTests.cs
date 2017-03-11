@@ -226,7 +226,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "RecoverableException",
                 "FunctionException",
                 "FunctionListenerException",
-                "ExceptionFormatter"
+                "ExceptionFormatter",
+                "FunctionResultAggregatorConfiguration",
+                "ApplicationInsightsLoggerExtensions",
+                "LogCategoryFilter",
+                "LogCategories",
+                "ITelemetryClientFactory",
+                "DefaultTelemetryClientFactory"
             };
 
             AssertPublicTypes(expected, assembly);

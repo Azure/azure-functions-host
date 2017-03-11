@@ -5,6 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -16,7 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionExecutor _executor;
         private readonly IListener _listener;
         private readonly TraceWriter _trace;
-        private readonly IAsyncCollector<FunctionInstanceLogEntry> _fastLogger; // optional
+        private readonly IAsyncCollector<FunctionInstanceLogEntry> _functionEventCollector; // optional        
+        private readonly ILoggerFactory _loggerFactory;
 
         private bool _disposed;
 
@@ -24,13 +26,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IFunctionExecutor executor,
             IListener listener,
             TraceWriter trace,
-            IAsyncCollector<FunctionInstanceLogEntry> fastLogger = null)
+            IAsyncCollector<FunctionInstanceLogEntry> functionEventCollector = null,
+            ILoggerFactory loggerFactory = null)
         {
             _functionLookup = functionLookup;
             _executor = executor;
             _listener = listener;
             _trace = trace;
-            _fastLogger = fastLogger;
+            _functionEventCollector = functionEventCollector;
+            _loggerFactory = loggerFactory;
         }
 
         public TraceWriter Trace
@@ -69,12 +73,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public IAsyncCollector<FunctionInstanceLogEntry> FastLogger
+        public IAsyncCollector<FunctionInstanceLogEntry> FunctionEventCollector
         {
             get
             {
                 ThrowIfDisposed();
-                return _fastLogger;
+                return _functionEventCollector;
+            }
+        }
+
+        public ILoggerFactory LoggerFactory
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return _loggerFactory;
             }
         }
 

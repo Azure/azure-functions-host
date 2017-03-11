@@ -3,12 +3,14 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             TimeoutAttribute attribute = method.GetCustomAttribute<TimeoutAttribute>();
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -64,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -76,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void StartFunctionTimeout_NoTimeout_ReturnsNull()
         {
             TimeoutAttribute timeoutAttribute = null;
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(null, timeoutAttribute, _cancellationTokenSource, _traceWriter);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(null, timeoutAttribute, _cancellationTokenSource, _traceWriter, null);
 
             Assert.Null(timer);
         }
@@ -90,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
             attribute.ThrowOnTimeout = false;
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
 
             Assert.Null(timer);
 
@@ -109,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             TimeoutAttribute attribute = typeof(Functions).GetCustomAttribute<TimeoutAttribute>();
 
-            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter);
+            System.Timers.Timer timer = FunctionExecutor.StartFunctionTimeout(_mockFunctionInstance.Object, attribute, _cancellationTokenSource, _traceWriter, null);
 
             Assert.True(timer.Enabled);
             Assert.Equal(attribute.Timeout.TotalMilliseconds, timer.Interval);
@@ -317,16 +319,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             TimeoutAttribute attribute = method.GetCustomAttribute<TimeoutAttribute>();
             Guid instanceId = Guid.Parse("B2D1DD72-80E2-412B-A22E-3B4558F378B4");
             bool timeoutWhileDebugging = false;
-            FunctionExecutor.OnFunctionTimeout(timer, method, instanceId, attribute.Timeout, timeoutWhileDebugging, _traceWriter, _cancellationTokenSource, () => isDebugging);
+
+            TestLogger logger = new TestLogger("Tests.FunctionExecutor");
+
+            FunctionExecutor.OnFunctionTimeout(timer, method, instanceId, attribute.Timeout, timeoutWhileDebugging, _traceWriter, logger, _cancellationTokenSource, () => isDebugging);
 
             Assert.False(timer.Enabled);
             Assert.NotEqual(isDebugging, _cancellationTokenSource.IsCancellationRequested);
 
+            string message = string.Format("Timeout value of 00:01:00 exceeded by function 'Functions.MethodLevel' (Id: 'b2d1dd72-80e2-412b-a22e-3b4558f378b4'). {0}", expectedMessage);
+
+            // verify TraceWriter
             TraceEvent trace = _traceWriter.Traces[0];
             Assert.Equal(TraceLevel.Error, trace.Level);
             Assert.Equal(TraceSource.Execution, trace.Source);
-            string message = string.Format("Timeout value of 00:01:00 exceeded by function 'Functions.MethodLevel' (Id: 'b2d1dd72-80e2-412b-a22e-3b4558f378b4'). {0}", expectedMessage);
             Assert.Equal(message, trace.Message);
+
+            // verify ILogger
+            LogMessage log = logger.LogMessages.Single();
+            Assert.Equal(LogLevel.Error, log.Level);
+            Assert.Equal(message, log.FormattedMessage);
         }
 
         public static void GlobalLevel(CancellationToken cancellationToken)

@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs
             : this(null)
         {
         }
-                
+
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using the
         /// specified connection string for both reading and writing data as well as Dashboard logging.
@@ -62,6 +63,7 @@ namespace Microsoft.Azure.WebJobs
             }
 
             Singleton = new SingletonConfiguration();
+            Aggregator = new FunctionResultAggregatorConfiguration();
 
             // add our built in services here
             _tooling = new JobHostMetadataProvider(this);
@@ -80,9 +82,10 @@ namespace Microsoft.Azure.WebJobs
             AddService<ITypeLocator>(typeLocator);
             AddService<IConverterManager>(converterManager);
             AddService<IWebJobsExceptionHandler>(exceptionHandler);
+            AddService<IFunctionResultAggregatorFactory>(new FunctionResultAggregatorFactory());
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
-            IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;            
+            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Host.Constants.EnvironmentSettingName);
+            IsDevelopment = string.Compare(Host.Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         /// <summary>
@@ -258,6 +261,31 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
+        /// Gets the configuration used by the logging aggregator.
+        /// </summary>
+        public FunctionResultAggregatorConfiguration Aggregator
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="ILoggerFactory"/>. 
+        /// </summary>
+        [CLSCompliant(false)]
+        public ILoggerFactory LoggerFactory
+        {
+            get
+            {
+                return GetService<ILoggerFactory>();
+            }
+            set
+            {
+                AddService<ILoggerFactory>(value);
+            }
+        }
+
+        /// <summary>
         /// Gets the configuration for event tracing.
         /// </summary>
         public JobHostTraceConfiguration Tracing
@@ -353,10 +381,10 @@ namespace Microsoft.Azure.WebJobs
             }
 
             _services.AddOrUpdate(serviceType, serviceInstance, (key, existingValue) =>
-                {
-                    // always replace existing values
-                    return serviceInstance;
-                });
+            {
+                // always replace existing values
+                return serviceInstance;
+            });
         }
 
         /// <summary>
@@ -383,7 +411,7 @@ namespace Microsoft.Azure.WebJobs
         {
             _tooling.AddAttributesFromAssembly(assembly);
         }
-    
+
         /// <summary>
         /// Get a tooling interface for inspecting current extensions. 
         /// </summary>

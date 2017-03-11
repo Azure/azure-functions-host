@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -27,15 +28,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             ISharedContextProvider sharedContextProvider,
             IExtensionRegistry extensions,
             SingletonManager singletonManager,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 queueConfiguration, exceptionHandler, messageEnqueuedWatcherSetter,
-                sharedContextProvider, trace));
-            innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator, hostIdProvider, queueConfiguration, blobsConfiguration, exceptionHandler,
-                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, singletonManager, trace));
+                sharedContextProvider, trace, loggerFactory));
+            innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider, extensionTypeLocator,
+                hostIdProvider, queueConfiguration, blobsConfiguration, exceptionHandler, blobWrittenWatcherSetter,
+                messageEnqueuedWatcherSetter, sharedContextProvider, singletonManager, trace, loggerFactory));
 
             // add any registered extension binding providers
             foreach (ITriggerBindingProvider provider in extensions.GetExtensions(typeof(ITriggerBindingProvider)))

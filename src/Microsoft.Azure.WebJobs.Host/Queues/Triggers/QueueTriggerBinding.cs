@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName,
@@ -36,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (queue == null)
             {
@@ -82,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _converter = CreateConverter(queue);
         }
 
@@ -156,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("context");
             }
 
-            var factory = new QueueListenerFactory(_queue, _queueConfiguration, _exceptionHandler, 
-                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, context.Executor);
+            var factory = new QueueListenerFactory(_queue, _queueConfiguration, _exceptionHandler,
+                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, _loggerFactory, context.Executor);
 
             return factory.CreateAsync(context.CancellationToken);
         }
@@ -191,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             bindingData.Add("InsertionTime", value.InsertionTime.GetValueOrDefault(DateTimeOffset.UtcNow));
             bindingData.Add("NextVisibleTime", value.NextVisibleTime.GetValueOrDefault(DateTimeOffset.MaxValue));
             bindingData.Add("PopReceipt", value.PopReceipt);
-            
+
             if (bindingDataFromValueType != null)
             {
                 foreach (KeyValuePair<string, object> item in bindingDataFromValueType)
