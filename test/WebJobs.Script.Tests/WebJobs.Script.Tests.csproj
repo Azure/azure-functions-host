@@ -470,6 +470,7 @@
     <Compile Include="Description\FunctionGeneratorTests.cs" />
     <Compile Include="Description\DotNet\PackageAssemblyResolverTests.cs" />
     <Compile Include="Description\FunctionInvokerBaseTests.cs" />
+    <Compile Include="Handlers\ExceptionProcessingHandlerTests.cs" />
     <Compile Include="Handlers\SystemTraceHandlerTests.cs" />
     <Compile Include="HttpRouteFactoryTests.cs" />
     <Compile Include="Binding\HttpTriggerAttributeBindingProviderTests.cs" />

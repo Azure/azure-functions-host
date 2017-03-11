@@ -408,6 +408,7 @@
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
+    <Compile Include="Handlers\ExceptionProcessingHandler.cs" />
     <Compile Include="Controllers\SwaggerController.cs" />
     <Compile Include="Diagnostics\EventGenerator.cs" />
     <Compile Include="Diagnostics\FastLogger.cs" />
@@ -426,6 +427,7 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Handlers\SystemTraceHandler.cs" />
     <Compile Include="Handlers\WebScriptHostHandler.cs" />
+    <Compile Include="Models\ApiErrorModel.cs" />
     <Compile Include="Models\ApiModel.cs" />
     <Compile Include="Models\ApiModelUtility.cs" />
     <Compile Include="Models\Swagger\HttpOperationInfo.cs" />

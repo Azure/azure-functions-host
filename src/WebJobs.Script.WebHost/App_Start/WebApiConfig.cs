@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Web;
 using System.Web.Http;
+using System.Web.Http.ExceptionHandling;
 using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -49,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
             config.Formatters.Add(new PlaintextMediaTypeFormatter());
+            config.Services.Replace(typeof(IExceptionHandler), new ExceptionProcessingHandler(config));
             AddMessageHandlers(config);
 
             // Web API configuration and services
