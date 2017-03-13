@@ -1050,6 +1050,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Apply a default if this is running on Dynamic.
                 scriptConfig.FunctionTimeout = MaxTimeout;
             }
+
+            // apply swagger configuration
+            scriptConfig.SwaggerEnabled = false;
+
+            configSection = (JObject)config["swagger"];
+            JToken swaggerEnabled;
+
+            if (configSection != null &&
+                configSection.TryGetValue("enabled", out swaggerEnabled) &&
+                swaggerEnabled.Type == JTokenType.Boolean)
+            {
+                scriptConfig.SwaggerEnabled = (bool)swaggerEnabled;
+            }
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

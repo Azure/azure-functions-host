@@ -442,10 +442,12 @@
     <Compile Include="Binding\TwilioScriptBindingProviderTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
+    <Compile Include="Controllers\Admin\SwaggerControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Filters\SystemLevelAuthorizationAttributeTests.cs" />
     <Compile Include="Diagnostics\HostPerformanceManagerTests.cs" />
+    <Compile Include="Extensions\HttpRouteConstraintExtensionsTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriterTests.cs" />
@@ -488,6 +490,7 @@
     <Compile Include="Diagnostics\SystemTraceWriterTests.cs" />
     <Compile Include="Binding\HttpTriggerBindingTests.cs" />
     <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
+    <Compile Include="Swagger\SwaggerDocumentManagerTests.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebApiApplicationTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />

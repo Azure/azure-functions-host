@@ -88,5 +88,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// there is no timeout duration.
         /// </summary>
         public TimeSpan? FunctionTimeout { get; set; }
+
+        /// <summary>
+        /// Indicates whether swagger endpoint is enabled or disabled. If true swagger is enabled, otherwise it is disabled
+        /// </summary>
+        public bool SwaggerEnabled { get; set; }
     }
 }

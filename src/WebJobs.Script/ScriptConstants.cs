@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
+        public const string TraceSourceSwagger = "SwaggerDocumentation";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
@@ -47,6 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
 
+        public const string SwaggerFileName = "swagger.json";
+        public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
+        public const string SwaggerDirectoryName = "swagger";        
+        public const string DocumentationResourceName = ".azurefunctions.swagger";        
+        public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
+        public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
     }
 }
