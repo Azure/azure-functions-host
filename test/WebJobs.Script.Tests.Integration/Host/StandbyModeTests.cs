@@ -58,6 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void GetSwaggerDocumentManager_ReturnsExpectedValue()
+        {
+            TestGetter(_webHostResolver.GetSwaggerDocumentManager);
+        }
+
+        [Fact]
         public void GetWebHookReceiverManager_ReturnsExpectedValue()
         {
             TestGetter(_webHostResolver.GetWebHookReceiverManager);

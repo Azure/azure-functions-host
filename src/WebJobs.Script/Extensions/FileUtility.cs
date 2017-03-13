@@ -29,14 +29,16 @@ namespace Microsoft.Azure.WebJobs.Script
             });
         }
 
-        public static Task DeleteIfExistsAsync(string path)
+        public static Task<bool> DeleteIfExistsAsync(string path)
         {
             return Task.Run(() =>
             {
                 if (File.Exists(path))
                 {
                     File.Delete(path);
+                    return true;
                 }
+                return false; 
             });
         }
 

@@ -183,6 +183,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Error deleting Swagger document.
+        /// </summary>
+        internal static string SwaggerFileDeleteError {
+            get {
+                return ResourceManager.GetString("SwaggerFileDeleteError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error reading Swagger document.
+        /// </summary>
+        internal static string SwaggerFileReadError {
+            get {
+                return ResourceManager.GetString("SwaggerFileReadError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error updating Swagger document.
+        /// </summary>
+        internal static string SwaggerFileUpdateError {
+            get {
+                return ResourceManager.GetString("SwaggerFileUpdateError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Generating Swagger document....
+        /// </summary>
+        internal static string SwaggerGenerateDocument {
+            get {
+                return ResourceManager.GetString("SwaggerGenerateDocument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There was an error generating the Swagger document.
+        /// </summary>
+        internal static string SwaggerGenerateError {
+            get {
+                return ResourceManager.GetString("SwaggerGenerateError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
         internal static string TraceAddOrUpdateFunctionSecret {

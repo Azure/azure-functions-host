@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.Register<TraceWriter>(ct => ct.ResolveOptional<WebScriptHostManager>()?.Instance?.TraceWriter ?? NullTraceWriter.Instance).ExternallyOwned();
             builder.Register<ISecretManager>(ct => ct.Resolve<WebHostResolver>().GetSecretManager(settings)).ExternallyOwned();
+            builder.Register<ISwaggerDocumentManager>(ct => ct.Resolve<WebHostResolver>().GetSwaggerDocumentManager(settings)).ExternallyOwned();
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
             builder.Register<HostPerformanceManager>(ct => ct.Resolve<WebHostResolver>().GetPerformanceManager(settings)).ExternallyOwned();

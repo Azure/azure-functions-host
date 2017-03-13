@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
+        private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly object _syncLock = new object();
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, new FileSystemSecretsRepository(webHostSettings.SecretsPath));
             _performanceManager = new HostPerformanceManager(settingsManager);
+            _swaggerDocumentManager = new SwaggerDocumentManager(config);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
@@ -73,6 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretManager SecretManager => _secretManager;
 
         public HostPerformanceManager PerformanceManager => _performanceManager;
+
+        public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
 
         public virtual bool Initialized
         {
@@ -107,6 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _standbyMode = false;
 
                 return _standbyMode.Value;
+            }
+        }
+
+        public IReadOnlyDictionary<IHttpRoute, FunctionDescriptor> HttpFunctions
+        {
+            get
+            {
+                return _httpFunctions as IReadOnlyDictionary<IHttpRoute, FunctionDescriptor>;
             }
         }
 

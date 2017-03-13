@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretManagerFactory = secretManagerFactory;
         }
 
+        public ISwaggerDocumentManager GetSwaggerDocumentManager(WebHostSettings settings)
+        {
+            return GetWebScriptHostManager(settings).SwaggerDocumentManager;
+        }
+
         public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
         {
             if (_activeScriptHostConfig != null)

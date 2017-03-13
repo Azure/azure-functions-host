@@ -259,6 +259,21 @@
     ]
 }</value>
   </data>
+  <data name="SwaggerFileDeleteError" xml:space="preserve">
+    <value>Error deleting Swagger document</value>
+  </data>
+  <data name="SwaggerFileReadError" xml:space="preserve">
+    <value>Error reading Swagger document</value>
+  </data>
+  <data name="SwaggerFileUpdateError" xml:space="preserve">
+    <value>Error updating Swagger document</value>
+  </data>
+  <data name="SwaggerGenerateDocument" xml:space="preserve">
+    <value>Generating Swagger document...</value>
+  </data>
+  <data name="SwaggerGenerateError" xml:space="preserve">
+    <value>There was an error generating the Swagger document</value>
+  </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
     <value>{0} secret '{1}' for '{2}' {3}.</value>
   </data>

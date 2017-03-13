@@ -430,6 +430,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerShared", "HttpTr
 		sample\HttpTriggerShared\function.json = sample\HttpTriggerShared\function.json
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".azurefunctions", ".azurefunctions", "{7D50E081-A161-4E83-A6D4-F8529E518613}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "swagger", "swagger", "{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6}"
+	ProjectSection(SolutionItems) = preProject
+		sample\.azurefunctions\swagger\swagger.json = sample\.azurefunctions\swagger\swagger.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -552,5 +559,7 @@ Global
 		{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A} = {67174433-2838-460C-9880-419476D02994}
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 		{EB76E1C8-C823-4707-BD83-20304425EFC4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{7D50E081-A161-4E83-A6D4-F8529E518613} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6} = {7D50E081-A161-4E83-A6D4-F8529E518613}
 	EndGlobalSection
 EndGlobal

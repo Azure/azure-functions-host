@@ -544,6 +544,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("myprefix", scriptConfig.HttpRoutePrefix);
         }
 
+        // with swagger with setting name with value
+        // with swagger with setting name with wrong value set
+        [Fact]
+        public void ApplyConfiguration_Swagger()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            // no swagger section
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(false, scriptConfig.SwaggerEnabled);
+
+            // empty swagger section
+            JObject swagger = new JObject();
+            config["swagger"] = swagger;
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(false, scriptConfig.SwaggerEnabled);
+
+            // swagger section present, with swagger mode set to null
+            swagger["enabled"] = string.Empty;
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(false, scriptConfig.SwaggerEnabled);
+
+            // swagger section present, with swagger mode set to true
+            swagger["enabled"] = true;
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(true, scriptConfig.SwaggerEnabled);
+
+            // swagger section present, with swagger mode set to invalid
+            swagger["enabled"] = "invalid";
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(false, scriptConfig.SwaggerEnabled);
+        }
+
         [Fact]
         public void ApplyConfiguration_Tracing()
         {
