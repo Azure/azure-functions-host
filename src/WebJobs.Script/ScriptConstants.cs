@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 
+        public const string AntaresExternalRequestHeaderName = "X-ARR-LOG-ID";
+        public const string CheckLoadQueryParameterName = "checkLoad";
         public const string DynamicSku = "Dynamic";
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";

@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static bool? _standbyMode;
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
+        private readonly HostPerformanceManager _performanceManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
@@ -61,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, new FileSystemSecretsRepository(webHostSettings.SecretsPath));
+            _performanceManager = new HostPerformanceManager(settingsManager);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
@@ -69,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public ISecretManager SecretManager => _secretManager;
+
+        public HostPerformanceManager PerformanceManager => _performanceManager;
 
         public virtual bool Initialized
         {

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -87,18 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/host/status")]
         [AllowAnonymous]
-        public HostStatus GetHostStatus()
+        public IHttpActionResult GetHostStatus()
         {
-            var status = new HostStatus();
-
             // based on the authorization level we determine
-            // the additional level of detail to return
+            // the level of detail to return
             var authorizationLevel = Request.GetAuthorizationLevel();
-            if (authorizationLevel == AuthorizationLevel.Admin)
+            if (authorizationLevel == AuthorizationLevel.Admin ||
+                Request.IsAntaresInternalRequest())
             {
-                status.State = _scriptHostManager.State.ToString();
-                status.Version = ScriptHost.Version;
-                status.Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId;
+                var status = new HostStatus
+                {
+                    State = _scriptHostManager.State.ToString(),
+                    Version = ScriptHost.Version,
+                    Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
+                };
 
                 var lastError = _scriptHostManager.LastError;
                 if (lastError != null)
@@ -107,13 +110,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     status.Errors.Add(Utility.FlattenException(lastError));
                 }
 
-                return status;
+                var parameters = Request.GetQueryParameterDictionary();
+                string value = null;
+                if (parameters.TryGetValue(ScriptConstants.CheckLoadQueryParameterName, out value) && value == "1")
+                {
+                    status.Load = new LoadStatus
+                    {
+                        IsHigh = _scriptHostManager.PerformanceManager.IsUnderHighLoad()
+                    };
+                }
+
+                return Ok(status);
             }
             else
             {
-                // for Anonymous requests, we don't return any
-                // detailed info
-                return status;
+                // for Anonymous requests, we don't return any info
+                return Ok();
             }
         }
 

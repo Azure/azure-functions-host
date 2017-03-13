@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -52,6 +53,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretManager GetSecretManager(WebHostSettings settings)
         {
             return GetWebScriptHostManager(settings).SecretManager;
+        }
+
+        public HostPerformanceManager GetPerformanceManager(WebHostSettings settings)
+        {
+            return GetWebScriptHostManager(settings).PerformanceManager;
         }
 
         public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)

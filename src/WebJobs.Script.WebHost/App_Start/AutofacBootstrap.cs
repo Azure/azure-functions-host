@@ -4,6 +4,7 @@
 using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<ISecretManager>(ct => ct.Resolve<WebHostResolver>().GetSecretManager(settings)).ExternallyOwned();
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
+            builder.Register<HostPerformanceManager>(ct => ct.Resolve<WebHostResolver>().GetPerformanceManager(settings)).ExternallyOwned();
             builder.RegisterInstance(settings);
         }
     }
