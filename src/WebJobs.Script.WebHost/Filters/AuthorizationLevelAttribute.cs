@@ -14,19 +14,17 @@ using System.Web.Http.Filters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
-    public sealed class AuthorizationLevelAttribute : AuthorizationFilterAttribute
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
+    public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
 
-        public AuthorizationLevelAttribute(AuthorizationLevel level, string keyName = null)
+        public AuthorizationLevelAttribute(AuthorizationLevel level)
         {
             Level = level;
-            KeyName = keyName;
         }
 
         public AuthorizationLevel Level { get; }
-
-        public string KeyName { get; }
 
         public async override Task OnAuthorizationAsync(HttpActionContext actionContext, CancellationToken cancellationToken)
         {
@@ -39,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             // as a request property
             var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
             var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
-            var requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager, keyName: KeyName);
+            var requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager, EvaluateKeyMatch);
             actionContext.Request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel] = requestAuthorizationLevel;
 
             if (settings.IsAuthDisabled || 
@@ -55,7 +53,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             }
         }
 
-        internal static async Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequestMessage request, ISecretManager secretManager, string functionName = null, string keyName = null)
+        protected virtual bool EvaluateKeyMatch(IDictionary<string, string> secrets, string keyValue) => HasMatchingKey(secrets, keyValue);
+
+        internal static Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequestMessage request, ISecretManager secretManager, string functionName = null)
+        {
+            return GetAuthorizationLevelAsync(request, secretManager, HasMatchingKey, functionName);
+        }
+
+        internal static async Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequestMessage request, ISecretManager secretManager,
+            Func<IDictionary<string, string>, string, bool> matchEvaluator, string functionName = null)
         {
             // first see if a key value is specified via headers or query string (header takes precedence)
             IEnumerable<string> values;
@@ -80,13 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                     return AuthorizationLevel.Admin;
                 }
 
-                if (HasMatchingKey(hostSecrets.SystemKeys, keyValue, keyName))
+                if (matchEvaluator(hostSecrets.SystemKeys, keyValue))
                 {
                     return AuthorizationLevel.System;
                 }
 
                 // see if the key specified matches the host function key
-                if (HasMatchingKey(hostSecrets.FunctionKeys, keyValue, keyName))
+                if (matchEvaluator(hostSecrets.FunctionKeys, keyValue))
                 {
                     return AuthorizationLevel.Function;
                 }
@@ -95,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 if (functionName != null)
                 {
                     IDictionary<string, string> functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
-                    if (HasMatchingKey(functionSecrets, keyValue, keyName))
+                    if (matchEvaluator(functionSecrets, keyValue))
                     {
                         return AuthorizationLevel.Function;
                     }
@@ -105,9 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             return AuthorizationLevel.Anonymous;
         }
 
-        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue, string keyName)
-            => secrets != null &&
-            secrets.Any(kvp => (keyName == null || string.Equals(kvp.Key, keyName, StringComparison.OrdinalIgnoreCase)) && Key.SecretValueEquals(kvp.Value, keyValue));
+        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue) 
+            => secrets != null && secrets.Values.Any(s => Key.SecretValueEquals(s, keyValue));
 
         internal static bool SkipAuthorization(HttpActionContext actionContext)
         {

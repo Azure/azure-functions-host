@@ -21,34 +21,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AuthorizationLevelAttributeTests
     {
-        private const string TestHostFunctionKeyName1 = "hostfunckey1";
-        private const string TestHostFunctionKeyValue1 = "jkl012";
-        private const string TestHostFunctionKeyName2 = "hostfunckey2";
-        private const string TestHostFunctionKeyValue2 = "mno345";
-        private const string TestFunctionKeyName1 = "funckey1";
-        private const string TestFunctionKeyValue1 = "def456";
-        private const string TestFunctionKeyName2 = "funckey2";
-        private const string TestFunctionKeyValue2 = "ghi789";
-        private const string TestSystemKeyName1 = "syskey1";
-        private const string TestSystemKeyValue1 = "sysabc123";
-        private const string TestSystemKeyName2 = "syskey2";
-        private const string TestSystemKeyValue2 = "sysdef123";
-        private const string TestMasterKeyValue = "abc123";
+        protected const string TestHostFunctionKeyName1 = "hostfunckey1";
+        protected const string TestHostFunctionKeyValue1 = "jkl012";
+        protected const string TestHostFunctionKeyName2 = "hostfunckey2";
+        protected const string TestHostFunctionKeyValue2 = "mno345";
+        protected const string TestFunctionKeyName1 = "funckey1";
+        protected const string TestFunctionKeyValue1 = "def456";
+        protected const string TestFunctionKeyName2 = "funckey2";
+        protected const string TestFunctionKeyValue2 = "ghi789";
+        protected const string TestSystemKeyName1 = "syskey1";
+        protected const string TestSystemKeyValue1 = "sysabc123";
+        protected const string TestSystemKeyName2 = "syskey2";
+        protected const string TestSystemKeyValue2 = "sysdef123";
+        protected const string TestMasterKeyValue = "abc123";
         
         private HttpActionContext _actionContext;
         private HostSecretsInfo _hostSecrets;
         private Dictionary<string, string> _functionSecrets;
-        private Mock<ISecretManager> _mockSecretManager;
         private WebHostSettings _webHostSettings;
 
         public AuthorizationLevelAttributeTests()
         {
-            var httpConfig = new HttpConfiguration();
-            _actionContext = CreateActionContext(typeof(TestController).GetMethod("Get"), httpConfig);
+            HttpConfig = new HttpConfiguration();
+            _actionContext = CreateActionContext(typeof(TestController).GetMethod("Get"), HttpConfig);
 
             Mock<IDependencyResolver> mockDependencyResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
-            httpConfig.DependencyResolver = mockDependencyResolver.Object;
-            _mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
+            HttpConfig.DependencyResolver = mockDependencyResolver.Object;
+            MockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
             _hostSecrets = new HostSecretsInfo
             {
                 MasterKey = TestMasterKeyValue,
@@ -63,17 +62,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { TestSystemKeyName2, TestSystemKeyValue2 }
                 }
             };
-            _mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_hostSecrets);
+            MockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_hostSecrets);
             _functionSecrets = new Dictionary<string, string>
             {
                 { TestFunctionKeyName1,  TestFunctionKeyValue1 },
                 { TestFunctionKeyName2,  TestFunctionKeyValue2 }
             };
-            _mockSecretManager.Setup(p => p.GetFunctionSecretsAsync(It.IsAny<string>(), false)).ReturnsAsync(_functionSecrets);
-            mockDependencyResolver.Setup(p => p.GetService(typeof(ISecretManager))).Returns(_mockSecretManager.Object);
+            MockSecretManager.Setup(p => p.GetFunctionSecretsAsync(It.IsAny<string>(), false)).ReturnsAsync(_functionSecrets);
+            mockDependencyResolver.Setup(p => p.GetService(typeof(ISecretManager))).Returns(MockSecretManager.Object);
             _webHostSettings = new WebHostSettings();
             mockDependencyResolver.Setup(p => p.GetService(typeof(WebHostSettings))).Returns(_webHostSettings);
         }
+
+        protected HttpConfiguration HttpConfig { get; }
+        protected Mock<ISecretManager> MockSecretManager { get; }
 
         [Fact]
         public async Task OnAuthorization_AdminLevel_ValidHeader_Succeeds()
@@ -144,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
 
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
@@ -157,13 +159,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // first verify the host level function key works
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, hostFunctionKeyValue);
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
             Assert.Equal(AuthorizationLevel.Function, level);
 
             // test function specific key
             request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, functionKeyValue);
-            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
+            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
 
@@ -269,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "invalid");
 
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
         }
@@ -280,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Admin, level);
         }
@@ -291,31 +293,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestSystemKeyValue1));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.System, level);
-        }
-
-        [Theory]
-        [InlineData(TestHostFunctionKeyName1, TestHostFunctionKeyValue1, AuthorizationLevel.Function, null)]
-        [InlineData(TestHostFunctionKeyName2, TestHostFunctionKeyValue2, AuthorizationLevel.Function, null)]
-        [InlineData(TestFunctionKeyName1, TestFunctionKeyValue1, AuthorizationLevel.Function, "TestFunction")]
-        [InlineData(null, TestFunctionKeyValue1, AuthorizationLevel.Function, "TestFunction")]
-        [InlineData(TestFunctionKeyName2, TestFunctionKeyValue2, AuthorizationLevel.Function, "TestFunction")]
-        [InlineData(null, TestFunctionKeyValue2, AuthorizationLevel.Function, "TestFunction")]
-        [InlineData("", TestMasterKeyValue, AuthorizationLevel.Admin, null)]
-        [InlineData(TestSystemKeyName1, TestSystemKeyValue1, AuthorizationLevel.System, null)]
-        [InlineData(TestSystemKeyName2, TestSystemKeyValue2, AuthorizationLevel.System, null)]
-        [InlineData("foo", TestSystemKeyValue1, AuthorizationLevel.Anonymous, null)]
-        [InlineData(TestSystemKeyName1, "bar", AuthorizationLevel.Anonymous, null)]
-        public async Task GetAuthorizationLevel_ValidCodeQueryParam_WithNamedKeyRequirement_ReturnsExpectedLevel(string keyName, string keyValue, AuthorizationLevel expectedLevel, string functionName = null)
-        {
-            Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", keyValue));
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: functionName, keyName: keyName);
-
-            Assert.Equal(expectedLevel, level);
         }
 
         [Theory]
@@ -326,12 +306,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // first try host level function key
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", hostFunctionKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
 
             uri = new Uri(string.Format("http://functions/api/foo?code={0}", functionKeyValue));
             request = new HttpRequestMessage(HttpMethod.Get, uri);
-            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object, functionName: "TestFunction");
+            level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object, functionName: "TestFunction");
             Assert.Equal(AuthorizationLevel.Function, level);
         }
 
@@ -341,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", "invalid"));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
-            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, _mockSecretManager.Object);
+            AuthorizationLevel level = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, MockSecretManager.Object);
 
             Assert.Equal(AuthorizationLevel.Anonymous, level);
         }
@@ -370,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
         }
 
-        private static HttpActionContext CreateActionContext(MethodInfo action, HttpConfiguration config = null)
+        protected static HttpActionContext CreateActionContext(MethodInfo action, HttpConfiguration config = null)
         {
             config = config ?? new HttpConfiguration();
             var actionContext = new HttpActionContext();

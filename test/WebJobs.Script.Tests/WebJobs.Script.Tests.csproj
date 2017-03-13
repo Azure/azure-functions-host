@@ -445,6 +445,7 @@
     <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
+    <Compile Include="Filters\SystemLevelAuthorizationAttributeTests.cs" />
     <Compile Include="Diagnostics\HostPerformanceManagerTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
