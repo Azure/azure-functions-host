@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestInvoker.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScopedEnvironmentVariable.cs" />

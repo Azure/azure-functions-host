@@ -424,6 +424,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Handlers\SystemTraceHandler.cs" />
     <Compile Include="Handlers\WebScriptHostHandler.cs" />
     <Compile Include="Models\ApiModel.cs" />
     <Compile Include="Models\ApiModelUtility.cs" />

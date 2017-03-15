@@ -33,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
         {
             var scriptHostManager = _config.DependencyResolver.GetService<WebScriptHostManager>();
 
+            SetRequestId(request);
+
             // some routes do not require the host to be running (most do)
             // in standby mode, we don't want to wait for host start
             bool bypassHostCheck = request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().EndsWith("admin/host/status") ||
@@ -68,6 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             }
 
             return await base.SendAsync(request, cancellationToken);
+        }
+
+        internal static void SetRequestId(HttpRequestMessage request)
+        {
+            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
+            request.Properties[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }

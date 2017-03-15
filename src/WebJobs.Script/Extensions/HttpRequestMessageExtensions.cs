@@ -13,7 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
         {
-            return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel);
+            return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);
+        }
+
+        public static string GetRequestId(this HttpRequestMessage request)
+        {
+            return request.GetRequestPropertyOrDefault<string>(ScriptConstants.AzureFunctionsRequestIdKey);
+        }
+
+        public static void SetAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel authorizationLevel)
+        {
+            request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey] = authorizationLevel;
         }
 
         public static bool IsAntaresInternalRequest(this HttpRequestMessage request)
@@ -26,7 +36,17 @@ namespace Microsoft.Azure.WebJobs.Script
             // this header will *always* be present on requests originating externally (i.e. going
             // through the Anatares front end). For requests originating internally it will NOT be
             // present.
-            return !request.Headers.Contains(ScriptConstants.AntaresExternalRequestHeaderName);
+            return !request.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName);
+        }
+
+        public static string GetHeaderValueOrDefault(this HttpRequestMessage request, string headerName)
+        {
+            IEnumerable<string> values = null;
+            if (request.Headers.TryGetValues(headerName, out values))
+            {
+                return values.First();
+            }
+            return null;
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequestMessage request, string key)

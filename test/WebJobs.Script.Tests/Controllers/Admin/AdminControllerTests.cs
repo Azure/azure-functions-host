@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new AdminController(managerMock.Object, settings);
+            testController = new AdminController(managerMock.Object, settings, new TestTraceWriter(TraceLevel.Verbose));
         }
 
         [Fact]

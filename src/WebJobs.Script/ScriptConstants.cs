@@ -11,7 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsWebHookDataKey = "MS_AzureFunctionsWebHookData";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
         public const string AzureFunctionsHttpRouteDataKey = "MS_AzureFunctionsHttpRouteData";
-        public const string AzureFunctionsHttpRequestAuthorizationLevel = "MS_AzureFunctionsAuthorizationLevel";
+        public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
+        public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
+        public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
 
         // Define all system parameters we inject with a prefix to avoid collisions
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 
-        public const string AntaresExternalRequestHeaderName = "X-ARR-LOG-ID";
+        public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string CheckLoadQueryParameterName = "checkLoad";
         public const string DynamicSku = "Dynamic";
 
