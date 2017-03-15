@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs
         public ConverterManager()
         {
             this.AddConverter<byte[], string>(DefaultByteArrayToString);
+            this.AddConverter<IEnumerable<JObject>, JArray>((enumerable) => JArray.FromObject(enumerable));
         }
 
         private void AddOpenConverter<TAttribute>(
@@ -244,6 +245,25 @@ namespace Microsoft.Azure.WebJobs
                 {
                     var converter = builder(typeSource, typeDest);
                     return (src, attr, context) => (TDest)converter(src);
+                }
+            }
+
+            // TSrc --> IEnum<JObject> --> JArray
+            if (typeDest == typeof(JArray))
+            {
+                var toEnumerableJObj = TryGetConverter<TSrc, TAttribute, IEnumerable<JObject>>();
+                if (toEnumerableJObj != null)
+                {
+                    var toJArray = TryGetConverter<IEnumerable<JObject>, TAttribute, JArray>();
+                    if (toJArray != null)
+                    {
+                        return (src, attr, context) =>
+                        {
+                            var ieJo = toEnumerableJObj(src, attr, context);
+                            var result = toJArray(ieJo, attr, context);
+                            return (TDest)(object)result;
+                        };
+                    }
                 }
             }
 

@@ -40,9 +40,45 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             cm.AddConverter<string, string>(x => "*" + x + "*");
 
             var func = cm.GetConverter<string, string, Attribute>();
-                        
+
             var x1 = func("x", null, Context);
             Assert.Equal("*x*", x1);
+        }
+
+        private T TestDefaultConverter<F, T>(F from, T to, ConverterManager cm = default(ConverterManager))
+        {
+            var converter = cm.GetConverter<F, T, Attribute>();
+            Assert.NotNull(converter);
+            var result = converter(from, null, null);
+            Assert.Equal(to, result);
+            return result;
+        }
+
+        [Fact]
+        public void ByteToString_DefaultConverter()
+        {
+            var s = "ab";
+            TestDefaultConverter(Encoding.UTF8.GetBytes(s), s);
+        }
+
+        [Fact]
+        public void IEnumerableToJArray_DefaultConverter()
+        {
+            var obj = JObject.Parse("{ \"a\": 2 }");
+            IEnumerable<JObject> enumerable = new List<JObject>() { obj, obj };
+            var jarray = new JArray(obj, obj);
+            TestDefaultConverter(enumerable, jarray);
+        }
+
+        [Fact]
+        public void ObjectToJArray_ChainConverter()
+        {
+            var jobjString = "{ \"a\": 2 }";
+            var obj = JObject.Parse(jobjString);
+            var cm = new ConverterManager();
+            cm.AddConverter<string, IEnumerable<JObject>, Attribute>((str, attr) => new List<JObject>() { JObject.Parse(str), JObject.Parse(str) });
+            var jarray = new JArray(obj, obj);
+            TestDefaultConverter(jobjString, jarray, cm);
         }
 
         // Use a value binding context to stamp causality on a JObject        
