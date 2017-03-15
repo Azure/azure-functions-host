@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
             var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
             var requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager, EvaluateKeyMatch);
-            actionContext.Request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevel] = requestAuthorizationLevel;
+            actionContext.Request.SetAuthorizationLevel(requestAuthorizationLevel);
 
             if (settings.IsAuthDisabled || 
                 SkipAuthorization(actionContext) ||

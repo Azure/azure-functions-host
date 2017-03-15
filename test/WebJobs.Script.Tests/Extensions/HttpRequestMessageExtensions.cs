@@ -3,13 +3,28 @@
 
 using System.Collections.Generic;
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpRequestMessageExtensions
     {
+        [Fact]
+        public void GetHeaderValueOrDefault_ReturnsExpectedResult()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");
+            string value = request.GetHeaderValueOrDefault("TestHeader");
+            Assert.Null(value);
+
+            request.Headers.Add("TestHeader", "One");
+            value = request.GetHeaderValueOrDefault("TestHeader");
+            Assert.Equal("One", value);
+
+            request.Headers.Add("TestHeader", "Two");
+            value = request.GetHeaderValueOrDefault("TestHeader");
+            Assert.Equal("One", value);
+        }
+
         [Fact]
         public void IsAntaresInternalRequest_ReturnsExpectedResult()
         {
@@ -26,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 // with header
                 request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");
-                request.Headers.Add(ScriptConstants.AntaresExternalRequestHeaderName, "123");
+                request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");
                 Assert.False(request.IsAntaresInternalRequest());
 
                 request = new HttpRequestMessage(HttpMethod.Get, "http://foobar");

@@ -908,6 +908,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HostPing_Succeeds()
+        {
+            string uri = "admin/host/ping";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
         public async Task HostStatus_AdminLevel_Succeeds()
         {
             string uri = "admin/host/status";
@@ -983,32 +992,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HostStatus_FunctionLevelRequest_Succeeds()
-        {
-            string uri = "admin/host/status";
-            var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add("x-functions-key", "zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc");
-            var response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Null(response.Content);
-        }
-
-        [Fact]
-        public async Task HostStatus_AnonymousLevelRequest_Succeeds()
+        public async Task HostStatus_AnonymousLevelRequest_Fails()
         {
             string uri = "admin/host/status";
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Null(response.Content);
-
-            // issue the request again, specifying a load check - expect
-            // this to not return load details
-            uri = "admin/host/status?checkLoad=1";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await this._fixture.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Null(response.Content);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]

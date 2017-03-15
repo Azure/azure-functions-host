@@ -11,6 +11,7 @@ using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -39,6 +40,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 InnerHandler = new TestHandler()
             };
             _invoker = new HttpMessageInvoker(handler);
+        }
+
+        [Fact]
+        public void SetRequestId_SetsExpectedValue()
+        {
+            // if the log header is present, it is used
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
+            string logIdValue = Guid.NewGuid().ToString();
+            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, logIdValue);
+            WebScriptHostHandler.SetRequestId(request);
+            string requestId = request.GetRequestId();
+            Assert.Equal(logIdValue, requestId);
+
+            // otherwise a new guid is specified
+            request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
+            WebScriptHostHandler.SetRequestId(request);
+            requestId = request.GetRequestId();
+            Guid.Parse(requestId);
         }
 
         [Fact]
@@ -86,14 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-        }
-
-        public class TestHandler : DelegatingHandler
-        {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                return Task.Factory.StartNew(() => new HttpResponseMessage(HttpStatusCode.OK), cancellationToken);
-            }
         }
     }
 }

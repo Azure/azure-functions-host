@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             var authorizationLevel = settings.IsAuthDisabled
                 ? AuthorizationLevel.Admin
                 : await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: function.Name);
+            request.SetAuthorizationLevel(authorizationLevel);
 
             if (function.Metadata.IsExcluded ||
                 (function.Metadata.IsDisabled && authorizationLevel != AuthorizationLevel.Admin))

@@ -9,6 +9,7 @@ using Autofac;
 using Autofac.Integration.WebApi;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var container = builder.Build();
             config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
             config.Formatters.Add(new PlaintextMediaTypeFormatter());
-            config.MessageHandlers.Add(new WebScriptHostHandler(config));
+            AddMessageHandlers(config);
 
             // Web API configuration and services
 
@@ -80,6 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.InitializeReceiveWordPressWebHooks();
             config.InitializeReceiveGitHubWebHooks();
             config.InitializeReceiveSalesforceWebHooks();
+        }
+
+        private static void AddMessageHandlers(HttpConfiguration config)
+        {
+            config.MessageHandlers.Add(new WebScriptHostHandler(config));
+            config.MessageHandlers.Add(new SystemTraceHandler(config));
         }
     }
 }

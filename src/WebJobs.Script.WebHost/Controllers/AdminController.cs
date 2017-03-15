@@ -11,10 +11,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -27,11 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly TraceWriter _traceWriter;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
+            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceHostAdmin}.Api");
         }
 
         [HttpPost]
@@ -90,8 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [AllowAnonymous]
         public IHttpActionResult GetHostStatus()
         {
-            // based on the authorization level we determine
-            // the level of detail to return
             var authorizationLevel = Request.GetAuthorizationLevel();
             if (authorizationLevel == AuthorizationLevel.Admin ||
                 Request.IsAntaresInternalRequest())
@@ -120,13 +121,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     };
                 }
 
+                _traceWriter.Info($"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}");
+
                 return Ok(status);
             }
             else
             {
-                // for Anonymous requests, we don't return any info
-                return Ok();
+                return Unauthorized();
             }
+        }
+
+        [HttpPost]
+        [Route("admin/host/ping")]
+        [AllowAnonymous]
+        public IHttpActionResult Ping()
+        {
+            return Ok();
         }
 
         [HttpPost]
