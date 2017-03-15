@@ -14,6 +14,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
 {
+    [Trait("SecretsRequired", "true")]
     public class StorageAccountTests
     {
         [Fact]

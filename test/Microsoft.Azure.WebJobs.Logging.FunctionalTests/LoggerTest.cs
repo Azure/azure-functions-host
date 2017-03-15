@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
+    [Trait("SecretsRequired", "true")]
     public class LoggerTest : IDisposable, ILogTableProvider
     {
         static string DefaultHost = "host";

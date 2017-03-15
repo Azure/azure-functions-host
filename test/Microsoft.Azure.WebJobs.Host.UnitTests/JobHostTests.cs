@@ -472,13 +472,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
+        [Trait("SecretsRequired", "true")]
         public void IndexingExceptions_CanBeHandledByTraceWriter()
         {
             JobHostConfiguration config = new JobHostConfiguration();
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             config.Tracing.Tracers.Add(traceWriter);
             config.TypeLocator = new FakeTypeLocator(typeof(BindingErrorsProgram));
-
             FunctionErrorTraceWriter errorTraceWriter = new FunctionErrorTraceWriter(TraceLevel.Error);
             config.Tracing.Tracers.Add(errorTraceWriter);
 

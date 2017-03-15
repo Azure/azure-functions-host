@@ -15,6 +15,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
+    [Trait("SecretsRequired", "true")]
     public class QueueProcessorTests : IClassFixture<QueueProcessorTests.TestFixture>
     {
         private CloudQueue _queue;

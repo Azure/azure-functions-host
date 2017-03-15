@@ -10,6 +10,7 @@ namespace Dashboard.UnitTests.Data
     public class AccountProviderTests
     {
         [Fact]
+        [Trait("SecretsRequired", "true")]
         public void GetAccounts_ReturnsExpectedResults()
         {
             // TODO: add a couple env accounts and verify
