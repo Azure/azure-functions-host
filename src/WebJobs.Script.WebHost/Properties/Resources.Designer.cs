@@ -219,15 +219,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There was an error generating the Swagger document.
-        /// </summary>
-        internal static string SwaggerGenerateError {
-            get {
-                return ResourceManager.GetString("SwaggerGenerateError", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
         internal static string TraceAddOrUpdateFunctionSecret {

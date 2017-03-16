@@ -271,9 +271,6 @@
   <data name="SwaggerGenerateDocument" xml:space="preserve">
     <value>Generating Swagger document...</value>
   </data>
-  <data name="SwaggerGenerateError" xml:space="preserve">
-    <value>There was an error generating the Swagger document</value>
-  </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
     <value>{0} secret '{1}' for '{2}' {3}.</value>
   </data>

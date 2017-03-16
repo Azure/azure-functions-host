@@ -71,9 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         public void GetGeneratedSwaggerDocument_ReturnsInternalServerError()
         {
             _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/host/swagger/default");
-            _swaggerDocumentManagerMock.Setup(p => p.GenerateSwaggerDocument(null)).Throws(new Exception());
-            var result = (InternalServerErrorResult)_testController.GetGeneratedSwaggerDocument();
-            Assert.IsAssignableFrom(typeof(InternalServerErrorResult), result);
+            _swaggerDocumentManagerMock.Setup(p => p.GenerateSwaggerDocument(null)).Throws(new Exception("TestException"));
+            Exception result = Assert.Throws<Exception>(() => _testController.GetGeneratedSwaggerDocument());
+            Assert.Equal("TestException", result.Message);
         }
 
         [Fact]
@@ -91,9 +91,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             JObject json = new JObject();
             _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/host/swagger/default");
-            _swaggerDocumentManagerMock.Setup(p => p.GetSwaggerDocumentAsync()).Throws(new Exception());
-            var result = (InternalServerErrorResult)await _testController.GetSwaggerDocumentAsync();
-            Assert.IsAssignableFrom(typeof(InternalServerErrorResult), result);
+            _swaggerDocumentManagerMock.Setup(p => p.GetSwaggerDocumentAsync()).Throws(new Exception("TestException"));
+            Exception result = await Assert.ThrowsAsync<Exception>(() => _testController.GetSwaggerDocumentAsync());
+            Assert.Equal("TestException", result.Message);
         }
 
         [Fact]
@@ -132,9 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             JObject json = new JObject();
             _testController.Request = new HttpRequestMessage(HttpMethod.Post, "https://local/admin/host/swagger/default");
-            _swaggerDocumentManagerMock.Setup(p => p.AddOrUpdateSwaggerDocumentAsync(null)).Throws(new Exception());
-            var result = (InternalServerErrorResult)await _testController.AddOrUpdateSwaggerDocumentAsync(json);
-            Assert.IsAssignableFrom(typeof(InternalServerErrorResult), result);
+            _swaggerDocumentManagerMock.Setup(p => p.AddOrUpdateSwaggerDocumentAsync(It.IsAny<JObject>())).Throws(new Exception("TestException"));
+            Exception result = await Assert.ThrowsAsync<Exception>(() => _testController.AddOrUpdateSwaggerDocumentAsync(json));
+            Assert.Equal("TestException", result.Message);
         }
 
         [Fact]
@@ -160,9 +160,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             JObject json = new JObject();
             _testController.Request = new HttpRequestMessage(HttpMethod.Delete, "https://local/admin/host/swagger/default");
-            _swaggerDocumentManagerMock.Setup(p => p.DeleteSwaggerDocumentAsync()).Throws(new Exception());
-            var result = (InternalServerErrorResult)await _testController.DeleteSwaggerDocumentAsync();
-            Assert.IsAssignableFrom(typeof(InternalServerErrorResult), result);
+            _swaggerDocumentManagerMock.Setup(p => p.DeleteSwaggerDocumentAsync()).Throws(new Exception("TestException"));
+            Exception result = await Assert.ThrowsAsync<Exception>(() => _testController.DeleteSwaggerDocumentAsync());
+            Assert.Equal("TestException", result.Message);
         }        
     }
 }

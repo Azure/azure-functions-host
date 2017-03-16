@@ -30,17 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/swagger/default")]
         public IHttpActionResult GetGeneratedSwaggerDocument()
         {
-            try
-            {
-                _traceWriter.Verbose(Resources.SwaggerGenerateDocument);
-                var swaggerDocument = _swaggerDocumentManager.GenerateSwaggerDocument(_scriptHostManager.HttpFunctions);
-                return Ok(swaggerDocument);
-            }
-            catch (Exception ex)
-            {
-                _traceWriter.Error(Resources.SwaggerGenerateError, ex);
-                return InternalServerError();
-            }
+            _traceWriter.Verbose(Resources.SwaggerGenerateDocument);
+            var swaggerDocument = _swaggerDocumentManager.GenerateSwaggerDocument(_scriptHostManager.HttpFunctions);
+            return Ok(swaggerDocument);
         }
 
         [HttpGet]
@@ -48,22 +40,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IHttpActionResult> GetSwaggerDocumentAsync()
         {
             IHttpActionResult result = NotFound();
-            try
+            if (_scriptHostManager.Instance.ScriptConfig.SwaggerEnabled)
             {
-                if (_scriptHostManager.Instance.ScriptConfig.SwaggerEnabled)
+                var swaggerDocument = await _swaggerDocumentManager.GetSwaggerDocumentAsync();
+                if (swaggerDocument != null)
                 {
-                    var swaggerDocument = await _swaggerDocumentManager.GetSwaggerDocumentAsync();
-                    if (swaggerDocument != null)
-                    {
-                        result = Ok(swaggerDocument);
-                    }
+                    result = Ok(swaggerDocument);
                 }
             }
-            catch (Exception ex)
-            {
-                _traceWriter.Error(Resources.SwaggerFileReadError, ex);
-                result = InternalServerError();
-            }
+
             return result;
         }
 
@@ -71,36 +56,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/swagger")]
         public async Task<IHttpActionResult> AddOrUpdateSwaggerDocumentAsync([FromBody] JObject swaggerDocumentJson)
         {
-            try
-            {
-                var updatedSwaggerDocumentJson = await _swaggerDocumentManager.AddOrUpdateSwaggerDocumentAsync(swaggerDocumentJson);
-                return Ok(updatedSwaggerDocumentJson);
-            }
-            catch (Exception ex)
-            {
-                _traceWriter.Error(Resources.SwaggerFileUpdateError, ex);
-                return InternalServerError();
-            }
+            var updatedSwaggerDocumentJson = await _swaggerDocumentManager.AddOrUpdateSwaggerDocumentAsync(swaggerDocumentJson);
+            return Ok(updatedSwaggerDocumentJson);
         }
 
         [HttpDelete]
         [Route("admin/host/swagger")]
         public async Task<IHttpActionResult> DeleteSwaggerDocumentAsync()
         {
-            try
+            var deleted = await _swaggerDocumentManager.DeleteSwaggerDocumentAsync();
+            if (deleted)
             {
-                var deleted = await _swaggerDocumentManager.DeleteSwaggerDocumentAsync();
-                if (deleted)
-                {
-                    return StatusCode(HttpStatusCode.NoContent);
-                }
-                return NotFound();
+                return StatusCode(HttpStatusCode.NoContent);
             }
-            catch (Exception ex)
-            {
-                _traceWriter.Error(String.Format(Resources.SwaggerFileDeleteError), ex);
-                return InternalServerError();
-            }
+            return NotFound();
         }
     }
 }
