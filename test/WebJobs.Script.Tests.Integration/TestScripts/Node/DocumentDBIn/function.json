@@ -20,8 +20,7 @@
       "direction": "in",
       "databaseName": "ItemDb",
       "collectionName": "ItemCollection",
-      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {documentId}",
-      "cardinality":  "many"
+      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {documentId}"
     },
     {
       "type": "documentDB",

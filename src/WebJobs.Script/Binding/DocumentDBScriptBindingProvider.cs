@@ -68,18 +68,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
             }
 
+            private string Id => Context.GetMetadataValue<string>("id");
+
             public override Type DefaultType
             {
                 get
                 {
                     if (Context.Access == FileAccess.Read)
                     {
-                        if (Context.Cardinality == "many")
+                        if (Id != null)
                         {
-                            return typeof(JArray);
+                            return typeof(JObject);
                         }
 
-                        return typeof(JObject);
+                        return typeof(JArray);
                     }
                     else
                     {
@@ -107,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 attribute.CreateIfNotExists = Context.GetMetadataValue<bool>("createIfNotExists");
                 attribute.ConnectionStringSetting = Context.GetMetadataValue<string>("connection");
-                attribute.Id = Context.GetMetadataValue<string>("id");
+                attribute.Id = Id;
                 attribute.PartitionKey = Context.GetMetadataValue<string>("partitionKey");
                 attribute.CollectionThroughput = Context.GetMetadataValue<int>("collectionThroughput");
                 attribute.SqlQuery = Context.GetMetadataValue<string>("sqlQuery");
