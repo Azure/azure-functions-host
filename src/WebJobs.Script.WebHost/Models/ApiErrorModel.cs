@@ -23,6 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("id")]
         public string Id { get; set; }
 
+        [JsonProperty("requestId")]
+        public string RequestId { get; set; }
+
         [JsonProperty("statusCode")]
         public HttpStatusCode StatusCode { get; set; }
 

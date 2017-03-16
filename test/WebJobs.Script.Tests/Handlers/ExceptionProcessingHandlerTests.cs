@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private async Task<ApiErrorModel> ExecuteHandlerTest(AuthorizationLevel authLevel, bool includeDetails)
         {
             var handler = new ExceptionProcessingHandler(_config);
-
+            var requestId = Guid.NewGuid().ToString();
             var exception = new Exception("TestException");
             var exceptionContext = new ExceptionContext(exception, ExceptionCatchBlocks.HttpServer)
             {
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             exceptionContext.Request.SetAuthorizationLevel(authLevel);
             exceptionContext.Request.SetConfiguration(_config);
-
+            exceptionContext.Request.Properties.Add(ScriptConstants.AzureFunctionsRequestIdKey, requestId);
             exceptionContext.RequestContext = new System.Web.Http.Controllers.HttpRequestContext();
 
             var context = new ExceptionHandlerContext(exceptionContext);
@@ -95,7 +95,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpResponseMessage response = await context.Result.ExecuteAsync(CancellationToken.None);
 
-            return await response.Content.ReadAsAsync<ApiErrorModel>();
+            ApiErrorModel error = await response.Content.ReadAsAsync<ApiErrorModel>();
+
+            Assert.Equal(requestId, error.RequestId);
+
+            return error;
         }
     }
 }

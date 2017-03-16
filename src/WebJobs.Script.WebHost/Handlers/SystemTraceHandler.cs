@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             var traceWriter = _config.DependencyResolver.GetService<TraceWriter>();
             var details = new JObject
             {
-                { "id", request.GetRequestId() },
+                { "requestId", request.GetRequestId() },
                 { "method", request.Method.ToString() },
                 { "uri", request.RequestUri.LocalPath.ToString() }
             };
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
             details = new JObject
             {
-                { "id", request.GetRequestId() },
+                { "requestId", request.GetRequestId() },
                 { "method", request.Method.ToString() },
                 { "uri", request.RequestUri.LocalPath.ToString() },
                 { "authorizationLevel", request.GetAuthorizationLevel().ToString() }
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
             details = new JObject
             {
-                { "id", request.GetRequestId() },
+                { "requestId", request.GetRequestId() },
                 { "status", response.StatusCode.ToString() }
             };
             traceWriter.Info($"Response details: {details}");

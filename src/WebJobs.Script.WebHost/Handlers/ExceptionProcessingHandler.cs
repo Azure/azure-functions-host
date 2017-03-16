@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private static void DefaultExceptionHandler(ExceptionContext exceptionContext, AuthorizationLevel currentLevel, ApiErrorModel error)
         {
+            error.RequestId = exceptionContext.Request?.GetRequestId();
             if (currentLevel == AuthorizationLevel.Admin || exceptionContext.RequestContext.IsLocal)
             {
                 error.Message = GetExceptionMessage(exceptionContext.Exception);
