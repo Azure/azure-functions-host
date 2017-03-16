@@ -4,6 +4,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Host.Diagnostics;
 
 namespace System
 {
@@ -32,6 +33,16 @@ namespace System
             }
 
             return false;
+        }
+
+        public static string ToFormattedString(this Exception exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException(nameof(exception));
+            }
+
+            return ExceptionFormatter.GetFormattedException(exception);
         }
     }
 }

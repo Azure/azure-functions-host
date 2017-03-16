@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    AppendLine(traceEvent.Exception.ToString());
+                    AppendLine(traceEvent.Exception.ToFormattedString());
                 }
             }
         }

@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 case TraceLevel.Error:
                     if (string.IsNullOrEmpty(details) && exception != null)
                     {
-                        details = exception.ToString();
+                        details = exception.ToFormattedString();
                     }
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;

@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch (Exception exc)
             {
                 TraceOnPrimaryHost("Package restore failed:", TraceLevel.Error);
-                TraceOnPrimaryHost(exc.ToString(), TraceLevel.Error);
+                TraceOnPrimaryHost(exc.ToFormattedString(), TraceLevel.Error);
             }
         }
 
