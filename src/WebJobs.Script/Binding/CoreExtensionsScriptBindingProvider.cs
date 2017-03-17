@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 string schedule = Context.GetMetadataValue<string>("schedule");
                 bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
+                bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
 
                 if (Utility.IsDynamic)
                 {
@@ -85,7 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 attributes.Add(new TimerTriggerAttribute(schedule)
                 {
-                    RunOnStartup = runOnStartup
+                    RunOnStartup = runOnStartup,
+                    UseMonitor = useMonitor
                 });
 
                 return attributes;
