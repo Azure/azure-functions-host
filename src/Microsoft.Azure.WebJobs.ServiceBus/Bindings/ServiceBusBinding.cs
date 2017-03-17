@@ -20,16 +20,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private readonly IBindableServiceBusPath _path;
         private readonly IAsyncObjectToTypeConverter<ServiceBusEntity> _converter;
         private readonly AccessRights _accessRights;
+        private readonly EntityType _entityType;
 
-        public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding, ServiceBusAccount account, IBindableServiceBusPath path, AccessRights accessRights)
+        public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding, ServiceBusAccount account, IBindableServiceBusPath path, ServiceBusAttribute attr)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _path = path;
-            _accessRights = accessRights;
-            _converter = CreateConverter(account, path, accessRights);
+            _accessRights = attr.Access;
+            _entityType = attr.EntityType;
+            _converter = new OutputConverter<string>(
+                new StringToServiceBusEntityConverter(account, _path, _accessRights, _entityType));
         }
 
         public bool FromAttribute
@@ -48,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Account = _account,
                 MessageSender = messageSender,
-                AccessRights = _accessRights
+                AccessRights = _accessRights,
+                EntityType = _entityType
             };
 
             return await BindAsync(entity, context.ValueContext);
@@ -80,11 +84,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
-        }
-
-        private static IAsyncObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusAccount account, IBindableServiceBusPath queueOrTopicName, AccessRights accessRights)
-        {
-            return new OutputConverter<string>(new StringToServiceBusEntityConverter(account, queueOrTopicName, accessRights));
         }
 
         internal static ParameterDisplayHints CreateParameterDisplayHints(string entityPath, bool isInput)

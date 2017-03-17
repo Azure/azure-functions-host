@@ -16,10 +16,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         public AccessRights AccessRights { get; set; }
 
-        public Task SendAndCreateQueueIfNotExistsAsync(BrokeredMessage message, Guid functionInstanceId, CancellationToken cancellationToken)
+        public EntityType EntityType { get; set; } = EntityType.Queue;
+
+        public Task SendAndCreateEntityIfNotExistsAsync(BrokeredMessage message, Guid functionInstanceId, CancellationToken cancellationToken)
         {
-            return MessageSender.SendAndCreateQueueIfNotExistsAsync(message, functionInstanceId,
-                Account.NamespaceManager, AccessRights, cancellationToken);
+            return MessageSender.SendAndCreateEntityIfNotExists(message, functionInstanceId,
+                Account.NamespaceManager, AccessRights, EntityType, cancellationToken);
         }
     }
 }

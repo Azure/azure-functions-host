@@ -186,6 +186,7 @@
     <Compile Include="ServiceBusAccountAttribute.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />
+    <Compile Include="EntityType.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="StrictEncodings.cs" />
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />

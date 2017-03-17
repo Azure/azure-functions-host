@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(connectionName)
             };
 
-            IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute.Access);
+            IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute);
             return Task.FromResult<IBinding>(binding);
         }
 

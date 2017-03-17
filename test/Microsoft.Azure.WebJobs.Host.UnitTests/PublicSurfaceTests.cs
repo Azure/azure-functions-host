@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
+                "EntityType",
                 "EventHubAttribute",
                 "EventHubConfiguration",
                 "EventHubJobHostConfigurationExtensions",

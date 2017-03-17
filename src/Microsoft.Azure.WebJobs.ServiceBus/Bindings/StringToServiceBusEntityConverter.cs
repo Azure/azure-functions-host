@@ -14,12 +14,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private readonly ServiceBusAccount _account;
         private readonly IBindableServiceBusPath _defaultPath;
         private readonly AccessRights _accessRights;
+        private readonly EntityType _entityType;
 
-        public StringToServiceBusEntityConverter(ServiceBusAccount account, IBindableServiceBusPath defaultPath, AccessRights accessRights)
+        public StringToServiceBusEntityConverter(ServiceBusAccount account, IBindableServiceBusPath defaultPath, AccessRights accessRights, EntityType entityType)
         {
             _account = account;
             _defaultPath = defaultPath;
             _accessRights = accessRights;
+            _entityType = entityType;
         }
 
         public async Task<ServiceBusEntity> ConvertAsync(string input, CancellationToken cancellationToken)
@@ -43,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Account = _account,
                 MessageSender = messageSender,
-                AccessRights = _accessRights
+                AccessRights = _accessRights,
+                EntityType = _entityType
             };
         }
     }

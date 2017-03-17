@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
                 BrokeredMessage message = (BrokeredMessage)value;
 
-                await _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
+                await _entity.SendAndCreateEntityIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
             }
         }
     }

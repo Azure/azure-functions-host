@@ -13,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal static class MessageSenderExtensions
     {
-        public static async Task SendAndCreateQueueIfNotExistsAsync(this MessageSender sender, BrokeredMessage message,
-            Guid functionInstanceId, NamespaceManager namespaceManager, AccessRights accessRights, CancellationToken cancellationToken)
+        public static async Task SendAndCreateEntityIfNotExists(this MessageSender sender, BrokeredMessage message,
+            Guid functionInstanceId, NamespaceManager namespaceManager, AccessRights accessRights, EntityType entityType, CancellationToken cancellationToken)
         {
             if (sender == null)
             {
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 if (accessRights != AccessRights.Manage)
                 {
-                    // if we don't have the required rights to create the queue,
+                    // if we don't have the required rights to create the entity
                     // rethrow the exception
                     throw;
                 }
@@ -52,7 +52,17 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             try
             {
-                await namespaceManager.CreateQueueAsync(sender.Path);
+                switch (entityType)
+                {
+                    case EntityType.Topic:
+                        await namespaceManager.CreateTopicAsync(sender.Path);
+                        break;
+
+                    case EntityType.Queue:
+                    default:
+                        await namespaceManager.CreateQueueAsync(sender.Path);
+                        break;
+                }
             }
             catch (MessagingEntityAlreadyExistsException)
             {
