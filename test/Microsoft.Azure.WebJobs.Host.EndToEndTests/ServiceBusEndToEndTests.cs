@@ -365,9 +365,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             // Passes service bus message from a queue to another queue
             public static void SBQueue2SBQueue(
-                [ServiceBusTrigger(StartQueueName)] string start,
+                [ServiceBusTrigger(StartQueueName)] string start, int deliveryCount,
                 [ServiceBus(QueueNamePrefix + "1")] out string message)
             {
+                Assert.Equal(1, deliveryCount);
                 message = SBQueue2SBQueue_GetOutputMessage(start);
             }
 

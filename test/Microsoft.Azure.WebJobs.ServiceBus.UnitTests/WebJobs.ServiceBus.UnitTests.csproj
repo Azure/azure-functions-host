@@ -126,6 +126,7 @@
     <Compile Include="Bindings\ParameterizedServiceBusPathTests.cs" />
     <Compile Include="Bindings\ServiceBusAttributeBindingProviderTests.cs" />
     <Compile Include="Bindings\ServiceBusTriggerAttributeBindingProviderTests.cs" />
+    <Compile Include="Bindings\ServiceBusTriggerBindingTests.cs" />
     <Compile Include="BrokeredMessageToByteArrayConverterTests.cs" />
     <Compile Include="BrokeredMessageToStringConverterTests.cs" />
     <Compile Include="Config\ServiceBusConfigurationTests.cs" />

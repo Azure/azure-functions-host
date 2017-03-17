@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _parameterName = parameterName;
             _queue = queue;
             _argumentBinding = argumentBinding;
-            _bindingDataContract = CreateBindingDataContract(argumentBinding);
+            _bindingDataContract = CreateBindingDataContract(argumentBinding.BindingDataContract);
             _queueConfiguration = queueConfiguration;
             _exceptionHandler = exceptionHandler;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             get { return _queue.Name; }
         }
 
-        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(IReadOnlyDictionary<string, Type> argumentBindingContract)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("QueueTrigger", typeof(string));
@@ -114,9 +114,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             contract.Add("NextVisibleTime", typeof(DateTimeOffset));
             contract.Add("PopReceipt", typeof(string));
 
-            if (argumentBinding.BindingDataContract != null)
+            if (argumentBindingContract != null)
             {
-                foreach (KeyValuePair<string, Type> item in argumentBinding.BindingDataContract)
+                foreach (KeyValuePair<string, Type> item in argumentBindingContract)
                 {
                     // In case of conflict, binding data from the value type overrides the built-in binding data above.
                     contract[item.Key] = item.Value;
