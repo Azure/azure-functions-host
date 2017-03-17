@@ -247,5 +247,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(resultChild["Location"], child.Location);
             Assert.Equal(resultChild["Age"], child.Age);
         }
+
+        [Fact]
+        public void ToJson_StripsFunctions_FromExpandoObjects()
+        {
+            //{
+            //    func: () => { },
+            //    nested:
+            //            {
+            //                func: () => { }
+            //    },
+            //    array: [
+            //        { func: () => { } }
+            //    ],
+            //    value: "value"
+            //};
+
+            Action f = () => { };
+            dynamic val = new ExpandoObject();
+            val.func = f;
+            val.nested = new ExpandoObject() as dynamic;
+            val.nested.func = f;
+            dynamic arrExpando = new ExpandoObject();
+            arrExpando.func = f;
+            val.array = new ExpandoObject[1] { arrExpando as ExpandoObject };
+            val.value = "value";
+
+            var json = Utility.ToJson(val as ExpandoObject, Newtonsoft.Json.Formatting.None);
+            Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", json);
+        }
     }
 }

@@ -14,16 +14,16 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
-        private static readonly ExpandoObjectConverter _expandoObjectJsonConverter = new ExpandoObjectConverter();
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string DynamicSku = "Dynamic";
-
+        private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
         /// <summary>
         /// Gets a value indicating whether the JobHost is running in a Dynamic
         /// App Service WebApp.
@@ -272,7 +272,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string ToJson(ExpandoObject value, Formatting formatting = Formatting.Indented)
         {
-            return JsonConvert.SerializeObject(value, formatting, _expandoObjectJsonConverter);
+            return JsonConvert.SerializeObject(value, formatting, _filteredExpandoObjectConverter);
+        }
+
+        private class FilteredExpandoObjectConverter : ExpandoObjectConverter
+        {
+            public override bool CanWrite => true;
+
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                var expando = (IDictionary<string, object>)value;
+                var filtered = expando
+                    .Where(p => !(p.Value is Delegate))
+                    .ToDictionary(p => p.Key, p => p.Value);
+                serializer.Serialize(writer, filtered);
+            }
         }
 
         public static JObject ToJObject(ExpandoObject value)

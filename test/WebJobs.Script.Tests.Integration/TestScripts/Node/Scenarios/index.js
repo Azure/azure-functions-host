@@ -5,29 +5,29 @@ var assert = require('assert');
     var scenario = input.scenario;
     context.log("Running scenario '%s'", scenario);
 
-    if (scenario == 'nextTick') {
+    if (scenario === 'nextTick') {
         process.nextTick(function () {
             // without the workaround this would hang
             context.done();
         });
     }
-    else if (scenario == 'promiseResolve') {
+    else if (scenario === 'promiseResolve') {
         Promise.resolve().then(() => context.done());
     }
-    else if (scenario == 'promiseApiResolves') {
+    else if (scenario === 'promiseApiResolves') {
         return Promise.resolve();
     }
-    else if (scenario == 'promiseApiRejects') {
+    else if (scenario === 'promiseApiRejects') {
         return Promise.reject('reject');
     }
-    else if (scenario == 'promiseApiDone') {
+    else if (scenario === 'promiseApiDone') {
         return Promise.resolve().then(() => context.done());
     }
-    else if (scenario == 'randGuid') {
+    else if (scenario === 'randGuid') {
         context.bindings.blob = input.value;
         context.done();
     }
-    else if (scenario == 'logging') {
+    else if (scenario === 'logging') {
         var logEntry = {
             message: 'This is a test',
             version: process.version,
@@ -47,7 +47,7 @@ var assert = require('assert');
 
         context.done();
     }
-    else if (scenario == 'bindingData') {
+    else if (scenario === 'bindingData') {
         var bindingData = context.bindingData;
 
         assert(context.bindingData);
@@ -68,6 +68,19 @@ var assert = require('assert');
         assert(!context._inputs);
         assert(!context._entryPoint);
 
+        context.done();
+    }
+    else if (scenario === 'bindingContainsFunctions') {
+        context.bindings.blob = {
+            func: () => { },
+            nested: {
+                func: () => { }
+            },
+            array: [
+                { func: () => { } }
+            ],
+            value: "value"
+        };
         context.done();
     }
     else {
