@@ -44,7 +44,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
             TimerTriggerAttribute attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.Equal("* * * * * *", attribute.ScheduleExpression);
+            Assert.True(attribute.UseMonitor);
             Assert.True(attribute.RunOnStartup);
+
+            trigger = BindingMetadata.Create(new JObject
+            {
+                { "type", "TimerTrigger" },
+                { "name", "timerInfo" },
+                { "schedule", "* * * * * *" },
+                { "useMonitor", false },
+                { "direction", "in" }
+            });
+            method = GenerateMethod(trigger);
+
+            VerifyCommonProperties(method);
+
+            // verify trigger parameter
+            parameter = method.GetParameters()[0];
+            Assert.Equal("timerInfo", parameter.Name);
+            Assert.Equal(typeof(TimerInfo), parameter.ParameterType);
+            attribute = parameter.GetCustomAttribute<TimerTriggerAttribute>();
+            Assert.Equal("* * * * * *", attribute.ScheduleExpression);
+            Assert.False(attribute.UseMonitor);
+            Assert.False(attribute.RunOnStartup);
         }
 
         [Fact]

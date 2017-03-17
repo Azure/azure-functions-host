@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
+        private readonly Stopwatch _stopwatch = new Stopwatch();
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
@@ -112,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
             var invokeLatencyEvent = LogInvocationMetrics(_metrics, Metadata);
+            _stopwatch.Restart();
 
             try
             {
@@ -126,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await InvokeCore(parameters, context);
 
-                TraceWriter.Info($"Function completed (Success, Id={invocationId})");
+                _stopwatch.Stop();
+                TraceWriter.Info($"Function completed (Success, Id={invocationId}, Duration={_stopwatch.ElapsedMilliseconds}ms)");
             }
             catch (AggregateException ex)
             {
@@ -143,12 +146,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     exInfo = ExceptionDispatchInfo.Capture(ex);
                 }
 
-                LogFunctionFailed(startedEvent, "Failure", invocationId);
+                _stopwatch.Stop();
+                LogFunctionFailed(startedEvent, "Failure", invocationId, _stopwatch.ElapsedMilliseconds);
                 exInfo.Throw();
             }
             catch
             {
-                LogFunctionFailed(startedEvent, "Failure", invocationId);
+                _stopwatch.Stop();
+                LogFunctionFailed(startedEvent, "Failure", invocationId, _stopwatch.ElapsedMilliseconds);
                 throw;
             }
             finally
@@ -178,14 +183,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
-        private void LogFunctionFailed(FunctionStartedEvent startedEvent, string resultString, string invocationId)
+        private void LogFunctionFailed(FunctionStartedEvent startedEvent, string resultString, string invocationId, long elapsedMs)
         {
             if (startedEvent != null)
             {
                 startedEvent.Success = false;
             }
 
-            TraceWriter.Error($"Function completed ({resultString}, Id={invocationId ?? "0"})");
+            TraceWriter.Error($"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)");
         }
 
         protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)

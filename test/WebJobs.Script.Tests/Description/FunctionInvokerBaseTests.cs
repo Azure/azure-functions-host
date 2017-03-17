@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -83,7 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.True(completedStartEvent.Success);
-            Assert.Equal($"Function completed (Success, Id={executionContext.InvocationId})", _traceWriter.Traces.Last().Message);
+            var message = _traceWriter.Traces.Last().Message;
+            Assert.True(Regex.IsMatch(message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
@@ -118,7 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.False(completedStartEvent.Success);
-            Assert.Equal($"Function completed (Failure, Id={executionContext.InvocationId})", _traceWriter.Traces.Last().Message);
+            var message = _traceWriter.Traces.Last().Message;
+            Assert.True(Regex.IsMatch(message, $"Function completed \\(Failure, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
