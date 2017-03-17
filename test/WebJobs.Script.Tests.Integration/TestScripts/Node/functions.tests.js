@@ -146,13 +146,18 @@ describe('http', () => {
 describe('functions', () => {
     var context = {};
     var logs = [];
+    var bindingValues = {};
     beforeEach(() => {
+        bindingValues = {};
         logs = [];
         context = {
             _inputs: [],
             bindings: {},
             log: (message) => logs.push(message),
-            bind: (val, cb) => cb && cb(val)
+            bind: (val, cb) => {
+                bindingValues = val;
+                cb && cb(val);
+            }
         };
     });
 

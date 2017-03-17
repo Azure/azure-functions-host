@@ -261,10 +261,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("loglevel error", traces[4].Message);
         }
 
-        [Fact]
-        public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
+        private async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
         {
-            var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
+            var container = Fixture.BlobClient.GetContainerReference(containerName);
             if (container.Exists())
             {
                 foreach (CloudBlockBlob blob in container.ListBlobs())
@@ -272,6 +271,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     await blob.DeleteAsync();
                 }
             }
+            return container;
+        }
+
+        [Fact]
+        public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
+        {
+            var container = await GetEmptyContainer("scenarios-output");
 
             // Call 3 times - expect 3 separate output blobs
             for (int i = 0; i < 3; i++)
@@ -298,6 +304,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 int blobInt = BitConverter.ToInt32(contents, 0);
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
+        }
+
+        [Fact]
+        public async Task Scenario_OutputBindingContainsFunctions()
+        {
+            var container = await GetEmptyContainer("scenarios-output");
+
+            JObject input = new JObject
+                {
+                    { "scenario", "bindingContainsFunctions" },
+                    { "container", "scenarios-output" },
+                };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+            await Fixture.Host.CallAsync("Scenarios", arguments);
+
+            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            Assert.Equal(1, blobs.Length);
+
+            var blobString = await blobs[0].DownloadTextAsync();
+            Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", blobString);
         }
 
         [Fact]
@@ -1171,6 +1200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, array[0]);
             Assert.Equal(1, array[1]);
         }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node", "node")
