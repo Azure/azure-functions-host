@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null)
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null, ISecretsRepositoryFactory secretsRepositoryFactory = null)
             : base(config, settingsManager, scriptHostFactory)
         {
             _config = config;
@@ -63,10 +63,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
-
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, new FileSystemSecretsRepository(webHostSettings.SecretsPath));
+            
             _performanceManager = new HostPerformanceManager(settingsManager);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
+
+            var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, secretsRepository);       
+        }
+        
+        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory)
+            : this(config, secretManagerFactory, settingsManager, webHostSettings, scriptHostFactory, new DefaultSecretsRepositoryFactory())
+        {
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)

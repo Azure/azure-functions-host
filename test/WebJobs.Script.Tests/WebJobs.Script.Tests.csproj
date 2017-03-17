@@ -468,7 +468,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="ScriptHostTests.cs" />
-    <Compile Include="Security\FileSystemSecretsRepositoryTests.cs" />
+    <Compile Include="Security\SecretsRepositoryTests.cs" />
     <Compile Include="Security\ScriptSecretSerializerTests.cs" />
     <Compile Include="Security\DataProtectionKeyValueConverterTests.cs" />
     <Compile Include="Security\ScriptSecretSerializerV0Tests.cs" />
