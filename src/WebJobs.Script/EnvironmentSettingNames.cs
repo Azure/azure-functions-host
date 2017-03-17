@@ -19,5 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
+        public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";         
     }
 }

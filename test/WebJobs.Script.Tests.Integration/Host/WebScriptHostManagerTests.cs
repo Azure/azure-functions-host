@@ -27,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
-        private Fixture _fixture;
+        private WebScriptHostManagerTests.Fixture _fixture;
 
         // Some tests need their own manager that differs from the fixture.
         private WebScriptHostManager _manager;
 
-        public WebScriptHostManagerTests(Fixture fixture)
+        public WebScriptHostManagerTests(WebScriptHostManagerTests.Fixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
@@ -109,10 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            ISecretsRepository repository = new BlobStorageSecretsRepository(secretsDir, connectionString, "EmptyHost_StartsSuccessfully");
             ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
-            webHostSettings.SecretsPath = _secretsDirectory.Path;
+            webHostSettings.SecretsPath = _secretsDirectory.Path;            
 
             ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
 
@@ -149,8 +150,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = functionTestDir,
                 FileLoggingMode = FileLoggingMode.Always,
             };
-
-            ISecretsRepository repository = new FileSystemSecretsRepository(secretsDir);
+            
+            ISecretsRepository repository = new FileSystemSecretsRepository(_secretsDirectory.Path);
             SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
@@ -331,11 +332,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootLogPath = logRoot,
                     FileLoggingMode = FileLoggingMode.Always
                 };
-
+                
                 ISecretsRepository repository = new FileSystemSecretsRepository(SecretsPath);
                 ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
                 WebHostSettings webHostSettings = new WebHostSettings();
-                webHostSettings.SecretsPath = _secretsDirectory.Path;
+                webHostSettings.SecretsPath = SecretsPath; 
 
                 var hostConfig = config.HostConfig;
                 var testEventGenerator = new TestSystemEventGenerator();
@@ -360,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     "Info WebJobs.Indexing Found the following functions:",
                     "Info The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
-                    "Error The following 1 functions are in error:"
+                    "Error The following 1 functions are in error:" 
                 };
                 foreach (string pattern in expectedPatterns)
                 {

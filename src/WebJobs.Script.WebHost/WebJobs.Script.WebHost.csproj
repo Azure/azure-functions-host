@@ -429,7 +429,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Security\BlobStorageSecretsRepository.cs" />
     <Compile Include="Security\DefaultSecretManagerFactory.cs" />
+    <Compile Include="Security\DefaultSecretsRepositoryFactory.cs" />
     <Compile Include="Security\FileSystemSecretsRepository.cs" />
     <Compile Include="Security\FunctionSecrets.cs" />
     <Compile Include="Security\DataProtectionKeyValueConverter.cs" />
@@ -438,6 +440,7 @@
     <Compile Include="Security\IKeyValueWriter.cs" />
     <Compile Include="Security\ISecretManager.cs" />
     <Compile Include="Security\ISecretManagerFactory.cs" />
+    <Compile Include="Security\ISecretRepositoryFactory.cs" />
     <Compile Include="Security\ISecretsRepository.cs" />
     <Compile Include="Security\KeyOperationResult.cs" />
     <Compile Include="Security\ScriptSecretsType.cs" />
