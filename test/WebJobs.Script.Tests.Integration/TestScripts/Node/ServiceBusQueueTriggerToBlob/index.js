@@ -1,4 +1,9 @@
 ﻿module.exports = function (context, inMessage) {
+    var bindingData = context.bindingData;
+    context.log('Message Id: ', bindingData.messageId);
+    context.log('Delivery count: ', bindingData.deliveryCount);
+    context.log('Enqueued time: ', bindingData.enqueuedTimeUtc);
+
     if (inMessage.count < 2)
     {
         // write a message back to the queue that this function is triggered on

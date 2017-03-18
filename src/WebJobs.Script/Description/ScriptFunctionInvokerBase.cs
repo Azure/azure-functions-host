@@ -82,8 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                 }
 
-                environmentVariables[inputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath,
-                    inputBinding.Metadata.Name);
+                environmentVariables[inputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, inputBinding.Metadata.Name);
             }
         }
 

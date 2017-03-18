@@ -199,8 +199,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testData);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
 
-            var payload = JsonConvert.DeserializeObject<Payload>(result);
-            Assert.Equal(testData, payload.Id);
+            var payload = JObject.Parse(result);
+            Assert.Equal(testData, (string)payload["id"]);
+
+            var bindingData = payload["bindingData"];
+            int sequenceNumber = (int)bindingData["sequenceNumber"];
+            var systemProperties = bindingData["systemProperties"];
+            Assert.Equal(sequenceNumber, (int)systemProperties["sequenceNumber"]);
         }
 
         [Fact]

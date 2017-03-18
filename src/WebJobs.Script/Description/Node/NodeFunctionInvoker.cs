@@ -383,19 +383,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return context;
         }
 
-        private static Dictionary<string, object> NormalizeBindingData(Dictionary<string, object> bindingData)
+        internal static Dictionary<string, object> NormalizeBindingData(IDictionary<string, object> bindingData)
         {
             Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
 
             foreach (var pair in bindingData)
             {
-                var name = pair.Key;
                 var value = pair.Value;
-                if (value != null && !IsEdgeSupportedType(value.GetType()))
+                if (value != null)
                 {
-                    // we must convert values to types supported by Edge
-                    // marshalling as needed
-                    value = value.ToString();
+                    if (value is IDictionary<string, object>)
+                    {
+                        value = NormalizeBindingData((IDictionary<string, object>)value);
+                    }
+                    else
+                    {
+                        if (!IsEdgeSupportedType(value.GetType()))
+                        {
+                            // we must convert values to types supported by Edge
+                            // marshalling as needed
+                            value = value.ToString();
+                        }
+                    }
                 }
 
                 // "camel case" the normally Pascal cased properties by
@@ -403,6 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // While for binding purposes case doesn't matter,
                 // we want to normalize the case to something Node
                 // users would expect to reference in code (e.g. "dequeueCount" not "DequeueCount")
+                var name = pair.Key;
                 name = Utility.ToLowerFirstCharacter(name);
 
                 normalizedBindingData[name] = value;
@@ -413,12 +423,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal static bool IsEdgeSupportedType(Type type)
         {
+            if (type.IsArray)
+            {
+                type = type.GetElementType();
+            }
+
             if (type == typeof(int) ||
                 type == typeof(double) ||
                 type == typeof(string) ||
                 type == typeof(bool) ||
-                type == typeof(byte[]) ||
-                type == typeof(object[]))
+                type == typeof(byte) ||
+                type == typeof(object))
             {
                 return true;
             }
