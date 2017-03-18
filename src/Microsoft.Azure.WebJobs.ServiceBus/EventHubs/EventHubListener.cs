@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 EventHubTriggerInput value = new EventHubTriggerInput
                 {
                     Events = messages.ToArray(),
-                    Context = context
+                    PartitionContext = context
                 };
 
                 // Single dispatch 

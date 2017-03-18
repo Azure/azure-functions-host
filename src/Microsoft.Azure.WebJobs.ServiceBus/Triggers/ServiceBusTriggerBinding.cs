@@ -141,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             contract.Add("To", typeof(string));
             contract.Add("Label", typeof(string));
             contract.Add("CorrelationId", typeof(string));
+            contract.Add("Properties", typeof(IDictionary<string, object>));
 
             if (argumentBindingContract != null)
             {
@@ -170,6 +171,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             SafeAddValue(() => bindingData.Add(nameof(value.To), value.To));
             SafeAddValue(() => bindingData.Add(nameof(value.Label), value.Label));
             SafeAddValue(() => bindingData.Add(nameof(value.CorrelationId), value.CorrelationId));
+            SafeAddValue(() => bindingData.Add(nameof(value.Properties), value.Properties));
 
             if (bindingDataFromValueType != null)
             {

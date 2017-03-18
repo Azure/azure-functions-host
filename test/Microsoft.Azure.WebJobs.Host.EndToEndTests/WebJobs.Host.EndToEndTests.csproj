@@ -108,6 +108,7 @@
     <Compile Include="BlobToCustomObjectBinder.cs" />
     <Compile Include="CustomObject.cs" />
     <Compile Include="AzureStorageEndToEndTests.cs" />
+    <Compile Include="EventHubEndToEndTests.cs" />
     <Compile Include="LeaseExpirationTests.cs" />
     <Compile Include="MultipleStorageAccountsEndToEndTests.cs" />
     <Compile Include="ParallelExecutionTests.cs" />

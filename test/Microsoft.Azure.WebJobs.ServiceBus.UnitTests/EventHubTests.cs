@@ -1,9 +1,7 @@
-﻿using Microsoft.ServiceBus.Messaging;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.ServiceBus.Messaging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
@@ -11,13 +9,90 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
     public class EventHubTests
     {
         [Fact]
-        public void StrategyStaticContract()
+        public void GetStaticBindingContract_ReturnsExpectedValue()
         {
             var strategy = new EventHubTriggerBindingStrategy();
             var contract = strategy.GetStaticBindingContract();
 
+            Assert.Equal(7, contract.Count);
+            Assert.Equal(typeof(PartitionContext), contract["PartitionContext"]);
+            Assert.Equal(typeof(string), contract["Offset"]);
+            Assert.Equal(typeof(long), contract["SequenceNumber"]);
+            Assert.Equal(typeof(DateTime), contract["EnqueuedTimeUtc"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["Properties"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingContract_SingleDispatch_ReturnsExpectedValue()
+        {
+            var contract = EventHubTriggerBindingStrategy.GetBindingContract(true);
+
+            Assert.Equal(7, contract.Count);
+            Assert.Equal(typeof(PartitionContext), contract["PartitionContext"]);
+            Assert.Equal(typeof(string), contract["Offset"]);
+            Assert.Equal(typeof(long), contract["SequenceNumber"]);
+            Assert.Equal(typeof(DateTime), contract["EnqueuedTimeUtc"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["Properties"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingContract_MultipleDispatch_ReturnsExpectedValue()
+        {
+            var contract = EventHubTriggerBindingStrategy.GetBindingContract(false);
+
+            // TODO: handle multiple dispatch
+            // https://github.com/Azure/azure-webjobs-sdk/issues/1072
             Assert.Equal(1, contract.Count);
-            Assert.Equal(typeof(PartitionContext), contract["partitionContext"]);
+            //Assert.Equal(typeof(PartitionContext[]), contract["PartitionContext"]);
+            //Assert.Equal(typeof(string[]), contract["Offset"]);
+            //Assert.Equal(typeof(long[]), contract["SequenceNumber"]);
+            //Assert.Equal(typeof(DateTime), contract["EnqueuedTimeUtc"]);
+            //Assert.Equal(typeof(IDictionary<string, object>[]), contract["Properties"]);
+            //Assert.Equal(typeof(IDictionary<string, object>[]), contract["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingData_SingleDispatch_ReturnsExpectedValue()
+        {
+            var evt = new EventData();
+            evt.PartitionKey = "TestKey";
+            var input = EventHubTriggerInput.New(evt);
+            input.PartitionContext = new PartitionContext();
+            var bindingData = EventHubTriggerBindingStrategy.GetBindingData(input);
+
+            Assert.Equal(7, bindingData.Count);
+            Assert.Same(input.PartitionContext, bindingData["PartitionContext"]);
+            Assert.Equal(evt.PartitionKey, bindingData["PartitionKey"]);
+            Assert.Equal(evt.Offset, bindingData["Offset"]);
+            Assert.Equal(evt.SequenceNumber, bindingData["SequenceNumber"]);
+            Assert.Equal(evt.EnqueuedTimeUtc, bindingData["EnqueuedTimeUtc"]);
+            Assert.Same(evt.Properties, bindingData["Properties"]);
+            Assert.Same(evt.SystemProperties, bindingData["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingData_MultipleDispatch_ReturnsExpectedValue()
+        {
+            var events = new EventData[3]
+            {
+                new EventData(Encoding.UTF8.GetBytes("Event 1")),
+                new EventData(Encoding.UTF8.GetBytes("Event 2")),
+                new EventData(Encoding.UTF8.GetBytes("Event 3"))
+            };
+
+            var input = new EventHubTriggerInput
+            {
+                PartitionContext = new PartitionContext(),
+                Events = events
+            };
+            var bindingData = EventHubTriggerBindingStrategy.GetBindingData(input);
+
+            // TODO: handle multiple dispatch
+            // https://github.com/Azure/azure-webjobs-sdk/issues/1072
+            Assert.Equal(1, bindingData.Count);
+            Assert.Same(input.PartitionContext, bindingData["PartitionContext"]);
         }
 
         [Fact]
