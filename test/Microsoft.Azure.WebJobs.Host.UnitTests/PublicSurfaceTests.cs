@@ -128,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "DisableAttribute",
                 "TimeoutAttribute",
                 "TraceLevelAttribute",
-                "ODataFilterResolutionPolicy"
+                "ODataFilterResolutionPolicy",
+                "FunctionNameAttribute"
             };
 
             AssertPublicTypes(expected, assembly);
