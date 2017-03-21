@@ -108,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 "IAttributeInvokeDescriptor`1",
                 "AutoResolveAttribute",
+                "AppSettingAttribute",
                 "BinderExtensions",
                 "BlobAttribute",
                 "BlobTriggerAttribute",
