@@ -242,18 +242,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 Key key = secrets.GetFunctionKey(secretName, keyScope);
 
+                var createAndUpdateKey = new Action<OperationResult>((o) =>
+                {
+                    var newKey = CreateKey(secretName, secret);
+                    secrets.AddKey(newKey, keyScope);
+                    result = o;
+                });
+
                 if (key == null)
                 {
-                    key = new Key(secretName, secret);
-                    secrets.AddKey(key, keyScope);
-                    result = OperationResult.Created;
+                    createAndUpdateKey(OperationResult.Created);
                 }
                 else if (secrets.RemoveKey(key, keyScope))
                 {
-                    key = CreateKey(secretName, secret);
-                    secrets.AddKey(key, keyScope);
-
-                    result = OperationResult.Updated;
+                    createAndUpdateKey(OperationResult.Updated);
                 }
 
                 return secrets;
