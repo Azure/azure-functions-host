@@ -16,14 +16,14 @@ namespace Microsoft.Azure.WebJobs.Host
         public ArrayTriggerArgumentBinding(
             ITriggerBindingStrategy<TMessage, TTriggerValue> hooks,
             SimpleTriggerArgumentBinding<TMessage, TTriggerValue> innerBinding,
-            IConverterManager converterManager) : base(hooks, converterManager)
+            IConverterManager converterManager) : base(hooks, converterManager, false)
         {
             this._innerBinding = innerBinding;
         }
 
         public override Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context)
         {
-            Dictionary<string, object> bindingData = Hooks.GetContractInstance(value);
+            Dictionary<string, object> bindingData = Hooks.GetBindingData(value);
 
             TMessage[] arrayRaw = Hooks.BindMultiple(value, context);
 

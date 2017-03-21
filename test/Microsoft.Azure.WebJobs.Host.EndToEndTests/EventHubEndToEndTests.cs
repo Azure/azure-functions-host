@@ -71,14 +71,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [Fact]
         public async Task EventHubTriggerTest_MultipleDispatch()
         {
-            await _host.StartAsync();
+            // send some events BEFORE starting the host, to ensure
+            // the events are received in batch
+            var method = typeof(EventHubTestJobs).GetMethod("SendEvents_TestHub2", BindingFlags.Static | BindingFlags.Public);
+            var id = Guid.NewGuid().ToString();
+            EventHubTestJobs.EventId = id;
+            int numEvents = 5;
+            await _host.CallAsync(method, new { numEvents = numEvents, input = id });
 
             try
             {
-                var method = typeof(EventHubTestJobs).GetMethod("SendEvents_TestHub2", BindingFlags.Static | BindingFlags.Public);
-                var id = Guid.NewGuid().ToString();
-                EventHubTestJobs.EventId = id;
-                await _host.CallAsync(method, new { numEvents = 5, input = id });
+                await _host.StartAsync();
 
                 await TestHelpers.Await(() =>
                 {
@@ -121,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 {
                     var evt = new EventData(Encoding.UTF8.GetBytes(input));
                     evt.PartitionKey = "TestPartition";
-                    evt.Properties.Add("BatchIndex", i);
+                    evt.Properties.Add("TestIndex", i);
                     evt.Properties.Add("TestProp1", "value1");
                     evt.Properties.Add("TestProp2", "value2");
                     events[i] = evt;
@@ -148,10 +151,22 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 }
             }
 
-            public static void ProcessMultipleEvents([EventHubTrigger(TestHub2Name)] string[] events)
+            public static void ProcessMultipleEvents([EventHubTrigger(TestHub2Name)] string[] events,
+                string[] partitionKeyArray, DateTime[] enqueuedTimeUtcArray, IDictionary<string, object>[] propertiesArray,
+                IDictionary<string, object>[] systemPropertiesArray)
             {
-                // TODO: verify binding data contract arrays
-                // https://github.com/Azure/azure-webjobs-sdk/issues/1072
+                Assert.Equal(events.Length, partitionKeyArray.Length);
+                Assert.Equal(events.Length, enqueuedTimeUtcArray.Length);
+                Assert.Equal(events.Length, propertiesArray.Length);
+                Assert.Equal(events.Length, systemPropertiesArray.Length);
+
+                for (int i = 0; i < events.Length; i++)
+                {
+                    Assert.Equal("TestPartition", partitionKeyArray[i]);
+                    Assert.Equal(3, propertiesArray[i].Count);
+                    Assert.Equal(8, systemPropertiesArray[i].Count);
+                    Assert.Equal(i, propertiesArray[i]["TestIndex"]);
+                }
 
                 // filter for the ID the current test is using
                 if (events[0] == EventId)

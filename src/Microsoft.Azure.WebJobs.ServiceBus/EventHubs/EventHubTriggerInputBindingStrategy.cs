@@ -42,70 +42,78 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return value.Events;
         }
 
-        // Get the static binding contract
-        //  - gets augmented 
-        public Dictionary<string, Type> GetStaticBindingContract()
+        public Dictionary<string, Type> GetBindingContract(bool isSingleDispatch = true)
         {
-            // TODO: need to be able to determine here if we're single dispatch
-            // https://github.com/Azure/azure-webjobs-sdk/issues/1072
-            bool isSingleDispatch = true;
-
-            return GetBindingContract(isSingleDispatch);
-        }
-
-        internal static Dictionary<string, Type> GetBindingContract(bool isSingleDispatch)
-        {
-            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            var contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("PartitionContext", typeof(PartitionContext));
 
-            // TODO: need to be able to determine here if we're single dispatch
-            // https://github.com/Azure/azure-webjobs-sdk/issues/1072
-            if (isSingleDispatch)
-            {
-                AddBindingContractMember(contract, "PartitionKey", typeof(string), isSingleDispatch);
-                AddBindingContractMember(contract, "Offset", typeof(string), isSingleDispatch);
-                AddBindingContractMember(contract, "SequenceNumber", typeof(long), isSingleDispatch);
-                AddBindingContractMember(contract, "EnqueuedTimeUtc", typeof(DateTime), isSingleDispatch);
-                AddBindingContractMember(contract, "Properties", typeof(IDictionary<string, object>), isSingleDispatch);
-                AddBindingContractMember(contract, "SystemProperties", typeof(IDictionary<string, object>), isSingleDispatch);
-            }
+            AddBindingContractMember(contract, "PartitionKey", typeof(string), isSingleDispatch);
+            AddBindingContractMember(contract, "Offset", typeof(string), isSingleDispatch);
+            AddBindingContractMember(contract, "SequenceNumber", typeof(long), isSingleDispatch);
+            AddBindingContractMember(contract, "EnqueuedTimeUtc", typeof(DateTime), isSingleDispatch);
+            AddBindingContractMember(contract, "Properties", typeof(IDictionary<string, object>), isSingleDispatch);
+            AddBindingContractMember(contract, "SystemProperties", typeof(IDictionary<string, object>), isSingleDispatch);
 
             return contract;
         }
 
         private static void AddBindingContractMember(Dictionary<string, Type> contract, string name, Type type, bool isSingleDispatch)
         {
+            if (!isSingleDispatch)
+            {
+                name += "Array";
+            }
             contract.Add(name, isSingleDispatch ? type : type.MakeArrayType());
         }
 
-        // Get runtime instance of binding contract 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "PartitionContext")]
-        public Dictionary<string, object> GetContractInstance(EventHubTriggerInput value)
+        public Dictionary<string, object> GetBindingData(EventHubTriggerInput value)
         {
             if (value == null)
             {
                 throw new ArgumentNullException("value");
             }
 
-            return GetBindingData(value);
-        }
-
-        internal static Dictionary<string, object> GetBindingData(EventHubTriggerInput input)
-        {
             var bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            SafeAddValue(() => bindingData.Add(nameof(input.PartitionContext), input.PartitionContext));
+            SafeAddValue(() => bindingData.Add(nameof(value.PartitionContext), value.PartitionContext));
 
-            if (input.IsSingleDispatch)
+            if (value.IsSingleDispatch)
             {
-                AddBindingData(bindingData, input.GetSingleEventData());
+                AddBindingData(bindingData, value.GetSingleEventData());
             }
             else
             {
-                // TODO: handle multiple dispatch
-                // https://github.com/Azure/azure-webjobs-sdk/issues/1072
+                AddBindingData(bindingData, value.Events);
             }
 
             return bindingData;
+        }
+
+        internal static void AddBindingData(Dictionary<string, object> bindingData, EventData[] events)
+        {
+            int length = events.Length;
+            var partitionKeys = new string[length];
+            var offsets = new string[length];
+            var sequenceNumbers = new long[length];
+            var enqueuedTimesUtc = new DateTime[length];
+            var properties = new IDictionary<string, object>[length];
+            var systemProperties = new IDictionary<string, object>[length];
+
+            SafeAddValue(() => bindingData.Add("PartitionKeyArray", partitionKeys));
+            SafeAddValue(() => bindingData.Add("OffsetArray", offsets));
+            SafeAddValue(() => bindingData.Add("SequenceNumberArray", sequenceNumbers));
+            SafeAddValue(() => bindingData.Add("EnqueuedTimeUtcArray", enqueuedTimesUtc));
+            SafeAddValue(() => bindingData.Add("PropertiesArray", properties));
+            SafeAddValue(() => bindingData.Add("SystemPropertiesArray", systemProperties));
+
+            for (int i = 0; i < events.Length; i++)
+            {
+                partitionKeys[i] = events[i].PartitionKey;
+                offsets[i] = events[i].Offset;
+                sequenceNumbers[i] = events[i].SequenceNumber;
+                enqueuedTimesUtc[i] = events[i].EnqueuedTimeUtc;
+                properties[i] = events[i].Properties;
+                systemProperties[i] = events[i].SystemProperties;
+            }
         }
 
         private static void AddBindingData(Dictionary<string, object> bindingData, EventData eventData)

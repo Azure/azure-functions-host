@@ -15,10 +15,10 @@ namespace Microsoft.Azure.WebJobs.Host
         private readonly ITriggerBindingStrategy<TMessage, TTriggerValue> _hooks;
         private readonly IConverterManager _converterManager;
 
-        public SimpleTriggerArgumentBinding(ITriggerBindingStrategy<TMessage, TTriggerValue> hooks, IConverterManager converterManager)
+        public SimpleTriggerArgumentBinding(ITriggerBindingStrategy<TMessage, TTriggerValue> hooks, IConverterManager converterManager, bool isSingleDispatch = true)
         {
             this._hooks = hooks;
-            this.Contract = Hooks.GetStaticBindingContract();
+            this.Contract = Hooks.GetBindingContract(isSingleDispatch);
             this.ElementType = typeof(TMessage);
             _converterManager = converterManager;
         }
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public virtual Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context)
         {
-            Dictionary<string, object> bindingData = Hooks.GetContractInstance(value);
+            Dictionary<string, object> bindingData = Hooks.GetBindingData(value);
 
             TMessage eventData = Hooks.BindSingle(value, context);
 
