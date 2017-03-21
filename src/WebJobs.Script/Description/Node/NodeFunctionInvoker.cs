@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -385,23 +386,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal static Dictionary<string, object> NormalizeBindingData(IDictionary<string, object> bindingData)
         {
-            Dictionary<string, object> normalizedBindingData = new Dictionary<string, object>();
+            var normalizedBindingData = new Dictionary<string, object>();
 
             foreach (var pair in bindingData)
             {
                 var value = pair.Value;
                 if (value != null)
                 {
+                    var type = value.GetType();
                     if (value is IDictionary<string, object>)
                     {
                         value = NormalizeBindingData((IDictionary<string, object>)value);
                     }
+                    else if (value is IDictionary<string, object>[])
+                    {
+                        value = ((IEnumerable<IDictionary<string, object>>)value).Select(p => NormalizeBindingData(p)).ToArray();
+                    }
                     else
                     {
-                        if (!IsEdgeSupportedType(value.GetType()))
+                        if (!IsEdgeSupportedType(type))
                         {
-                            // we must convert values to types supported by Edge
-                            // marshalling as needed
+                            // for values not supported by edge, we just
+                            // stringify the value
                             value = value.ToString();
                         }
                     }
@@ -428,12 +434,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 type = type.GetElementType();
             }
 
-            if (type == typeof(int) ||
-                type == typeof(double) ||
+            if (type.IsPrimitive ||
                 type == typeof(string) ||
-                type == typeof(bool) ||
-                type == typeof(byte) ||
-                type == typeof(object))
+                type == typeof(object) ||
+                type == typeof(DateTime) ||
+                typeof(IDictionary<string, object>).IsAssignableFrom(type))
             {
                 return true;
             }

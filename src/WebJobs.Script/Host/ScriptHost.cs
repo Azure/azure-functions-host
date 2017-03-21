@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         internal const int DebugModeTimeoutMinutes = 15;
         private const string HostAssemblyName = "ScriptHost";
+        private const string GeneratedTypeNamespace = "Host";
+        internal const string GeneratedTypeName = "Functions";
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
         private string _instanceId;
         private Action _restart;
@@ -214,13 +216,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // TODO: Don't hardcode Functions Type name
             // TODO: Validate inputs
             // TODO: Cache this lookup result
-            string typeName = "Functions";
             method = method.ToLowerInvariant();
-            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == typeName);
-            MethodInfo methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
+            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == ScriptHost.GeneratedTypeName);
+            var methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
 
             await CallAsync(methodInfo, arguments, cancellationToken);
         }
@@ -374,8 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // read all script functions and apply to JobHostConfiguration
                 Collection<FunctionDescriptor> functions = GetFunctionDescriptors();
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
-                string defaultNamespace = "Host";
-                string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", defaultNamespace, "Functions");
+                string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
                 TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
                 Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
                 List<Type> types = new List<Type>();

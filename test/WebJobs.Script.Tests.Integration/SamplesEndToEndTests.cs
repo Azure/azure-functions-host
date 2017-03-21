@@ -15,7 +15,6 @@ using System.Web.Http;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -57,7 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     { "value", ids[i] }
                 };
-                events.Add(new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None))));
+                var evt = new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None)));
+                evt.Properties.Add("TestIndex", i);
+                events.Add(evt);
             }
 
             string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logs = null;
             await TestHelpers.Await(() =>
             {
-                // wait for all 3 of the unique IDs send
+                // wait until all of the 3 of the unique IDs sent
                 // above have been processed
                 logs = string.Join("\r\n", TestHelpers.GetFunctionLogsAsync("EventHubTrigger", throwOnNoLogs: false).Result);
                 return ids.All(p => logs.Contains(p));

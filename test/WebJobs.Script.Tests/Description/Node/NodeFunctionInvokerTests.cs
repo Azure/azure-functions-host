@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -25,6 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(typeof(bool[]), true)]
         [InlineData(typeof(byte[]), true)]
         [InlineData(typeof(object[]), true)]
+        [InlineData(typeof(DateTime), true)]
+        [InlineData(typeof(DateTime[]), true)]
+        [InlineData(typeof(IDictionary<string, object>), true)]
+        [InlineData(typeof(IDictionary<string, object>[]), true)]
+        [InlineData(typeof(Dictionary<string, object>), true)]
+        [InlineData(typeof(Dictionary<string, object>[]), true)]
         public void IsEdgeSupportedType_ReturnsExpectedResult(Type type, bool expected)
         {
             Assert.Equal(expected, NodeFunctionInvoker.IsEdgeSupportedType(type));
@@ -33,43 +40,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void NormalizeBindingData_TypeHandling()
         {
-            var nested1 = new Dictionary<string, object>
+            var inputObject1 = new Dictionary<string, object>
             {
                 { "TestProp1", "value1" },
                 { "TestProp2", 123 }
             };
-            var nested2 = new Dictionary<string, object>
+            var dateTime = DateTime.UtcNow;
+            var inputObject2 = new Dictionary<string, object>
             {
                 { "TestProp1", "value1" },
                 { "TestProp2", 456 },
-                { "TestProp3", new string[] { "value1", "value2", "value3" } }
+                { "TestProp3", new string[] { "value1", "value2", "value3" } },
+                { "TestProp4", dateTime }
             };
+            var objectArray = new Dictionary<string, object>[] { inputObject1, inputObject2 };
             var bindingData = new Dictionary<string, object>
             {
                 { "TestProp1", "value1" },
                 { "TestProp2", "value2" },
-                { "TestProp3", nested1 },
-                { "TestProp4", nested2 }
+                { "TestProp3", inputObject1 },
+                { "TestProp4", inputObject2 },
+                { "TestProp5", objectArray },
+                { "TestProp6", null },
+                { "TestProp7", new HttpConfiguration() }
             };
             var result = NodeFunctionInvoker.NormalizeBindingData(bindingData);
 
-            Assert.Equal(4, bindingData.Count);
+            Assert.Equal(7, result.Count);
             Assert.Equal(bindingData["TestProp1"], result["testProp1"]);
             Assert.Equal(bindingData["TestProp2"], result["testProp2"]);
+            Assert.Equal(new HttpConfiguration().ToString(), result["testProp7"]);
 
             var resultChild = (IDictionary<string, object>)result["testProp3"];
-            Assert.Equal(nested1["TestProp1"], resultChild["testProp1"]);
-            Assert.Equal(nested1["TestProp2"], resultChild["testProp2"]);
+            Assert.Equal(inputObject1["TestProp1"], resultChild["testProp1"]);
+            Assert.Equal(inputObject1["TestProp2"], resultChild["testProp2"]);
 
             resultChild = (IDictionary<string, object>)result["testProp4"];
-            Assert.Equal(nested2["TestProp1"], resultChild["testProp1"]);
-            Assert.Equal(nested2["TestProp2"], resultChild["testProp2"]);
+            Assert.Equal(inputObject2["TestProp1"], resultChild["testProp1"]);
+            Assert.Equal(inputObject2["TestProp2"], resultChild["testProp2"]);
+            var resultArray = (string[])resultChild["testProp3"];
+            Assert.Equal(3, resultArray.Length);
+            Assert.Equal("value1", resultArray[0]);
+            Assert.Equal("value2", resultArray[1]);
+            Assert.Equal("value3", resultArray[2]);
+            Assert.Equal(dateTime, resultChild["testProp4"]);
 
-            var arrayValue = (string[])resultChild["testProp3"];
-            Assert.Equal(3, arrayValue.Length);
-            Assert.Equal("value1", arrayValue[0]);
-            Assert.Equal("value2", arrayValue[1]);
-            Assert.Equal("value3", arrayValue[2]);
+            var resultObjectArray = (Dictionary<string, object>[])result["testProp5"];
+            Assert.Equal(456, resultObjectArray[1]["testProp2"]);
         }
 
         [Fact]

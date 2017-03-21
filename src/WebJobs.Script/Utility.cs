@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string DynamicSku = "Dynamic";
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
+
         /// <summary>
         /// Gets a value indicating whether the JobHost is running in a Dynamic
         /// App Service WebApp.
