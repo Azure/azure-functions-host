@@ -16,17 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class TwilioScriptBindingProvider : ScriptBindingProvider
     {
-        private readonly string _twilioAssemblyName;
-
         /// <inheritdoc/>
-        public TwilioScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+        public TwilioScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
-            _twilioAssemblyName = typeof(SMSMessage).Assembly.GetName().Name;
         }
 
-        /// <inheritdoc/>
-        public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
+    /// <inheritdoc/>
+    public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             if (context == null)
             {
@@ -54,12 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, _twilioAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = typeof(SMSMessage).Assembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(SMSMessage), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(TwilioSmsAttribute), out assembly);
         }
 
         private class TwilioSmsBinding : ScriptBinding

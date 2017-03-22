@@ -4,8 +4,10 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.WindowsAzure.MobileServices;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -43,6 +45,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override void Initialize()
         {
             Config.UseMobileApps();
+        }
+
+        public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
+        {
+            assembly = null;
+
+            return Utility.TryMatchAssembly(assemblyName, typeof(MobileServiceClient), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(MobileTableAttribute), out assembly);
         }
 
         private class MobileTableScriptBinding : ScriptBinding

@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -279,6 +280,20 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string json = ToJson(value);
             return JObject.Parse(json);
+        }
+
+        public static bool TryMatchAssembly(string assemblyName, Type type, out Assembly matchedAssembly)
+        {
+            matchedAssembly = null;
+
+            var candidateAssembly = type.Assembly;
+            if (string.Compare(assemblyName, candidateAssembly.GetName().Name, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                matchedAssembly = candidateAssembly;
+                return true;
+            }
+
+            return false;
         }
     }
 }

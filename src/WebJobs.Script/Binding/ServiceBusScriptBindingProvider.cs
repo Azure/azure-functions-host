@@ -16,16 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
-        private readonly string _serviceBusAssemblyName;
         private EventHubConfiguration _eventHubConfiguration;
 
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
-            _serviceBusAssemblyName = typeof(BrokeredMessage).Assembly.GetName().Name;
         }
 
-        public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
+    public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             binding = null;
 
@@ -92,12 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, _serviceBusAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = typeof(BrokeredMessage).Assembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(BrokeredMessage), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(ServiceBusAttribute), out assembly);
         }
 
         private class EventHubScriptBinding : ScriptBinding
