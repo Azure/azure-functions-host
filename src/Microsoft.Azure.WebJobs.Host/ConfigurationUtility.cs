@@ -10,6 +10,11 @@ namespace Microsoft.Azure.WebJobs.Host
     {
         public static string GetSettingFromConfigOrEnvironment(string settingName)
         {
+            if (string.IsNullOrEmpty(settingName))
+            {
+                return null;
+            }
+
             string configValue = ConfigurationManager.AppSettings[settingName];
             if (!string.IsNullOrEmpty(configValue))
             {

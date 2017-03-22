@@ -127,7 +127,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         internal static BindingDataResolver GetAppSettingResolver(string originalValue, AppSettingAttribute attr, INameResolver nameResolver, PropertyInfo propInfo)
         {
             string appSettingName = originalValue ?? attr.Default;
-            string resolvedValue = nameResolver.Resolve(appSettingName);
+            string resolvedValue = string.IsNullOrEmpty(appSettingName) ?
+                originalValue : nameResolver.Resolve(appSettingName);
 
             // If a value is non-null and cannot be found, we throw to match the behavior
             // when %% values are not found in ResolveWholeString below.

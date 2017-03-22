@@ -340,6 +340,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
+        public void AppSettingAttribute_DoesNotThrowIfNullValueAndNoDefault()
+        {
+            Attr4 a4 = new Attr4();
+            a4.AutoResolve = "auto";
+            a4.AppSetting = null;
+
+            var nameResolver = new FakeNameResolver();
+            var cloner = new AttributeCloner<Attr4>(a4, EmptyContract, nameResolver);
+            var cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("auto", cloned.AutoResolve);
+            Assert.Equal(null, cloned.AppSetting);
+        }
+
+        [Fact]
         public void AttributeCloner_Throws_IfAppSettingAndAutoResolve()
         {
             InvalidAnnotation a = new InvalidAnnotation();
