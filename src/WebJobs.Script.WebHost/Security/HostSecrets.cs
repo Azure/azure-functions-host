@@ -29,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (string.Equals(keyScope, HostKeyScopes.FunctionKeys, System.StringComparison.OrdinalIgnoreCase))
             {
-                return FunctionKeys;
+                return FunctionKeys ?? (FunctionKeys = new List<Key>());
             }
             else if (string.Equals(keyScope, HostKeyScopes.SystemKeys, System.StringComparison.OrdinalIgnoreCase))
             {
-                return SystemKeys;
+                return SystemKeys ?? (SystemKeys = new List<Key>());
             }
 
             return null;

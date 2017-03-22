@@ -281,6 +281,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task AddOrUpdateFunctionSecrets_WithFunctionNameAndNoSecret_EncryptsSecretAndPersistsFile()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string secretName = "TestSecret";
+                string functionName = "TestFunction";
+                string expectedTraceMessage = string.Format(Resources.TraceAddOrUpdateFunctionSecret, "Function", secretName, functionName, "Created");
+
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true);
+
+                KeyOperationResult result;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
+                {
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
+                }
+
+                string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
+                FunctionSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.NotNull(result.Secret);
+                Assert.NotNull(persistedSecrets);
+                Assert.Equal("!" + result.Secret, persistedSecrets.Keys.First().Value);
+                Assert.Equal(secretName, persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
+                Assert.True(persistedSecrets.Keys.First().IsEncrypted);
+            }
+        }
+
+        [Fact]
         public async Task AddOrUpdateFunctionSecrets_WithFunctionNameAndProvidedSecret_UsesSecretAndPersistsFile()
         {
             using (var directory = new TempDirectory())
@@ -324,37 +355,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             await AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(HostKeyScopes.SystemKeys, h => h.SystemKeys);
         }
 
+        [Fact]
+        public async Task AddOrUpdateFunctionSecrets_WithExistingHostFileAndSystemSecretScope_PersistsHostFileWithSecret()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var hostSecret = new HostSecrets();
+                hostSecret.MasterKey = new Key("_master", "master");
+                hostSecret.FunctionKeys = new List<Key> { };
+
+                var hostJson = JsonConvert.SerializeObject(hostSecret);
+                await FileUtility.WriteAsync(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName), hostJson);
+                await AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(HostKeyScopes.SystemKeys, h => h.SystemKeys, directory);
+            }
+        }
+
         public async Task AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(string scope, Func<HostSecrets, IList<Key>> keySelector)
         {
             using (var directory = new TempDirectory())
             {
-                string secretName = "TestSecret";
-                string expectedTraceMessage = string.Format(Resources.TraceAddOrUpdateFunctionSecret, "Host", secretName, scope, "Created");
-
-                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
-
-                KeyOperationResult result;
-                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
-                {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", scope, ScriptSecretsType.Host);
-                }
-
-                string secretsJson = File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName));
-                HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
-                Key newSecret = keySelector(persistedSecrets).FirstOrDefault(k => string.Equals(k.Name, secretName, StringComparison.Ordinal));
-
-                Assert.Equal(OperationResult.Created, result.Result);
-                Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
-                Assert.NotNull(persistedSecrets);
-                Assert.NotNull(newSecret);
-                Assert.Equal(result.Secret, newSecret.Value);
-                Assert.Equal(secretName, newSecret.Name, StringComparer.Ordinal);
-                Assert.NotNull(persistedSecrets.MasterKey);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
-                    "Expected Trace message not found");
+                await AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(scope, keySelector, directory);
             }
+        }
+
+        public async Task AddOrUpdateFunctionSecrets_WithScope_UsesSecretandPersistsHostFile(string scope, Func<HostSecrets, IList<Key>> keySelector, TempDirectory directory)
+        {
+            string secretName = "TestSecret";
+            string expectedTraceMessage = string.Format(Resources.TraceAddOrUpdateFunctionSecret, "Host", secretName, scope, "Created");
+
+            Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+
+            KeyOperationResult result;
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+            using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
+            {
+                result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", scope, ScriptSecretsType.Host);
+            }
+
+            string secretsJson = File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName));
+            HostSecrets persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+            Key newSecret = keySelector(persistedSecrets).FirstOrDefault(k => string.Equals(k.Name, secretName, StringComparison.Ordinal));
+
+            Assert.Equal(OperationResult.Created, result.Result);
+            Assert.Equal("TestSecretValue", result.Secret, StringComparer.Ordinal);
+            Assert.NotNull(persistedSecrets);
+            Assert.NotNull(newSecret);
+            Assert.Equal(result.Secret, newSecret.Value);
+            Assert.Equal(secretName, newSecret.Name, StringComparer.Ordinal);
+            Assert.NotNull(persistedSecrets.MasterKey);
+            Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
+                "Expected Trace message not found");
         }
 
         [Fact]
