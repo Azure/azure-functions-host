@@ -51,12 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, "Microsoft.Azure.NotificationHubs", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = typeof(Notification).Assembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(Notification), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(NotificationHubAttribute), out assembly);
         }
 
         private class NotificationHubScriptBinding : ScriptBinding

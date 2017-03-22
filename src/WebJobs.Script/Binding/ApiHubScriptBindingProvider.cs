@@ -71,12 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, "Microsoft.Azure.ApiHub.Sdk", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = typeof(MetadataInfo).Assembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(MetadataInfo), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(ApiHubFileAttribute), out assembly);
         }
 
         private class ApiHubFileScriptBinding : ScriptBinding

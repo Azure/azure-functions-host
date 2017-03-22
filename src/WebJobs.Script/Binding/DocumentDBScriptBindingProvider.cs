@@ -17,8 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class DocumentDBScriptBindingProvider : ScriptBindingProvider
     {
-        private static readonly string DocumentDBAssemblyName = typeof(DocumentClient).Assembly.GetName().Name;
-
         /// <inheritdoc/>
         public DocumentDBScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
@@ -54,12 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            if (string.Compare(assemblyName, DocumentDBAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = typeof(DocumentClient).Assembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(DocumentClient), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(DocumentDBAttribute), out assembly);
         }
 
         private class DocumentDBScriptBinding : ScriptBinding
