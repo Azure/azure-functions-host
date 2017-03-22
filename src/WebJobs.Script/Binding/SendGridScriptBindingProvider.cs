@@ -55,13 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             assembly = null;
 
-            Assembly sendGridAssembly = typeof(SendGridAPIClient).Assembly;
-            if (string.Compare(assemblyName, sendGridAssembly.GetName().Name, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                assembly = sendGridAssembly;
-            }
-
-            return assembly != null;
+            return Utility.TryMatchAssembly(assemblyName, typeof(SendGridAPIClient), out assembly) ||
+                   Utility.TryMatchAssembly(assemblyName, typeof(SendGridAttribute), out assembly);
         }
 
         internal static SendGridConfiguration CreateConfiguration(JObject metadata)
