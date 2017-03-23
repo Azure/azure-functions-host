@@ -28,14 +28,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
         {
             ParameterInfo parameter = context.Parameter;
 
-            if (context.Parameter.ParameterType != typeof(CloudStorageAccount))
+            if (parameter.ParameterType != typeof(CloudStorageAccount))
             {
                 return null;
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken);
-            IBinding binding = new CloudStorageAccountBinding(parameter.Name, account.SdkObject);
-            return binding;
+            var accountAttribute = TypeUtility.GetHierarchicalAttributeOrNull<StorageAccountAttribute>(parameter);
+            var account = await _accountProvider.GetStorageAccountAsync(accountAttribute?.Account, context.CancellationToken);
+
+            return new CloudStorageAccountBinding(parameter.Name, account.SdkObject);
         }
     }
 }

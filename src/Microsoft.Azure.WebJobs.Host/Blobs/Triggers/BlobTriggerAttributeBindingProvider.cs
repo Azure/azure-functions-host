@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobTriggerAttribute blobTriggerAttribute = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
+            var blobTriggerAttribute = TypeUtility.GetResolvedAttribute<BlobTriggerAttribute>(context.Parameter);
 
             if (blobTriggerAttribute == null)
             {
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             IStorageAccount hostAccount = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            IStorageAccount dataAccount = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            IStorageAccount dataAccount = await _accountProvider.GetStorageAccountAsync(blobTriggerAttribute, context.CancellationToken, _nameResolver);
             // premium does not support blob logs, so disallow for blob triggers
             dataAccount.AssertTypeOneOf(StorageAccountType.GeneralPurpose, StorageAccountType.BlobOnly);
 

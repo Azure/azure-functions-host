@@ -34,29 +34,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return account;
         }
 
-        public static async Task<IStorageAccount> GetAccountAsync(this IStorageAccountProvider provider, string connectionStringName, CancellationToken cancellationToken)
+        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, string connectionStringName, CancellationToken cancellationToken, INameResolver nameResolver = null)
         {
             if (provider == null)
             {
                 throw new ArgumentNullException("provider");
             }
 
-            IStorageAccount account = await provider.TryGetAccountAsync(connectionStringName, cancellationToken);
-            ValidateStorageAccount(account, connectionStringName);
-            return account;
-        }
-        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, ParameterInfo parameter, CancellationToken cancellationToken, INameResolver nameResolver = null)
-        {
-            if (provider == null)
-            {
-                throw new ArgumentNullException("provider");
-            }
-
-            string connectionStringName = GetAccountOverrideOrNull(parameter);
-            if (string.IsNullOrEmpty(connectionStringName))
-            {
-                connectionStringName = ConnectionStringNames.Storage;
-            }
+            connectionStringName = connectionStringName ?? ConnectionStringNames.Storage;
 
             if (nameResolver != null)
             {
@@ -72,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return account;
         }
 
+        public static async Task<IStorageAccount> GetStorageAccountAsync(this IStorageAccountProvider provider, IConnectionProvider connectionProvider, CancellationToken cancellationToken, INameResolver nameResolver = null)
+        {
+            return await provider.GetStorageAccountAsync(connectionProvider.Connection, cancellationToken, nameResolver);
+        }
+
         private static void ValidateStorageAccount(IStorageAccount account, string connectionStringName)
         {
             if (account == null)
@@ -82,16 +72,27 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         /// <summary>
-        /// Walk from the parameter up to the containing type, looking for a
-        /// <see cref="StorageAccountAttribute"/>. If found, return the account.
+        /// Determine whether the specified parameter declares an explicit storage
+        /// account to use, either by specifying a value for <see cref="IConnectionProvider.Connection"/> or
+        /// if <see cref="StorageAccountAttribute"/> has been applied up the hierarchy.
         /// </summary>
         internal static string GetAccountOverrideOrNull(ParameterInfo parameter)
         {
-            StorageAccountAttribute attribute = TypeUtility.GetHierarchicalAttributeOrNull<StorageAccountAttribute>(parameter);
-            if (attribute != null)
+            // if this is a Storage attribute (e.g. Queues/Blobs/Tables) and
+            // it specifies an account, return it
+            var storageAttribute = parameter.GetCustomAttribute<StorageAccountAttribute>();
+            if (storageAttribute != null && !string.IsNullOrEmpty(storageAttribute.Account))
             {
-                return attribute.Account;
+                return storageAttribute.Account;
             }
+
+            // walk up from the parameter looking for any StorageAccountAttribute overrides
+            var storageAccountAttribute = TypeUtility.GetHierarchicalAttributeOrNull<StorageAccountAttribute>(parameter);
+            if (storageAccountAttribute != null)
+            {
+                return storageAccountAttribute.Account;
+            }
+
             return null;
         }
     }

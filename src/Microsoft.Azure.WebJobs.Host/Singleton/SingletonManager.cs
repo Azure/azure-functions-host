@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Host
             IStorageBlobDirectory storageDirectory = null;
             if (!_lockDirectoryMap.TryGetValue(accountName, out storageDirectory))
             {
-                Task<IStorageAccount> task = _accountProvider.GetAccountAsync(accountName, CancellationToken.None);
+                Task<IStorageAccount> task = _accountProvider.GetStorageAccountAsync(accountName, CancellationToken.None);
                 IStorageAccount storageAccount = task.Result;
                 // singleton requires block blobs, cannot be premium
                 storageAccount.AssertTypeOneOf(StorageAccountType.GeneralPurpose, StorageAccountType.BlobOnly);

@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{QueueOrTopicName,nq}")]
-    public sealed class ServiceBusAttribute : Attribute
+    [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
+    public sealed class ServiceBusAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
@@ -53,6 +54,9 @@ namespace Microsoft.Azure.WebJobs
         /// Gets the name of the queue or topic to bind to.
         /// </summary>
         public string QueueOrTopicName { get; private set; }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
 
         /// <summary>
         /// Value indicating the type of the entity to bind to.

@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            QueueTriggerAttribute queueTrigger = parameter.GetCustomAttribute<QueueTriggerAttribute>(inherit: false);
+            var queueTrigger = TypeUtility.GetResolvedAttribute<QueueTriggerAttribute>(context.Parameter);
 
             if (queueTrigger == null)
             {
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                     "Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(queueTrigger, context.CancellationToken, _nameResolver);
             // requires storage account with queue support
             account.AssertTypeOneOf(StorageAccountType.GeneralPurpose);
 

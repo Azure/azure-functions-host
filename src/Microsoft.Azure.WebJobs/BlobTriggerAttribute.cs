@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{BlobPath,nq}")]
-    public sealed class BlobTriggerAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    public sealed class BlobTriggerAttribute : Attribute, IConnectionProvider
     {
         private readonly string _blobPath;
 
@@ -42,6 +43,9 @@ namespace Microsoft.Azure.WebJobs
         {
             _blobPath = blobPath;
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
 
         /// <summary>Gets the path of the blob to which to bind.</summary>
         /// <remarks>

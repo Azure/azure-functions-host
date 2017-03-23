@@ -62,6 +62,7 @@
     <Compile Include="AutoResolveAttribute.cs" />
     <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="BinderExtensions.cs" />
+    <Compile Include="ConnectionProviderAttribute.cs" />
     <Compile Include="DisableAttribute.cs" />
     <Compile Include="FunctionNameAttribute.cs" />
     <Compile Include="GlobalSuppressions.cs" />
@@ -78,6 +79,7 @@
     <Compile Include="SingletonMode.cs" />
     <Compile Include="SingletonScope.cs" />
     <Compile Include="StorageAccountAttribute.cs" />
+    <Compile Include="IConnectionProvider.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

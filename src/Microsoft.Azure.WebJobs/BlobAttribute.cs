@@ -51,7 +51,8 @@ namespace Microsoft.Azure.WebJobs
     [SuppressMessage("Microsoft.Design", "CA1019:DefineAccessorsForAttributeArguments", Justification = "There is an accessor for FileAccess")]
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{BlobPath,nq}")]
-    public sealed class BlobAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    public sealed class BlobAttribute : Attribute, IConnectionProvider
     {
         private readonly string _blobPath;
         private readonly FileAccess? _access;
@@ -79,10 +80,15 @@ namespace Microsoft.Azure.WebJobs
             get { return _blobPath; }
         }
 
-        /// <summary>Gets the kind of operations that can be performed on the blob.</summary>
+        /// <summary>
+        /// Gets the kind of operations that can be performed on the blob.
+        /// </summary>
         public FileAccess? Access
         {
             get { return _access; }
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
     }
 }

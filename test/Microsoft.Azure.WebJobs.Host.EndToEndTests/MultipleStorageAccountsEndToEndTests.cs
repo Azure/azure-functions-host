@@ -166,13 +166,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public static void BlobToBlob_DifferentAccounts_PrimaryToSecondary(
             [BlobTrigger(Input + "/{name}")] string input,
-            [Blob(Output + "/{name}"), StorageAccount(Secondary)] out string output)
+            [Blob(Output + "/{name}", Connection = Secondary)] out string output)
         {
             output = input;
         }
 
         public static void BlobToBlob_DifferentAccounts_SecondaryToPrimary(
-            [BlobTrigger(Input + "/{name}"), StorageAccount(Secondary)] string input,
+            [BlobTrigger(Input + "/{name}", Connection = Secondary)] string input,
             [Blob(Output + "/{name}")] out string output)
         {
             output = input;
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public static void QueueToQueue_DifferentAccounts_PrimaryToSecondary(
             [QueueTrigger(Input)] string input,
-            [Queue(Output), StorageAccount(Secondary)] out string output)
+            [Queue(Output, Connection = Secondary)] out string output)
         {
             output = input;
         }
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [NoAutomaticTrigger]
         public static void QueueToBlob_DifferentAccounts_PrimaryToSecondary_NameResolver(
             [QueueTrigger("test")] Message input,
-            [Blob(Output + "/{Name}"), StorageAccount("%test_account%")] out string output)
+            [Blob(Output + "/{Name}", Connection = "%test_account%")] out string output)
         {
             output = input.Value;
         }
@@ -197,13 +197,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [NoAutomaticTrigger]
         public static void QueueToBlob_DifferentAccounts_PrimaryToSecondary_FullSettingName(
             [QueueTrigger("test")] Message input,
-            [Blob(Output + "/{Name}"), StorageAccount("AzureWebJobsSecondaryStorage")] out string output)
+            [Blob(Output + "/{Name}", Connection = "AzureWebJobsSecondaryStorage")] out string output)
         {
             output = input.Value;
         }
 
         public static void QueueToQueue_DifferentAccounts_SecondaryToPrimary(
-            [QueueTrigger(Input), StorageAccount(Secondary)] string input,
+            [QueueTrigger(Input, Connection = Secondary)] string input,
             [Queue(Output)] out string output)
         {
             output = input;
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [NoAutomaticTrigger]
         public static void Table_PrimaryAndSecondary(
             [Table(OutputTableName)] CloudTable primaryOutput,
-            [Table(OutputTableName), StorageAccount(Secondary)] CloudTable secondaryOutput)
+            [Table(OutputTableName, Connection = Secondary)] CloudTable secondaryOutput)
         {
             TestTableEntity entity = new TestTableEntity
             {

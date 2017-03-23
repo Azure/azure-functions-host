@@ -155,11 +155,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.True(queueProcessorFactory.CustomQueueProcessors.Sum(p => p.CompleteProcessingCount) >= 2);
 
                 Assert.Equal(19, storageClientFactory.TotalBlobClientCount);
-                Assert.Equal(13, storageClientFactory.TotalQueueClientCount);
+                Assert.Equal(15, storageClientFactory.TotalQueueClientCount);
                 Assert.Equal(0, storageClientFactory.TotalTableClientCount);
 
                 Assert.Equal(8, storageClientFactory.ParameterBlobClientCount);
-                Assert.Equal(7, storageClientFactory.ParameterQueueClientCount);
+                Assert.Equal(5, storageClientFactory.ParameterQueueClientCount);
                 Assert.Equal(0, storageClientFactory.ParameterTableClientCount);
             }
         }

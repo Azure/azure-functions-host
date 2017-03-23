@@ -124,6 +124,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "SingletonAttribute",
                 "SingletonMode",
                 "SingletonScope",
+                "IConnectionProvider",
+                "ConnectionProviderAttribute",
                 "StorageAccountAttribute",
                 "DisableAttribute",
                 "TimeoutAttribute",

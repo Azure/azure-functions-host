@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobAttribute blobAttribute = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
+            var blobAttribute = TypeUtility.GetResolvedAttribute<BlobAttribute>(parameter);
 
             if (blobAttribute == null)
             {
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             string resolvedPath = Resolve(blobAttribute.BlobPath);
             IBindableBlobPath path = null;
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(blobAttribute, context.CancellationToken, _nameResolver);
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = context.Parameter

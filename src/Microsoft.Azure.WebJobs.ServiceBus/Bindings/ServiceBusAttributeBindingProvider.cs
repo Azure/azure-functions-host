@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             }
 
             ParameterInfo parameter = context.Parameter;
-            ServiceBusAttribute attribute = parameter.GetCustomAttribute<ServiceBusAttribute>(inherit: false);
+            var attribute = TypeUtility.GetResolvedAttribute<ServiceBusAttribute>(parameter);
 
             if (attribute == null)
             {
@@ -65,11 +65,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBus to type '{0}'.", parameter.ParameterType));
             }
 
-            string connectionName = ServiceBusAccount.GetAccountOverrideOrNull(context.Parameter);
             ServiceBusAccount account = new ServiceBusAccount
             {
-                MessagingFactory = _config.MessagingProvider.CreateMessagingFactory(queueOrTopicName, connectionName),
-                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(connectionName)
+                MessagingFactory = _config.MessagingProvider.CreateMessagingFactory(queueOrTopicName, attribute.Connection),
+                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(attribute.Connection)
             };
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path, attribute);

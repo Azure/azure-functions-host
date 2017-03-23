@@ -444,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // Demonstrate triggering on a queue in one account, and writing to a topic
             // in the primary subscription
             public static void MultipleAccounts(
-                [ServiceBusTrigger(StartQueueName), ServiceBusAccount("ServiceBusSecondary")] string input,
+                [ServiceBusTrigger(StartQueueName, Connection = "ServiceBusSecondary")] string input,
                 [ServiceBus(TopicName)] out string output)
             {
                 output = input;

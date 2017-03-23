@@ -22,15 +22,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
     {
         // Fields that the various binding funcs need to close over. 
         private readonly IStorageAccountProvider _accountProvider;
+        private readonly INameResolver _nameResolver;
         private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
 
         // Use the static Build method to create. 
         // Constructor is just for capturing instance fields used in func closures. 
         private QueueBindingProvider(
                IStorageAccountProvider accountProvider,
+               INameResolver nameResolver,
                IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
         {
             _accountProvider = accountProvider;
+            _nameResolver = nameResolver;
             _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
         }
 
@@ -40,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             INameResolver nameResolver,
             IConverterManager converterManager)
         {
-            var closure = new QueueBindingProvider(accountProvider, messageEnqueuedWatcherGetter);
+            var closure = new QueueBindingProvider(accountProvider, nameResolver, messageEnqueuedWatcherGetter);
             var bindingProvider = closure.New(nameResolver, converterManager);
             return bindingProvider;
         }
@@ -64,13 +67,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             var bindingFactory = new BindingFactory(nameResolver, converterManager);
 
             var bindAsyncCollector = bindingFactory.BindToCollector<QueueAttribute, IStorageQueueMessage>(BuildFromQueueAttribute)
-                .SetPostResolveHook<QueueAttribute>(ToWriteParameterDescriptorForCollector, CollectAttributeInfo);
+                .SetPostResolveHook<QueueAttribute>(ToWriteParameterDescriptorForCollector);
 
-            var bindClient = bindingFactory.BindToInput<QueueAttribute, IStorageQueue>(typeof(QueueBuilder))
-                .SetPostResolveHook<QueueAttribute>(ToReadWriteParameterDescriptorForCollector, CollectAttributeInfo);
+            var bindClient = bindingFactory.BindToInput<QueueAttribute, IStorageQueue>(typeof(QueueBuilder), this)
+                .SetPostResolveHook<QueueAttribute>(ToReadWriteParameterDescriptorForCollector);
 
-            var bindSdkClient = bindingFactory.BindToInput<QueueAttribute, CloudQueue>(typeof(QueueBuilder))
-                .SetPostResolveHook<QueueAttribute>(ToReadWriteParameterDescriptorForCollector, CollectAttributeInfo);
+            var bindSdkClient = bindingFactory.BindToInput<QueueAttribute, CloudQueue>(typeof(QueueBuilder), this)
+                .SetPostResolveHook<QueueAttribute>(ToReadWriteParameterDescriptorForCollector);
 
             var bindingProvider = new GenericCompositeBindingProvider<QueueAttribute>(
                 ValidateQueueAttribute, nameResolver, bindClient, bindSdkClient, bindAsyncCollector);
@@ -86,23 +89,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             QueueCausalityManager.SetOwner(functionInstanceId, objectToken);
 
             return objectToken;
-        }
-
-        // [Queue] has some pre-existing behavior where the storage account can be specified outside of the [Queue] attribute. 
-        // The storage account is pulled from the ParameterInfo (which could pull in a [Storage] attribute on the container class)
-        // Resolve everything back down to a single attribute so we can use the binding helpers. 
-        // This pattern should be rare since other extensions can just keep everything directly on the primary attribute. 
-        private async Task<QueueAttribute> CollectAttributeInfo(QueueAttribute attrResolved, ParameterInfo parameter, INameResolver nameResolver)
-        {
-            // Look for [Storage] attribute and squirrel over 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(parameter, CancellationToken.None, nameResolver);
-            StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
-            {
-                Parameter = parameter
-            };
-            IStorageQueueClient client = account.CreateQueueClient(clientFactoryContext);
-                    
-            return new ResolvedQueueAttribute(attrResolved.QueueName, client);
         }
 
         // ParameterDescriptor for binding to CloudQueue. Whereas the output bindings are FileAccess.Write; CloudQueue exposes Peek() 
@@ -122,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
         private ParameterDescriptor ToParameterDescriptorForCollector(QueueAttribute attr, ParameterInfo parameter, INameResolver nameResolver, FileAccess access)
         {
             Task<IStorageAccount> t = Task.Run(() =>
-                _accountProvider.GetStorageAccountAsync(parameter, CancellationToken.None, nameResolver));
+                _accountProvider.GetStorageAccountAsync(attr, CancellationToken.None, nameResolver));
             IStorageAccount account = t.GetAwaiter().GetResult();
 
             string accountName = account.Credentials.AccountName;
@@ -195,22 +181,33 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             return new QueueAsyncCollector(queue, _messageEnqueuedWatcherGetter.Value);
         }
 
-        private static IStorageQueue GetQueue(QueueAttribute attrResolved)
+        private IStorageQueue GetQueue(QueueAttribute attrResolved)
         {
-            var attr = (ResolvedQueueAttribute)attrResolved;
-            IStorageQueue queue = attr.GetQueue();
-            return queue;
+            var account = Task.Run(() => this._accountProvider.GetStorageAccountAsync(attrResolved, CancellationToken.None, this._nameResolver)).GetAwaiter().GetResult();
+            var client = account.CreateQueueClient();
+
+            string queueName = attrResolved.QueueName.ToLowerInvariant();
+            QueueClient.ValidateQueueName(queueName);
+
+            return client.GetQueueReference(queueName);
         }
 
         private class QueueBuilder : 
             IAsyncConverter<QueueAttribute, IStorageQueue>, 
             IAsyncConverter<QueueAttribute, CloudQueue>
         {
+            private readonly QueueBindingProvider _bindingProvider;
+
+            public QueueBuilder(QueueBindingProvider bindingProvider)
+            {
+                _bindingProvider = bindingProvider;
+            }
+
             async Task<IStorageQueue> IAsyncConverter<QueueAttribute, IStorageQueue>.ConvertAsync(
                 QueueAttribute attrResolved,
                 CancellationToken cancellation)
             {
-                IStorageQueue queue = GetQueue(attrResolved);
+                IStorageQueue queue = _bindingProvider.GetQueue(attrResolved);
                 await queue.CreateIfNotExistsAsync(CancellationToken.None);
                 return queue;
             }
@@ -222,31 +219,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 IAsyncConverter<QueueAttribute, IStorageQueue> convert = this;
                 var queue = await convert.ConvertAsync(attrResolved, cancellation);
                 return queue.SdkObject;
-            }
-        }
-
-        // Queue attributes can optionally be paired with a separate [StorageAccount]. 
-        // Consolidate the information from both attributes into a single attribute.
-        // New extensions should just place everything in the attribute or the configuration and so shouldn't need to do this. 
-        internal sealed class ResolvedQueueAttribute : QueueAttribute
-        {
-            public ResolvedQueueAttribute(string queueName, IStorageQueueClient client)
-                : base(queueName)
-            {
-                this.Client = client;
-            }
-
-            internal IStorageQueueClient Client { get; private set; }
-
-            public IStorageQueue GetQueue()
-            {
-                // Azure Queues must be lowercase. 
-                // pre-existing behavior: coerce name to lowercase to be nice. 
-                string queueName = this.QueueName.ToLowerInvariant();
-
-                QueueClient.ValidateQueueName(queueName);
-
-                return this.Client.GetQueueReference(queueName);
             }
         }
 

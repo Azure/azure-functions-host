@@ -31,7 +31,8 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public class TableAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    public class TableAttribute : Attribute, IConnectionProvider
     {
         private readonly string _tableName;
         private readonly string _partitionKey;
@@ -121,5 +122,8 @@ namespace Microsoft.Azure.WebJobs
                 }
             }
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
     }
 }

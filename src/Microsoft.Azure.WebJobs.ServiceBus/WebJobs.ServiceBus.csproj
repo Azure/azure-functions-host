@@ -131,6 +131,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Triggers\ITriggerDataArgumentBinding.cs">
       <Link>Triggers\ITriggerDataArgumentBinding.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\TypeUtility.cs">
+      <Link>TypeUtility.cs</Link>
+    </Compile>
     <Compile Include="Bindings\BindableServiceBusPath.cs" />
     <Compile Include="Bindings\BoundServiceBusPath.cs" />
     <Compile Include="Bindings\ByteArrayToBrokeredMessageConverter.cs" />

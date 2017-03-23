@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{QueueName,nq}")]
-    public sealed class QueueTriggerAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    public sealed class QueueTriggerAttribute : Attribute, IConnectionProvider
     {
         private readonly string _queueName;
 
@@ -37,5 +38,8 @@ namespace Microsoft.Azure.WebJobs
         {
             get { return _queueName; }
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
     }
 }
