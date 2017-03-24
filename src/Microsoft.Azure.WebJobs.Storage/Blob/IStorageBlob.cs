@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <summary>Gets the name of the blob.</summary>
         string Name { get; }
 
+        /// <summary>
+        /// Gets the blob's URI for the primary location.
+        /// </summary>
+        Uri Uri { get; }
+
         /// <summary>Gets the blob's system properties.</summary>
         IStorageBlobProperties Properties { get; }
 

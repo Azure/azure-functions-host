@@ -550,9 +550,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public static async Task BlobToBlobAsync(
             [BlobTrigger(ContainerName + "/" + Blob1Name)] Stream inputStream,
+            string blobTrigger,
+            Uri uri,
+            IDictionary<string, string> metadata,
+            BlobProperties properties,
             [Blob(ContainerName + "/" + Blob2Name, FileAccess.Write)] Stream outputStream,
             CancellationToken token)
         {
+            Assert.True(uri.ToString().EndsWith(blobTrigger));
+            string parentId = metadata["AzureWebJobsParentId"];
+            Guid g;
+            Assert.True(Guid.TryParse(parentId, out g));
+            Assert.Equal("application/octet-stream", properties.ContentType);
+
             // Should not be signaled
             if (token.IsCancellationRequested)
             {

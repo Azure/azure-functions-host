@@ -56,6 +56,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { return _metadata; }
         }
 
+        /// <inheritdoc />
+        public Uri Uri
+        {
+            get { return _sdkObject.Uri; }
+        }
+
         public string Name
         {
             get { return _blobName; }

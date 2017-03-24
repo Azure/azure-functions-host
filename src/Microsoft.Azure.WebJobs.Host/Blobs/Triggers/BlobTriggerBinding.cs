@@ -190,8 +190,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(IBlobPathSource path)
         {
-            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            var contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("BlobTrigger", typeof(string));
+            contract.Add("Uri", typeof(Uri));
+            contract.Add("Properties", typeof(BlobProperties));
+            contract.Add("Metadata", typeof(IDictionary<string, string>));
 
             IReadOnlyDictionary<string, Type> contractFromPath = path.CreateBindingDataContract();
 
@@ -205,6 +208,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             return contract;
+        }
+
+        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageBlob value)
+        {
+            var bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            bindingData.Add("BlobTrigger", value.GetBlobPath());
+            bindingData.Add("Uri", value.Uri);
+            bindingData.Add("Properties", value.Properties?.SdkObject);
+            bindingData.Add("Metadata", value.Metadata);
+
+            IReadOnlyDictionary<string, object> bindingDataFromPath = _path.CreateBindingData(value.ToBlobPath());
+
+            if (bindingDataFromPath != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingDataFromPath)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    bindingData[item.Key] = item.Value;
+                }
+            }
+            return bindingData;
         }
 
         private static IAsyncObjectToTypeConverter<IStorageBlob> CreateConverter(IStorageBlobClient client)
@@ -256,24 +280,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 BlobName = _path.BlobNamePattern,
                 Access = Access
             };
-        }
-
-        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageBlob value)
-        {
-            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            bindingData.Add("BlobTrigger", value.GetBlobPath());
-
-            IReadOnlyDictionary<string, object> bindingDataFromPath = _path.CreateBindingData(value.ToBlobPath());
-
-            if (bindingDataFromPath != null)
-            {
-                foreach (KeyValuePair<string, object> item in bindingDataFromPath)
-                {
-                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
-                    bindingData[item.Key] = item.Value;
-                }
-            }
-            return bindingData;
         }
     }
 }
