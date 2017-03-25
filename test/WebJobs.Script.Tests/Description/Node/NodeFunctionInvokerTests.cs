@@ -4,8 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.ServiceBus.Messaging;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -14,7 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class NodeFunctionInvokerTests
     {
         [Theory]
+        [InlineData(typeof(BlobType), true)]
         [InlineData(typeof(int), true)]
+        [InlineData(typeof(int?), true)]
         [InlineData(typeof(double), true)]
         [InlineData(typeof(string), true)]
         [InlineData(typeof(bool), true)]
@@ -26,12 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(typeof(bool[]), true)]
         [InlineData(typeof(byte[]), true)]
         [InlineData(typeof(object[]), true)]
+        [InlineData(typeof(Uri), true)]
         [InlineData(typeof(DateTime), true)]
         [InlineData(typeof(DateTime[]), true)]
-        [InlineData(typeof(IDictionary<string, object>), true)]
-        [InlineData(typeof(IDictionary<string, object>[]), true)]
-        [InlineData(typeof(Dictionary<string, object>), true)]
-        [InlineData(typeof(Dictionary<string, object>[]), true)]
+        [InlineData(typeof(DateTimeOffset), true)]
         public void IsEdgeSupportedType_ReturnsExpectedResult(Type type, bool expected)
         {
             Assert.Equal(expected, NodeFunctionInvoker.IsEdgeSupportedType(type));
@@ -62,14 +63,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "TestProp4", inputObject2 },
                 { "TestProp5", objectArray },
                 { "TestProp6", null },
-                { "TestProp7", new HttpConfiguration() }
+                { "TestProp7", new BlobProperties { ContentType = "application/json", ContentMD5 = "xyz" } },
+                { "TestProp8", new Uri("http://microsoft.com") },
+                { "TestProp9", new PartitionContext { EventHubPath = "myhub", ConsumerGroupName = "Default" } }
             };
             var result = NodeFunctionInvoker.NormalizeBindingData(bindingData);
 
-            Assert.Equal(7, result.Count);
+            Assert.Equal(9, result.Count);
             Assert.Equal(bindingData["TestProp1"], result["testProp1"]);
             Assert.Equal(bindingData["TestProp2"], result["testProp2"]);
-            Assert.Equal(new HttpConfiguration().ToString(), result["testProp7"]);
+
+            var blobProperties = (IDictionary<string, object>)result["testProp7"];
+            Assert.Equal(16, blobProperties.Count);
+            Assert.Equal("application/json", blobProperties["contentType"]);
+            Assert.Equal("xyz", blobProperties["contentMD5"]);
+
+            var partitionContextProperties = (IDictionary<string, object>)result["testProp9"];
+            Assert.Equal(2, partitionContextProperties.Count);
+            Assert.Equal("myhub", partitionContextProperties["eventHubPath"]);
+            Assert.Equal("Default", partitionContextProperties["consumerGroupName"]);
+
+            Assert.Equal("http://microsoft.com/", result["testProp8"].ToString());
 
             var resultChild = (IDictionary<string, object>)result["testProp3"];
             Assert.Equal(inputObject1["TestProp1"], resultChild["testProp1"]);
@@ -87,6 +101,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var resultObjectArray = (Dictionary<string, object>[])result["testProp5"];
             Assert.Equal(456, resultObjectArray[1]["testProp2"]);
+        }
+
+        [Fact]
+        public void ToDictionary_ReturnsExpectedResult()
+        {
+            var test = new TestClass
+            {
+                Integer = 123,
+                String = "Testing",
+                Object = new TestClass()
+            };
+            var result = NodeFunctionInvoker.ToDictionary(test);
+
+            Assert.Equal(test.Integer, result["integer"]);
+            Assert.Equal(test.String, result["string"]);
         }
 
         [Fact]
@@ -141,6 +170,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resultChildren = (IEnumerable<object>)resultDictionary["Children"];
             var resultChild = (IDictionary<string, object>)resultChildren.ElementAt(0);
             Assert.Equal(5, (long)resultChild["Age"]);
+        }
+
+        private class TestClass
+        {
+            public int Integer { get; set; }
+            public string String { get; set; }
+            public object Object { get; set; }
+
+            public string Test()
+            {
+                return "Test!";
+            }
         }
     }
 }

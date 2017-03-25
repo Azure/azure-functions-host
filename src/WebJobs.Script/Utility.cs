@@ -310,5 +310,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return false;
         }
+
+        internal static bool IsNullable(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
     }
 }

@@ -40,12 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // write a binary blob
             string name = Guid.NewGuid().ToString();
             CloudBlockBlob inputBlob = Fixture.TestInputContainer.GetBlockBlobReference(name);
+            inputBlob.Metadata.Add("TestMetadataKey", "TestMetadataValue");
             byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
             using (var stream = inputBlob.OpenWrite())
             {
                 stream.Write(inputBytes, 0, inputBytes.Length);
             }
-
+            
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(name);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
@@ -61,7 +62,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(inputBytes, resultBytes);
             Assert.True((bool)testResult["isBuffer"]);
             Assert.Equal(5, (int)testResult["length"]);
-            Assert.Equal($"test-input-node/{name}", (string)testResult["path"]);
+
+            var blobMetadata = (JObject)testResult["blobMetadata"];
+            Assert.Equal($"test-input-node/{name}", (string)blobMetadata["path"]);
+
+            var metadata = (JObject)blobMetadata["metadata"];
+            Assert.Equal("TestMetadataValue", (string)metadata["testMetadataKey"]);
+
+            var properties = (JObject)blobMetadata["properties"];
+            Assert.Equal("application/octet-stream", (string)properties["contentType"]);
+            Assert.Equal("BlockBlob", (string)properties["blobType"]);
+            Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
             Guid.Parse(invocationId);

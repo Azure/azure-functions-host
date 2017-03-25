@@ -294,5 +294,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var json = Utility.ToJson(val as ExpandoObject, Newtonsoft.Json.Formatting.None);
             Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", json);
         }
+
+        [Theory]
+        [InlineData(typeof(ExpandoObject), false)]
+        [InlineData(typeof(string), false)]
+        [InlineData(typeof(int), false)]
+        [InlineData(typeof(int?), true)]
+        public void IsNullable_ReturnsExpectedResult(Type type, bool expected)
+        {
+            Assert.Equal(expected, Utility.IsNullable(type));
+        }
     }
 }

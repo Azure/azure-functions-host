@@ -366,6 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             Utility.ApplyBindingData(input, invocationContext.Binder.BindingData);
+
             var bindingData = NormalizeBindingData(invocationContext.Binder.BindingData);
             bindingData["invocationId"] = invocationContext.ExecutionContext.InvocationId.ToString();
             context["bindingData"] = bindingData;
@@ -400,16 +401,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                     else if (value is IDictionary<string, object>[])
                     {
-                        value = ((IEnumerable<IDictionary<string, object>>)value).Select(p => NormalizeBindingData(p)).ToArray();
+                        value = ((IEnumerable<IDictionary<string, object>>)value)
+                            .Select(p => NormalizeBindingData(p)).ToArray();
                     }
-                    else
+                    else if (value is IDictionary<string, string>)
                     {
-                        if (!IsEdgeSupportedType(type))
-                        {
-                            // for values not supported by edge, we just
-                            // stringify the value
-                            value = value.ToString();
-                        }
+                        value = ((IDictionary<string, string>)value)
+                            .ToDictionary(p => Utility.ToLowerFirstCharacter(p.Key), p => p.Value);
+                    }
+                    else if (!IsEdgeSupportedType(type) && type.IsClass)
+                    {
+                        // for non primitive POCO types, we convert to
+                        // a normalized dictionary
+                        value = ToDictionary(value);
                     }
                 }
 
@@ -427,6 +431,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return normalizedBindingData;
         }
 
+        internal static IDictionary<string, object> ToDictionary(object value)
+        {
+            var properties = PropertyHelper.GetProperties(value);
+            var dictionary = new Dictionary<string, object>();
+            foreach (var property in properties)
+            {
+                if (IsEdgeSupportedType(property.Property.PropertyType))
+                {
+                    dictionary[Utility.ToLowerFirstCharacter(property.Name)] = property.GetValue(value);
+                }
+            }
+            return dictionary;
+        }
+
         internal static bool IsEdgeSupportedType(Type type)
         {
             if (type.IsArray)
@@ -434,11 +452,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 type = type.GetElementType();
             }
 
+            if (Utility.IsNullable(type))
+            {
+                type = Nullable.GetUnderlyingType(type);
+            }
+
+            // these are types that we can safely pass directly
+            // to Edge
             if (type.IsPrimitive ||
+                type.IsEnum ||
                 type == typeof(string) ||
                 type == typeof(object) ||
                 type == typeof(DateTime) ||
-                typeof(IDictionary<string, object>).IsAssignableFrom(type))
+                type == typeof(DateTimeOffset) ||
+                type == typeof(Uri))
             {
                 return true;
             }
