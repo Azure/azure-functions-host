@@ -49,7 +49,9 @@ namespace Microsoft.Azure.WebJobs.Logging
         static ContainerActiveLogger _container;
         private CloudTableInstanceCountLogger _instanceLogger;
 
-        public LogWriter(string hostName, string machineName, ILogTableProvider logTableProvider)
+        private Action<Exception> _onException;
+
+        public LogWriter(string hostName, string machineName, ILogTableProvider logTableProvider, Action<Exception> onException = null)
         {
             if (machineName == null)
             {
@@ -66,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             this._hostName = hostName;
             this._machineName = machineName;
             this._logTableProvider = logTableProvider;
+            this._onException = onException;
         }
 
         // Background flusher. 
@@ -293,8 +296,19 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         private async Task FlushCoreAsync()
         {
-            await FlushTimelineAggregateAsync(true);
-            await FlushIntancesAsync();
+            try
+            {
+                await FlushTimelineAggregateAsync(true);
+                await FlushIntancesAsync();
+            }
+            catch (Exception ex)
+            {
+                // provide a chance for external users to log the exception
+                // before we rethrow it
+                _onException?.Invoke(ex);
+
+                throw;
+            }
 
             if (_container != null)
             {

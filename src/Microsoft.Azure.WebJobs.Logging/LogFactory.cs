@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Logging
@@ -28,10 +29,11 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Multiple hosts can share a single set of azure tables. Logging is scoped per-host.</param>
         /// <param name="machineName">name of the compute container. Likely %COMPUTERNAME%. </param>
         /// <param name="logTableProvider">callback interface that gets invoked to get azure tables to write logging to.</param>
+        /// <param name="onException">An action to be called when the log writer throws an exception.</param>
         /// <returns></returns>
-        public static ILogWriter NewWriter(string hostName, string machineName, ILogTableProvider logTableProvider)
+        public static ILogWriter NewWriter(string hostName, string machineName, ILogTableProvider logTableProvider, Action<Exception> onException = null)
         {
-            return new LogWriter(hostName, machineName, logTableProvider);
+            return new LogWriter(hostName, machineName, logTableProvider, onException);
         }
 
         /// <summary>

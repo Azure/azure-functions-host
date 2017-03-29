@@ -2,15 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging.Internal;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 using Xunit;
-using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 {
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
     public class LoggerTest : IDisposable, ILogTableProvider
     {
         static string DefaultHost = "host";
-        static string CommonFuncName1 = "gamma"; 
+        static string CommonFuncName1 = "gamma";
         static FunctionId CommonFuncId1 = FunctionId.Build(DefaultHost, CommonFuncName1); // default values
 
         private List<CloudTable> _tables = new List<CloudTable>();
@@ -46,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             var entity = new InstanceTableEntity
             {
                 RowKey = Guid.NewGuid().ToString(),
-                StartTime =    t1, 
+                StartTime = t1,
                 FunctionInstanceHeartbeatExpiry = t1, // stale heartbeat
-                
+
             };
             var item = entity.ToFunctionLogItem();
 
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         }
 
         // End-2-end test that function instance counter can write to tables 
-        [Fact] 
+        [Fact]
         public async Task FunctionInstance()
         {
             ILogReader reader = LogFactory.NewReader(this);
@@ -111,12 +111,12 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             Assert.Equal(actual, expected);
         }
 
-        [Fact] 
+        [Fact]
         public async Task ReadNoTable()
         {
             ILogReader reader = LogFactory.NewReader(this);
             Assert.Equal(0, this._tables.Count); // no tables yet. 
-            
+
             var segmentDef = await reader.GetFunctionDefinitionsAsync(null, null);
             Assert.Equal(0, segmentDef.Results.Length);
 
@@ -234,15 +234,15 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 Assert.Equal(log.FunctionInstanceId, entry.FunctionInstanceId);
                 Assert.Equal(log.FunctionName, entry.FunctionName);
                 Assert.Equal(log.StartTime, entry.StartTime);
-                Assert.Equal(log.EndTime, entry.EndTime);                
+                Assert.Equal(log.EndTime, entry.EndTime);
             }
 
             // Try various combinations. 
             await Verify(reader, DateTime.MinValue, DateTime.MaxValue, logs[3], logs[2], logs[1], logs[0]); // Infinite range, includes all.
 
             // Various combinations of straddling an epoch boundary 
-            await Verify(reader, Before(times[1]), After(times[2]), logs[2], logs[1]); 
-            await Verify(reader, Before(times[1]), Before(times[2]), logs[1]); 
+            await Verify(reader, Before(times[1]), After(times[2]), logs[2], logs[1]);
+            await Verify(reader, Before(times[1]), Before(times[2]), logs[1]);
             await Verify(reader, After(times[1]), Before(times[2]));
 
             // Skipping over an empty epoch 
@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             // Now... delete the middle table; and verify the other data is still there. 
             ILogTableProvider provider = this;
-            var table = provider.GetTable("201204"); 
+            var table = provider.GetTable("201204");
             Assert.True(table.Exists());
             table.Delete();
 
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         // Write a function entry. Don't care about any other details.
         async Task<Guid> QuickWriteAsync(ILogWriter writer, string functionName)
         {
-            
+
             FunctionInstanceLogItem l1 = new FunctionInstanceLogItem
             {
                 FunctionInstanceId = Guid.NewGuid(),
@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             return l1.FunctionInstanceId;
         }
-       
+
         // Have 2 different host writers to the same storage; results should be different. 
         // This is testing that we're handling the host ids. 
         [Fact]
@@ -328,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
                 Assert.Equal(2, segment.Results.Length);
                 var allDefinitions = segment.Results;
-                
+
                 segment = await reader1.GetFunctionDefinitionsAsync(host1, null);
 
                 Assert.Equal(1, segment.Results.Length);
@@ -347,14 +347,14 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 Assert.Equal(Func1, allDefinitions[1].Name);
                 Assert.Equal(host1Defs.FunctionId, allDefinitions[0].FunctionId);
                 Assert.Equal(host2Defs.FunctionId, allDefinitions[1].FunctionId);
-            }            
+            }
 
             // Recent list 
             {
                 var segment = await reader1.GetRecentFunctionInstancesAsync(new RecentFunctionQuery
                 {
                     FunctionId = FunctionId.Build(host1, Func1),
-                    End = DateTime.MaxValue, 
+                    End = DateTime.MaxValue,
                 }, null);
                 Guid[] guids = Array.ConvertAll(segment.Results, x => x.FunctionInstanceId);
 
@@ -664,6 +664,50 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
         }
 
+        [Fact]
+        public async Task OnExceptionCalled_WhenFlushFails()
+        {
+            Exception exToThrow = new InvalidOperationException("Some storage exception");
+
+            Mock<CloudTable> mockTable = new Mock<CloudTable>(MockBehavior.Strict, new Uri("https://fakeaccount.table.core.windows.net/sometable"));
+            mockTable
+                .Setup(t => t.Execute(It.IsAny<TableOperation>(), null, null))
+                .Returns(new TableResult());
+            mockTable
+                .Setup(t => t.ExecuteAsync(It.IsAny<TableOperation>()))
+                .ReturnsAsync(new TableResult());
+            mockTable
+                .Setup(t => t.ExecuteBatchAsync(It.IsAny<TableBatchOperation>()))
+                .ThrowsAsync(exToThrow);
+
+            Mock<ILogTableProvider> mockProvider = new Mock<ILogTableProvider>(MockBehavior.Strict);
+            mockProvider
+                .Setup(c => c.GetTable(It.IsAny<string>()))
+                .Returns(mockTable.Object);
+
+            Exception caughtException = null;
+            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "exceptions", mockProvider.Object, (ex) =>
+            {
+                caughtException = ex;
+            });
+
+            FunctionInstanceLogItem item = new FunctionInstanceLogItem
+            {
+                FunctionInstanceId = Guid.NewGuid(),
+                FunctionName = "test",
+                StartTime = DateTime.UtcNow,
+                LogOutput = "three",
+                ErrorDetails = "this failed"
+            };
+
+            await writer.AddAsync(item);
+
+            var thrownEx = await Assert.ThrowsAsync<InvalidOperationException>(() => writer.FlushAsync());
+
+            Assert.Same(exToThrow, thrownEx);
+            Assert.Same(exToThrow, caughtException);
+        }
+
         static Task<IRecentFunctionEntry[]> GetRecentAsync(ILogReader reader, FunctionId functionId)
         {
             return GetRecentAsync(reader, functionId, DateTime.MinValue, DateTime.MaxValue);
@@ -693,7 +737,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
         CloudTable ILogTableProvider.GetTable(string suffix)
         {
-            lock(_tables)
+            lock (_tables)
             {
                 var tableClient = GetTableClient();
                 var tableName = _tableNamePrefix + "x" + suffix;
@@ -704,14 +748,14 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         }
 
 
-         // List all tables that we may have handed out. 
+        // List all tables that we may have handed out. 
         Task<CloudTable[]> ILogTableProvider.ListTablesAsync()
         {
             var tableClient = GetTableClient();
             var tables = tableClient.ListTables(_tableNamePrefix).ToArray();
             return Task.FromResult<CloudTable[]>(tables);
         }
-                
+
         private CloudTableClient GetTableClient()
         {
             if (_tableClient == null)
@@ -724,7 +768,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 }
 
                 CloudStorageAccount account = CloudStorageAccount.Parse(acs);
-                _tableClient = account.CreateCloudTableClient();                
+                _tableClient = account.CreateCloudTableClient();
             }
             return _tableClient;
         }
