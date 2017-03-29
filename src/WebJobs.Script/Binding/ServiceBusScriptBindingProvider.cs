@@ -199,31 +199,34 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 string subscriptionName = Context.GetMetadataValue<string>("subscriptionName");
                 var accessRights = Context.GetMetadataEnumValue<Microsoft.ServiceBus.Messaging.AccessRights>("accessRights");
 
+                Attribute attribute = null;
                 if (Context.IsTrigger)
                 {
                     if (!string.IsNullOrEmpty(topicName) && !string.IsNullOrEmpty(subscriptionName))
                     {
-                        attributes.Add(new ServiceBusTriggerAttribute(topicName, subscriptionName, accessRights));
+                        attribute = new ServiceBusTriggerAttribute(topicName, subscriptionName, accessRights);
                     }
                     else if (!string.IsNullOrEmpty(queueName))
                     {
-                        attributes.Add(new ServiceBusTriggerAttribute(queueName, accessRights));
+                        attribute = new ServiceBusTriggerAttribute(queueName, accessRights);
                     }
                 }
                 else
                 {
-                    attributes.Add(new ServiceBusAttribute(queueName ?? topicName, accessRights));
+                    attribute = new ServiceBusAttribute(queueName ?? topicName, accessRights);
                 }
 
-                if (attributes.Count == 0)
+                if (attribute == null)
                 {
                     throw new InvalidOperationException("Invalid ServiceBus trigger configuration.");
                 }
+                attributes.Add(attribute);
 
-                string account = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(account))
+                var connectionProvider = (IConnectionProvider)attribute;
+                string connection = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(connection))
                 {
-                    attributes.Add(new ServiceBusAccountAttribute(account));
+                    connectionProvider.Connection = connection;
                 }
 
                 return attributes;

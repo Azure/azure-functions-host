@@ -191,10 +191,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
                 attributes.Add(attribute);
 
-                string account = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(account))
+                string connection = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(connection))
                 {
-                    attributes.Add(new StorageAccountAttribute(account));
+                    attribute.Connection = connection;
                 }
 
                 return attributes;
@@ -252,19 +252,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 Collection<Attribute> attributes = new Collection<Attribute>();
 
                 string queueName = Context.GetMetadataValue<string>("queueName");
+                Attribute attribute = null;
                 if (Context.IsTrigger)
                 {
-                    attributes.Add(new QueueTriggerAttribute(queueName));
+                    attribute = new QueueTriggerAttribute(queueName);
                 }
                 else
                 {
-                    attributes.Add(new QueueAttribute(queueName));
+                    attribute = new QueueAttribute(queueName);
                 }
+                attributes.Add(attribute);
 
-                string account = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(account))
+                var connectionProvider = (IConnectionProvider)attribute;
+                string connection = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(connection))
                 {
-                    attributes.Add(new StorageAccountAttribute(account));
+                    connectionProvider.Connection = connection;
                 }
 
                 return attributes;
@@ -290,19 +293,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 Collection<Attribute> attributes = new Collection<Attribute>();
 
                 string path = Context.GetMetadataValue<string>("path");
+                Attribute attribute = null;
                 if (Context.IsTrigger)
                 {
-                    attributes.Add(new BlobTriggerAttribute(path));
+                    attribute = new BlobTriggerAttribute(path);
                 }
                 else
                 {
-                    attributes.Add(new BlobAttribute(path, Context.Access));
+                    attribute = new BlobAttribute(path, Context.Access);
                 }
+                attributes.Add(attribute);
 
-                string account = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(account))
+                var connectionProvider = (IConnectionProvider)attribute;
+                string connection = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(connection))
                 {
-                    attributes.Add(new StorageAccountAttribute(account));
+                    connectionProvider.Connection = connection;
                 }
 
                 return attributes;

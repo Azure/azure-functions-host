@@ -104,14 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return _config.HostConfig.NameResolver.ResolveWholeString(name);
         }
 
-        internal static void AddStorageAccountAttribute(Collection<CustomAttributeBuilder> attributes, string connection)
-        {
-            var constructorTypes = new Type[] { typeof(string) };
-            var constructorArguments = new object[] { connection };
-            var attribute = new CustomAttributeBuilder(typeof(StorageAccountAttribute).GetConstructor(constructorTypes), constructorArguments);
-            attributes.Add(attribute);
-        }
-
         internal static IEnumerable ReadAsEnumerable(object value)
         {
             IEnumerable values = null;
