@@ -55,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 // flush any remaining text
                 _traceWriter.Info(_text.ToString());
+                _text.Clear();
             }
 
             _traceWriter.Flush();

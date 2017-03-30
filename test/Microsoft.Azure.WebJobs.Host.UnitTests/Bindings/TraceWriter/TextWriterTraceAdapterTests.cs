@@ -75,6 +75,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         }
 
         [Fact]
+        public void Flush_ClearsInternalBuffer()
+        {
+            _mockTraceWriter.Setup(p => p.Trace(It.IsAny<TraceEvent>()));
+            _mockTraceWriter.Setup(p => p.Flush());
+
+            _adapter.Write("This");
+            _adapter.Write(" is ");
+            _adapter.Write("a ");
+            _adapter.Write("test");
+            _adapter.Flush();
+            _adapter.Flush();
+
+            _mockTraceWriter.Verify(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "This is a test")), Times.Exactly(1));
+        }
+
+        [Fact]
         public async Task TestMultipleThreads()
         {
             // This validates a bug where writing from multiple threads throws an exception.             
