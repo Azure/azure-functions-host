@@ -59,11 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.MapHttpAttributeRoutes();
 
             config.Routes.MapHttpRoute(
-                name: "Home",
-                routeTemplate: string.Empty,
-                defaults: new { controller = "Home" });
-
-            config.Routes.MapHttpRoute(
                 name: "Functions",
                 routeTemplate: "{*uri}",
                 defaults: new { controller = "Functions" });
