@@ -70,9 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IDictionary<string, string> GetRawHeaders(this HttpRequestMessage request)
         {
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-
-            var allHeadersRaw = request.Headers.ToString();
+            var headers = new Dictionary<string, string>();
+            var allHeadersRaw = request.Headers.ToString() + Environment.NewLine + request.Content?.Headers?.ToString();
             var rawHeaderLines = allHeadersRaw.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var header in rawHeaderLines)
@@ -82,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string value = header.Substring(idx + 1).Trim();
                 headers.Add(name, value);
             }
-
+            
             return headers;
         }
     }

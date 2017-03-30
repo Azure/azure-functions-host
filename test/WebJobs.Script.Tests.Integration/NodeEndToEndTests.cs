@@ -382,6 +382,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add("test-header", "Test Request Header");
             string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
             request.Headers.Add("user-agent", userAgent);
+            string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
+            request.Headers.Add("accept", accept);
             string customHeader = "foo,bar,baz";
             request.Headers.Add("custom-1", customHeader);
 
@@ -412,6 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject reqHeaders = (JObject)resultObject["reqHeaders"];
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
             Assert.Equal(userAgent, reqHeaders["user-agent"]);
+            Assert.Equal(accept, reqHeaders["accept"]);
             Assert.Equal(customHeader, reqHeaders["custom-1"]);
         }
 
@@ -736,6 +739,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Content = new StringContent(testData)
             };
             request.SetConfiguration(new HttpConfiguration());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -752,6 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(testData, (string)resultObject["reqBody"]);
             Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
             Assert.Equal(testData, (string)resultObject["reqRawBody"]);
+            Assert.Equal("text/plain", resultObject["reqHeaders"]["content-type"]);
         }
 
         [Fact]

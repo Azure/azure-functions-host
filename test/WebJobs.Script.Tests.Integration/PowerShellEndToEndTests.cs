@@ -183,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await response.Content.ReadAsStringAsync();
             JObject resultObject = JObject.Parse(result);
             Assert.Equal(testData, (string)resultObject["result"]["message"]["value"]);
+            Assert.Equal("text/plain; charset=utf-8", (string)resultObject["result"]["content-type"]);
         }
 
         [Fact]
