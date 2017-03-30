@@ -157,12 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         if (!_webHostSettings.IsSelfHost)
                         {
-                            // FIXME: Mono does not yet support HostingEnvironment.QueueBackgroundWorkItem
-#if MONO
-                            Task.Run(() => WarmUp(_webHostSettings));
-#else
                             HostingEnvironment.QueueBackgroundWorkItem((ct) => WarmUp(_webHostSettings));
-#endif
                         }
                         else
                         {
@@ -176,12 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     if (!_webHostSettings.IsSelfHost)
                     {
-                        // FIXME: This behaves a little differently on Mono as it does not handle cancellation
-#if MONO
-                        Task.Run(() => RunAndBlock());
-#else
                         HostingEnvironment.QueueBackgroundWorkItem((ct) => RunAndBlock(ct));
-#endif
                     }
                     else
                     {

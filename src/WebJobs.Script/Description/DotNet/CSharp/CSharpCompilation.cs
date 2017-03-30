@@ -97,11 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
                     var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
                     var emitOptions = new EmitOptions().WithDebugInformationFormat(
-#if WINDOWS
-                        DebugInformationFormat.Pdb
-#else
-                        DebugInformationFormat.PortablePdb
-#endif
+			PlatformHelper.IsMono? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb
                     );
                     var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
 
