@@ -263,9 +263,6 @@
       <HintPath>..\..\packages\Twilio.4.7.2\lib\3.5\Twilio.Api.dll</HintPath>
       <Private>True</Private>
     </Reference>
-  </ItemGroup>
-  <!-- Mono doesn't need these .NET Standard facades/shims, it ships its own -->
-  <ItemGroup Condition="'$(OS)'!='Unix'">
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.AppContext.4.1.0\lib\net46\System.AppContext.dll</HintPath>
       <Private>True</Private>
