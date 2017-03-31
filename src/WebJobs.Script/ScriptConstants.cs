@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
         public const string AzureFunctionsHttpRouteDataKey = "MS_AzureFunctionsHttpRouteData";
         public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
+        public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";

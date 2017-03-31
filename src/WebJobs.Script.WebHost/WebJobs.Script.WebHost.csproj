@@ -475,6 +475,7 @@
     <Compile Include="WebHooks\WebHookReceiverManager.cs" />
     <Compile Include="WebScriptHostExceptionHandler.cs" />
     <Compile Include="WebScriptHostManager.cs" />
+    <Compile Include="WebScriptHostRequestManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config">
@@ -492,6 +493,7 @@
     <Content Include="App_Data\secrets\httptrigger-csharp-customroute.json" />
     <Content Include="App_Data\secrets\httptrigger-customroute-get.json" />
     <Content Include="App_Data\secrets\httptrigger-customroute-post.json" />
+    <Content Include="App_Data\secrets\httptrigger-csharp.json" />
     <None Include="App_Data\secrets\HttpTrigger.json" />
     <Content Include="App_Data\secrets\webhook-azure-csharp.json" />
     <None Include="App_Data\secrets\WebHook-Generic-CSharp.json" />

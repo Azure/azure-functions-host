@@ -44,6 +44,21 @@
                     "description": "Defines the default route prefix that applies to all routes. Use an empty string to remove the prefix.",
                     "type": "string",
                     "default": "api"
+                },
+                "maxDegreeOfParallelism": {
+                    "description": "Defines the the maximum number of http functions that will execute in parallel.",
+                    "type": "integer",
+                    "default": -1
+                },
+                "maxQueueLength": {
+                    "description": "Defines the maximum number of pending requests that will be queued for processing.",
+                    "type": "integer",
+                    "default": -1
+                },
+                "dynamicThrottlesEnabled": {
+                    "description": "Indicates whether dynamic host counter checks should be enabled.",
+                    "type": "boolean",
+                    "default": false
                 }
             }
         },

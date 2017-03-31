@@ -4,7 +4,9 @@
         "from": "Azure Functions <samples@functions.com>"
     },
     "http": {
-        "routePrefix": "api"
+        "routePrefix": "api",
+        "maxDegreeOfParallelism": 5,
+        "maxQueueLength": 30
     },
     "tracing": {
         "fileLoggingMode": "always"

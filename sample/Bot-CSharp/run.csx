@@ -1,4 +1,6 @@
-﻿public class BotMessage
+﻿using System.Net;
+
+public class BotMessage
 {
     public string Source { get; set; }
     public string Message { get; set; }

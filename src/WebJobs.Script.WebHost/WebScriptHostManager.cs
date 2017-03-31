@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _hostStarted = false;
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
+        private HttpRequestManager _httpRequestManager;
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null, ISecretsRepositoryFactory secretsRepositoryFactory = null)
             : base(config, settingsManager, scriptHostFactory)
@@ -64,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
-            _performanceManager = new HostPerformanceManager(settingsManager);
+            _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
@@ -86,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public HostPerformanceManager PerformanceManager => _performanceManager;
 
         public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
+
+        public HttpRequestManager HttpRequestManager => _httpRequestManager;
 
         public virtual bool Initialized
         {
@@ -414,6 +418,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // all http function routes
             InitializeHttpFunctions(Instance.Functions);
 
+            // since the request manager is created based on configurable
+            // settings, it has to be recreated when host config changes
+            _httpRequestManager = new WebScriptHostRequestManager(Instance.ScriptConfig.HttpConfiguration, PerformanceManager, _metricsLogger, _config.TraceWriter);
+
             base.OnHostCreated();
         }
 
@@ -429,7 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
-            HttpRouteFactory httpRouteFactory = new HttpRouteFactory(_config.HttpRoutePrefix);
+            var httpRouteFactory = new HttpRouteFactory(_config.HttpConfiguration.RoutePrefix);
 
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();

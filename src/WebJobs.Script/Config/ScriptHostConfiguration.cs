@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -64,10 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileLoggingMode FileLoggingMode { get; set; }
 
         /// <summary>
-        /// Gets or sets the default route prefix that will be applied to
-        /// function routes.
+        /// Gets or sets the <see cref="HttpConfiguration"/>
         /// </summary>
-        public string HttpRoutePrefix { get; set; }
+        public HttpConfiguration HttpConfiguration { get; set; }
 
         /// <summary>
         /// Gets or sets the list of functions that should be run. This list can be used to filter

@@ -5,50 +5,50 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     public class ApplicationPerformanceCounters
     {
-        public int UserTime { get; set; }
+        public long UserTime { get; set; }
 
-        public int KernelTime { get; set; }
+        public long KernelTime { get; set; }
 
-        public int PageFaults { get; set; }
+        public long PageFaults { get; set; }
 
-        public int Processes { get; set; }
+        public long Processes { get; set; }
 
-        public int ProcessLimit { get; set; }
+        public long ProcessLimit { get; set; }
 
-        public int Threads { get; set; }
+        public long Threads { get; set; }
 
-        public int ThreadLimit { get; set; }
+        public long ThreadLimit { get; set; }
 
-        public int Connections { get; set; }
+        public long Connections { get; set; }
 
-        public int ConnectionLimit { get; set; }
+        public long ConnectionLimit { get; set; }
 
-        public int Sections { get; set; }
+        public long Sections { get; set; }
 
-        public int SectionLimit { get; set; }
+        public long SectionLimit { get; set; }
 
-        public int NamedPipes { get; set; }
+        public long NamedPipes { get; set; }
 
-        public int NamedPipeLimit { get; set; }
+        public long NamedPipeLimit { get; set; }
 
-        public int ReadIoOperations { get; set; }
+        public long ReadIoOperations { get; set; }
 
-        public int WriteIoOperations { get; set; }
+        public long WriteIoOperations { get; set; }
 
-        public int OtherIoOperations { get; set; }
+        public long OtherIoOperations { get; set; }
 
-        public int ReadIoBytes { get; set; }
+        public long ReadIoBytes { get; set; }
 
-        public int WriteIoBytes { get; set; }
+        public long WriteIoBytes { get; set; }
 
-        public int OtherIoBytes { get; set; }
+        public long OtherIoBytes { get; set; }
 
-        public int PrivateBytes { get; set; }
+        public long PrivateBytes { get; set; }
 
-        public int Handles { get; set; }
+        public long Handles { get; set; }
 
-        public int ContextSwitches { get; set; }
+        public long ContextSwitches { get; set; }
 
-        public int RemoteOpens { get; set; }
+        public long RemoteOpens { get; set; }
     }
 }

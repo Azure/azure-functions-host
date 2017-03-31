@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -536,13 +537,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
 
-            Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, scriptConfig.HttpRoutePrefix);
+            Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, scriptConfig.HttpConfiguration.RoutePrefix);
+            Assert.Equal(false, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxDegreeOfParallelism, DataflowBlockOptions.Unbounded);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxQueueLength, DataflowBlockOptions.Unbounded);
 
             http["routePrefix"] = "myprefix";
+            http["dynamicThrottlesEnabled"] = true;
+            http["maxDegreeOfParallelism"] = 5;
+            http["maxQueueLength"] = 10;
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
 
-            Assert.Equal("myprefix", scriptConfig.HttpRoutePrefix);
+            Assert.Equal("myprefix", scriptConfig.HttpConfiguration.RoutePrefix);
+            Assert.Equal(true, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxDegreeOfParallelism, 5);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxQueueLength, 10);
         }
 
         // with swagger with setting name with value

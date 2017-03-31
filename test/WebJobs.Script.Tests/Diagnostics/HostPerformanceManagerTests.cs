@@ -1,6 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Moq;
@@ -11,12 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
     public class HostPerformanceManagerTests
     {
         [Fact]
-        public static void GetCounters_ReturnsExpectedResult()
+        public void GetCounters_ReturnsExpectedResult()
         {
             var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
             string value = string.Empty;
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);
-            var performanceManager = new HostPerformanceManager(mockSettings.Object);
+            var performanceManager = new HostPerformanceManager(mockSettings.Object, traceWriter);
 
             value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
             var counters = performanceManager.GetPerformanceCounters();
@@ -29,6 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             value = "{}";
             counters = performanceManager.GetPerformanceCounters();
             Assert.Equal(counters.PageFaults, 0);
+
+            value = "this is not json";
+            counters = performanceManager.GetPerformanceCounters();
+            Assert.Null(counters);
+            var error = traceWriter.Traces.Last();
+            Assert.Equal("Failed to deserialize application performance counters. JSON Content: \"this is not json\"", error.Message);
         }
 
         [Theory]
@@ -37,9 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData(61, 100, 0.60F, true)]
         [InlineData(100, 100, 0.60F, true)]
         [InlineData(101, 100, 0.60F, true)]
-        public static void ThresholdExceeded_ReturnsExpectedValue(int currentValue, int limit, float threshold, bool expected)
+        [InlineData(101, 0, 0.60F, false)]
+        [InlineData(101, -1, 0.60F, false)]
+        public void ThresholdExceeded_ReturnsExpectedValue(int currentValue, int limit, float threshold, bool expected)
         {
-            Assert.Equal(expected, HostPerformanceManager.ThresholdExceeded(currentValue, limit, threshold));
+            Assert.Equal(expected, HostPerformanceManager.ThresholdExceeded("Test", currentValue, limit, threshold));
         }
 
         [Theory]
@@ -50,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData(290, true)]
         [InlineData(300, true)]
         [InlineData(310, true)]
-        public static void IsUnderHighLoad_Connections_ReturnsExpectedResults(int currentValue, bool expected)
+        public void IsUnderHighLoad_Connections_ReturnsExpectedResults(int currentValue, bool expected)
         {
             var counters = new ApplicationPerformanceCounters
             {
@@ -68,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData(500, true)]
         [InlineData(512, true)]
         [InlineData(513, true)]
-        public static void IsUnderHighLoad_Threads_ReturnsExpectedResults(int currentValue, bool expected)
+        public void IsUnderHighLoad_Threads_ReturnsExpectedResults(int currentValue, bool expected)
         {
             var counters = new ApplicationPerformanceCounters
             {
@@ -86,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData(30, true)]
         [InlineData(32, true)]
         [InlineData(33, true)]
-        public static void IsUnderHighLoad_Processes_ReturnsExpectedResults(int currentValue, bool expected)
+        public void IsUnderHighLoad_Processes_ReturnsExpectedResults(int currentValue, bool expected)
         {
             var counters = new ApplicationPerformanceCounters
             {
@@ -104,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData(120, true)]
         [InlineData(128, true)]
         [InlineData(129, true)]
-        public static void IsUnderHighLoad_NamedPipes_ReturnsExpectedResults(int currentValue, bool expected)
+        public void IsUnderHighLoad_NamedPipes_ReturnsExpectedResults(int currentValue, bool expected)
         {
             var counters = new ApplicationPerformanceCounters
             {
@@ -112,6 +124,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 NamedPipeLimit = 128
             };
             Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters));
+        }
+
+        [Fact]
+        public void IsUnderHighLoad_MultipleExceededThrottles_ReturnsExpectedResults()
+        {
+            var counters = new ApplicationPerformanceCounters
+            {
+                NamedPipes = 130,
+                NamedPipeLimit = 128,
+                Processes = 40,
+                ProcessLimit = 32,
+                Threads = 600,
+                ThreadLimit = 512
+            };
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(true, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters));
+            Assert.Equal(3, exceededCounters.Count);
+            Assert.Equal("Threads, Processes, NamedPipes", string.Join(", ", exceededCounters));
         }
     }
 }

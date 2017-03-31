@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -1030,15 +1031,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // apply http configuration configuration
             configSection = (JObject)config["http"];
-            string routePrefix = ScriptConstants.DefaultHttpRoutePrefix;
+            HttpConfiguration httpConfig = null;
             if (configSection != null)
             {
-                if (configSection.TryGetValue("routePrefix", out value))
-                {
-                    routePrefix = (string)value;
-                }
+                httpConfig = configSection.ToObject<HttpConfiguration>();
             }
-            scriptConfig.HttpRoutePrefix = routePrefix;
+            scriptConfig.HttpConfiguration = httpConfig ?? new HttpConfiguration();
 
             if (config.TryGetValue("functionTimeout", out value))
             {
