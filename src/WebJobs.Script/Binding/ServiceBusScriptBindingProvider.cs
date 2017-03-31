@@ -213,7 +213,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
                 else
                 {
-                    attribute = new ServiceBusAttribute(queueName ?? topicName, accessRights);
+                    attribute = new ServiceBusAttribute(queueName ?? topicName, accessRights)
+                    {
+                        EntityType = string.IsNullOrEmpty(topicName) ? EntityType.Queue : EntityType.Topic
+                    };
                 }
 
                 if (attribute == null)

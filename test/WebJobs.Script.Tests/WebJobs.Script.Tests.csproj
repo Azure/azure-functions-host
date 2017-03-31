@@ -426,6 +426,7 @@
     <Compile Include="Binding\CoreExtensionsScriptBindingProvider.cs" />
     <Compile Include="Binding\HttpBindingTests.cs" />
     <Compile Include="Binding\SendGridScriptBindingProviderTests.cs" />
+    <Compile Include="Binding\ServiceBusScriptBindingProviderTests.cs" />
     <Compile Include="Binding\TwilioScriptBindingProviderTests.cs" />
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
