@@ -441,6 +441,7 @@
     <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
     <Compile Include="Bindings\ODataFilterResolutionPolicy.cs" />
     <Compile Include="Tables\TableExtension.cs" />
+    <Compile Include="Storage\StorageAccountTypeExtensions.cs" />
     <Compile Include="Tables\TableFilterFormatter.cs" />
     <Compile Include="Listeners\FunctionListenerException.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />

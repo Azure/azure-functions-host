@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
             {
                 var message = string.Format(CultureInfo.CurrentCulture,
                     "Storage account '{0}' is of unsupported type '{1}'. Supported types are '{2}'", 
-                    account.Credentials.AccountName, account.Type, String.Join("', '", types));
+                    account.Credentials.AccountName, account.Type.GetFriendlyDescription(), String.Join("', '", types.Select(type => type.GetFriendlyDescription())));
                 throw new InvalidOperationException(message);
             }
         }

@@ -208,6 +208,7 @@
     <Compile Include="Singleton\SingletonLockTests.cs" />
     <Compile Include="Singleton\SingletonManagerTests.cs" />
     <Compile Include="Singleton\SingletonValueProviderTests.cs" />
+    <Compile Include="Storage\StorageAccountExtensionsTests.cs" />
     <Compile Include="StructPropertySetterTests.cs" />
     <Compile Include="StructPropertyGetterTests.cs" />
     <Compile Include="Converters\CultureInfoContext.cs" />

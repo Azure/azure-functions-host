@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetStorageAccountAsync(CancellationToken.None));
 
-            Assert.Equal("Storage account 'name' is of unsupported type 'BlobOnly'. Supported types are 'GeneralPurpose'", exception.Message);
+            Assert.Equal("Storage account 'name' is of unsupported type 'Blob-Only/ZRS'. Supported types are 'General Purpose'", exception.Message);
         }
 
         [Fact]
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             DefaultStorageAccountProvider provider = CreateProductUnderTest(services, connectionStringProvider, parser, validator);
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetDashboardAccountAsync(CancellationToken.None));
 
-            Assert.Equal("Storage account 'name' is of unsupported type 'Premium'. Supported types are 'GeneralPurpose'", exception.Message);
+            Assert.Equal("Storage account 'name' is of unsupported type 'Premium'. Supported types are 'General Purpose'", exception.Message);
         }
 
         private static IConnectionStringProvider CreateConnectionStringProvider(string connectionStringName,
