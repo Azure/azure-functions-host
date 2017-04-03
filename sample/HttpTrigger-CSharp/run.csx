@@ -8,8 +8,7 @@ public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter 
     log.Info(string.Format("C# HTTP trigger function processed a request. {0}", req.RequestUri));
 
     HttpResponseMessage res = null;
-    string name;
-    if (queryParams.TryGetValue("name", out name))
+    if (queryParams.TryGetValue("name", out string name))
     {
         res = new HttpResponseMessage(HttpStatusCode.OK)
         {
