@@ -632,6 +632,11 @@ namespace Microsoft.Azure.WebJobs.Script
             var functions = new Collection<FunctionMetadata>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
+            if (config.Functions != null)
+            {
+                traceWriter.Info($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", config.Functions)}]");
+            }
+
             foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
             {
                 string functionName = null;
