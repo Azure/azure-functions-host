@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host
     {
         private readonly ITriggerBindingStrategy<TMessage, TTriggerValue> _hooks;
         private readonly IConverterManager _converterManager;
+        private readonly FuncConverter<TMessage, Attribute, string> _stringConverter;
 
         public SimpleTriggerArgumentBinding(ITriggerBindingStrategy<TMessage, TTriggerValue> hooks, IConverterManager converterManager, bool isSingleDispatch = true)
         {
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host
             this.Contract = Hooks.GetBindingContract(isSingleDispatch);
             this.ElementType = typeof(TMessage);
             _converterManager = converterManager;
+            _stringConverter = _converterManager.GetConverter<TMessage, string, Attribute>();
         }
 
         // Caller can set it
@@ -58,9 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         protected string ConvertToString(TMessage eventData)
         {
-            var convert = _converterManager.GetConverter<TMessage, string, Attribute>();
-            var result = convert(eventData, null, null);
-            return result;
+            return _stringConverter(eventData, null, null);
         }
 
         public virtual Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context)
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
             object userValue = this.Convert(eventData, bindingData);
 
-            string invokeString = ConvertToString(eventData);
+            string invokeString = _stringConverter(eventData, null, null);
 
             IValueProvider valueProvider = new ConstantValueProvider(userValue, this.ElementType, invokeString);
             var triggerData = new TriggerData(valueProvider, bindingData);

@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             FunctionCompletedMessage functionCompletedMessage = null;
             ExceptionDispatchInfo exceptionInfo = null;
             string functionStartedMessageId = null;
-            TraceLevel functionTraceLevel = GetFunctionTraceLevel(functionInstance);
+            TraceLevel functionTraceLevel = functionInstance.FunctionDescriptor.TraceLevel;
 
             FunctionInstanceLogEntry fastItem = new FunctionInstanceLogEntry
             {
@@ -155,13 +155,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (exceptionInfo != null)
             {
-                await HandleExceptionAsync(functionInstance.FunctionDescriptor.Method, exceptionInfo, _exceptionHandler);
+                await HandleExceptionAsync(functionInstance.FunctionDescriptor.TimeoutAttribute, exceptionInfo, _exceptionHandler);
             }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
-        internal static async Task HandleExceptionAsync(MethodInfo method, ExceptionDispatchInfo exceptionInfo, IWebJobsExceptionHandler exceptionHandler)
+        internal static async Task HandleExceptionAsync(TimeoutAttribute timeout, ExceptionDispatchInfo exceptionInfo, IWebJobsExceptionHandler exceptionHandler)
         {
             if (exceptionInfo.SourceException == null)
             {
@@ -172,27 +172,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (exception.IsTimeout())
             {
-                TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
-                await exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeoutAttribute.GracePeriod);
+                await exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeout.GracePeriod);
             }
             else if (exception.IsFatal())
             {
                 await exceptionHandler.OnUnhandledExceptionAsync(exceptionInfo);
             }
-        }
-
-        internal static TraceLevel GetFunctionTraceLevel(IFunctionInstance functionInstance)
-        {
-            TraceLevel functionTraceLevel = TraceLevel.Verbose;
-
-            // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
-            TraceLevelAttribute attribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(functionInstance.FunctionDescriptor.Method);
-            if (attribute != null)
-            {
-                functionTraceLevel = attribute.Level;
-            }
-
-            return functionTraceLevel;
         }
 
         private async Task<string> ExecuteWithLoggingAsync(IFunctionInstance instance, FunctionStartedMessage message,
@@ -539,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
             {
                 MethodInfo method = instance.FunctionDescriptor.Method;
-                TimeoutAttribute timeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method);
+                TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
                 bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
                 var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter);
                 TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);

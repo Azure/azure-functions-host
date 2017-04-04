@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             BindingContext bindingContext = FunctionBinding.NewBindingContext(context, bindingData, parameters);
 
             // Bind Singleton if specified
-            SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: true);
+            SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor, isTriggered: true);
             if (singletonAttribute != null)
             {
                 string boundScopeId = _singletonManager.GetBoundScopeId(singletonAttribute.ScopeId, bindingData);

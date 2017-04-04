@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -216,15 +217,14 @@ namespace Microsoft.Azure.WebJobs.Host
             }
         }
 
-        public static SingletonAttribute GetFunctionSingletonOrNull(MethodInfo method, bool isTriggered)
+        public static SingletonAttribute GetFunctionSingletonOrNull(FunctionDescriptor descriptor, bool isTriggered)
         {
-            if (!isTriggered &&
-                method.GetCustomAttributes<SingletonAttribute>().Any(p => p.Mode == SingletonMode.Listener))
+            if (!isTriggered && descriptor.SingletonAttributes.Any(p => p.Mode == SingletonMode.Listener))
             {
                 throw new NotSupportedException("SingletonAttribute using mode 'Listener' cannot be applied to non-triggered functions.");
             }
 
-            SingletonAttribute[] singletonAttributes = method.GetCustomAttributes<SingletonAttribute>().Where(p => p.Mode == SingletonMode.Function).ToArray();
+            SingletonAttribute[] singletonAttributes = descriptor.SingletonAttributes.Where(p => p.Mode == SingletonMode.Function).ToArray();
             SingletonAttribute singletonAttribute = null;
             if (singletonAttributes.Length > 1)
             {

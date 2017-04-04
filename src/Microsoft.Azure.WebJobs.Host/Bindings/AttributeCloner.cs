@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // Optional hook for post-processing the attribute. This is intended for legacy hack rules.
         private readonly Func<TAttribute, Task<TAttribute>> _hook;
 
+        private readonly Dictionary<PropertyInfo, AutoResolveAttribute> _autoResolves = new Dictionary<PropertyInfo, AutoResolveAttribute>();
+
         private static readonly BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public;
 
         public AttributeCloner(
@@ -107,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             // try to resolve with auto resolve ({...}, %...%)
             if (autoResolveAttr != null && originalValue != null)
             {
+                _autoResolves[propInfo] = autoResolveAttr;
                 return GetTemplateResolver((string)originalValue, autoResolveAttr, nameResolver, propInfo, contract);
             }
             // resolve the original value
@@ -157,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             var resolver = _source as IAttributeInvokeDescriptor<TAttribute>;
             if (resolver == null)
             {
-                invokeString = DefaultAttributeInvokerDescriptor<TAttribute>.ToInvokeString(attributeResolved);
+                invokeString = DefaultAttributeInvokerDescriptor<TAttribute>.ToInvokeString(_autoResolves, attributeResolved);
             }
             else
             {
@@ -195,27 +198,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return attr;
         }
 
-        private static Attribute GetResolvableAttribute(PropertyInfo prop)
-        {
-            return (Attribute)prop.GetCustomAttribute<AppSettingAttribute>() ??
-                prop.GetCustomAttribute<AutoResolveAttribute>();
-        }
-
-        private static IEnumerable<PropertyInfo> GetResolvableProperties(Type type)
-        {
-            return type.GetProperties(Flags)
-                .Where(prop => GetResolvableAttribute(prop) != null);
-        }
-
         // When there's only 1 resolvable property
         internal TAttribute New(string invokeString)
         {
-            var resolvableProps = GetResolvableProperties(typeof(TAttribute));
-            if (resolvableProps.Count() != 1)
+            if (_autoResolves.Count() != 1)
             {
                 throw new InvalidOperationException("Invalid invoke string format for attribute.");
             }
-            var overrideProps = resolvableProps.ToDictionary(prop => prop.Name, prop => invokeString, StringComparer.OrdinalIgnoreCase);
+            var overrideProps = _autoResolves.Select(pair => pair.Key)
+                .ToDictionary(prop => prop.Name, prop => invokeString, StringComparer.OrdinalIgnoreCase);
             return New(overrideProps);
         }
 

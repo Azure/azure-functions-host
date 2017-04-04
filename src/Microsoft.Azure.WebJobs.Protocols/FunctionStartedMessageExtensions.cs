@@ -27,20 +27,21 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 throw new ArgumentNullException("message");
             }
 
-            ExecutionReason reason = message.Reason;
-
+#if PUBLICPROTOCOL
             // If the message already contains details use them. This will be the case for
             // messages serialized from the Host to the Dashboard. The host will format the
             // reason before sending
+            return message.ReasonDetails;
+#else
             if (!string.IsNullOrEmpty(message.ReasonDetails))
             {
                 return message.ReasonDetails;
             }
 
-            switch (reason)
+            switch (message.Reason)
             {
                 case ExecutionReason.AutomaticTrigger:
-                    return GetAutomaticTriggerReason(message);
+                    return message.Function.TriggerParameterDescriptor?.GetTriggerReason(message.Arguments);
                 case ExecutionReason.HostCall:
                     return "This function was programmatically called via the host APIs.";
                 case ExecutionReason.Dashboard:
@@ -48,22 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 default:
                     return null;
             }
-        }
-
-        private static string GetAutomaticTriggerReason(FunctionStartedMessage message)
-        {
-            TriggerParameterDescriptor triggerParameterDescriptor = GetParameterDescriptor<TriggerParameterDescriptor>(message);
-            if (triggerParameterDescriptor != null)
-            {
-                return triggerParameterDescriptor.GetTriggerReason(message.Arguments);
-            }
-
-            return null;
-        }
-
-        private static T GetParameterDescriptor<T>(FunctionStartedMessage message) where T : ParameterDescriptor
-        {
-            return message.Function.Parameters.OfType<T>().FirstOrDefault();
+#endif       
         }
     }
 }

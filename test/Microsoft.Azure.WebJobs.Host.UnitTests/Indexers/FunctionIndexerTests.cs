@@ -60,6 +60,37 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             indexMock.Verify(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()), Times.Never);
         }
 
+        [Theory]
+        [InlineData("TraceLevelOverride_Off", TraceLevel.Off)]
+        [InlineData("TraceLevelOverride_Error", TraceLevel.Error)]
+        [InlineData("ReturnVoid", TraceLevel.Verbose)]
+        public void GetFunctionTraceLevel_ReturnsExpectedLevel(string method, TraceLevel level)
+        {
+            // Arrange
+            var collector = new TestIndexCollector();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod(method),
+                collector, CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.Equal(level, collector.Functions.First().TraceLevel);
+        }
+
+        [Fact]
+        public void GetFunctionTimeout_ReturnsExpected()
+        {
+            // Arrange
+            var collector = new TestIndexCollector();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("Timeout_Set"),
+                collector, CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.Equal(TimeSpan.FromMinutes(30), collector.Functions.First().TimeoutAttribute.Timeout);
+        }
+
         [Fact]
         public void IndexMethod_IfMethodReturnsNonTask_Throws()
         {
@@ -371,6 +402,34 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public static async void ReturnAsyncVoid()
         {
             await Task.FromResult(0);
+        }
+
+        [NoAutomaticTrigger]
+        [TraceLevel(TraceLevel.Off)]
+        public static void TraceLevelOverride_Off()
+        {
+        }
+
+        [NoAutomaticTrigger]
+        [TraceLevel(TraceLevel.Error)]
+        public static void TraceLevelOverride_Error()
+        {
+        }
+
+        [NoAutomaticTrigger]
+        [Timeout("00:30:00")]
+        public static void Timeout_Set()
+        {
+        }
+
+        private class TestIndexCollector: IFunctionIndexCollector
+        {
+            public List<FunctionDescriptor> Functions = new List<FunctionDescriptor>();
+
+            public void Add(IFunctionDefinition function, FunctionDescriptor descriptor, MethodInfo method)
+            {
+                Functions.Add(descriptor);
+            }
         }
     }
 }

@@ -22,7 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
             };
             FunctionDescriptor function = new FunctionDescriptor
             {
-                Parameters = new ParameterDescriptor[] { triggerParameterDescriptor }
+                Parameters = new ParameterDescriptor[] { triggerParameterDescriptor },
+                TriggerParameterDescriptor = triggerParameterDescriptor
             };
             message.Function = function;
             message.Reason = ExecutionReason.AutomaticTrigger;
@@ -41,8 +42,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
             {
                 Name = "paramName"
             };
-            FunctionDescriptor function = new FunctionDescriptor();
-            function.Parameters = new ParameterDescriptor[] { triggerParameterDescriptor };
+            FunctionDescriptor function = new FunctionDescriptor()
+            {
+                Parameters = new ParameterDescriptor[] { triggerParameterDescriptor },
+                TriggerParameterDescriptor = triggerParameterDescriptor
+            };
             message.Function = function;
             message.Arguments = new Dictionary<string, string>() { { "paramName", "blob/path" } };
 

@@ -323,13 +323,20 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
             }
 
+            // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
+            TraceLevelAttribute traceAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(method);
+
             return new FunctionDescriptor
             {
                 Id = method.GetFullName(),
                 Method = method,
                 FullName = method.GetFullName(),
                 ShortName = method.GetShortName(),
-                Parameters = parameters
+                Parameters = parameters,
+                TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
+                TriggerParameterDescriptor = parameters.OfType<TriggerParameterDescriptor>().FirstOrDefault(),
+                TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
+                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
             };
         }
 

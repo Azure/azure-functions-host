@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using Newtonsoft.Json;
 
@@ -35,5 +36,32 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// </summary>
         [JsonIgnore]
         internal MethodInfo Method { get; set; }
+
+#if PUBLICPROTOCOL
+#else
+        /// <summary>
+        /// Gets the <see cref="Protocols.TriggerParameterDescriptor"/> for this function
+        /// </summary>
+        [JsonIgnore]
+        internal TriggerParameterDescriptor TriggerParameterDescriptor { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="System.Diagnostics.TraceLevel"/> for this function
+        /// </summary>
+        [JsonIgnore]
+        internal TraceLevel TraceLevel { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="WebJobs.TimeoutAttribute"/> for this function
+        /// </summary>
+        [JsonIgnore]
+        internal TimeoutAttribute TimeoutAttribute { get; set; }
+
+        /// <summary>
+        /// Gets any <see cref="SingletonAttribute"/>s for this function
+        /// </summary>
+        [JsonIgnore]
+        internal IEnumerable<SingletonAttribute> SingletonAttributes { get; set; }
+#endif
     }
 }

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
@@ -59,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             BindingContext bindingContext = NewBindingContext(context, null, parameters);
 
             // bind Singleton if specified
-            SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor.Method, isTriggered: false);
+            SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor, isTriggered: false);
             if (singletonAttribute != null)
             {
                 string boundScopeId = _singletonManager.GetBoundScopeId(singletonAttribute.ScopeId);

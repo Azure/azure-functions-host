@@ -17,6 +17,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
@@ -402,7 +403,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: true);
+                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor() {
+                    SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+                }, isTriggered: true);
             });
             Assert.Equal("Only one SingletonAttribute using mode 'Function' is allowed.", exception.Message);
         }
@@ -414,7 +417,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: false);
+                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor()
+                {
+                    SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+                }, isTriggered: false);
             });
             Assert.Equal("SingletonAttribute using mode 'Listener' cannot be applied to non-triggered functions.", exception.Message);
         }
