@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
+    [JwtAuthentication]
     [AuthorizationLevel(AuthorizationLevel.Admin)]
     public class KeysController : ApiController
     {

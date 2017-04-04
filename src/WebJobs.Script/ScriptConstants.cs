@@ -48,6 +48,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
 
+        public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
+        public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
+
         public const string SwaggerFileName = "swagger.json";
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string SwaggerDirectoryName = "swagger";        

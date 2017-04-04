@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// Controller responsible for handling all administrative requests, for
     /// example enqueueing function invocations, etc.
     /// </summary>
+    [JwtAuthentication]
     [AuthorizationLevel(AuthorizationLevel.Admin)]
     public class AdminController : ApiController
     {
