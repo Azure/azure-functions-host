@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
-        private Action _reloadScript;
+        private Func<Task> _reloadScript;
         private Action _shutdown;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _functionLoader = new FunctionLoader<MethodInfo>(CreateFunctionTarget);
 
-            _reloadScript = ReloadScript;
+            _reloadScript = ReloadScriptAsync;
             _reloadScript = _reloadScript.Debounce();
 
             _shutdown = () => Host.Shutdown();
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceError(error);
         }
 
-        private void ReloadScript()
+        private async Task ReloadScriptAsync()
         {
             // Reset cached function
             _functionLoader.Reset();
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                Host.Restart();
+                await Host.RestartAsync().ConfigureAwait(false);
             }
         }
 
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                     else
                     {
-                        _reloadScript();
+                        await _reloadScript();
                     }
                 }
             }

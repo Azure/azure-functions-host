@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const string GeneratedTypeName = "Functions";
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
         private string _instanceId;
-        private Action _restart;
+        private Func<Task> _restart;
         private Action _shutdown;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
@@ -349,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // This allows us to deal with a large set of file change events that might
                 // result from a bulk copy/unzip operation. In such cases, we only want to
                 // restart after ALL the operations are complete and there is a quiet period.
-                _restart = Restart;
+                _restart = RestartAsync;
                 _restart = _restart.Debounce(500);
 
                 _shutdown = Shutdown;
@@ -444,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return customAttributes;
         }
 
-        internal void Restart()
+        internal async Task RestartAsync()
         {
             if (_shutdownScheduled)
             {
@@ -458,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_NODE
             // whenever we're restarting the host, we want to let the Node
             // invoker know so it can clear the require cache, etc.
-            NodeFunctionInvoker.OnHostRestart();
+            await NodeFunctionInvoker.OnHostRestartAsync();
 #endif
         }
 
@@ -1233,11 +1233,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 TraceFileChangeRestart(e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestart(shutdown);
+                ScheduleRestartAsync(shutdown).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {shutdown})", t.Exception),
+                    TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
-        private void ScheduleRestart(bool shutdown)
+        private async Task ScheduleRestartAsync(bool shutdown)
         {
             if (shutdown)
             {
@@ -1246,7 +1247,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _restart();
+                await _restart();
             }
         }
 

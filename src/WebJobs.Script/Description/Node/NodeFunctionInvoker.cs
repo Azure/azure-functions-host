@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -12,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _script;
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
-        private static readonly object _initializationSyncRoot = new object();
 
         private Func<object, Task<object>> _scriptFunc;
         private static Func<object, Task<object>> _clearRequireCache;
@@ -38,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _functionTemplate;
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
-        private static bool _initialized = false;
+        private static Lazy<Task> _initializer = new Lazy<Task>(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
 
         static NodeFunctionInvoker()
         {
@@ -109,7 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            EnsureInitialized();
+            // Ensure we're properly initialized
+            await _initializer.Value.ConfigureAwait(false);
 
             object input = parameters[0];
             string invocationId = context.ExecutionContext.InvocationId.ToString();
@@ -124,21 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             object functionResult = await ScriptFunc(scriptExecutionContext);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
-        }
-
-        private static void EnsureInitialized()
-        {
-            if (!_initialized)
-            {
-                lock (_initializationSyncRoot)
-                {
-                    if (!_initialized)
-                    {
-                        Initialize();
-                        _initialized = true;
-                    }
-                }
-            }
         }
 
         private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)
@@ -238,9 +223,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal static void OnHostRestart()
+        internal static async Task OnHostRestartAsync()
         {
-            ClearRequireCacheFunc(null).GetAwaiter().GetResult();
+            await ClearRequireCacheFunc(null);
         }
 
         protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
@@ -621,7 +606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Performs required static initialization in the Edge context.
         /// </summary>
-        private static void Initialize()
+        private static async Task InitializeAsync()
         {
             var handle = (Func<object, Task<object>>)(err =>
             {
@@ -642,7 +627,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "handleUncaughtException", handle }
             };
 
-            GlobalInitializationFunc(context).GetAwaiter().GetResult();
+            await GlobalInitializationFunc(context);
         }
     }
 }
