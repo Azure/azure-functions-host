@@ -101,11 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private void TraceErrorEvent(ExceptionContext exceptionContext, ApiErrorModel error)
         {
-            string controllerName = exceptionContext.ControllerContext?.ControllerDescriptor.ControllerName ?? "<unknown>";
-            string actionName = exceptionContext.ActionContext?.ActionDescriptor.ActionName ?? "<unknown>";
-
             string message = JsonConvert.SerializeObject(error);
-            var traceEvent = new TraceEvent(TraceLevel.Error, message, $"ApiError.{controllerName}.{actionName}", exceptionContext.Exception);
+            var traceEvent = new TraceEvent(TraceLevel.Error, message, $"ApiError", exceptionContext.Exception);
             _traceWriterLoader.Value.Trace(traceEvent);
         }
 
