@@ -62,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.TraceWriter = systemTraceWriter;
             }
 
+            config.IsSelfHost = webHostSettings.IsSelfHost;
+
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, new FileSystemSecretsRepository(webHostSettings.SecretsPath));
             _performanceManager = new HostPerformanceManager(settingsManager);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);

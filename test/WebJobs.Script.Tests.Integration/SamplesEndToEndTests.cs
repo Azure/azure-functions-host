@@ -933,8 +933,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             string expectedVersion = fileVersionAttr.Version;
-            string expectedId = "5a709861cab44e68bfed5d2c2fe7fc0c";
-            Assert.Equal(expectedId, jsonContent["id"].ToString());
+            Assert.True(((string)jsonContent["id"]).Length > 0);
             Assert.Equal(expectedVersion, jsonContent["version"].ToString());
             var state = (string)jsonContent["state"];
             Assert.True(state == "Running" || state == "Created");
@@ -952,7 +951,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var node = doc.Descendants(XName.Get("Version", ns)).Single();
             Assert.Equal(expectedVersion, node.Value);
             node = doc.Descendants(XName.Get("Id", ns)).Single();
-            Assert.Equal(expectedId, node.Value);
+            Assert.True(node.Value.Length > 0);
             node = doc.Descendants(XName.Get("State", ns)).Single();
             Assert.True(node.Value == "Running" || node.Value == "Created");
 
@@ -982,8 +981,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(4, jsonContent.Properties().Count());
                 AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
                 string expectedVersion = fileVersionAttr.Version;
-                string expectedId = "5a709861cab44e68bfed5d2c2fe7fc0c";
-                Assert.Equal(expectedId, jsonContent["id"].ToString());
+                Assert.True(((string)jsonContent["id"]).Length > 0);
                 Assert.Equal(expectedVersion, jsonContent["version"].ToString());
                 var state = (string)jsonContent["state"];
                 Assert.True(state == "Running" || state == "Created");

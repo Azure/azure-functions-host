@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -160,24 +159,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileLoggingMode = FileLoggingMode.DebugOnly,
                 TraceWriter = settings.TraceWriter
             };
-
-            // If running on Azure Web App, derive the host ID from the default subdomain
-            string hostId = _settingsManager.AzureWebsiteDefaultSubdomain;
-
-            if (!String.IsNullOrEmpty(hostId))
-            {
-                // Truncate to the max host name length if needed
-                const int MaximumHostIdLength = 32;
-                if (hostId.Length > MaximumHostIdLength)
-                {
-                    hostId = hostId.Substring(0, MaximumHostIdLength);
-                }
-
-                // Trim any trailing - as they can cause problems with queue names
-                hostId = hostId.TrimEnd('-');
-
-                scriptHostConfig.HostConfig.HostId = hostId.ToLowerInvariant();
-            }
 
             return scriptHostConfig;
         }

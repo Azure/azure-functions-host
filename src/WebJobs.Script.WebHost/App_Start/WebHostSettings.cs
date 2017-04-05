@@ -10,6 +10,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebHostSettings
     {
+        /// <summary>
+        /// Gets or sets a value indicating whether the host is running
+        /// outside of the normal Azure hosting environment. E.g. when running
+        /// locally or via CLI.
+        /// </summary>
         public bool IsSelfHost { get; set; }
 
         public string ScriptPath { get; set; }
@@ -18,7 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public string SecretsPath { get; set; }
 
-        // Used by Cli to disable auth when running locally.
+        /// <summary>
+        /// Gets or sets a value indicating whether authentication/authorization
+        /// should be disabled. Useful for local debugging or CLI scenarios.
+        /// </summary>
         public bool IsAuthDisabled { get; set; } = false;
 
         public TraceWriter TraceWriter { get; set; }

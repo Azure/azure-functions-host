@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsDynamicSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku) == ScriptConstants.DynamicSku;
 
-        public string AzureWebsiteDefaultSubdomain
+        public virtual string AzureWebsiteDefaultSubdomain
         {
             get
             {

@@ -11,6 +11,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -1024,6 +1025,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(host.IsFunction("DoesNotExist"));
             Assert.False(host.IsFunction(string.Empty));
             Assert.False(host.IsFunction(null));
+        }
+
+        [Fact]
+        public void GetDefaultHostId_SelfHost_ReturnsExpectedResult()
+        {
+            var config = new ScriptHostConfiguration
+            {
+                IsSelfHost = true,
+                RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
+            };
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+
+            string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+            string sanitizedMachineName = Environment.MachineName
+                    .Where(char.IsLetterOrDigit)
+                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
+            Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
+        }
+
+        [Fact]
+        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult()
+        {
+            var config = new ScriptHostConfiguration();
+            string subdomain = "TEST-FUNCTIONS--";
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteDefaultSubdomain).Returns(() => subdomain);
+
+            string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+            Assert.Equal("test-functions", hostId);
+
+            subdomain = "TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+            hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+            Assert.Equal("test-functions-xxxxxxxxxxxxxxxxx", hostId);
         }
 
         public class AssemblyMock : Assembly

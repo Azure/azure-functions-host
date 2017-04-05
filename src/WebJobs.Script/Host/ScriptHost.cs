@@ -13,6 +13,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -268,6 +269,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 ApplyConfiguration(hostConfig, ScriptConfig);
+
+                if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
+                {
+                    ScriptConfig.HostConfig.HostId = GetDefaultHostId(_settingsManager, ScriptConfig);
+                }
+                if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
+                {
+                    throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
+                }
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
@@ -947,10 +957,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 hostConfig.HostId = (string)hostId;
             }
-            else if (hostConfig.HostId == null)
-            {
-                throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
-            }
 
             JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
             if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
@@ -1067,6 +1073,44 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 scriptConfig.SwaggerEnabled = (bool)swaggerEnabled;
             }
+        }
+
+        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostConfiguration scriptConfig)
+        {
+            // We're setting the default here on the newly created configuration
+            // If the user has explicitly set the HostID via host.json, it will overwrite
+            // what we set here
+            string hostId = null;
+            if (scriptConfig.IsSelfHost)
+            {
+                // When running locally, derive a stable host ID from machine name
+                // and root path. We use a hash rather than the path itself to ensure
+                // IDs differ (due to truncation) between folders that may share the same
+                // root path prefix.
+                // Note that such an ID won't work in distributed scenarios, so should
+                // only be used for local/CLI scenarios.
+                string sanitizedMachineName = Environment.MachineName
+                    .Where(char.IsLetterOrDigit)
+                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
+                hostId = $"{sanitizedMachineName}-{Math.Abs(scriptConfig.RootScriptPath.GetHashCode())}";
+            }
+            else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteDefaultSubdomain))
+            {
+                // If running on Azure Web App, derive the host ID from the default subdomain
+                // Trim any trailing - as they can cause problems with queue names
+                hostId = settingsManager.AzureWebsiteDefaultSubdomain.TrimEnd('-');
+            }
+
+            if (!string.IsNullOrEmpty(hostId))
+            {
+                if (hostId.Length > ScriptConstants.MaximumHostIdLength)
+                {
+                    // Truncate to the max host name length if needed
+                    hostId = hostId.Substring(0, ScriptConstants.MaximumHostIdLength);
+                }
+            }
+
+            return hostId?.ToLowerInvariant();
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
