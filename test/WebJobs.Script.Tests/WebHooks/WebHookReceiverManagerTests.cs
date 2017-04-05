@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHooks
 
             request = new HttpRequestMessage(HttpMethod.Post, $"http://test.com/api/test?code={TestKey}&clientid={TestId}");
             WebHookReceiverManager.ApplyHeaderValuesToQuery(request);
-            Assert.Equal($"http://test.com/api/test?code={TestKey}&clientid={TestId}", request.RequestUri.ToString());   
+            Assert.Equal($"http://test.com/api/test?code={TestKey}&clientid={TestId}", request.RequestUri.ToString());
         }
 
         [Fact]

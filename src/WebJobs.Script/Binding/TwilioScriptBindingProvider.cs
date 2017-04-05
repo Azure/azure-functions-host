@@ -16,14 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class TwilioScriptBindingProvider : ScriptBindingProvider
     {
-        /// <inheritdoc/>
         public TwilioScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
         }
 
     /// <inheritdoc/>
-    public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
+        public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             if (context == null)
             {

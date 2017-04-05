@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ISecretsRepository repository = new BlobStorageSecretsRepository(secretsDir, connectionString, "EmptyHost_StartsSuccessfully");
             ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
-            webHostSettings.SecretsPath = _secretsDirectory.Path;            
+            webHostSettings.SecretsPath = _secretsDirectory.Path;
 
             ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
 
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = functionTestDir,
                 FileLoggingMode = FileLoggingMode.Always,
             };
-            
+
             ISecretsRepository repository = new FileSystemSecretsRepository(_secretsDirectory.Path);
             SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
             WebHostSettings webHostSettings = new WebHostSettings();
@@ -294,6 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private readonly ScriptSettingsManager _settingsManager;
             private readonly TempDirectory _secretsDirectory = new TempDirectory();
+
             public Fixture()
             {
                 EventGenerator = new TestSystemEventGenerator();
@@ -332,11 +333,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootLogPath = logRoot,
                     FileLoggingMode = FileLoggingMode.Always
                 };
-                
+
                 ISecretsRepository repository = new FileSystemSecretsRepository(SecretsPath);
                 ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
                 WebHostSettings webHostSettings = new WebHostSettings();
-                webHostSettings.SecretsPath = SecretsPath; 
+                webHostSettings.SecretsPath = SecretsPath;
 
                 var hostConfig = config.HostConfig;
                 var testEventGenerator = new TestSystemEventGenerator();
@@ -361,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     "Info WebJobs.Indexing Found the following functions:",
                     "Info The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
-                    "Error The following 1 functions are in error:" 
+                    "Error The following 1 functions are in error:"
                 };
                 foreach (string pattern in expectedPatterns)
                 {

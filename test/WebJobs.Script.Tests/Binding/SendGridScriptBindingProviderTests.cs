@@ -32,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             config = new JObject
             {
-                { "sendGrid", new JObject
+                {
+                    "sendGrid", new JObject
                     {
                         { "to", "Testing1 <test1@test.com>" },
                         { "from", "Testing2 <test2@test.com>" }

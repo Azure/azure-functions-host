@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     public class BindingContext
     {
         /// <summary>
-        /// The collection of Attributes to bind.
+        /// Gets or sets the collection of Attributes to bind.
         /// </summary>
         public Attribute[] Attributes { get; set; }
 
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// Gets or sets the target value the binding is binding to.
         /// </summary>
         public object Value { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the collection of binding data for this invocation.
         /// </summary>

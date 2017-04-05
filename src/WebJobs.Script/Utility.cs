@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="min">The minimum delay.</param>
         /// <param name="max">The maximum delay.</param>
         /// <returns>A <see cref="Task"/> representing the computed backoff interval.</returns>
-        public async static Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
+        public static async Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
         {
             TimeSpan delay = ComputeBackoff(exponent, unit, min, max);
 
@@ -261,7 +261,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool HasUtf8ByteOrderMark(string input)
             => input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, UTF8ByteOrderMark, CompareOptions.Ordinal);
 
-
         public static string RemoveUtf8ByteOrderMark(string input)
         {
             if (HasUtf8ByteOrderMark(input))
@@ -275,20 +274,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string ToJson(ExpandoObject value, Formatting formatting = Formatting.Indented)
         {
             return JsonConvert.SerializeObject(value, formatting, _filteredExpandoObjectConverter);
-        }
-
-        private class FilteredExpandoObjectConverter : ExpandoObjectConverter
-        {
-            public override bool CanWrite => true;
-
-            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-            {
-                var expando = (IDictionary<string, object>)value;
-                var filtered = expando
-                    .Where(p => !(p.Value is Delegate))
-                    .ToDictionary(p => p.Key, p => p.Value);
-                serializer.Serialize(writer, filtered);
-            }
         }
 
         public static JObject ToJObject(ExpandoObject value)
@@ -314,6 +299,20 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static bool IsNullable(Type type)
         {
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
+        private class FilteredExpandoObjectConverter : ExpandoObjectConverter
+        {
+            public override bool CanWrite => true;
+
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                var expando = (IDictionary<string, object>)value;
+                var filtered = expando
+                    .Where(p => !(p.Value is Delegate))
+                    .ToDictionary(p => p.Key, p => p.Value);
+                serializer.Serialize(writer, filtered);
+            }
         }
     }
 }

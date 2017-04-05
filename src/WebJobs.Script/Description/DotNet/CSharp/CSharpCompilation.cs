@@ -96,9 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
                     var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
-                    var emitOptions = new EmitOptions().WithDebugInformationFormat(
-			PlatformHelper.IsMono? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb
-                    );
+                    var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsMono ? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb);
                     var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
 
                     diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
@@ -108,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         throw new CompilationErrorException("Script compilation failed.", diagnostics);
                     }
 
-                    // Check if cancellation was requested while we were compiling, 
-                    // and if so quit here. 
+                    // Check if cancellation was requested while we were compiling,
+                    // and if so quit here.
                     cancellationToken.ThrowIfCancellationRequested();
 
                     return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());

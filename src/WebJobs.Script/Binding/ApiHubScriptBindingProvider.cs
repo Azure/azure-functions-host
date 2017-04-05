@@ -20,8 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly ApiHubConfiguration _apiHubConfig = new ApiHubConfiguration();
         private readonly INameResolver _nameResolver;
 
-        /// <inheritdoc/>
-        public ApiHubScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+        public ApiHubScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
             if (config == null)

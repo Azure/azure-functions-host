@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly Func<TraceEvent, bool> _predicate;
 
-        public ConditionalTraceWriter(TraceWriter innerWriter, Func<TraceEvent, bool> predicate) 
+        public ConditionalTraceWriter(TraceWriter innerWriter, Func<TraceEvent, bool> predicate)
             : base(innerWriter?.Level ?? TraceLevel.Off)
         {
             if (innerWriter == null)

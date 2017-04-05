@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Response(obj, "text/plain; charset=utf-8");
-            Assert.Equal(str, Regex.Replace(content, @"\s+", String.Empty));
+            Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
         // consider supporting text/plain conversion for expandoobject type
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Return(obj, "text/plain; charset=utf-8", "application/json; charset=utf-8");
-            Assert.Equal(str, Regex.Replace(content, @"\s+", String.Empty));
+            Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
         [Fact]
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Raw(obj, "text/plain; charset=utf-8");
-            Assert.Equal(str, Regex.Replace(content, @"\s+", String.Empty));
+            Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
         [Fact]
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Response(obj, "application/json; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -175,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Return(obj, "application/json; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Raw(obj, "application/json; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -244,10 +244,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task ObjectXmlResponse()
         {
             var obj = new { a = 1 };
+
             // consider using fabiocav custom xml formatter
             var str = "<ArrayOfKeyValueOfstringanyTypexmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\"xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"><KeyValueOfstringanyType><Key>a</Key><Valuexmlns:d3p1=\"http://www.w3.org/2001/XMLSchema\"i:type=\"d3p1:int\">1</Value></KeyValueOfstringanyType></ArrayOfKeyValueOfstringanyType>";
             var content = await Response(obj, "application/xml; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -255,10 +256,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task ObjectXmlReturn()
         {
             var obj = new { a = 1 };
+
             // consider using fabiocav custom xml formatter
             var str = "<ArrayOfKeyValueOfstringanyTypexmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\"xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"><KeyValueOfstringanyType><Key>a</Key><Valuexmlns:d3p1=\"http://www.w3.org/2001/XMLSchema\"i:type=\"d3p1:int\">1</Value></KeyValueOfstringanyType></ArrayOfKeyValueOfstringanyType>";
             var content = await Return(obj, "application/xml; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -268,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var obj = new { a = 1 };
             var str = "{\"a\":1}";
             var content = await Raw(obj, "application/xml; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", String.Empty);
+            content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
         }
 
@@ -303,6 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 reqContent = new ObjectContent(typeof(Req), content, new JsonMediaTypeFormatter());
                 reqContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
                 // spoof CreateRequestObject in NodeFunctionInvoker
                 reqContent.Headers.ContentLength = 1;
             }

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Initializes an instance of the <see cref="LocalSharedAssemblyProvider"/>.
         /// </summary>
-        /// <param name="assemblyNamePattern">The assembly name pattern to validate against. 
+        /// <param name="assemblyNamePattern">The assembly name pattern to validate against.
         /// Only names matching the pattern will be resolved by this provider</param>
         public LocalSharedAssemblyProvider(string assemblyNamePattern)
         {

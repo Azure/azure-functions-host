@@ -16,6 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class MetricsEventManager : IDisposable
     {
+        // Default time between flushes in seconds (every 30 seconds)
+        private const int DefaultFlushIntervalMS = 30 * 1000;
+
         private static FunctionActivityTracker instance = null;
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
@@ -24,9 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private static string appName;
         private static string subscriptionId;
         private bool _disposed;
-
-        // Default time between flushes in seconds (every 30 seconds)
-        private const int DefaultFlushIntervalMS = 30 * 1000;
 
         public MetricsEventManager(ScriptSettingsManager settingsManager, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
@@ -278,6 +278,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // flush any outstanding events
+                    TimerFlush(state: null);
+
+                    if (_metricsFlushTimer != null)
+                    {
+                        _metricsFlushTimer.Dispose();
+                    }
+                }
+
+                _disposed = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         private class FunctionActivityTracker : IDisposable
         {
             private readonly string _executionId = Guid.NewGuid().ToString();
@@ -452,14 +478,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 List<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
 
                 var aggregatedEventsPerFunction = from item in metricsEventsList
-                                                  group item by item.FunctionName into FunctionGroups
+                                                  group item by item.FunctionName into functionGroups
                                                   select new
                                                   {
-                                                      FunctionName = FunctionGroups.Key,
-                                                      StartedCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
-                                                      FailedCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
-                                                      SucceededCount = Convert.ToUInt64(FunctionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
-                                                      TotalExectionTimeInMs = Convert.ToUInt64(FunctionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
+                                                      FunctionName = functionGroups.Key,
+                                                      StartedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
+                                                      FailedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
+                                                      SucceededCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
+                                                      TotalExectionTimeInMs = Convert.ToUInt64(functionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
                                                   };
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
@@ -497,38 +523,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
 
                 public string Name { get; private set; }
+
                 public Guid InvocationId { get; private set; }
+
                 public DateTime StartTime { get; private set; }
+
                 public ExecutionStage ExecutionStage { get; set; }
+
                 public DateTime EndTime { get; set; }
+
                 public bool Success { get; set; }
             }
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    // flush any outstanding events
-                    TimerFlush(state: null);
-
-                    if (_metricsFlushTimer != null)
-                    {
-                        _metricsFlushTimer.Dispose();
-                    }
-                }
-
-                _disposed = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
     }
 }

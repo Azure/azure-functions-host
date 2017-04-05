@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TestBlobName = "testBlob";
 
                 // write the test blob before the host starts, so it gets picked
-                // up relatively quickly by the blob trigger test               
+                // up relatively quickly by the blob trigger test
                 CloudBlockBlob inputBlobTrigger = TestInputContainer.GetBlockBlobReference(TestBlobTriggerName);
                 inputBlobTrigger.UploadText(TestBlobTriggerContents);
 

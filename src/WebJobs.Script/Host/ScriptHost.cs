@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
 
@@ -72,8 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
         }
-
-        public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
         public event EventHandler IsPrimaryChanged;
 
@@ -104,24 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual Collection<FunctionDescriptor> Functions { get; private set; }
 
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
-
-        /// <summary>
-        /// Returns true if the specified name is the name of a known function,
-        /// regardless of whether the function is in error.
-        /// </summary>
-        /// <param name="name">The name of the function to check for.</param>
-        /// <returns></returns>
-        public bool IsFunction(string name)
-        {
-            if (!string.IsNullOrEmpty(name) &&
-                (Functions.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) ||
-                FunctionErrors.ContainsKey(name)))
-            {
-                return true;
-            };
-
-            return false;
-        }
 
         public virtual bool IsPrimary
         {
@@ -168,6 +149,24 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal DateTime LastDebugNotify { get; set; }
+
+        /// <summary>
+        /// Returns true if the specified name is the name of a known function,
+        /// regardless of whether the function is in error.
+        /// </summary>
+        /// <param name="name">The name of the function to check for.</param>
+        /// <returns>True if the name matches a function; otherwise, false.</returns>
+        public bool IsFunction(string name)
+        {
+            if (!string.IsNullOrEmpty(name) &&
+                (Functions.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) ||
+                FunctionErrors.ContainsKey(name)))
+            {
+                return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Notifies this host that it should be in debug mode.
@@ -323,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 Task<BlobLeaseManager> blobManagerCreation = null;
                 if (storageString == null)
                 {
-                    // Disable core storage 
+                    // Disable core storage
                     ScriptConfig.HostConfig.StorageConnectionString = null;
                     blobManagerCreation = Task.FromResult<BlobLeaseManager>(null);
                 }
@@ -373,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
-                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal 
+                // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
                 // and subscribe for change notifications.
                 _blobLeaseManager = blobManagerCreation.GetAwaiter().GetResult();
                 if (_blobLeaseManager != null)
@@ -436,8 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     ctorInfo,
                     new object[] { scriptConfig.FunctionTimeout.ToString() },
                     propertyInfos,
-                    propertyValues
-                );
+                    propertyValues);
 
                 customAttributes.Add(timeoutBuilder);
             }

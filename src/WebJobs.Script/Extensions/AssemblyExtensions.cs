@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class AssemblyExtensions
     {
-        private readonly static ConcurrentDictionary<Assembly, string> _codeBaseMapping = new ConcurrentDictionary<Assembly, string>();
+        private static readonly ConcurrentDictionary<Assembly, string> _codeBaseMapping = new ConcurrentDictionary<Assembly, string>();
 
         public static bool MapCodeBase(this Assembly assembly, string codeBasePath)
         {

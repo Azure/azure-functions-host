@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return manager.State == ScriptHostState.Running;
                 });
 
-                var request = new HttpRequestMessage(HttpMethod.Get, String.Format("http://localhost/api/httptrigger-{0}", fixture));
+                var request = new HttpRequestMessage(HttpMethod.Get, string.Format("http://localhost/api/httptrigger-{0}", fixture));
                 FunctionDescriptor function = manager.GetHttpFunctionOrNull(request);
 
                 SynchronizationContext currentContext = SynchronizationContext.Current;
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     var requestThread = new Thread(() =>
                     {
-                        var context = new SingleThreadSynchronizationContext();
+                        var context = new SingleThreadedSynchronizationContext();
                         SynchronizationContext.SetSynchronizationContext(context);
 
                         manager.HandleRequestAsync(function, request, CancellationToken.None)

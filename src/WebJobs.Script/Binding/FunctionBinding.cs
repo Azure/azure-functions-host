@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private static bool TryParseFunctionBinding(ScriptHostConfiguration config, JObject metadata, out FunctionBinding functionBinding)
         {
-            functionBinding = null;            
+            functionBinding = null;
 
             ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
             ScriptBinding scriptBinding = null;
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         {
                             stringValue = value.ToString();
                         }
-                        
+
                         bytes = Encoding.UTF8.GetBytes(stringValue);
                     }
                     converted = bytes;

@@ -9,14 +9,15 @@ using System.Threading;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
-    internal sealed class SingleThreadSynchronizationContext : SynchronizationContext
+    internal sealed class SingleThreadedSynchronizationContext : SynchronizationContext
     {
         private readonly ConcurrentQueue<Tuple<SendOrPostCallback, object>> _workItems =
             new ConcurrentQueue<Tuple<SendOrPostCallback, object>>();
+
         private readonly bool _runOnEmptyQueue;
         private bool _stopped;
 
-        public SingleThreadSynchronizationContext(bool runOnEmptyQueue = false)
+        public SingleThreadedSynchronizationContext(bool runOnEmptyQueue = false)
         {
             _runOnEmptyQueue = runOnEmptyQueue;
         }

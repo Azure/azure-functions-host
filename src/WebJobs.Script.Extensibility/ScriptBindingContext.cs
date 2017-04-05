@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
     public class ScriptBindingContext
     {
         /// <summary>
-        /// Constructs a new instance.
+        /// Initializes a new instance of the <see cref="ScriptBindingContext"/> class.
         /// </summary>
         /// <param name="bindingMetadata">The metadata for the binding.</param>
         public ScriptBindingContext(JObject bindingMetadata)
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// Gets the data type for the binding.
         /// </summary>
         public string DataType { get; private set; }
-        
+
         /// <summary>
         /// Gets the cardinality for the binding.
         /// </summary>
@@ -83,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <typeparam name="TEnum">The type of the enum.</typeparam>
         /// <param name="name">The metadata property name.</param>
         /// <param name="defaultValue">Optional default value to use if the value is not present.</param>
-        /// <returns></returns>
         public TEnum GetMetadataEnumValue<TEnum>(string name, TEnum defaultValue = default(TEnum)) where TEnum : struct
         {
             string rawValue = GetMetadataValue<string>(name);
@@ -110,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <typeparam name="TValue">The type of the value.</typeparam>
         /// <param name="name">The metadata property name.</param>
         /// <param name="defaultValue">Optional default value to use if the value is not present.</param>
-        /// <returns></returns>
+        /// <returns>The metadata value.</returns>
         public TValue GetMetadataValue<TValue>(string name, TValue defaultValue = default(TValue))
         {
             JToken value = null;

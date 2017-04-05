@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
 
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            
+
             _testController = new KeysController(_managerMock.Object, _secretsManagerMock.Object, traceWriter);
 
             // setup some test functions
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var key = new Key("key2", "secret2");
             var keyOperationResult = new KeyOperationResult(key.Value, OperationResult.Updated);
             _secretsManagerMock.Setup(p => p.AddOrUpdateFunctionSecretAsync(key.Name, key.Value, "ErrorFunction", ScriptSecretsType.Function)).ReturnsAsync(keyOperationResult);
-            
+
             var result = (OkNegotiatedContentResult<ApiModel>)(await _testController.Put("ErrorFunction", key.Name, key));
             var content = (JObject)result.Content;
             Assert.Equal("key2", content["name"]);

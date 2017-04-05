@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class ExtensionSharedAssemblyProvider : ISharedAssemblyProvider
     {
         private readonly ICollection<ScriptBindingProvider> _bindingProviders;
-        
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>

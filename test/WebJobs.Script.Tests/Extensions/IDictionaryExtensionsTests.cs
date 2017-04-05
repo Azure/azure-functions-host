@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, result);
             Assert.True(dictionaryWithDuplicates.TryGetValue<int>("baz", out result, ignoreCase: true));
             Assert.Equal(5, result);
-            
+
             // ignoreCase = false (default)
             Assert.True(dictionaryWithDuplicates.TryGetValue<int>("Foo", out result));
             Assert.True(dictionaryWithDuplicates.TryGetValue<int>("foo", out result));

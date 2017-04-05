@@ -66,20 +66,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 IsEncrypted = true
             };
         }
-
-        //private static string GetKeyIdFromPayload(string encryptedValue)
-        //{
-        //    // Payload format details at:
-        //    // https://docs.asp.net/en/latest/security/data-protection/implementation/authenticated-encryption-details.html
-
-        //    byte[] encryptedPayload = WebEncoders.Base64UrlDecode(encryptedValue);
-
-        //    if (encryptedValue.Length < 20)
-        //    {
-        //        throw new CryptographicException("Invalid cryptographic payload. Unable to extract key id.");
-        //    }
-
-        //    return new Guid(encryptedPayload.Skip(4).Take(16).ToArray()).ToString();
-        //}
     }
 }

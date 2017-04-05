@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string SwaggerFileName = "swagger.json";
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
-        public const string SwaggerDirectoryName = "swagger";        
-        public const string DocumentationResourceName = ".azurefunctions.swagger";        
+        public const string SwaggerDirectoryName = "swagger";
+        public const string DocumentationResourceName = ".azurefunctions.swagger";
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

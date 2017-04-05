@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
     public abstract class ScriptBinding
     {
         /// <summary>
-        /// Constructs a new instance.
+        /// Initializes a new instance of the <see cref="ScriptBinding"/> class.
         /// </summary>
         /// <param name="context">The binding context.</param>
         protected ScriptBinding(ScriptBindingContext context)
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// Gets the collection of <see cref="Attribute"/>s that should
         /// be applied to the binding.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The collection of attributes.</returns>
         public abstract Collection<Attribute> GetAttributes();
     }
 }

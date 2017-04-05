@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 stream.Write(inputBytes, 0, inputBytes.Length);
             }
-            
+
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(name);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("EventHubSender", arguments);
 
-            // Second, there's an EventHub trigger listener on the events which will write a blob. 
+            // Second, there's an EventHub trigger listener on the events which will write a blob.
             // Once the blob is written, we know both sender & listener are working.
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testData);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
@@ -1075,7 +1075,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // See https://github.com/tjanczuk/edge/issues/325.
             // This ensures the workaround is working
 
-            // we're not going to await this call as it may hang if there is 
+            // we're not going to await this call as it may hang if there is
             // a regression, instead, monitor for IsCompleted below.
             JObject input = new JObject
             {

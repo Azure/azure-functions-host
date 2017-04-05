@@ -11,7 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class FunctionInvocationContext
     {
         public ExecutionContext ExecutionContext { get; set; }
+
         public Binder Binder { get; set; }
+
         public TraceWriter TraceWriter { get; set; }
     }
 }

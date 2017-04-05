@@ -10,7 +10,7 @@ namespace WebJobs.Script.Tests
     {
         public TempDirectory()
             : this(System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.IO.Path.GetRandomFileName()))
-        {            
+        {
         }
 
         public TempDirectory(string path)

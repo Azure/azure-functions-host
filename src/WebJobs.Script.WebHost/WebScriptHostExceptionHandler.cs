@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class WebScriptHostExceptionHandler : IWebJobsExceptionHandler
     {
         private ScriptHostManager _manager;
+
         public WebScriptHostExceptionHandler(ScriptHostManager manager)
         {
             if (manager == null)

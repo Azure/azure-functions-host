@@ -4,7 +4,7 @@
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     /// <summary>
-    /// Defines an interface for emitting metric events from the 
+    /// Defines an interface for emitting metric events from the
     /// script runtime for later aggregation and reporting.
     /// </summary>
     public interface IMetricsLogger

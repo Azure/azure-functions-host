@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// Gets the raw binding metadata (after name resolution has been applied
+        /// Gets or sets the raw binding metadata (after name resolution has been applied
         /// to all values).
         /// </summary>
         public JObject Raw { get; set; }
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 case "httptrigger":
                     bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
-                    break;             
+                    break;
                 default:
                     bindingMetadata = raw.ToObject<BindingMetadata>();
                     break;

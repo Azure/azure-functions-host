@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 case ScriptType.CSharp:
                     return new CSharpCompilationService(metadataResolver, OptimizationLevel);
                 case ScriptType.FSharp:
-                    return new FSharpCompiler(metadataResolver, OptimizationLevel, _traceWriter);
+                    return new FSharpCompilationService(metadataResolver, OptimizationLevel, _traceWriter);
                 case ScriptType.DotNetAssembly:
                     return new RawAssemblyCompilationService();
                 default:

@@ -73,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Extensibility.Tests
         [Fact]
         public void GetMetadataEnumValue_Converts()
         {
-
             JObject metadata = new JObject
             {
                 { "name", "TestFunc" },
@@ -92,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Extensibility.Tests
         [Fact]
         public void GetMetadataEnumValue_ThrowsHelpfulError()
         {
-
             JObject metadata = new JObject
             {
                 { "name", "TestFunc" },

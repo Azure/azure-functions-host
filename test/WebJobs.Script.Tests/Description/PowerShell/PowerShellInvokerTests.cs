@@ -80,7 +80,7 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
             string result = PowerShellFunctionInvoker.GetStackTrace(_fixture.TestFunctionName, scriptStackTrace, scriptFileName);
             Assert.Equal(expectedScriptStackTrace, result, StringComparer.OrdinalIgnoreCase);
         }
-        
+
         public class Fixture : IDisposable
         {
             public Fixture()

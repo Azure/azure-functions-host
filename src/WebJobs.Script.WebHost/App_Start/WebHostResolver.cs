@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         folders.Add(Path.Combine(home, @"site\tools"));
 
                         string path = Environment.GetEnvironmentVariable("PATH");
-                        string additionalPaths = String.Join(";", folders);
+                        string additionalPaths = string.Join(";", folders);
 
                         // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
                         if (!path.Contains(additionalPaths))

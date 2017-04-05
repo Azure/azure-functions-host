@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestBindingProvider : ScriptBindingProvider
         {
-            public TestBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+            public TestBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
                 : base(config, hostMetadata, traceWriter)
             {
             }

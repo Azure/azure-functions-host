@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var blobMock = new Mock<ICloudBlob>();
             blobMock.Setup(b => b.AcquireLeaseAsync(It.IsAny<TimeSpan>(), It.IsAny<string>()))
-                .Returns(() => Task.FromResult(hostId));            
+                .Returns(() => Task.FromResult(hostId));
 
             using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
             {
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TraceEvent acquisitionEvent = traceWriter.Traces.First();
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
-        }      
+        }
 
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseRenewalFails()
@@ -265,7 +265,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var manager = new BlobLeaseManager(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-                // Make sure we have enough time to trace the renewal
                 await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
             }
 
@@ -273,9 +272,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
 
-            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();            
+            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
             string pattern = @"Failed to renew host lock lease: Another host has acquired the lease. The last successful renewal completed at (.+) \([0-9]+ milliseconds ago\) with a duration of [0-9]+ milliseconds.";
-            Assert.True(Regex.IsMatch(renewalEvent.Message, pattern), $"Expected trace event {pattern} not found.");            
+            Assert.True(Regex.IsMatch(renewalEvent.Message, pattern), $"Expected trace event {pattern} not found.");
             Assert.Equal(TraceLevel.Info, renewalEvent.Level);
         }
 

@@ -27,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes. 
-        // Test with timers: 
+        // Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes.
+        // Test with timers:
         [Fact]
         public async Task UpdateFileAndRestart()
         {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (var manager = new ScriptHostManager(config))
             {
-                // Background task to run while the main thread is pumping events at RunAndBlock(). 
+                // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
                 {
                     // don't start until the manager is running
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (var manager = new ScriptHostManager(config))
             {
-                // Background task to run while the main thread is pumping events at RunAndBlock(). 
+                // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
                 {
                     // don't start until the manager is running
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         // Update the manifest for the timer function
         // - this will cause a file touch which cause ScriptHostManager to notice and update
-        // - set to a new output location so that we can ensure we're getting new changes. 
+        // - set to a new output location so that we can ensure we're getting new changes.
         private static CloudBlockBlob UpdateOutputName(string prev, string hint, EndToEndTestFixture fixture)
         {
             string name = hint;

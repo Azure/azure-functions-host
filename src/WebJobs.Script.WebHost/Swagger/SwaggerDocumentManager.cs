@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     HttpOperationInfo httpOperationInfo = new HttpOperationInfo(endpoint, httpOperation)
                     {
-                        InputParameters = inputParameters                        
+                        InputParameters = inputParameters
                     };
                     endpointsOperationData.Add(httpOperation, httpOperationInfo);
                 }

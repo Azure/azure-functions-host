@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected const string TestSystemKeyName2 = "syskey2";
         protected const string TestSystemKeyValue2 = "sysdef123";
         protected const string TestMasterKeyValue = "abc123";
-        
+
         private HttpActionContext _actionContext;
         private HostSecretsInfo _hostSecrets;
         private Dictionary<string, string> _functionSecrets;
@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         protected HttpConfiguration HttpConfig { get; }
+
         protected Mock<ISecretManager> MockSecretManager { get; }
 
         [Fact]
@@ -241,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 request = new HttpRequestMessage();
                 request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestFunctionKeyValue1);
 
-                var context = new SingleThreadSynchronizationContext(true);
+                var context = new SingleThreadedSynchronizationContext(true);
                 SynchronizationContext.SetSynchronizationContext(context);
 
                 AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: "TestFunction")

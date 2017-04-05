@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockResolver = new Mock<IFunctionMetadataResolver>();
             mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
               .Returns(new TestAssembly(new AssemblyName("MyTestAssembly")));
-                
+
             resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter), traceWriter);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter);
 

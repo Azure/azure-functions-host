@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return await GetFunctionTargetAsync(++attemptCount);
         }
 
-        void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
             {
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             private void CancellationRequested()
             {
-                // We'll give the factory some time to process cancellation, 
+                // We'll give the factory some time to process cancellation,
                 // then dispose of our token
                 Task.Delay(30000)
                     .ContinueWith(t =>

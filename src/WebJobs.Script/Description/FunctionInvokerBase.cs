@@ -18,10 +18,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [CLSCompliant(false)]
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
+        private readonly Stopwatch _stopwatch = new Stopwatch();
         private AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
-        private readonly Stopwatch _stopwatch = new Stopwatch();
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// All unhandled invocation exceptions will flow through this method.
         /// We format the error and write it to our function specific <see cref="TraceWriter"/>.
         /// </summary>
-        /// <param name="ex"></param>
+        /// <param name="ex">The exception instance.</param>
         public virtual void OnError(Exception ex)
         {
             string error = Utility.FlattenException(ex);
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return false;
-        }        
+        }
 
         public async Task Invoke(object[] parameters)
         {

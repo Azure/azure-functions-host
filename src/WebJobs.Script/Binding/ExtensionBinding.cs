@@ -182,7 +182,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         internal class AttributeBuilderInfo
         {
             public ConstructorInfo Constructor { get; set; }
+
             public object[] ConstructorArgs { get; set; }
+
             public IDictionary<PropertyInfo, object> Properties { get; set; }
         }
     }

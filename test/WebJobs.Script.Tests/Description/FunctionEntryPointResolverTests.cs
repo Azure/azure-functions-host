@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             })) as CompilationErrorException;
 
             var diagnostic = exc.Diagnostics.First();
-            Assert.Equal(DotNetConstants.MissingFunctionEntryPointCompilationCode, diagnostic.Id); 
+            Assert.Equal(DotNetConstants.MissingFunctionEntryPointCompilationCode, diagnostic.Id);
         }
 
         [Fact]

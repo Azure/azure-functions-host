@@ -107,7 +107,7 @@ public static void Run(string id, out string output)
     output = string.Empty;
 }";
 
-            // Diferent formatting, qualified name, not using alias 
+            // Diferent formatting, qualified name, not using alias
             var function2 = @"using System;
 public static void Run( System.String id , 
 out String output )

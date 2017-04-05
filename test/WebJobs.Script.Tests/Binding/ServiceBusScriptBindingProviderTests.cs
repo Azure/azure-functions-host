@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ServiceBusScriptBindingProvider _provider;
 
         public ServiceBusScriptBindingProviderTests()
-        { 
+        {
             JobHostConfiguration config = new JobHostConfiguration();
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             JObject hostMetadata = new JObject();

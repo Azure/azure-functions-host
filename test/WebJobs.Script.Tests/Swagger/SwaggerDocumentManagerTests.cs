@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class SwaggerDocumentManagerTests
     {
         private ScriptHostConfiguration _scriptConfig;
+
         public SwaggerDocumentManagerTests()
         {
             _scriptConfig = new ScriptHostConfiguration();
@@ -128,8 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             // Act
-            var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);            
-                        
+            var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
+
             var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
 
             string hostName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);

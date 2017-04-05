@@ -26,6 +26,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>..\..\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -35,6 +36,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>..\..\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -394,23 +396,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiHubTestHelper.cs" />
+    <Compile Include="Controllers\Keys\DeleteFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostSystemKeysScenario.cs" />
     <Compile Include="Controllers\Keys\GetHostSystemKeysScenario.cs" />
+    <Compile Include="Controllers\Keys\PostFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\PostHostSystemKeyScenario.cs" />
+    <Compile Include="Controllers\Keys\PutFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\PutHostSystemKeyScenario.cs" />
     <Compile Include="FakeTabularConnectorAdapter.cs" />
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="NodeContentTests.cs" />
     <Compile Include="Controllers\ControllerScenarioTestFixture.cs" />
-    <Compile Include="Controllers\Keys\DeleteFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\GetFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\GetHostFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\KeyManagementFixture.cs" />
-    <Compile Include="Controllers\Keys\PostFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PostHostFunctionKeyScenario.cs" />
-    <Compile Include="Controllers\Keys\PutFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PutHostFunctionKeyScenario.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
     <Compile Include="RawAssemblyEndToEndTests.cs" />
@@ -560,6 +563,9 @@
     <Content Include="TestScripts\Python\TimeoutSync\run.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <AdditionalFiles Include="..\..\stylecop.json">
+      <Link>stylecop.json</Link>
+    </AdditionalFiles>
     <None Include="TestScripts\DotNet\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1162,6 +1168,9 @@
   <ItemGroup>
     <Analyzer Include="..\..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />
     <Analyzer Include="..\..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
+    <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\Newtonsoft.Json.dll" />
+    <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
+    <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
@@ -1175,10 +1184,8 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets'))" />
-    <Error Condition="!Exists('..\..\packages\StyleCop.MSBuild.4.7.54.0\build\StyleCop.MSBuild.Targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\StyleCop.MSBuild.4.7.54.0\build\StyleCop.MSBuild.Targets'))" />
     <Error Condition="!Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets'))" />
   </Target>
-  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.54.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.54.0\build\StyleCop.MSBuild.Targets')" />
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

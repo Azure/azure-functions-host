@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
         public async Task<string> GetReceiverConfigAsync(string name, string id)
         {
             // "id" will be a comma delimited string with the function name
-            // and an optional client ID. We ignore the "name" parameter since 
+            // and an optional client ID. We ignore the "name" parameter since
             // we only allow a function to be mapped to a single receiver
             string[] webhookIdParts = id.Split(new[] { ',' }, 2, StringSplitOptions.RemoveEmptyEntries);
 

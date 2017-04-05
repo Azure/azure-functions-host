@@ -38,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     File.Delete(path);
                     return true;
                 }
-                return false; 
+                return false;
             });
         }
 
-        public async static Task WriteAsync(string path, string contents, Encoding encoding = null)
+        public static async Task WriteAsync(string path, string contents, Encoding encoding = null)
         {
             if (path == null)
             {
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public async static Task<string> ReadAsync(string path, Encoding encoding = null)
+        public static async Task<string> ReadAsync(string path, Encoding encoding = null)
         {
             if (path == null)
             {

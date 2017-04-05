@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static void SetDefaultConnectionFactory()
         {
-            // Setup the default ApiHub connection factory to use an actual SqlAzure connector 
+            // Setup the default ApiHub connection factory to use an actual SqlAzure connector
             // if the AzureWebJobsSql environment variable specifies the connection string,
             // otherwise use a fake tabular connector.
             var connectionString = SettingsManager.GetSetting(Key);
@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class SampleEntity
         {
             public int Id { get; set; }
+
             public string Text { get; set; }
         }
 

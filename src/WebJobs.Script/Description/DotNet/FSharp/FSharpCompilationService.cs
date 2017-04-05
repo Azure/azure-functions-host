@@ -22,7 +22,7 @@ using static Microsoft.Azure.WebJobs.Script.FileUtility;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class FSharpCompiler : ICompilationService
+    internal class FSharpCompilationService : ICompilationService
     {
         private static readonly string[] FileTypes = { ".fs", ".fsx", ".dll", ".exe", ".fsi" };
         private readonly IFunctionMetadataResolver _metadataResolver;
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Regex _hashRRegex;
         private readonly TraceWriter _traceWriter;
 
-        public FSharpCompiler(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, TraceWriter traceWriter)
+        public FSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, TraceWriter traceWriter)
         {
             _metadataResolver = metadataResolver;
             _optimizationLevel = optimizationLevel;
@@ -178,15 +178,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 else
                 {
-                    _traceWriter.Verbose($"F# compilation failed with arguments: { string.Join(" ", otherFlags) }");
+                    _traceWriter.Verbose($"F# compilation failed with arguments: {string.Join(" ", otherFlags)}");
                 }
             }
             finally
             {
                 DeleteDirectoryAsync(scriptPath, recursive: true)
-                .ContinueWith(t => t.Exception.Handle(e =>
+                .ContinueWith(
+                    t => t.Exception.Handle(e =>
                 {
-                    _traceWriter.Warning($"Unable to delete F# compilation file: { e.ToString() }");
+                    _traceWriter.Warning($"Unable to delete F# compilation file: {e.ToString()}");
                     return true;
                 }), TaskContinuationOptions.OnlyOnFaulted);
             }

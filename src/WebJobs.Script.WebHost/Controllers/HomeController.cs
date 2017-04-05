@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         public HttpResponseMessage Get()
         {
-            return IsHomepageDisabled 
+            return IsHomepageDisabled
                 ? new HttpResponseMessage(HttpStatusCode.NoContent)
                 : new HttpResponseMessage(HttpStatusCode.OK)
                 {

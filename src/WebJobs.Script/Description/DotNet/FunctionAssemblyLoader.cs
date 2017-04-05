@@ -12,8 +12,8 @@ using Microsoft.Azure.WebJobs.Host;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
-    /// Manages runtime assembly resolution for managed code functions, 
-    /// loading assemblies from their respective <see cref="FunctionAssemblyLoadContext"/>. 
+    /// Manages runtime assembly resolution for managed code functions,
+    /// loading assemblies from their respective <see cref="FunctionAssemblyLoadContext"/>.
     /// </summary>
     public class FunctionAssemblyLoader : IDisposable
     {
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     string assemblyName = ((AppDomain)sender).ApplyPolicy(args.Name);
 
-                    // If after applying the current policy, we now have a different target assembly name, attempt to load that 
+                    // If after applying the current policy, we now have a different target assembly name, attempt to load that
                     // assembly
                     if (string.Compare(assemblyName, args.Name) != 0)
                     {
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 context = GetFunctionContext(functionName);
 
-                // If the context is for a different assembly 
+                // If the context is for a different assembly
                 if (context != null && context.FunctionAssembly != requestingAssembly)
                 {
                     return null;

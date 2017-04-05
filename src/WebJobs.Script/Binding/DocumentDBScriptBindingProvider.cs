@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class DocumentDBScriptBindingProvider : ScriptBindingProvider
     {
-        /// <inheritdoc/>
         public DocumentDBScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {

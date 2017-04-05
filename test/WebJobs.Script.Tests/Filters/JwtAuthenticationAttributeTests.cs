@@ -33,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         public async Task AuthenticateAsync_WithInvalidToken_DoesNotSetAuthorizationLevel()
         {
             Tuple<string, string> identifiers = GetTokenIdentifiers();
-            
-            await AuthenticateAsync(identifiers.Item1, 
-                identifiers.Item2, 
-                DateTime.UtcNow.AddMinutes(-10), // Our default clock skew setting is 5 minutes, 
+
+            await AuthenticateAsync(identifiers.Item1,
+                identifiers.Item2,
+                DateTime.UtcNow.AddMinutes(-10), // Our default clock skew setting is 5 minutes,
                 AuthorizationLevel.Anonymous);
         }
 

@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.IO
         private bool _disposed = false;
         private int _recovering = 0;
 
-        public event EventHandler<FileSystemEventArgs> Changed;
-
         public AutoRecoveringFileSystemWatcher(string path, string filter = "*.*",
             bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, TraceWriter traceWriter = null)
         {
@@ -51,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.IO
         {
             Dispose(false);
         }
+
+        public event EventHandler<FileSystemEventArgs> Changed;
 
         private void InitializeWatcher()
         {

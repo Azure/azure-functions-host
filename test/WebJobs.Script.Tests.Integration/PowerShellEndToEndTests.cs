@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TestBlobName = Guid.NewGuid().ToString();
 
                 // write the test blob before the host starts, so it gets picked
-                // up relatively quickly by the blob trigger test               
+                // up relatively quickly by the blob trigger test
                 CloudBlockBlob inputBlob = TestInputContainer.GetBlockBlobReference(TestBlobName);
                 inputBlob.UploadText(TestBlobContents);
             }

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static List<IScriptSecretSerializer> _secretFormatters = new List<IScriptSecretSerializer>
         {
             new ScriptSecretSerializerV0(),
-           _defaultSerializer
+            _defaultSerializer
         };
 
         internal static IScriptSecretSerializer DefaultSerializer => _defaultSerializer;

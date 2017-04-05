@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        public ParameterDescriptor(string name, Type type, Collection<CustomAttributeBuilder> attributes) 
+        public ParameterDescriptor(string name, Type type, Collection<CustomAttributeBuilder> attributes)
         {
             Name = name;
             Type = type;

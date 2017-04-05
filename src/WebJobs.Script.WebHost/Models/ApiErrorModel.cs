@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         {
             StatusCode = status;
         }
+
         public ApiErrorModel()
         {
             Id = Guid.NewGuid().ToString();

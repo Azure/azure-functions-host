@@ -234,6 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
         }
+
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\FSharp";
@@ -335,13 +336,16 @@ namespace SecondaryDependency
         public class TestInput
         {
             public int Id { get; set; }
+
             public string Value { get; set; }
         }
 
         public class ScenarioInput
         {
             public string Scenario { get; set; }
+
             public string Container { get; set; }
+
             public string Value { get; set; }
         }
     }

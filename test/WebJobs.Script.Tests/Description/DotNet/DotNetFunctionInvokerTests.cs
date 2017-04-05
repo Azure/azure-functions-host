@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Compilation_WithMissingBindingArguments_LogsAF004Warning()
         {
-            // Create the compilation exception we expect to throw during the reload           
+            // Create the compilation exception we expect to throw during the reload
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(rootFunctionsFolder);
 
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Compilation_OnSecondaryHost_SuppressesLogs()
         {
-            // Create the compilation exception we expect to throw during the reload           
+            // Create the compilation exception we expect to throw during the reload
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(rootFunctionsFolder);
 
@@ -289,11 +289,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class RunDependencies
         {
             public Mock<ScriptHost> Host { get; set; }
+
             public Mock<IFunctionEntryPointResolver> EntrypointResolver { get; set; }
+
             public Mock<ICompilation> Compilation { get; set; }
+
             public Mock<ICompilationService> CompilationService { get; set; }
+
             public Mock<ICompilationServiceFactory> CompilationServiceFactory { get; set; }
+
             public Mock<ITraceWriterFactory> TraceWriterFactory { get; set; }
+
             public TestTraceWriter TraceWriter { get; set; }
         }
     }

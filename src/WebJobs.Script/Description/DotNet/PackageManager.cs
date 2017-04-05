@@ -158,7 +158,7 @@ Lock file hash: {currentLockFileHash}");
 
             if (!File.Exists(projectFilePath))
             {
-                // If there's no project.json, we can just return from here 
+                // If there's no project.json, we can just return from here
                 // as there's nothing to restore
                 return false;
             }
@@ -167,14 +167,14 @@ Lock file hash: {currentLockFileHash}");
 
             if (!File.Exists(lockFilePath))
             {
-                // If have a project.json and no lock file, we need to 
+                // If have a project.json and no lock file, we need to
                 // restore the packages, just return true and skip validation
                 return true;
             }
 
             // This mimics the logic used by Nuget to validate a lock file against a given project.json file.
             // In order to determine whether we have a match, we:
-            //  - Read the project frameworks and their dependencies, 
+            //  - Read the project frameworks and their dependencies,
             //      extracting the appropriate version range using the lock file format
             //  - Read the lock file depenency groups
             //  - Ensure that each project dependency matches a dependency in the lock file for the

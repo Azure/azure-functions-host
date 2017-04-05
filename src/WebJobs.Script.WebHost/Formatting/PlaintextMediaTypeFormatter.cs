@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             SupportedEncodings.Add(Encoding.UTF8);
             SupportedEncodings.Add(Encoding.Unicode);
         }
+
         public override bool CanReadType(Type type)
         {
             return type == StringType;

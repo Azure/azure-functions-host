@@ -34,23 +34,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             }
 
             AuthorizationLevel requestAuthorizationLevel = actionContext.Request.GetAuthorizationLevel();
-            
+
             // If the request has not yet been authenticated, authenticate it
             if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
             {
                 // determine the authorization level for the function and set it
                 // as a request property
                 var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
-                
+
                 requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager, EvaluateKeyMatch);
                 actionContext.Request.SetAuthorizationLevel(requestAuthorizationLevel);
             }
 
             var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
 
-            if (settings.IsAuthDisabled || 
-                SkipAuthorization(actionContext) ||
-                Level == AuthorizationLevel.Anonymous)
+            if (settings.IsAuthDisabled || SkipAuthorization(actionContext) || Level == AuthorizationLevel.Anonymous)
             {
                 return;
             }
@@ -119,8 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             return AuthorizationLevel.Anonymous;
         }
 
-        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue) 
-            => secrets != null && secrets.Values.Any(s => Key.SecretValueEquals(s, keyValue));
+        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue) => secrets != null && secrets.Values.Any(s => Key.SecretValueEquals(s, keyValue));
 
         internal static bool SkipAuthorization(HttpActionContext actionContext)
         {

@@ -28,6 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
             ScriptHostManager scriptHostManager = new ScriptHostManager(config);
             scriptHostManager.RunAndBlock();
-        }    
+        }
     }
 }

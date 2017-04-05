@@ -435,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 taskList.Add(ShortTestFunction(_metricsLogger));
             }
-            
+
             await AwaitFunctionTasks(taskList);
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
@@ -452,7 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await AwaitFunctionTasks(taskList);
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
-            
+
             // All events should have the same executionId
             var invalidArgsList = _functionExecutionEventArguments.Where(e => e.ExecutionId != _functionExecutionEventArguments[0].ExecutionId).ToList();
             Assert.True(invalidArgsList.Count == 0,
@@ -464,6 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string.Format("Each function invocation should emit atleast two etw events. List:{0}", SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments)));
 
             var uniqueInvocationIds = _functionExecutionEventArguments.Select(i => i.InvocationId).Distinct().ToList();
+
             // Each invocation should have atleast one 'InProgress' event
             var invalidInvocationIds = uniqueInvocationIds.Where(
                 i => !_functionExecutionEventArguments.Exists(arg => arg.InvocationId == i && arg.ExecutionStage == ExecutionStage.Finished.ToString())
@@ -500,10 +501,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task MetricsEventManager_NonParallelExecutionsShouldHaveDifferentExecutionId()
         {
             await ShortTestFunction(_metricsLogger);
+
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
             await ShortTestFunction(_metricsLogger);
+
             // Let's make sure that the tracker is not running anymore
             await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
 
@@ -548,7 +551,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             FunctionExecutionEventArguments invalidElement = null;
             string errorMessage = null;
-            
+
             Assert.True(
                 ValidateFunctionExecutionEventArgumentsList(list, noOfFuncExecutions, out invalidElement, out errorMessage),
                 string.Format("ErrorMessage:{0} InvalidElement:{1} List:{2}", errorMessage, invalidElement.ToString(), SerializeFunctionExecutionEventArguments(list)));
@@ -568,7 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             for (int currentIndex = 0; currentIndex < functionValidationTrackerList.Count; currentIndex++)
             {
                 // The element has not already been processed
-                if (!functionValidationTrackerList[currentIndex].HasBeenProcessed) 
+                if (!functionValidationTrackerList[currentIndex].HasBeenProcessed)
                 {
                     var functionExecutionArgs = functionValidationTrackerList[currentIndex].EventArguments;
 
@@ -589,7 +592,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             // The element has not already been processed for another function execution and related to the current function invocation event
                             if (!functionValidationTrackerList[secondIndex].HasBeenProcessed
                                 && functionValidationTrackerList[secondIndex].EventArguments.FunctionName == functionExecutionArgs.FunctionName
-                                && functionValidationTrackerList[secondIndex].EventArguments.InvocationId == functionExecutionArgs.InvocationId) 
+                                && functionValidationTrackerList[secondIndex].EventArguments.InvocationId == functionExecutionArgs.InvocationId)
                             {
                                 relatedEventIds.Add(secondIndex);
                                 if (functionValidationTrackerList[secondIndex].EventArguments.ExecutionStage == ExecutionStage.Finished.ToString())
@@ -620,6 +623,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                         var minEventsExpected = Math.Floor((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) - 2;
                         var maxEventsExpected = Math.Ceiling((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) + 2;
+
                         // We should see atleast one InProgress event if it takes more than 5 seconds
                         if (lastEvent.ExecutionTimeSpan >= MinimumLongRunningDurationInMs
                             && (relatedEventIds.Count < minEventsExpected
@@ -691,6 +695,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metricsLogger.EndEvent(functionEvent);
         }
 
+        private static string SerializeFunctionExecutionEventArguments(List<FunctionExecutionEventArguments> args)
+        {
+            var stringBuffer = new StringBuilder();
+            for (int currentIndex = 0; currentIndex < args.Count; currentIndex++)
+            {
+                stringBuffer.AppendFormat("Element No:{0} Details:{1} \t", currentIndex, args[currentIndex].ToString());
+            }
+            return stringBuffer.ToString();
+        }
+
         private class FunctionEventValidationTracker<T>
         {
             public FunctionEventValidationTracker(T eventArguments)
@@ -702,16 +716,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public T EventArguments { get; set; }
 
             public bool HasBeenProcessed { get; set; }
-        }
-
-        private static string SerializeFunctionExecutionEventArguments(List<FunctionExecutionEventArguments> args)
-        {
-            var stringBuffer = new StringBuilder();
-            for (int currentIndex = 0; currentIndex < args.Count; currentIndex++)
-            {
-                stringBuffer.AppendFormat("Element No:{0} Details:{1} \t", currentIndex, args[currentIndex].ToString());
-            }
-            return stringBuffer.ToString();
         }
 
         private class FunctionExecutionEventArguments
@@ -733,12 +737,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             internal string ExecutionId { get; private set; }
+
             internal string SiteName { get; private set; }
+
             internal int Concurrency { get; private set; }
+
             internal string FunctionName { get; private set; }
+
             internal string InvocationId { get; private set; }
+
             internal string ExecutionStage { get; private set; }
+
             internal long ExecutionTimeSpan { get; private set; }
+
             internal bool Success { get; private set; }
 
             public override string ToString()

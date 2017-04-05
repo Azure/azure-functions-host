@@ -12,20 +12,20 @@ using Microsoft.Azure.WebJobs.Script.Config;
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretsRepositoryFactory : ISecretsRepositoryFactory
-    {        
+    {
         public ISecretsRepository Create(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ScriptHostConfiguration config)
-        {            
+        {
             string secretStorageType = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
-            {                
+            {
                 string siteHostId = settingsManager.AzureWebsiteDefaultSubdomain ?? config.HostConfig.HostId;
                 return new BlobStorageSecretsRepository(Path.Combine(webHostSettings.SecretsPath, "Sentinels"), storageString, siteHostId);
             }
             else
             {
                 return new FileSystemSecretsRepository(webHostSettings.SecretsPath);
-            }            
+            }
         }
     }
 }

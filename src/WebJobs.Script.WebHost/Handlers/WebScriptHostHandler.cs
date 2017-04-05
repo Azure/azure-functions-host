@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
         private readonly TimeSpan _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMs;
         private readonly HttpConfiguration _config;
- 
+
         public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = 30, int hostRunningPollIntervalMS = 500)
         {
             if (config == null)

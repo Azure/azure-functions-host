@@ -9,10 +9,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Never log to file (the default).
         /// </summary>
         Never,
+
         /// <summary>
         /// Always log to file.
         /// </summary>
         Always,
+
         /// <summary>
         /// Only log to file when in debug mode.
         /// </summary>

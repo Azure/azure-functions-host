@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     il.Emit(OpCodes.Ldc_I4, i);
                     il.Emit(OpCodes.Ldarg, i);
 
-                    // For Out and Ref types, need to do an indirection. 
+                    // For Out and Ref types, need to do an indirection.
                     if (parameter.Type.IsByRef)
                     {
                         il.Emit(OpCodes.Ldind_Ref);

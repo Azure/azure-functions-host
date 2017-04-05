@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Func<ScriptSecrets> secretsFactory = null;
 
             if (secretsType == ScriptSecretsType.Function)
-            { 
+            {
                 secretsFactory = () => new FunctionSecrets(new List<Key>());
             }
             else if (secretsType == ScriptSecretsType.Host)
@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return deleted;
         }
 
-        private async Task<KeyOperationResult> AddOrUpdateSecretAsync(ScriptSecretsType secretsType, string keyScope, 
+        private async Task<KeyOperationResult> AddOrUpdateSecretAsync(ScriptSecretsType secretsType, string keyScope,
             string secretName, string secret, Func<ScriptSecrets> secretsFactory)
         {
             OperationResult result = OperationResult.NotFound;

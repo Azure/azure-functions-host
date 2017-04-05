@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // make sure logging from within the function worked
                     // TODO: This doesn't appear to work for Powershell in AppVeyor. Need to investigate.
-                    //bool hasTestData = inProgressLogs.Any(l => l.Contains(testData));
+                    // bool hasTestData = inProgressLogs.Any(l => l.Contains(testData));
                     var expectedMessage = $"Timeout value of {testTimeout} was exceeded by function: Functions.{functionName}";
                     var traces = string.Join(Environment.NewLine, traceWriter.Traces);
                     return traces.Contains(expectedMessage);
@@ -166,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class MockExceptionHandler : IWebJobsExceptionHandler
         {
             public ICollection<ExceptionDispatchInfo> UnhandledExceptionInfos { get; } = new Collection<ExceptionDispatchInfo>();
+
             public ICollection<ExceptionDispatchInfo> TimeoutExceptionInfos { get; } = new Collection<ExceptionDispatchInfo>();
 
             public void Initialize(JobHost host)

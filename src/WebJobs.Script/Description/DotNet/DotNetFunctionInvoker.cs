@@ -381,15 +381,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Match match = Regex.Match(diagnostic.GetMessage(), messagePattern);
 
                 PackageReference package;
+
                 // If we have the assembly name argument, and it is a package assembly, add a compilation warning
                 if (match.Success && match.Groups["arg"] != null && _metadataResolver.TryGetPackageReference(match.Groups["arg"].Value, out package))
                 {
-                    string message = string.Format(CultureInfo.InvariantCulture,
+                    string message = string.Format(
+                        CultureInfo.InvariantCulture,
                         "The reference '{0}' is part of the referenced NuGet package '{1}'. Package assemblies are automatically referenced by your Function and do not require a '#r' directive.",
                         match.Groups["arg"].Value, package.Name);
 
-                    var descriptor = new DiagnosticDescriptor(DotNetConstants.RedundantPackageAssemblyReference,
-                       "Redundant assembly reference", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
+                    var descriptor = new DiagnosticDescriptor(
+                        DotNetConstants.RedundantPackageAssemblyReference,
+                        "Redundant assembly reference", message, "AzureFunctions", DiagnosticSeverity.Warning, true);
 
                     return ImmutableArray.Create(Diagnostic.Create(descriptor, diagnostic.Location));
                 }

@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(Directory.Exists(projectPath));
 
             string message = $"Project in '{projectPath}' did not return expected result.";
+
             // Using .True or .False (instead of .Equal) to trace additional information.
             if (shouldRequireRestore)
             {

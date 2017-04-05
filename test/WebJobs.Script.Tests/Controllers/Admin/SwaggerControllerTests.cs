@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
             _swaggerDocumentManagerMock = new Mock<ISwaggerDocumentManager>(MockBehavior.Strict);
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            _testController = new SwaggerController(_swaggerDocumentManagerMock.Object, _managerMock.Object, traceWriter);            
+            _testController = new SwaggerController(_swaggerDocumentManagerMock.Object, _managerMock.Object, traceWriter);
         }
 
         [Fact]
@@ -163,6 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             _swaggerDocumentManagerMock.Setup(p => p.DeleteSwaggerDocumentAsync()).Throws(new Exception("TestException"));
             Exception result = await Assert.ThrowsAsync<Exception>(() => _testController.DeleteSwaggerDocumentAsync());
             Assert.Equal("TestException", result.Message);
-        }        
+        }
     }
 }

@@ -16,10 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public FunctionDescriptor(
-            string name, 
+            string name,
             IFunctionInvoker invoker,
             FunctionMetadata metadata,
-            Collection<ParameterDescriptor> parameters, 
+            Collection<ParameterDescriptor> parameters,
             Collection<CustomAttributeBuilder> attributes)
         {
             Name = name;

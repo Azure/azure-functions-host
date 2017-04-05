@@ -21,18 +21,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public struct TestStruct
     {
         public string Name { get; set; }
+
         public string Location { get; set; }
     }
 
     public class TestPoco
     {
         public string Name { get; set; }
+
         public string Location { get; set; }
     }
 
     public class TestPocoEx : TestPoco
     {
         public int Age { get; set; }
+
         public string Phone { get; set; }
 
         public string Readonly { get; }
@@ -90,11 +93,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(4, null, null, null, "00:00:08")]
         [InlineData(5, null, null, null, "00:00:016")]
         [InlineData(6, null, null, null, "00:00:32")]
-        [InlineData(6, null, null, "00:00:20", "00:00:20")]  // test min/max
+        [InlineData(6, null, null, "00:00:20", "00:00:20")] // test min/max
         [InlineData(2, null, "00:00:10", null, "00:00:10")]
         [InlineData(6, null, "00:00:10", "00:00:20", "00:00:20")]
         [InlineData(2, null, "00:00:10", "00:00:20", "00:00:10")]
-        [InlineData(1, "00:00:00.100", null, null, "00:00:00.000")]  // changing the base unit
+        [InlineData(1, "00:00:00.100", null, null, "00:00:00.000")] // changing the base unit
         [InlineData(2, "00:00:00.100", null, null, "00:00:00.200")]
         [InlineData(3, "00:00:00.100", null, null, "00:00:00.400")]
         [InlineData(4, "00:00:00.100", null, null, "00:00:00.800")]
@@ -269,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ToJson_StripsFunctions_FromExpandoObjects()
         {
-            //{
+            // {
             //    func: () => { },
             //    nested:
             //            {
@@ -279,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //        { func: () => { } }
             //    ],
             //    value: "value"
-            //};
+            // };
 
             Action f = () => { };
             dynamic val = new ExpandoObject();

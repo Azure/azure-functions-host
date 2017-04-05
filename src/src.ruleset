@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<RuleSet Name="WebJobs SDK" Description="This rule set contains the rules that applies to sources" ToolsVersion="12.0">
+<RuleSet Name="WebJobs SDK" Description="This rule set contains the rules that applies to sources" ToolsVersion="15.0">
   <IncludeAll Action="Error" />
   <Rules AnalyzerId="Microsoft.Analyzers.ManagedCodeAnalysis" RuleNamespace="Microsoft.Rules.Managed">
     <Rule Id="CA1006" Action="None" />
@@ -8,20 +8,43 @@
     <Rule Id="CA1026" Action="None" />
     <Rule Id="CA1031" Action="None" />
     <Rule Id="CA1033" Action="None" />
+    <Rule Id="CA1062" Action="None" />
+    <Rule Id="CA1303" Action="None" />
+    <Rule Id="CA1305" Action="None" />
+    <Rule Id="CA1307" Action="None" />
     <Rule Id="CA1308" Action="None" />
     <Rule Id="CA1506" Action="None" />
     <Rule Id="CA1726" Action="None" />
+    <Rule Id="CA1800" Action="None" />
+    <Rule Id="CA2204" Action="None" />
     <Rule Id="CA2210" Action="None" />
     <Rule Id="CA2243" Action="None" />
     <Rule Id="CA904" Action="None" />
     <Rule Id="CA905" Action="None" />
     <Rule Id="CA908" Action="None" />
-    <Rule Id="CA1062" Action="None" />
-    <Rule Id="CA1303" Action="None" /> <!-- Enable when we move literals to resx -->
-    <Rule Id="CA1800" Action="None" />
-    <Rule Id="CA1307" Action="None" />
-    <Rule Id="CA1305" Action="None" />
-    <Rule Id="CA2204" Action="None" />
-    <Rule Id="CS0618" Action="None" /> <!-- Ignore Obsolete attributes for 2.0 release -->
+    <Rule Id="CS0618" Action="None" />
+  </Rules>
+  <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
+    <Rule Id="SA0001" Action="None" />
+    <Rule Id="SA1101" Action="None" />
+    <Rule Id="SA1116" Action="None" />
+    <Rule Id="SA1117" Action="None" />
+    <Rule Id="SA1127" Action="None" />
+    <Rule Id="SA1128" Action="None" />
+    <Rule Id="SA1139" Action="None" />
+    <Rule Id="SA1202" Action="None" />
+    <Rule Id="SA1204" Action="None" />
+    <Rule Id="SA1308" Action="None" />
+    <Rule Id="SA1309" Action="None" />
+    <Rule Id="SA1314" Action="None" />
+    <Rule Id="SA1402" Action="None" />
+    <Rule Id="SA1404" Action="None" />
+    <Rule Id="SA1405" Action="None" />
+    <Rule Id="SA1413" Action="None" />
+    <Rule Id="SA1512" Action="None" />
+    <Rule Id="SA1513" Action="None" />
+    <Rule Id="SA1611" Action="None" />
+    <Rule Id="SA1615" Action="None" />
+    <Rule Id="SA1618" Action="None" />
   </Rules>
 </RuleSet>

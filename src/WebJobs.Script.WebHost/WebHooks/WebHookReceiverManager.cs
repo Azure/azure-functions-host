@@ -169,8 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
                 // now need to dispatch it to the actual function.
 
                 // get the callback from request properties
-                var requestHandler = (Func<HttpRequestMessage, Task<HttpResponseMessage>>)
-                    context.Request.Properties[AzureFunctionsCallbackKey];
+                var requestHandler = (Func<HttpRequestMessage, Task<HttpResponseMessage>>)context.Request.Properties[AzureFunctionsCallbackKey];
 
                 context.Request.Properties.Add(ScriptConstants.AzureFunctionsWebHookContextKey, context);
 

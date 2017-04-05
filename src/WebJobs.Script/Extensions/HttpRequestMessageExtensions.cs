@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string value = header.Substring(idx + 1).Trim();
                 headers.Add(name, value);
             }
-            
+
             return headers;
         }
     }

@@ -36,9 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return new InterceptingTraceWriter(traceWriter, interceptor);
         }
 
-        public static TraceWriter WithSource(this TraceWriter traceWriter, string source)
-            => new InterceptingTraceWriter(traceWriter, t => t.Source = source);
-
+        public static TraceWriter WithSource(this TraceWriter traceWriter, string source) => new InterceptingTraceWriter(traceWriter, t => t.Source = source);
 
         public static void Verbose(this TraceWriter traceWriter, string message, IDictionary<string, object> properties)
         {

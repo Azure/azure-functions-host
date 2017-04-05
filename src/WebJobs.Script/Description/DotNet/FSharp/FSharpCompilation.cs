@@ -58,9 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             MethodInfo entryPointReference = entryPointResolver.GetFunctionEntryPoint(methods).Value;
 
             // For F#, this currently creates a malformed signautre with fewer parameter symbols than parameter names.
-            // For validation we only need the parameter names. The implementation of DotNetFunctionSignature copes with the 
+            // For validation we only need the parameter names. The implementation of DotNetFunctionSignature copes with the
             // lists having different lengths.
             var parameters = entryPointReference.GetParameters().Select(x => new FunctionParameter(x.Name, x.ParameterType.FullName, x.IsOptional, GetParameterRefKind(x)));
+
             // For F#, we always set this to true for now.
             bool hasLocalTypeReference = true;
 

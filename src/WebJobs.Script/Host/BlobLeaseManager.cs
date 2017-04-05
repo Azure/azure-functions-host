@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return _leaseId;
             }
+
             private set
             {
                 string previousId = _leaseId;
@@ -138,10 +139,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             catch (StorageException exc)
-            {                
+            {
                 if (exc.RequestInformation.HttpStatusCode == 409)
                 {
-                    // If we did not have the lease already, a 409 indicates that another host had it. This is 
+                    // If we did not have the lease already, a 409 indicates that another host had it. This is
                     // normal and does not warrant any logging.
 
                     if (HasLease)

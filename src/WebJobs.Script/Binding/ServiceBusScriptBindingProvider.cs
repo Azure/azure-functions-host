@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
         }
 
-    public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
+        public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             binding = null;
 
@@ -174,6 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             public ServiceBusScriptBinding(ScriptBindingContext context) : base(context)
             {
             }
+
             public override Type DefaultType
             {
                 get

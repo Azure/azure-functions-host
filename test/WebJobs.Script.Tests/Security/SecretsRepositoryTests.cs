@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 try
                 {
-                    //delete blob files
+                    // delete blob files
                     ClearAllBlobSecrets();
                     ClearAllFileSecrets();
                 }

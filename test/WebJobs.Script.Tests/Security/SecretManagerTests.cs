@@ -113,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
+
                 // Read the persisted content
                 var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
                 bool functionSecretsConverted = functionSecrets.Values.Zip(result.Keys, (r1, r2) => string.Equals("!" + r1, r2.Value)).All(r => r);

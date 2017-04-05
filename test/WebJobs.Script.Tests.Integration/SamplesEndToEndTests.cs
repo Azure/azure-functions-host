@@ -122,7 +122,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
             JObject input = new JObject()
             {
-                { "input", new JObject()
+                {
+                    "input", new JObject()
                     {
                         { "InId", inId },
                         { "OutId", outId }
@@ -161,7 +162,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add("x-functions-key", "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy");
             JObject input = new JObject()
             {
-                { "input", new JObject()
+                {
+                    "input", new JObject()
                     {
                         { "inId", inId },
                         { "outId", outId }
@@ -735,6 +737,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the function output
             var logs = await TestHelpers.GetFunctionLogsAsync("QueueTrigger-Python");
+
             // strip off the timestamps from the beginning of each line
             logs = logs.Select(l => l.Split(new[] { ' ' }, 2)[1]).ToList();
             int idx = logs.IndexOf("Read 5 Table entities");
@@ -753,6 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // write input blob
             CloudBlobContainer inputContainer = _fixture.BlobClient.GetContainerReference("samples-batch");
             await inputContainer.CreateIfNotExistsAsync();
+
             // Processing a large number of blobs on startup can take a while,
             // so let's start with an empty container.
             TestHelpers.ClearContainer(inputContainer);
@@ -884,7 +888,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string value = Guid.NewGuid().ToString();
             JObject input = new JObject()
             {
-                { "input", new JObject()
+                {
+                    "input", new JObject()
                     {
                         { "id", id },
                         { "value", value }
@@ -1129,6 +1134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private class TestEntity : TableEntity
             {
                 public string Title { get; set; }
+
                 public int Status { get; set; }
             }
         }

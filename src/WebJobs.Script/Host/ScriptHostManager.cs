@@ -28,10 +28,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostEnvironment _environment;
         private ScriptHost _currentInstance;
 
-        // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance. 
+        // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance.
         // List of all outstanding ScriptHost instances. Only 1 of these (specified by _currentInstance)
-        // should be listening at a time. The others are "orphaned" and exist to finish executing any functions 
-        // and will then remove themselves from this list. 
+        // should be listening at a time. The others are "orphaned" and exist to finish executing any functions
+        // and will then remove themselves from this list.
         private HashSet<ScriptHost> _liveInstances = new HashSet<ScriptHost>();
 
         private bool _disposed;
@@ -263,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (_restartDelayTokenSource != null && !_restartDelayTokenSource.IsCancellationRequested)
             {
                 // if we're currently awaiting an error/restart delay
-                // cancel that 
+                // cancel that
                 _restartDelayTokenSource.Cancel();
             }
         }

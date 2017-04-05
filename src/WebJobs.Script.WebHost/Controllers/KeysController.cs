@@ -162,12 +162,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (string.Equals(secretsScope, HostKeyScopes.FunctionKeys, StringComparison.OrdinalIgnoreCase))
             {
                 return hostSecrets.FunctionKeys;
-            } 
+            }
             else if (string.Equals(secretsScope, HostKeyScopes.SystemKeys, StringComparison.OrdinalIgnoreCase))
             {
                 return hostSecrets.SystemKeys;
             }
-            
+
             return null;
         }
 

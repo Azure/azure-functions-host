@@ -175,7 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestClass
         {
             public int Integer { get; set; }
+
             public string String { get; set; }
+
             public object Object { get; set; }
 
             public string Test()

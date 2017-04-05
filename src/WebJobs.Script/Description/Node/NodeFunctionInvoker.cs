@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _script;
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
+        private static readonly object _initializationSyncRoot = new object();
 
         private Func<object, Task<object>> _scriptFunc;
         private static Func<object, Task<object>> _clearRequireCache;
@@ -38,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
         private static bool _initialized = false;
-        private static readonly object _initializationSyncRoot = new object();
 
         static NodeFunctionInvoker()
         {
@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             // clear the node module cache
-            // This is done for any files to ensure that, if a file change triggers 
+            // This is done for any files to ensure that, if a file change triggers
             // a host restart, we leave the cache clean.
             ClearRequireCacheFunc(null).GetAwaiter().GetResult();
 
@@ -488,7 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var headers = request.GetRawHeaders().ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value);
             requestObject["headers"] = headers;
 
-            // if the request includes a body, add it to the request object 
+            // if the request includes a body, add it to the request object
             if (request.Content != null && request.Content.Headers.ContentLength > 0)
             {
                 MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;

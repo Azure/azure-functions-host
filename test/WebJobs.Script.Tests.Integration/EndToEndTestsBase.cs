@@ -262,9 +262,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                //Only verifying the call succeeds. It is not possible to verify
-                //actual push notificaiton is delivered as they are sent only to 
-                //client applications that registered with NotificationHubs
+                // Only verifying the call succeeds. It is not possible to verify
+                // actual push notificaiton is delivered as they are sent only to
+                // client applications that registered with NotificationHubs
                 await Fixture.Host.CallAsync(functionName, arguments);
             }
             catch (Exception ex)
@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if ((ex.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException)) ||
                     (ex.InnerException != null & ex.InnerException.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException)))
                 {
-                    //Expected if using NH without any registrations
+                    // Expected if using NH without any registrations
                 }
                 else
                 {
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // The Mobile App needs an anonymous 'Item' table
 
-            // First manually create an item. 
+            // First manually create an item.
             string id = Guid.NewGuid().ToString();
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -303,12 +303,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
             await Fixture.MobileTablesQueue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
-            //TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id) && p.Message.Contains("Updating item"));
-            //Assert.Equal(TraceLevel.Info, traceEvent.Level);
-
-            //string trace = traceEvent.Message;
-            //Assert.True(trace.Contains("Updating item"));
-
             // Only .NET fully supports updating from input bindings. Others will
             // create a new item with -success appended to the id.
             // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
@@ -319,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task ApiHubTest()
         {
-            // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.           
+            // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.
             // The format should be: Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}
             // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
             string apiHubConnectionString = SettingsManager.GetSetting("AzureWebJobsDropBox");
@@ -351,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("ApiHubFileSender", arguments);
 
-            // Second, there's an ApiHubFile trigger which will write a blob. 
+            // Second, there's an ApiHubFile trigger which will write a blob.
             // Once the blob is written, we know both sender & listener are working.
             // TODO: removing the BOM character from result.
             string result = (await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob)).Remove(0, 1);
@@ -440,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if ((exception.Source == "Microsoft.Azure.NotificationHubs")
                 && exception.Message.Contains("notification has no target applications"))
             {
-                //Expected if using NH without any registrations
+                // Expected if using NH without any registrations
                 return true;
             }
             return false;

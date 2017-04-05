@@ -26,11 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         private Dictionary<string, TableMetadata> Metadata { get; }
+
         private Dictionary<string, object> Objects { get; }
 
         public virtual Task<SegmentedResult<IDataSet>> ListDataSetsAsync(
-            Query query = null, 
-            ContinuationToken continuationToken = null, 
+            Query query = null,
+            ContinuationToken continuationToken = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new SegmentedResult<IDataSet>
@@ -45,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task<SegmentedResult<ITable<JObject>>> ListTablesAsync(
-            string dataSetName, 
-            Query query = null, 
-            ContinuationToken continuationToken = null, 
+            string dataSetName,
+            Query query = null,
+            ContinuationToken continuationToken = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new SegmentedResult<ITable<JObject>>
@@ -62,8 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task<TableMetadata> GetTableMetadataAsync(
-            string dataSetName, 
-            string tableName, 
+            string dataSetName,
+            string tableName,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var key = TableKey(dataSetName, tableName);
@@ -77,9 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task<TEntity> GetEntityAsync<TEntity>(
-            string dataSetName, 
-            string tableName, 
-            string entityId, 
+            string dataSetName,
+            string tableName,
+            string entityId,
             CancellationToken cancellationToken = default(CancellationToken))
             where TEntity : class
         {
@@ -95,10 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task<SegmentedResult<TEntity>> ListEntitiesAsync<TEntity>(
-            string dataSetName, 
-            string tableName, 
-            Query query = null, 
-            ContinuationToken continuationToken = null, 
+            string dataSetName,
+            string tableName,
+            Query query = null,
+            ContinuationToken continuationToken = null,
             CancellationToken cancellationToken = default(CancellationToken))
             where TEntity : class
         {
@@ -114,9 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task CreateEntityAsync<TEntity>(
-            string dataSetName, 
-            string tableName, 
-            TEntity entity, 
+            string dataSetName,
+            string tableName,
+            TEntity entity,
             CancellationToken cancellationToken = default(CancellationToken))
             where TEntity : class
         {
@@ -132,10 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task UpdateEntityAsync<TEntity>(
-            string dataSetName, 
-            string tableName, 
-            string entityId, 
-            TEntity entity, 
+            string dataSetName,
+            string tableName,
+            string entityId,
+            TEntity entity,
             CancellationToken cancellationToken = default(CancellationToken))
             where TEntity : class
         {
@@ -152,9 +153,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual Task DeleteEntityAsync(
-            string dataSetName, 
-            string tableName, 
-            string entityId, 
+            string dataSetName,
+            string tableName,
+            string entityId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var key = EntityKey(dataSetName, tableName, entityId);

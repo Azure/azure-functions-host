@@ -319,6 +319,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// The implementation of PropertyHelper will cache the property accessors per-type. This is
         /// faster when the the same type is used multiple times with ObjectToDictionary.
         /// </remarks>
+        /// <param name="value">The input object.</param>
+        /// <returns>The dictionary representation of the object.</returns>
         public static IDictionary<string, object> ObjectToDictionary(object value)
         {
             var dictionary = value as IDictionary<string, object>;

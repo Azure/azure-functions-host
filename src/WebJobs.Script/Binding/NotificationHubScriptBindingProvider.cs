@@ -16,8 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class NotificationHubScriptBindingProvider : ScriptBindingProvider
     {
-        /// <inheritdoc/>
-        public NotificationHubScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+        public NotificationHubScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
         }

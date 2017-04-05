@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static string SerializeHostSecrets(HostSecrets secrets)
         {
             // Output:
-            //  { 
+            //  {
             //    "masterKey" : "masterkeyvalue",
             //    "functionKey" : "functionkeyvalue"
             //  }

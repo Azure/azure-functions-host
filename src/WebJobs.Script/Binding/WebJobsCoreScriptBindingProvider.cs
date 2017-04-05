@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
-        public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter) 
+        public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
         }
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     Config.Blobs.CentralizedPoisonQueue = (bool)value;
                 }
             }
-        
+
             Config.UseScriptExtensions();
         }
 
@@ -178,28 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 get { return Context.GetMetadataValue<int?>("take"); }
             }
 
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
-
-                var attribute = new TableAttribute(this.TableName, this.PartitionKey, this.RowKey);
-                attribute.Filter = Filter;
-                var take = this.Take;
-                if (take.HasValue)
-                {
-                    attribute.Take = take.Value;
-                }
-                attributes.Add(attribute);
-
-                string connection = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(connection))
-                {
-                    attribute.Connection = connection;
-                }
-
-                return attributes;
-            }
-
             public override Type DefaultType
             {
                 get
@@ -222,8 +200,29 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                 }
             }
-        }
 
+            public override Collection<Attribute> GetAttributes()
+            {
+                Collection<Attribute> attributes = new Collection<Attribute>();
+
+                var attribute = new TableAttribute(this.TableName, this.PartitionKey, this.RowKey);
+                attribute.Filter = Filter;
+                var take = this.Take;
+                if (take.HasValue)
+                {
+                    attribute.Take = take.Value;
+                }
+                attributes.Add(attribute);
+
+                string connection = Context.GetMetadataValue<string>("connection");
+                if (!string.IsNullOrEmpty(connection))
+                {
+                    attribute.Connection = connection;
+                }
+
+                return attributes;
+            }
+        }
 
         private class QueueScriptBinding : ScriptBinding
         {

@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 // 1 trace per attempt + 1 trace per failed attempt
                 int expectedTracesBeforeRecovery = (expectedNumberOfAttempts * 2) - 1;
+
                 // Before + recovery trace
                 int expectedTracesAfterRecovery = expectedTracesBeforeRecovery + 1;
                 if (!isFailureScenario)

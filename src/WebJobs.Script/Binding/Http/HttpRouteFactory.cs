@@ -1,8 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Web.Http;
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 route = routes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
                 routes.Add(routeName, route);
             }
-            catch (Exception ex) when (!ex.IsFatal()) 
+            catch (Exception ex) when (!ex.IsFatal())
             {
                 // catch any route parsing errors
                 return false;
@@ -82,6 +82,5 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             return routeParameters;
         }
-
     }
 }

@@ -63,14 +63,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
-            
+
             _performanceManager = new HostPerformanceManager(settingsManager);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, secretsRepository);       
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, secretsRepository);
         }
-        
+
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory)
             : this(config, secretManagerFactory, settingsManager, webHostSettings, scriptHostFactory, new DefaultSecretsRepositoryFactory())
         {
@@ -400,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
             if (dashboardString != null)
             {
-                // hostId may be missing in local test scenarios. 
+                // hostId may be missing in local test scenarios.
                 var hostId = config.HostConfig.HostId ?? "default";
                 var fastLogger = new FastLogger(hostId, dashboardString, config.TraceWriter);
                 hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
