@@ -174,7 +174,8 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta3-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.BotFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.12-beta\lib\net452\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.13-beta\lib\net46\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
