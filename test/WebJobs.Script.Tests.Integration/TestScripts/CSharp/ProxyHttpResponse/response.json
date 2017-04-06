@@ -1,0 +1,97 @@
+﻿{
+  "Content": {
+    "Content": "{\n  \"args\": {}, \n  \"data\": \"{123}\", \n  \"files\": {}, \n  \"form\": {}, \n  \"headers\": {\n    \"Content-Length\": \"5\", \n    \"Content-Type\": \"application/json; charset=utf-8\", \n    \"Expires\": \"Sun, 12 Feb 2017 22:55:22 GMT\", \n    \"Header1\": \"key1\", \n    \"Header2\": \"key2, key21\", \n    \"Host\": \"httpbin.org\"\n  }, \n  \"json\": null, \n  \"origin\": \"131.107.147.40\", \n  \"url\": \"http://httpbin.org/post\"\n}\n",
+    "Headers": [
+      {
+        "Key": "Content-Length",
+        "Value": [
+          "388"
+        ]
+      },
+      {
+        "Key": "Content-Type",
+        "Value": [
+          "application/json"
+        ]
+      }
+    ]
+  },
+  "StatusCode": 200,
+  "ReasonPhrase": "OK",
+  "Headers": [
+    {
+      "Key": "Connection",
+      "Value": [
+        "keep-alive"
+      ]
+    },
+    {
+      "Key": "Access-Control-Allow-Origin",
+      "Value": [
+        "*"
+      ]
+    },
+    {
+      "Key": "Access-Control-Allow-Credentials",
+      "Value": [
+        "true"
+      ]
+    },
+    {
+      "Key": "Date",
+      "Value": [
+        "Thu, 02 Feb 2017 22:55:24 GMT"
+      ]
+    },
+    {
+      "Key": "Server",
+      "Value": [
+        "nginx"
+      ]
+    }
+  ],
+  "RequestMessage": {
+    "Content": {
+      "Content": "{123}",
+      "Headers": [
+        {
+          "Key": "Content-Type",
+          "Value": [
+            "application/json; charset=utf-8"
+          ]
+        },
+        {
+          "Key": "Expires",
+          "Value": [
+            "Sun, 12 Feb 2017 22:55:22 GMT"
+          ]
+        },
+        {
+          "Key": "Content-Length",
+          "Value": [
+            "5"
+          ]
+        }
+      ]
+    },
+    "Method": {
+      "Method": "POST"
+    },
+    "RequestUri": "http://httpbin.org/post",
+    "Headers": [
+      {
+        "Key": "header1",
+        "Value": [
+          "key1"
+        ]
+      },
+      {
+        "Key": "header2",
+        "Value": [
+          "key2, key21"
+        ]
+      }
+    ]
+  },
+  "IsSuccessStatusCode": true
+}

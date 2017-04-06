@@ -344,6 +344,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // this is symmetric with context.res which we also support
                 context["req"] = requestObject;
             }
+            if (input is HttpResponseMessage)
+            {
+                // convert the response to a json object
+                HttpResponseMessage response = (HttpResponseMessage)input;
+                string rawBody = null;
+                var responseObject = CreateResponseObject(response, out rawBody);
+                input = responseObject;
+
+                if (rawBody != null)
+                {
+                    responseObject["rawResponseBody"] = rawBody;
+                }
+
+                // make the entire response object available as well
+                context["res"] = responseObject;
+            }
             else if (input is TimerInfo)
             {
                 // TODO: Need to generalize this model rather than hardcode
@@ -519,6 +535,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
 
                 requestObject["body"] = body;
+
+                var contentHeaders = request.Content.Headers.ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value.FirstOrDefault());
+                requestObject["contentHeaders"] = contentHeaders;
             }
 
             // Apply any captured route parameters to the params collection
@@ -530,6 +549,82 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return requestObject;
+        }
+
+        private static Dictionary<string, object> CreateResponseObject(HttpResponseMessage response, out string rawBody)
+        {
+            rawBody = null;
+
+            Dictionary<string, object> responseObject = new Dictionary<string, object>();
+
+            responseObject["statusCode"] = response.StatusCode;
+            responseObject["reasonPhrase"] = response.ReasonPhrase.ToString();
+
+            // since HTTP headers are case insensitive, we lower-case the keys
+            var headers = GetRawResponseHeaders(response).ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value);
+            responseObject["headers"] = headers;
+
+            if (response.Content != null && response.Content.Headers.ContentLength > 0)
+            {
+                MediaTypeHeaderValue contentType = response.Content.Headers.ContentType;
+                object jsonObject;
+                object body = null;
+                if (contentType != null)
+                {
+                    if (contentType.MediaType == "application/json")
+                    {
+                        body = response.Content.ReadAsStringAsync().Result;
+                        if (TryConvertJson((string)body, out jsonObject))
+                        {
+                            // if the content - type of the response is json, deserialize into an object or array
+                            rawBody = (string)body;
+                            body = jsonObject;
+                        }
+                    }
+                    else if (contentType.MediaType == "application/octet-stream")
+                    {
+                        body = response.Content.ReadAsByteArrayAsync().Result;
+                    }
+                }
+
+                if (body == null)
+                {
+                    // if we don't have a content type, default to reading as string
+                    body = rawBody = response.Content.ReadAsStringAsync().Result;
+                }
+
+                responseObject["responseBody"] = body;
+
+                var contentHeaders = response.Content.Headers.ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value.FirstOrDefault());
+                responseObject["contentHeaders"] = contentHeaders;
+            }
+
+            if(response.RequestMessage != null)
+            {
+                string rawRequestBody = null;
+                var requestObject = CreateRequestObject(response.RequestMessage, out rawRequestBody);
+                responseObject["request"] = requestObject;
+            }
+
+            return responseObject;
+        }
+
+        private static IDictionary<string, string> GetRawResponseHeaders(HttpResponseMessage response)
+        {
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+
+            var allHeadersRaw = response.Headers.ToString();
+            var rawHeaderLines = allHeadersRaw.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var header in rawHeaderLines)
+            {
+                int idx = header.IndexOf(':');
+                string name = header.Substring(0, idx);
+                string value = header.Substring(idx + 1).Trim();
+                headers.Add(name, value);
+            }
+
+            return headers;
         }
 
         /// <summary>

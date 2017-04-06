@@ -522,6 +522,7 @@
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
+    <Compile Include="Binding\Http\ProxyHttpExtensions.cs" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>

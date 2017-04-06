@@ -13,5 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         public string RouteTemplate { get; set; }
+
+        public bool IsProxy { get; set; }
     }
 }

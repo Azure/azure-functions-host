@@ -2,7 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 module.exports = (context) => {
-    var res = {
+    var res;
+    if (context.res !== undefined) {
+        res = context.res;
+        return res;
+    }
+
+    res = {
         headers: {},
         body: undefined,
 
