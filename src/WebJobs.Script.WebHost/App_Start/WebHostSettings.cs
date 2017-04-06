@@ -33,22 +33,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static WebHostSettings CreateDefault(ScriptSettingsManager settingsManager)
         {
-            WebHostSettings settings = new WebHostSettings();
+            WebHostSettings settings = new WebHostSettings
+            {
+                IsSelfHost = !settingsManager.IsAzureEnvironment
+            };
 
-            string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            bool isLocal = string.IsNullOrEmpty(home);
-            if (isLocal)
+            if (settingsManager.IsAzureEnvironment)
+            {
+                string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+                settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
+                settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
+                settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
+            }
+            else
             {
                 settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = System.Web.HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
-            }
-            else
-            {
-                // we're running in Azure
-                settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
-                settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
-                settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
             }
 
             if (string.IsNullOrEmpty(settings.ScriptPath))
