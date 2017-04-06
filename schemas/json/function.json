@@ -345,6 +345,10 @@
             "id": {
               "type": "string",
               "description": "This is the id for the record to retrieve."
+            },
+            "sqlQuery": {
+              "type": "string",
+              "description": "This is the query to run against the collection."
             }
           }
         },
