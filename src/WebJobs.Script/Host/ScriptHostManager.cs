@@ -228,7 +228,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="instance">The <see cref="ScriptHost"/> instance to remove</param>
         /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
-        /// <returns></returns>
         private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
             lock (_liveInstances)
