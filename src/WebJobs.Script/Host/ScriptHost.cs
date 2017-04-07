@@ -1090,11 +1090,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
                 hostId = $"{sanitizedMachineName}-{Math.Abs(scriptConfig.RootScriptPath.GetHashCode())}";
             }
-            else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteDefaultSubdomain))
+            else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteUniqueSlotName))
             {
-                // If running on Azure Web App, derive the host ID from the default subdomain
+                // If running on Azure Web App, derive the host ID from unique site slot name
                 // Trim any trailing - as they can cause problems with queue names
-                hostId = settingsManager.AzureWebsiteDefaultSubdomain.TrimEnd('-');
+                hostId = settingsManager.AzureWebsiteUniqueSlotName.TrimEnd('-');
             }
 
             if (!string.IsNullOrEmpty(hostId))

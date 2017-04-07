@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public MetricsEventManager(ScriptSettingsManager settingsManager, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
-            appName = GetNormalizedString(settingsManager.AzureWebsiteDefaultSubdomain);
+            appName = GetNormalizedString(settingsManager.AzureWebsiteUniqueSlotName);
             subscriptionId = Utility.GetSubscriptionId() ?? string.Empty;
 
             _eventGenerator = generator;

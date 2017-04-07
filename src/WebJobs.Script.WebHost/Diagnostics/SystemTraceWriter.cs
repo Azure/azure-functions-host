@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public SystemTraceWriter(IEventGenerator eventGenerator, ScriptSettingsManager settingsManager, TraceLevel level) : base(level)
         {
             _settingsManager = settingsManager;
-            _appName = _settingsManager.AzureWebsiteDefaultSubdomain;
+            _appName = _settingsManager.AzureWebsiteUniqueSlotName;
             _subscriptionId = Utility.GetSubscriptionId();
             _eventGenerator = eventGenerator;
         }

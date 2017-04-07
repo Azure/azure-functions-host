@@ -1060,7 +1060,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var config = new ScriptHostConfiguration();
             string subdomain = "TEST-FUNCTIONS--";
             var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
-            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteDefaultSubdomain).Returns(() => subdomain);
+            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => subdomain);
 
             string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
             Assert.Equal("test-functions", hostId);

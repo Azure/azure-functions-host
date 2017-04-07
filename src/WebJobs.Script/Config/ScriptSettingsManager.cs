@@ -48,6 +48,26 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        /// <summary>
+        /// Gets a value that uniquely identifies the site and slot.
+        /// </summary>
+        public virtual string AzureWebsiteUniqueSlotName
+        {
+            get
+            {
+                string name = GetSetting(EnvironmentSettingNames.AzureWebsiteName);
+                string slotName = GetSetting(EnvironmentSettingNames.AzureWebsiteSlotName);
+
+                if (!string.IsNullOrEmpty(slotName) &&
+                    !string.Equals(slotName, ScriptConstants.DefaultProductionSlotName, StringComparison.OrdinalIgnoreCase))
+                {
+                    name += $"-{slotName}";
+                }
+
+                return name?.ToLowerInvariant();
+            }
+        }
+
         public virtual void Reset()
         {
             _settingsCache.Clear();

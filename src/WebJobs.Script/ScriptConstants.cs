@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string CheckLoadQueryParameterName = "checkLoad";
         public const string DynamicSku = "Dynamic";
+        public const string DefaultProductionSlotName = "production";
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
 
