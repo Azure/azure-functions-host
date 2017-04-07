@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _accountConnectionString;
         private bool _disposed = false;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteHostName)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName)
         {
             if (secretSentinelDirectoryPath == null)
             {
@@ -38,6 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (accountConnectionString == null)
             {
                 throw new ArgumentNullException(nameof(accountConnectionString));
+            }
+            if (siteSlotName == null)
+            {
+                throw new ArgumentNullException(nameof(siteSlotName));
             }
 
             _secretsSentinelFilePath = secretSentinelDirectoryPath;
@@ -48,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _sentinelFileWatcher = new AutoRecoveringFileSystemWatcher(_secretsSentinelFilePath, "*.json");
             _sentinelFileWatcher.Changed += OnChanged;
 
-            _secretsBlobPath = siteHostName.ToLowerInvariant();
+            _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
 
             _accountConnectionString = accountConnectionString;
