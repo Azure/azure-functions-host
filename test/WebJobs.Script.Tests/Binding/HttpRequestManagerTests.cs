@@ -34,8 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
             };
             var config = new HttpConfiguration
             {
-                MaxQueueLength = 10,
-                MaxDegreeOfParallelism = 5
+                MaxOutstandingRequests = 10,
+                MaxConcurrentRequests = 5
             };
             var manager = new HttpRequestManager(config, _traceWriter);
 
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
             };
             var config = new HttpConfiguration
             {
-                MaxDegreeOfParallelism = maxParallelism
+                MaxConcurrentRequests = maxParallelism
             };
             var manager = new HttpRequestManager(config, _traceWriter);
 
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
         }
 
         [Fact]
-        public async Task ProcessRequest_MaxQueueLength_RequestsAreRejected()
+        public async Task ProcessRequest_MaxOutstandingRequestsExceeded_RequestsAreRejected()
         {
             int maxQueueLength = 10;
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> process = async (req, ct) =>
@@ -109,8 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding
             };
             var config = new HttpConfiguration
             {
-                MaxQueueLength = maxQueueLength,
-                MaxDegreeOfParallelism = 1
+                MaxOutstandingRequests = maxQueueLength,
+                MaxConcurrentRequests = 1
             };
             var manager = new HttpRequestManager(config, _traceWriter);
 

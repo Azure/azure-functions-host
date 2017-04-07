@@ -45,13 +45,13 @@
                     "type": "string",
                     "default": "api"
                 },
-                "maxDegreeOfParallelism": {
+                "maxConcurrentRequests": {
                     "description": "Defines the the maximum number of http functions that will execute in parallel.",
                     "type": "integer",
                     "default": -1
                 },
-                "maxQueueLength": {
-                    "description": "Defines the maximum number of pending requests that will be queued for processing.",
+                "maxOutstandingRequests": {
+                    "description": "Defines the maximum number of oustanding requests that will be held at any given time.",
                     "type": "integer",
                     "default": -1
                 },

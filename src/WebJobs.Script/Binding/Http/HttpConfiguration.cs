@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
     {
         public HttpConfiguration()
         {
-            MaxQueueLength = DataflowBlockOptions.Unbounded;
-            MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded;
+            MaxOutstandingRequests = DataflowBlockOptions.Unbounded;
+            MaxConcurrentRequests = DataflowBlockOptions.Unbounded;
             RoutePrefix = ScriptConstants.DefaultHttpRoutePrefix;
         }
 
@@ -21,17 +21,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
         public string RoutePrefix { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum number of pending requests that
-        /// will be queued for processing. If this limit is exceeded,
-        /// new requests will be rejected with a 429 status code.
+        /// Gets or sets the maximum number of outstanding requests that
+        /// will be held at any given time. This limit includes requests
+        /// that have started executing, as well as requests that have
+        /// not yet started executing.
+        /// If this limit is exceeded, new requests will be rejected with a 429 status code.
         /// </summary>
-        public int MaxQueueLength { get; set; }
+        public int MaxOutstandingRequests { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum number of http functions that will execute
-        /// in parallel.
+        /// Gets or sets the maximum number of http functions that will
+        /// be allowed to execute in parallel.
         /// </summary>
-        public int MaxDegreeOfParallelism { get; set; }
+        public int MaxConcurrentRequests { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether dynamic host counter

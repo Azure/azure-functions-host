@@ -5,8 +5,8 @@
     },
     "http": {
         "routePrefix": "api",
-        "maxDegreeOfParallelism": 5,
-        "maxQueueLength": 30
+        "maxConcurrentRequests": 5,
+        "maxOutstandingRequests": 30
     },
     "tracing": {
         "fileLoggingMode": "always"

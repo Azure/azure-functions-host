@@ -539,20 +539,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, scriptConfig.HttpConfiguration.RoutePrefix);
             Assert.Equal(false, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxDegreeOfParallelism, DataflowBlockOptions.Unbounded);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxQueueLength, DataflowBlockOptions.Unbounded);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxConcurrentRequests, DataflowBlockOptions.Unbounded);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxOutstandingRequests, DataflowBlockOptions.Unbounded);
 
             http["routePrefix"] = "myprefix";
             http["dynamicThrottlesEnabled"] = true;
-            http["maxDegreeOfParallelism"] = 5;
-            http["maxQueueLength"] = 10;
+            http["maxConcurrentRequests"] = 5;
+            http["maxOutstandingRequests"] = 10;
 
             ScriptHost.ApplyConfiguration(config, scriptConfig);
 
             Assert.Equal("myprefix", scriptConfig.HttpConfiguration.RoutePrefix);
             Assert.Equal(true, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxDegreeOfParallelism, 5);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxQueueLength, 10);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxConcurrentRequests, 5);
+            Assert.Equal(scriptConfig.HttpConfiguration.MaxOutstandingRequests, 10);
         }
 
         // with swagger with setting name with value

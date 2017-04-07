@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
             Config = httpConfiguration;
             TraceWriter = traceWriter;
 
-            if (Config.MaxQueueLength != DataflowBlockOptions.Unbounded ||
-                Config.MaxDegreeOfParallelism != DataflowBlockOptions.Unbounded)
+            if (Config.MaxOutstandingRequests != DataflowBlockOptions.Unbounded ||
+                Config.MaxConcurrentRequests != DataflowBlockOptions.Unbounded)
             {
                 InitializeRequestQueue();
             }
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
                 }
                 else
                 {
-                    TraceWriter.Info($"Http request queue limit of {Config.MaxQueueLength} has been exceeded.");
+                    TraceWriter.Info($"Http request queue limit of {Config.MaxOutstandingRequests} has been exceeded.");
                     return RejectRequest(request);
                 }
             }
@@ -95,8 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
         {
             var options = new ExecutionDataflowBlockOptions
             {
-                MaxDegreeOfParallelism = Config.MaxDegreeOfParallelism,
-                BoundedCapacity = Config.MaxQueueLength
+                MaxDegreeOfParallelism = Config.MaxConcurrentRequests,
+                BoundedCapacity = Config.MaxOutstandingRequests
             };
 
             _requestQueue = new ActionBlock<HttpRequestItem>(async item =>
