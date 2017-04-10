@@ -57,18 +57,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             Assert.Equal(TraceLevel.Info, trace.Level);
             string message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"ExecutingHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\"}}", message);
+            Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
 
             // validate executed trace
             trace = traces[1];
             Assert.Equal(TraceLevel.Info, trace.Level);
             message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"ExecutedHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\",\"authorizationLevel\":\"Function\"}}", message);
+            Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
 
             // validate response trace
             trace = traces[2];
             Assert.Equal(TraceLevel.Info, trace.Level);
             message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"Responsedetails:{{\"requestId\":\"{requestId}\",\"status\":\"OK\"}}", message);
+            Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
         }
     }
 }

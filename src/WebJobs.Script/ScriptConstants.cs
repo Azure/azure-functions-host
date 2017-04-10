@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceSwagger = "SwaggerDocumentation";
+        public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
