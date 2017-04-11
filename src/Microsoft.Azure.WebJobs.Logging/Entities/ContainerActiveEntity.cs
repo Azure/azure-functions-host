@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // Used to fetch an existing container entry so we can append it. 
         // Returns null if not found. 
-        public static Task<ContainerActiveEntity> LookupAsync(CloudTable table, long timeBucket, string containerName)
+        public static async Task<ContainerActiveEntity> LookupAsync(CloudTable table, long timeBucket, string containerName)
         {
             TableOperation retrieveOperation = TableOperation.Retrieve<ContainerActiveEntity>(
                 TableScheme.ContainerActivePK,
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             ContainerActiveEntity result;
             try
             {
-                TableResult retrievedResult = table.Execute(retrieveOperation);
+                TableResult retrievedResult = await table.ExecuteAsync(retrieveOperation);
                 result = (ContainerActiveEntity)retrievedResult.Result;                
             }
             catch (StorageException e)
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }
                 result = null;
             }
-            return Task.FromResult(result);
+            return result;
         }
 
         public DateTime StartTime { get; set; }
