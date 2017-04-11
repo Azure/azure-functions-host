@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
+        private readonly Stopwatch _stopwatch = new Stopwatch();
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
