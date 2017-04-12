@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -268,6 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
+                ScriptConfig.HostConfig.HostConfigMetadata = hostConfig;
                 ApplyConfiguration(hostConfig, ScriptConfig);
 
                 if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
@@ -373,6 +375,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
+                // Load builtin extensions
+                var sendGridExtension = new Extensions.SendGrid.SendGridConfiguration();
+                LoadExtension(sendGridExtension);
+
+                LoadCustomExtensions();
+
                 // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
                 // and subscribe for change notifications.
                 _blobLeaseManager = blobManagerCreation.GetAwaiter().GetResult();
@@ -399,6 +407,74 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
+        }
+
+        // Scan the extensions directory and Load custom extension.
+        private void LoadCustomExtensions()
+        {
+            var bindingRoot = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
+            if (!string.IsNullOrWhiteSpace(bindingRoot))
+            {
+                foreach (var dir in Directory.EnumerateDirectories(bindingRoot))
+                {
+                    foreach (var path in Directory.EnumerateFiles(dir, "*.dll"))
+                    {
+                        // We don't want to load and reflect over every dll.
+                        // By convention, restrict to based on filenames.
+                        var filename = Path.GetFileName(path);
+                        if (!filename.ToLowerInvariant().Contains("extension"))
+                        {
+                            continue;
+                        }
+
+                        // See GetNugetPackagesPath() for details
+                        // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
+                        Assembly assembly = Assembly.LoadFrom(path);
+                        LoadExtensions(assembly, path);
+                    }
+                }
+            }
+
+            // Now all extensions have been loaded, the metadata is finalized.
+            // There's a single script binding instance that services all extensions.
+            // give that script binding the metadata for all loaded extensions so it can dispatch to them.
+            var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
+            generalProvider.CompleteInitialization();
+        }
+
+        private void LoadExtensions(Assembly assembly, string locationHint)
+        {
+            foreach (var type in assembly.ExportedTypes)
+            {
+                if (!typeof(IExtensionConfigProvider).IsAssignableFrom(type))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
+                    LoadExtension(instance, locationHint);
+                }
+                catch (Exception e)
+                {
+                    this.TraceWriter.Error($"Failed to load custom extension {type} from '{locationHint}'", e);
+                }
+            }
+        }
+
+        // Load a single extension
+        private void LoadExtension(
+            IExtensionConfigProvider instance,
+            string locationHint = null)
+        {
+            JobHostConfiguration config = this.ScriptConfig.HostConfig;
+
+            var type = instance.GetType();
+            string name = type.Name;
+
+            this.TraceWriter.Info($"Loaded custom extension: {name} from '{locationHint}'");
+            config.AddExtension(instance);
         }
 
         private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)
@@ -567,9 +643,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 typeof(DocumentDBScriptBindingProvider),
                 typeof(MobileAppsScriptBindingProvider),
                 typeof(NotificationHubScriptBindingProvider),
-                typeof(SendGridScriptBindingProvider),
                 typeof(TwilioScriptBindingProvider),
-                typeof(BotFrameworkScriptBindingProvider)
+                typeof(BotFrameworkScriptBindingProvider),
+
+                // General purpose binder that works directly against SDK.
+                // This should eventually replace all other ScriptBindingProvider
+                typeof(GeneralScriptBindingProvider)
             };
 
             // Create the binding providers

@@ -16,6 +16,7 @@ using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -23,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -39,6 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ScriptHostConfiguration _config;
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly object _syncLock = new object();
+
+        private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider();
+
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
@@ -82,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             : this(config, secretManagerFactory, settingsManager, webHostSettings, new ScriptHostFactory())
         {
         }
+
+        internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
 
@@ -396,6 +403,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add our WebHost specific services
             var hostConfig = config.HostConfig;
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
+
+            config.HostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
 
             // Add our exception handler
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);

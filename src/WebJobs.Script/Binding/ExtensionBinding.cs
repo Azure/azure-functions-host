@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// Wrapper used to adapt a <see cref="ScriptBinding"/> to the binding pipeline.
     /// </summary>
     [CLSCompliant(false)]
-    public class ExtensionBinding : FunctionBinding
+    public class ExtensionBinding : FunctionBinding, IResultProcessingBinding
     {
         private ScriptBinding _binding;
         private Collection<Attribute> _attributes;
@@ -177,6 +177,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return attributeData;
+        }
+
+        public virtual bool CanProcessResult(object result)
+        {
+            var returnBinding = _binding as IResultProcessingBinding;
+            if (returnBinding != null)
+            {
+                return returnBinding.CanProcessResult(result);
+            }
+            return false;
+        }
+
+        public virtual void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
+        {
+            var returnBinding = _binding as IResultProcessingBinding;
+            if (returnBinding != null)
+            {
+                returnBinding.ProcessResult(functionArguments, systemArguments, triggerInputName, result);
+            }
         }
 
         internal class AttributeBuilderInfo

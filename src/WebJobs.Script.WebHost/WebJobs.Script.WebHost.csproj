@@ -478,6 +478,7 @@
     <Compile Include="Models\Swagger\SwaggerDocument.cs" />
     <Compile Include="Swagger\SwaggerDataType.cs" />
     <Compile Include="Swagger\SwaggerDocumentManager.cs" />
+    <Compile Include="WebHooks\WebJobsSdkExtensionHookProvider.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfig.cs" />
     <Compile Include="WebHooks\WebHookReceiverManager.cs" />
     <Compile Include="WebScriptHostExceptionHandler.cs" />

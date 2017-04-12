@@ -419,6 +419,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Binding\CoreExtensionsScriptBindingProviderTests.cs" />
+    <Compile Include="Binding\GeneralScriptBindingProviderTests.cs" />
     <Compile Include="Binding\HttpBindingTests.cs" />
     <Compile Include="Binding\HttpRequestManagerTests.cs" />
     <Compile Include="Binding\SendGridScriptBindingProviderTests.cs" />

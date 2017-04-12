@@ -24,37 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override void Initialize()
         {
-            // Apply Queues configuration
-            JObject configSection = (JObject)Metadata["queues"];
-            JToken value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("maxPollingInterval", out value))
-                {
-                    Config.Queues.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
-                }
-                if (configSection.TryGetValue("batchSize", out value))
-                {
-                    Config.Queues.BatchSize = (int)value;
-                }
-                if (configSection.TryGetValue("maxDequeueCount", out value))
-                {
-                    Config.Queues.MaxDequeueCount = (int)value;
-                }
-                if (configSection.TryGetValue("newBatchThreshold", out value))
-                {
-                    Config.Queues.NewBatchThreshold = (int)value;
-                }
-                if (configSection.TryGetValue("visibilityTimeout", out value))
-                {
-                    Config.Queues.VisibilityTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-            }
-
             // Apply Blobs configuration
             Config.Blobs.CentralizedPoisonQueue = true;   // TEMP : In the next release we'll remove this and accept the core SDK default
-            configSection = (JObject)Metadata["blobs"];
-            value = null;
+            var configSection = (JObject)Metadata["blobs"];
+            JToken value = null;
             if (configSection != null)
             {
                 if (configSection.TryGetValue("centralizedPoisonQueue", out value))
@@ -70,27 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             binding = null;
 
-            if (string.Equals(context.Type, "table", StringComparison.OrdinalIgnoreCase))
-            {
-                binding = new TableScriptBinding(context);
-            }
-            else if (string.Compare(context.Type, "queueTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(context.Type, "queue", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                binding = new QueueScriptBinding(context);
-            }
-            else if (string.Compare(context.Type, "blobTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
-                     string.Compare(context.Type, "blob", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(context.Type, "blobTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(context.Type, "blob", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new BlobScriptBinding(context);
             }
             else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new HttpScriptBinding(context);
-            }
-            else if (string.Compare(context.Type, "manualTrigger", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                binding = new ManualScriptBinding(context);
             }
 
             return binding != null;
@@ -118,156 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     RouteTemplate = Context.GetMetadataValue<string>("route")
                 });
-
-                return attributes;
-            }
-        }
-
-        private class ManualScriptBinding : ScriptBinding
-        {
-            public ManualScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
-
-            public override Type DefaultType
-            {
-                get
-                {
-                    return typeof(string);
-                }
-            }
-
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
-
-                attributes.Add(new ManualTriggerAttribute());
-
-                return attributes;
-            }
-        }
-
-        private class TableScriptBinding : ScriptBinding
-        {
-            public TableScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
-
-            private string TableName
-            {
-                get { return Context.GetMetadataValue<string>("tableName"); }
-            }
-
-            private string PartitionKey
-            {
-                get { return Context.GetMetadataValue<string>("partitionKey"); }
-            }
-
-            private string RowKey
-            {
-                get { return Context.GetMetadataValue<string>("rowKey"); }
-            }
-
-            private string Filter
-            {
-                get { return Context.GetMetadataValue<string>("filter"); }
-            }
-
-            private int? Take
-            {
-                get { return Context.GetMetadataValue<int?>("take"); }
-            }
-
-            public override Type DefaultType
-            {
-                get
-                {
-                    var access = this.Context.Access;
-                    if (access == FileAccess.Write)
-                    {
-                        return typeof(IAsyncCollector<JObject>);
-                    }
-                    else
-                    {
-                        if (this.PartitionKey != null && this.RowKey != null)
-                        {
-                            return typeof(JObject);
-                        }
-                        else
-                        {
-                            return typeof(JArray);
-                        }
-                    }
-                }
-            }
-
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
-
-                var attribute = new TableAttribute(this.TableName, this.PartitionKey, this.RowKey);
-                attribute.Filter = Filter;
-                var take = this.Take;
-                if (take.HasValue)
-                {
-                    attribute.Take = take.Value;
-                }
-                attributes.Add(attribute);
-
-                string connection = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(connection))
-                {
-                    attribute.Connection = connection;
-                }
-
-                return attributes;
-            }
-        }
-
-        private class QueueScriptBinding : ScriptBinding
-        {
-            public QueueScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
-
-            public override Type DefaultType
-            {
-                get
-                {
-                    if (Context.Access == FileAccess.Read)
-                    {
-                        return string.Compare("binary", Context.DataType, StringComparison.OrdinalIgnoreCase) == 0
-                            ? typeof(byte[]) : typeof(string);
-                    }
-                    else
-                    {
-                        return typeof(IAsyncCollector<byte[]>);
-                    }
-                }
-            }
-
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
-
-                string queueName = Context.GetMetadataValue<string>("queueName");
-                Attribute attribute = null;
-                if (Context.IsTrigger)
-                {
-                    attribute = new QueueTriggerAttribute(queueName);
-                }
-                else
-                {
-                    attribute = new QueueAttribute(queueName);
-                }
-                attributes.Add(attribute);
-
-                var connectionProvider = (IConnectionProvider)attribute;
-                string connection = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(connection))
-                {
-                    connectionProvider.Connection = connection;
-                }
 
                 return attributes;
             }

@@ -196,9 +196,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             descriptor = null;
 
             var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
-            if (returnBinding == null || returnBinding is IResultProcessingBinding)
+            if (returnBinding == null)
             {
                 return false;
+            }
+            var resultBinding = returnBinding as IResultProcessingBinding;
+            if (resultBinding != null)
+            {
+                if (resultBinding.CanProcessResult(true))
+                {
+                    // The trigger binding (ie, httpTrigger) will handle the return.
+                    return false;
+                }
             }
 
             if (typeof(Task).IsAssignableFrom(functionReturnType))

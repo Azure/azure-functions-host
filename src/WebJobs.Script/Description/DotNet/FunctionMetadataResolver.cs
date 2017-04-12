@@ -232,6 +232,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // Use LoadFile here to load into the correct context
                 assembly = Assembly.LoadFile(assemblyPath);
             }
+            else if (_extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName, out assembly))
+            {
+                return assembly;
+            }
 
             return assembly;
         }
