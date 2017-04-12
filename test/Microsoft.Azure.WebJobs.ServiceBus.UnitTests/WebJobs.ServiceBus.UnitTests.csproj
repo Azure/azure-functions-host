@@ -134,6 +134,7 @@
     <Compile Include="Config\ServiceBusExtensionConfigTests.cs" />
     <Compile Include="EventHubAsyncCollectorTests.cs" />
     <Compile Include="EventHubTests.cs" />
+    <Compile Include="Listeners\EventHubListenerTests.cs" />
     <Compile Include="Listeners\ServiceBusListenerTests.cs" />
     <Compile Include="Listeners\ServiceBusQueueListenerFactoryTests.cs" />
     <Compile Include="MessageProcessorTests.cs" />

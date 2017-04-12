@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         private readonly PartitionManagerOptions _partitionOptions; // optional, used to create EventProcessorHost
 
         private string _defaultStorageString; // set to JobHostConfig.StorageConnectionString
+        private int _batchCheckpointFrequency = 1;
 
         /// <summary>
         /// Name of the blob container that the EventHostProcessor instances uses to coordinate load balancing listening on an event hub. 
@@ -66,6 +67,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             _partitionOptions = partitionOptions;
 
             _options = options;
+        }
+
+        /// <summary>
+        /// Gets or sets the number of batches to process before creating an EventHub cursor checkpoint. Default 1.
+        /// </summary>
+        public int BatchCheckpointFrequency
+        {
+            get
+            {
+                return _batchCheckpointFrequency;
+            }
+
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new InvalidOperationException("Batch checkpoint frequency must be larger than 0.");
+                }
+                BatchCheckpointFrequency = value;
+            }
         }
 
         /// <summary>

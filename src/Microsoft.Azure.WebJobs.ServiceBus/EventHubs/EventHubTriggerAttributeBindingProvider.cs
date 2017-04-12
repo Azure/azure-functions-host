@@ -55,13 +55,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             }
             
             var eventHostListener = _eventHubConfig.GetEventProcessorHost(resolvedEventHubName, resolvedConsumerGroup);
-                        
-            var options = _eventHubConfig.GetOptions();
 
             Func<ListenerFactoryContext, bool, Task<IListener>> createListener =
              (factoryContext, singleDispatch) =>
              {
-                 IListener listener = new EventHubListener(factoryContext.Executor, eventHostListener, options, singleDispatch);
+                 IListener listener = new EventHubListener(factoryContext.Executor, eventHostListener, singleDispatch, _eventHubConfig);
                  return Task.FromResult(listener);
              };
 

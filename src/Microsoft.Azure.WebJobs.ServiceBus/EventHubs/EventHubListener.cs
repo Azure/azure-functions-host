@@ -19,13 +19,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         private readonly EventProcessorHost _eventListener;
         private readonly bool _singleDispatch;
         private readonly EventProcessorOptions _options;
+        private readonly EventHubConfiguration _config;
 
-        public EventHubListener(ITriggeredFunctionExecutor executor, EventProcessorHost eventListener, EventProcessorOptions options, bool single)
+        public EventHubListener(ITriggeredFunctionExecutor executor, EventProcessorHost eventListener, bool single, EventHubConfiguration config)
         {
             this._executor = executor;
             this._eventListener = eventListener;
             this._singleDispatch = single;
-            this._options = options;
+            this._options = config.GetOptions();
+            this._config = config;
         }
 
         void IListener.Cancel()
@@ -55,16 +57,44 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return new Listener(this);
         }
 
+        internal static Func<Func<Task>, Task> CreateCheckpointStrategy(int batchCheckpointFrequency)
+        {
+            if (batchCheckpointFrequency <= 0)
+            {
+                throw new InvalidOperationException("Batch checkpoint frequency must be larger than 0.");
+            }
+            else if (batchCheckpointFrequency == 1)
+            {
+                return (checkpoint) => checkpoint();
+            }
+            else
+            {
+                int batchCounter = 0;
+                return async (checkpoint) =>
+                {
+                    batchCounter++;
+                    if (batchCounter >= batchCheckpointFrequency)
+                    {
+                        batchCounter = 0;
+                        await checkpoint();
+                    }
+                };
+            }
+        }
+
         // We get a new instance each time Start() is called. 
         // We'll get a listener per partition - so they can potentialy run in parallel even on a single machine.
         private class Listener : IEventProcessor
         {
             private readonly EventHubListener _parent;
             private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+            private readonly Func<PartitionContext, Task> _checkpoint;
 
             public Listener(EventHubListener parent)
             {
                 this._parent = parent;
+                var checkpointStrategy = CreateCheckpointStrategy(parent._config.BatchCheckpointFrequency);
+                _checkpoint = (context) => checkpointStrategy(context.CheckpointAsync);
             }
 
             public async Task CloseAsync(PartitionContext context, CloseReason reason)
@@ -147,11 +177,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 // Don't checkpoint if no events. This can reset the sequence counter to 0. 
                 if (hasEvents)
                 {
-                    // There are lots of reasons this could fail. That just means that events will get double-processed, which is inevitable
-                    // with event hubs anyways. 
-                    // For example, it could fail if we lost the lease. That could happen if we failed to renew it due to CPU starvation or an inability 
-                    // to make the outbound network calls to renew. 
-                    await context.CheckpointAsync();
+                    await _checkpoint(context);
                 }
             }
         } // end class Listener 
