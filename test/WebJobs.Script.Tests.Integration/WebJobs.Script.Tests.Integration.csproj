@@ -607,6 +607,12 @@
     <AdditionalFiles Include="..\..\stylecop.json">
       <Link>stylecop.json</Link>
     </AdditionalFiles>
+    <None Include="TestScripts\CSharp\FunctionExecutionContext\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\FunctionExecutionContext\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\DotNet\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -1028,6 +1034,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\PowerShell\HttpTrigger-CustomRoute\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger-ExecutionContext\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\PowerShell\HttpTrigger-ExecutionContext\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\PowerShell\HttpTrigger-Response\function.json">

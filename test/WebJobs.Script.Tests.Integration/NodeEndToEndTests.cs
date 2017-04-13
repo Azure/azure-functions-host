@@ -1192,6 +1192,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ExecutionContext_IsProvided()
+        {
+            TestHelpers.ClearFunctionLogs("Scenarios");
+
+            JObject input = new JObject
+            {
+                { "scenario", "functionExecutionContext" }
+            };
+
+            Task t = Fixture.Host.CallAsync("Scenarios",
+                new Dictionary<string, object>()
+                {
+                    { "input", input.ToString() }
+                });
+
+            Task result = await Task.WhenAny(t, Task.Delay(5000));
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
+
+            Assert.Same(t, result);
+            Assert.True(logs.Any(l => l.Contains("FunctionName:Scenarios")));
+            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, "Scenarios")}")));
+        }
+
+        [Fact]
         public async Task HttpTrigger_Scenarios_Buffer()
         {
             HttpRequestMessage request = new HttpRequestMessage

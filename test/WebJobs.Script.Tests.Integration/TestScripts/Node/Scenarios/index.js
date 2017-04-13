@@ -83,6 +83,12 @@ var assert = require('assert');
         };
         context.done();
     }
+    else if (scenario === "functionExecutionContext") {
+        context.log.info("FunctionName:" + context.functionName);
+        context.log.info("FunctionDirectory:" + context.functionDirectory);
+        context.log.info("InvocationId:" + context.invocationId);
+        context.done();
+    }
     else {
         // throw if the scenario didn't match
         throw new Error(util.format("The scenario '%s' did not match any known scenario.", scenario));

@@ -273,8 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             for (int i = 0; i < parameters.Length; i++)
             {
-                TraceWriter writer = parameters[i] as TraceWriter;
-                if (writer != null)
+                if (parameters[i] is TraceWriter writer)
                 {
                     parameters[i] = CreateUserTraceWriter(writer);
                 }

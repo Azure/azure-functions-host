@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Net;
@@ -209,6 +210,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/html", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("<HEAD><TITLE>Azure Functions!!!</TITLE></HEAD>", result);
+        }
+
+        [Fact]
+        public async Task HttpTriggerExecutionContext_Get_ReturnsContextProperties()
+        {
+            string functionName = "HttpTrigger-ExecutionContext";
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/{functionName}?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5&name=testuser"),
+                Method = HttpMethod.Get
+            };
+            request.SetConfiguration(new HttpConfiguration());
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync(functionName, arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string result = await response.Content.ReadAsStringAsync();
+            string functionDirectory = Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, functionName);
+            Assert.Equal($"FUNCTIONNAME={functionName},FUNCTIONDIRECTORY={functionDirectory}", result);
         }
 
         public class TestFixture : EndToEndTestFixture

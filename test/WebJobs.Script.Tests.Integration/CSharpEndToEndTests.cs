@@ -143,6 +143,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ExecutionContext_IsPopulated()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
+            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
+
+            string functionName = "FunctionExecutionContext";
+            await Fixture.Host.CallAsync(functionName, arguments);
+
+            ExecutionContext context = request.Properties["ContextValue"] as ExecutionContext;
+
+            Assert.NotNull(context);
+            Assert.Equal(functionName, context.FunctionName);
+            Assert.Equal(Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, functionName), context.FunctionDirectory);
+        }
+
+        [Fact]
         public async Task ApiHub()
         {
             await ApiHubTest();
