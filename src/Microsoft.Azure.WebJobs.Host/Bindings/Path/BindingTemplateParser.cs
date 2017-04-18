@@ -58,11 +58,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         private const string DecimalDigitCharacter = @"\p{Nd}";
         private const string CombiningCharacter = @"\p{Mn}|\p{Mc}";
         private const string LetterCharacter = @"\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|\p{Nl}";
+        private const string ExpressionCharacter = @"\.|\-"; // characters allowed in expressions
         private const string IdentifierPartCharacter = 
             LetterCharacter + "|" +
             DecimalDigitCharacter + "|" +
             ConnectingCharacter + "|" +
             CombiningCharacter + "|" +
+            ExpressionCharacter + "|" + 
             FormattingCharacter;
 
         // Validation regex pattern of C# identifier
@@ -119,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                     {
                         case "escape":
                             string value = Char.ToString(namedGroup.Value[0]);
-                            yield return new BindingTemplateToken(value, isParameter: false);
+                            yield return BindingTemplateToken.NewLiteral(value);
                             break;
                         case "parameter":
                             if (String.IsNullOrEmpty(namedGroup.Value))
@@ -128,16 +130,21 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                                     "Invalid template '{0}'. The parameter name at position {1} is empty.",
                                     input, m.Index + 1));
                             }
-                            if (!IsValidIdentifier(namedGroup.Value))
+
+                            BindingTemplateToken token;            
+                            try
                             {
-                                throw new FormatException(String.Format(
-                                    "Invalid template '{0}'. The parameter name '{1}' is invalid.",
-                                    input, namedGroup.Value));
+                                token = BindingTemplateToken.NewExpression(namedGroup.Value);
                             }
-                            yield return new BindingTemplateToken(namedGroup.Value, isParameter: true);
+                            catch (FormatException e)
+                            {
+                                throw new FormatException($"Invalid template '{input}'. {e.Message}");
+                            }
+                            yield return token;
                             break;
+                            
                         case "literal":
-                            yield return new BindingTemplateToken(namedGroup.Value, isParameter: false);
+                            yield return BindingTemplateToken.NewLiteral(namedGroup.Value);
                             break;
                         case "unbalanced":
                             throw new FormatException(String.Format(
@@ -151,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             }
         }
 
-        private static bool IsValidIdentifier(string identifier)
+        internal static bool IsValidIdentifier(string identifier)
         {
             // built-in sysetem identifiers are valid
             if (BindingParameterResolver.IsSystemParameter(identifier))

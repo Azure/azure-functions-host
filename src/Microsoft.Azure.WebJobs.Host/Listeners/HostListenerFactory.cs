@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             }
 
             BindingTemplate bindingTemplate = BindingTemplate.FromString(settingName);
-            Dictionary<string, string> bindingData = new Dictionary<string, string>();
+            Dictionary<string, object> bindingData = new Dictionary<string, object>();
             bindingData.Add("MethodName", string.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.Name, method.Name));
             bindingData.Add("MethodShortName", method.Name);
             settingName = bindingTemplate.Bind(bindingData);

@@ -235,19 +235,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public async Task Easy()
         {
-            Attr1 a1 = new Attr1 { Path = "{key1}-{key2}" };
+            Attr1 a1 = new Attr1 { Path = "{request.headers.authorization}-{key2}" };
 
             Dictionary<string, object> values = new Dictionary<string, object>()
             {
-                { "key1", "val1" },
+                { "request", new {
+                        headers = new {
+                            authorization = "ey123"
+                        }
+                    }
+                },
                 { "key2", "val2" }
             };
             var ctx = GetCtx(values);
 
-            var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("key1", "key2"));
+            var cloner = new AttributeCloner<Attr1>(a1, GetBindingContract("request", "key2"));
             var attr2 = await cloner.ResolveFromBindingDataAsync(ctx);
 
-            Assert.Equal("val1-val2", attr2.Path);
+            Assert.Equal("ey123-val2", attr2.Path);
         }
 
         [Fact]

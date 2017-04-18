@@ -175,6 +175,69 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal("123", msgs[0].AsString);
         }
 
+        public class ProgramWithTriggerAndCompoundBindingData
+        {
+            public class Poco
+            {
+                public SubOject prop1 { get; set; }
+                public string xyz { get; set; }
+            }
+
+            public class SubOject
+            {
+                public string xyz { get; set; }
+            }
+
+            // BindingData is case insensitive. 
+            // And queue name is normalized to lowercase. 
+            public const string QueueOutName = "qName-{prop1.xyz}";
+            public void Func(
+                [QueueTrigger(QueueName)] Poco triggers, 
+                [Queue(QueueOutName)] ICollector<string> q,
+                string xyz, // {xyz}
+                SubOject prop1) // Bind to a object 
+            {
+                // binding to subobject work 
+                Assert.NotNull(prop1);
+                Assert.Equal(prop1.xyz, "abc");
+
+                Assert.Equal("bad", xyz);
+
+                q.Add("123");
+            }
+        }
+
+        [Fact]
+        public void InvokeWithCompoundBindingData()
+        {
+            // Verify that queue binding pattern has uppercase letters in it. These get normalized to lowercase.
+            Assert.NotEqual(ProgramWithTriggerAndBindingData.QueueOutName, ProgramWithTriggerAndBindingData.QueueOutName.ToLower());
+
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<ProgramWithTriggerAndCompoundBindingData>(account);
+
+            var trigger = new ProgramWithTriggerAndCompoundBindingData.Poco
+            {
+                xyz = "bad",
+                prop1 = new ProgramWithTriggerAndCompoundBindingData.SubOject
+                {
+                    xyz = "abc"
+                }
+            };
+            host.Call("Func", new
+            {
+                triggers = new CloudQueueMessage(JsonConvert.SerializeObject(trigger))
+            });
+
+            // Now peek at messages. 
+            // queue name is normalized to lowercase. 
+            var queue = account.CreateQueueClient().GetQueueReference("qname-abc");
+            var msgs = queue.GetMessages(10).ToArray();
+
+            Assert.Equal(1, msgs.Length);
+            Assert.Equal("123", msgs[0].AsString);
+        }
+
         public class ProgramSimple
         {
             public void Func([Queue(QueueName)] out string x)

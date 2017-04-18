@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 using Xunit.Extensions;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
 {
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
             string pattern = @"{p1}-p2/{{2014}}/{d3}/folder/{name}.{ext}";
             var tokens = BindingTemplateParser.GetTokens(pattern).ToList();
 
-            string captureRegex = BindingTemplateSource.BuildCapturePattern(tokens);
+            string captureRegex = BindingTemplateToken.BuildCapturePattern(tokens);
 
             Assert.NotEmpty(captureRegex);
             Assert.Equal("^(?<p1>.*)-p2/\\{2014}/(?<d3>.*)/folder/(?<name>.*)\\.(?<ext>.*)$", captureRegex);
@@ -90,11 +91,23 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         }
 
         [Fact]
+        public void BuildCapturePattern_Doesnt_Allow_Expressions()
+        {
+            // binding expressions are not allowed in a capture pattern. 
+            // Captures just get top-level names. 
+            string pattern = @"{p1.p2}";
+            var tokens = BindingTemplateParser.GetTokens(pattern).ToList();
+
+            ExceptionAssert.ThrowsInvalidOperation(() => BindingTemplateToken.BuildCapturePattern(tokens),
+                "Capture expressions can't include dot operators");
+        }
+
+        [Fact]
         public void Bind_IfValidInput_ReturnsResolvedPath()
         {
             BindingTemplate template = BindingTemplate.FromString(@"{p1}-p2/{{2014}}/{d3}/folder/{name}.{ext}");
 
-            var parameters = new Dictionary<string, string> {{ "p1", "container" }, { "d3", "path/to" }, 
+            var parameters = new Dictionary<string, object> {{ "p1", "container" }, { "d3", "path/to" }, 
                 { "name", "file.1" }, { "ext", "txt" }};
 
             string resolvedText = template.Bind(parameters);
@@ -107,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         public void Bind_IfNonParameterizedPath_ReturnsResolvedPath()
         {
             BindingTemplate template = BindingTemplate.FromString("container");
-            var parameters = new Dictionary<string, string> { { "name", "value" } };
+            var parameters = new Dictionary<string, object> { { "name", "value" } };
 
             string result = template.Bind(parameters);
 
@@ -118,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         public void Bind_IfParameterizedPath_ReturnsResolvedPath()
         {
             BindingTemplate template = BindingTemplate.FromString(@"container/{name}");
-            var parameters = new Dictionary<string, string> { { "name", "value" } };
+            var parameters = new Dictionary<string, object> { { "name", "value" } };
 
             string result = template.Bind(parameters);
 
@@ -126,10 +139,131 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         }
 
         [Fact]
+        public void Bind_DotExpression()
+        {
+            BindingTemplate template = BindingTemplate.FromString(@"container/{a.b.c}");
+            var parameters = new Dictionary<string, object> {
+                { "a", new {
+                    b = new {
+                        c = 123
+                    }
+                }}
+            };
+
+            string result = template.Bind(parameters);
+
+            Assert.Equal(@"container/123", result);
+        }
+
+        [Theory]
+        [InlineData("container/{a.x-header}", "container/header", null)] // with dashes, like request
+        [InlineData("container/{a.prop}", "container/bar", null)]
+        [InlineData("container/{a.pRop}", "container/bar", null)] // casing 
+        [InlineData("container/{a.missing}", null, "Error while accessing 'missing': property doesn't exist.")]
+        [InlineData("a{null}b", "ab", null)]
+        [InlineData("a{a.null}b", "ab", null)]
+        public void Bind_DotExpression_With_JObject(string templateSource, string value, string error)
+        {
+            JObject jobj = new JObject();
+            jobj["prop"] = "bar";
+            jobj["x-header"] = "header";
+            jobj["null"] = null;
+
+            var parameters = new Dictionary<string, object> {
+                { "a", jobj },
+                { "null", null }
+            };
+
+            BindingTemplate template = BindingTemplate.FromString(templateSource);
+            
+            if (error != null)
+            {
+                ExceptionAssert.ThrowsInvalidOperation(() => template.Bind(parameters),
+                error);
+            }
+            else
+            {
+                string result = template.Bind(parameters);
+                Assert.Equal(value, result);
+            }
+        }
+
+        [Fact]
+        public void Bind_Dictionary()
+        {
+            var obj = new Dictionary<string, object>
+            {
+                { "p1", "v1" },
+                { "p2", 123 }
+            };
+
+            var parameters = new Dictionary<string, object> {
+                { "a", obj }                
+            };
+
+            var templateSource = "{a.p1}";
+            BindingTemplate template = BindingTemplate.FromString(templateSource);
+            string result = template.Bind(parameters);
+            Assert.Equal("v1", result);
+
+            templateSource = "{a.missing}";
+            template = BindingTemplate.FromString(templateSource);
+            ExceptionAssert.ThrowsInvalidOperation(() => template.Bind(parameters),
+                "Error while accessing 'missing': property doesn't exist.");
+        }
+
+        // Accessing a missing property throws. 
+        [Fact]
+        public void Bind_DotExpression_Illegal()
+        {
+            BindingTemplate template = BindingTemplate.FromString(@"container/{a.missing}");
+            var parameters = new Dictionary<string, object> {
+                { "a", new {
+                    b = new {
+                        c = 123
+                    }
+                } }
+            };
+
+            ExceptionAssert.ThrowsInvalidOperation(() => template.Bind(parameters),
+                "Error while accessing 'missing': property doesn't exist.");
+        }
+
+        [Fact]
+        public void Bind_DotExpression_IsLateBound()
+        {
+            // Use same binding expression with different binding data inputs and it resolves dynamically.
+            BindingTemplate template = BindingTemplate.FromString(@"container/{a.b.c}");
+            var parameters1 = new Dictionary<string, object> {
+                { "a", new {
+                    b = new {
+                        c = "first"
+                    }
+                }}
+            };
+
+            var parameters2 = new Dictionary<string, object> {
+                { "a", new {
+                    b = new {
+                        c = 123,
+                        d = 456
+                    },
+                    b2 = 789
+                }}
+            };
+                        
+            string result = template.Bind(parameters1);
+            Assert.Equal(@"container/first", result);
+
+            string result2 = template.Bind(parameters2);
+            Assert.Equal(@"container/123", result2);
+        }
+
+        [Fact]
         public void Bind_IfMissingParameter_Throws()
         {
             BindingTemplate template = BindingTemplate.FromString(@"container/{missing}");
-            var parameters = new Dictionary<string, string> { { "name", "value" } };
+            var parameters = new Dictionary<string, object> { { "name", "value" } };
 
             // Act and Assert
             ExceptionAssert.ThrowsInvalidOperation(
@@ -142,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         {
             BindingTemplate template = BindingTemplate.FromString(@"A/{B}/{c}");
 
-            var parameters = new Dictionary<string, string>
+            var parameters = new Dictionary<string, object>
             {
                 { "B", "TestB" },
                 { "c", "TestC" }
@@ -151,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
             string result = template.Bind(parameters);
             Assert.Equal("A/TestB/TestC", result);
 
-            parameters = new Dictionary<string, string>
+            parameters = new Dictionary<string, object>
             {
                 { "b", "TestB" },
                 { "c", "TestC" }
@@ -167,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         {
             BindingTemplate template = BindingTemplate.FromString(@"A/{B}/{c}", ignoreCase: true);
 
-            var parameters = new Dictionary<string, string>
+            var parameters = new Dictionary<string, object>
             {
                 { "B", "TestB" },
                 { "c", "TestC" }
@@ -176,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
             string result = template.Bind(parameters);
             Assert.Equal("A/TestB/TestC", result);
 
-            parameters = new Dictionary<string, string>
+            parameters = new Dictionary<string, object>
             {
                 { "b", "TestB" },
                 { "C", "TestC" }

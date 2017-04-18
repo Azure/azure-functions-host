@@ -58,7 +58,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         {
             get
             {
-                return Tokens.Where(p => p.IsParameter).Select(p => p.Value);
+                return from p in Tokens
+                       let name = p.ParameterName
+                       where name != null
+                       select name;
             }
         }
 
@@ -84,14 +87,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         /// <returns>Resolved string if succeeded.</returns>
         /// <exception cref="InvalidOperationException">Thrown when required parameter value is not available.
         /// </exception>
-        public string Bind(IReadOnlyDictionary<string, string> parameters)
+        public string Bind(IReadOnlyDictionary<string, object> parameters)
         {
             StringBuilder builder = new StringBuilder();
 
             if (_ignoreCase && parameters != null)
             {
                 // convert to a case insensitive dictionary
-                var caseInsensitive = new Dictionary<string, string>(parameters.Count, StringComparer.OrdinalIgnoreCase);
+                var caseInsensitive = new Dictionary<string, object>(parameters.Count, StringComparer.OrdinalIgnoreCase);
                 foreach (var pair in parameters)
                 {
                     caseInsensitive.Add(pair.Key, pair.Value);
@@ -99,36 +102,36 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                 parameters = caseInsensitive;
             }
 
-            foreach (BindingTemplateToken token in Tokens)
+            foreach (var token in Tokens)
             {
-                if (token.IsParameter)
-                {
-                    string value;
-                    BindingParameterResolver resolver = null;
-                    if (parameters != null && parameters.TryGetValue(token.Value, out value))
-                    {
-                        // parameter is resolved from binding data
-                        builder.Append(value);
-                    }
-                    else if (BindingParameterResolver.TryGetResolver(token.Value, out resolver))
-                    {
-                        // parameter maps to one of the built-in system binding
-                        // parameters (e.g. rand-guid, datetime, etc.)
-                        value = resolver.Resolve(token.Value);
-                        builder.Append(value);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "No value for named parameter '{0}'.", token.Value));
-                    }
-                }
-                else
-                {
-                    builder.Append(token.Value);
-                }
+                var value = token.Evaluate(parameters);
+                builder.Append(value);
             }
 
             return builder.ToString();
+        }
+
+        /// <summary>
+        /// Resolves original parameterized template into a string by replacing parameters with values provided as
+        /// a dictionary.
+        /// </summary>
+        /// <param name="parameters">Dictionary providing parameter values.</param>
+        /// <returns>Resolved string if succeeded.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when required parameter value is not available.
+        /// </exception>
+        [Obsolete("Switch to the overload accepting a IReadOnlyDictionary<string, object>.")]
+        public string Bind(IReadOnlyDictionary<string, string> parameters)
+        {
+            var adapter = new Dictionary<string, object>();
+            if (parameters != null)
+            {
+                foreach (var kv in parameters)
+                {
+                    adapter[kv.Key] = kv.Value;
+                }
+            }            
+
+            return Bind(adapter);
         }
 
         /// <summary>

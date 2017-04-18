@@ -35,7 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             // for each parameter, classify it as a string literal or other
             // and perform value validation
-            var convertedBindingData = BindingDataPathHelper.ConvertParameters(bindingData);
+            var convertedBindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in bindingData)
+            {
+                convertedBindingData[kv.Key] = kv.Value;
+            }
             foreach (var parameterGroup in parameterGroups)
             {
                 // perform any OData specific formatting on the values
@@ -74,9 +78,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 }
 
                 // validate and format the value based on its classification
-                string value = null;
-                if (convertedBindingData.TryGetValue(parameterName, out value))
+                object objValue = null;
+                if (convertedBindingData.TryGetValue(parameterName, out objValue))
                 {
+                    string value = BindingDataPathHelper.ConvertParameterValueToString(objValue);
                     if (isStringLiteral)
                     {
                         convertedBindingData[parameterName] = value.Replace("'", "''");

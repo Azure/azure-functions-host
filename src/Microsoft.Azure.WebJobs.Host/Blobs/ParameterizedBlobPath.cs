@@ -45,9 +45,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public BlobPath Bind(IReadOnlyDictionary<string, object> bindingData)
         {
-            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
-            string containerName = _containerNameTemplate.Bind(parameters);
-            string blobName = _blobNameTemplate.Bind(parameters);
+            string containerName = _containerNameTemplate.Bind(bindingData);
+            string blobName = _blobNameTemplate.Bind(bindingData);
 
             BlobClient.ValidateContainerName(containerName);
             if (!string.IsNullOrEmpty(_blobNameTemplate.Pattern))

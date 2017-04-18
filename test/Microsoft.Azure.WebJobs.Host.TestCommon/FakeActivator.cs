@@ -11,6 +11,14 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
     {
         public Dictionary<Type, object> _instances = new Dictionary<Type, object>();
 
+        public FakeActivator(params object[] objs)
+        {
+            foreach (var obj in objs)
+            {
+                Add(obj);
+            }
+        }
+
         public void Add(object o)
         {
             _instances[o.GetType()] = o;

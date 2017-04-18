@@ -220,8 +220,7 @@ namespace Microsoft.Azure.WebJobs.Host
             if (bindingData != null)
             {
                 BindingTemplate bindingTemplate = BindingTemplate.FromString(scopeId);
-                IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
-                return bindingTemplate.Bind(parameters);
+                return bindingTemplate.Bind(bindingData);
             }
             else
             {

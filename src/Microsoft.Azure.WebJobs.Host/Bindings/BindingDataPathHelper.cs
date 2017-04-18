@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -13,39 +13,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     internal static class BindingDataPathHelper
     {
         /// <summary>
-        /// Converts all parameter values in the specified binding data to their path compatible string values.
-        /// </summary>
-        /// <param name="bindingData">The binding data to convert.</param>
-        /// <returns>A collection of path compatible parameters.</returns>
-        public static Dictionary<string, string> ConvertParameters(IReadOnlyDictionary<string, object> bindingData)
-        {
-            if (bindingData == null)
-            {
-                throw new ArgumentNullException("bindingData");
-            }
-
-            Dictionary<string, string> parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            if (bindingData != null)
-            {
-                foreach (KeyValuePair<string, object> item in bindingData)
-                {
-                    string stringParamValue = ConvertParameterValueToString(item.Value);
-
-                    if (stringParamValue != null)
-                    {
-                        parameters.Add(item.Key, stringParamValue);
-                    }
-                }
-            }
-
-            return parameters;
-        }
-
-        /// <summary>
         /// Convert a parameter value of supported type into path compatible string value.
         /// The set of supported types is limited to built-in signed/unsigned integer types, 
-        /// strings, and Guid (which is translated in canonical form without curly braces).
+        /// strings, JToken, and Guid (which is translated in canonical form without curly braces).
         /// </summary>
         /// <param name="parameterValue">The parameter value to convert</param>
         /// <returns>Path compatible string representation of the given parameter or null if its type is not supported.</returns>
@@ -79,6 +49,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                         if (parameterValue is Guid)
                         {
                             return parameterValue.ToString();
+                        }
+                        if (parameterValue is Newtonsoft.Json.Linq.JToken)
+                        {
+                            // Only accept primitive Json values. Don't accept complex objects. 
+                            if (!(parameterValue is JContainer))
+                            {
+                                return parameterValue.ToString();
+                            }
                         }
                         return null;
                 }

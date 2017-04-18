@@ -9,6 +9,8 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
@@ -43,6 +45,37 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public static void Run([BlobTrigger(BlobPath)] ICloudBlob blob)
             {
                 TaskSource.TrySetResult(blob);
+            }
+        }
+
+        [Fact]
+        public void BlobTrigger_Binding_Metadata()
+        {
+            var app = new BindToCloudBlob2Program();
+            var activator = new FakeActivator(app);
+            IStorageAccount account = CreateFakeStorageAccount();
+            var host = TestHelpers.NewJobHost<BindToCloudBlob2Program>(account, activator);
+
+            // Set the binding data, and verify it's accessible in the function. 
+            IStorageBlobContainer container = CreateContainer(account, ContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(BlobName);
+            blob.Metadata["m1"] = "v1";
+
+            host.Call("Run", new { blob = blob });
+
+            Assert.True(app.success);
+        }
+
+        private class BindToCloudBlob2Program
+        {
+            public bool success;
+            public void Run(
+                [BlobTrigger(BlobPath)] ICloudBlob blob,
+                [Blob("container/{metadata.m1}")] ICloudBlob blob1
+                )
+            {
+                Assert.Equal("v1", blob1.Name);
+                this.success = true;
             }
         }
 

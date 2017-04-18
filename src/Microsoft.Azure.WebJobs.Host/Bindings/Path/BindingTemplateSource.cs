@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         public static BindingTemplateSource FromString(string pattern, bool ignoreCase = false)
         {
             IEnumerable<BindingTemplateToken> tokens = BindingTemplateParser.GetTokens(pattern);
-            string capturePattern = BuildCapturePattern(tokens);
+            string capturePattern = BindingTemplateToken.BuildCapturePattern(tokens);
 
             RegexOptions options = RegexOptions.Compiled;
             if (ignoreCase)
@@ -124,32 +124,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         public override string ToString()
         {
             return _pattern;
-        }
-
-        /// <summary>
-        /// Utility method to build a regular expression to capture parameter values out of pre-parsed template tokens.
-        /// </summary>
-        /// <param name="tokens">Template tokens as generated and validated by 
-        /// the <see cref="BindingTemplateParser"/>.</param>
-        /// <returns>Regex pattern to capture parameter values, containing named capturing groups, matching
-        /// structure and parameter names provided by the list of tokens.</returns>
-        internal static string BuildCapturePattern(IEnumerable<BindingTemplateToken> tokens)
-        {
-            StringBuilder builder = new StringBuilder("^");
-
-            foreach (BindingTemplateToken token in tokens)
-            {
-                if (token.IsParameter)
-                {
-                    builder.Append(String.Format(CultureInfo.InvariantCulture, "(?<{0}>.*)", token.Value));
-                }
-                else
-                {
-                    builder.Append(Regex.Escape(token.Value));
-                }
-            }
-
-            return builder.Append("$").ToString();
         }
     }
 }

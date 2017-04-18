@@ -27,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
         {
             var tokens = BindingTemplateParser.ParseTemplate("path-with-no-parameters");
 
-            Assert.Empty(tokens.Where(t => t.IsParameter));
+            Assert.Equal(1, tokens.Count);
+            Assert.Equal("path-with-no-parameters", tokens[0].AsLiteral);
         }
 
         [Fact]
@@ -113,12 +114,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
 
         private static IEnumerable<string> GetParameterNames(IEnumerable<BindingTemplateToken> tokens)
         {
-            return from token in tokens where token.IsParameter select token.Value;
+            return from token in tokens
+                   let name = token.ParameterName
+                   where name != null
+                   select name;
         }
 
         private static IEnumerable<string> GetTokenValues(IEnumerable<BindingTemplateToken> tokens)
         {
-            return from token in tokens select token.Value;
+            return from token in tokens select GetValue(token);
+        }
+
+        private static string GetValue(BindingTemplateToken token)
+        {
+            var value = token.AsLiteral ?? token.ParameterName;
+            return value;
         }
     }
 }

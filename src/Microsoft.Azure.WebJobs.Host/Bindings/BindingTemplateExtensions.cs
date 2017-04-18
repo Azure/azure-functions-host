@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <param name="bindingTemplate">The binding template to validate.</param>
         /// <param name="bindingData">The binding data to apply to the template.</param>
         /// <returns>The bound template string.</returns>
+        [Obsolete("Call instance method directly")]
         public static string Bind(this BindingTemplate bindingTemplate, IReadOnlyDictionary<string, object> bindingData)
         {
             if (bindingTemplate == null)
@@ -53,16 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 throw new ArgumentNullException("bindingTemplate");
             }
 
-            if (bindingData == null ||
-                !bindingTemplate.ParameterNames.Any())
-            {
-                return bindingTemplate.Pattern;
-            }
-
-            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
-            string path = bindingTemplate.Bind(parameters);
-
-            return path;
+            return bindingTemplate.Bind(bindingData);
         }
 
         private static void ValidateContractCompatibility(IEnumerable<string> parameterNames, IReadOnlyDictionary<string, Type> bindingDataContract)

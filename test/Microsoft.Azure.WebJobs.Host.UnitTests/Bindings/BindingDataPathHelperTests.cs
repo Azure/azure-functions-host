@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 using Xunit.Extensions;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 {
@@ -77,5 +78,34 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             // Assert
             Assert.Null(stringParamValue);
         }
+
+        // Test various JObject conversions. 
+        [Fact]
+        public void ConvertParamValueToString_IfJTokenParam_ReturnsStringValue()
+        {
+            Guid guid = new Guid("c914be08fae64014a619c5f7ebf3fe37");
+            var date = DateTime.UtcNow;
+
+            Test(date.ToString(), JToken.FromObject(date));
+            Test("123", JToken.FromObject(123));
+            Test("str", JToken.FromObject("str"));
+            Test("123.45", JToken.FromObject(123.45));
+
+            // Guids are normalized
+            Test("c914be08-fae6-4014-a619-c5f7ebf3fe37", JToken.FromObject(guid)); 
+
+            // Complex types are null, just like System.Object
+            Test(null, new JObject());
+            Test(null, new JArray());
+        }            
+
+        private static void Test(string expectedStringValue, JToken obj)
+        {
+            // Act
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(obj);
+
+            // Assert
+            Assert.Equal(expectedStringValue, stringParamValue);
+        }        
     }
 }
