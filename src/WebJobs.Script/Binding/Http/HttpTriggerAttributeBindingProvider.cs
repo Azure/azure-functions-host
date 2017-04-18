@@ -54,6 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         internal class HttpTriggerBinding : ITriggerBinding
         {
+            // Flow the authorization header in as binding data.
+            private const string AuthName = "RequestAuthHeader";
+
             private readonly ParameterInfo _parameter;
             private readonly IBindingDataProvider _bindingDataProvider;
             private readonly bool _isUserTypeBinding;
@@ -100,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                     }
                 }
+                aggregateDataContract[AuthName] = typeof(string);
 
                 _bindingDataContract = aggregateDataContract;
             }
@@ -250,6 +254,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                         bindingData[pair.Key] = value;
                     }
+                }
+
+                {
+                    string auth = null;
+
+                    if (request.Headers.Authorization != null)
+                    {
+                        auth = request.Headers.Authorization.Parameter;
+                    }
+                    else
+                    {
+                        // The (optional) id token from easy auth.
+                        // This can be used in a token exchange.
+                        auth = request.GetHeaderValueOrDefault("X-MS-TOKEN-AAD-ID-TOKEN"); // JWT
+                    }
+                    bindingData[AuthName] = auth ?? string.Empty;
                 }
 
                 return bindingData;
