@@ -6,6 +6,7 @@ using System;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
+    /// Attribute used to indicate the name to use for a job function.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public sealed class FunctionNameAttribute : Attribute
