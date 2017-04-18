@@ -1054,20 +1054,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
         }
 
-        [Fact]
-        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult()
+        [Theory]
+        [InlineData("TEST-FUNCTIONS--", "test-functions")]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "test-functions-xxxxxxxxxxxxxxxxx")]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "test-functions-xxxxxxxxxxxxxxxx")] /* 32nd character is a '-' */
+        [InlineData(null, null)]
+        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
         {
             var config = new ScriptHostConfiguration();
-            string subdomain = "TEST-FUNCTIONS--";
             var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
-            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => subdomain);
+            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
 
             string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
-            Assert.Equal("test-functions", hostId);
-
-            subdomain = "TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-            hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
-            Assert.Equal("test-functions-xxxxxxxxxxxxxxxxx", hostId);
+            Assert.Equal(expected, hostId);
         }
 
         public class AssemblyMock : Assembly

@@ -1093,8 +1093,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteUniqueSlotName))
             {
                 // If running on Azure Web App, derive the host ID from unique site slot name
-                // Trim any trailing - as they can cause problems with queue names
-                hostId = settingsManager.AzureWebsiteUniqueSlotName.TrimEnd('-');
+                hostId = settingsManager.AzureWebsiteUniqueSlotName;
             }
 
             if (!string.IsNullOrEmpty(hostId))
@@ -1106,7 +1105,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            return hostId?.ToLowerInvariant();
+            // Lowercase and trim any trailing '-' as they can cause problems with queue names
+            return hostId?.ToLowerInvariant().TrimEnd('-');
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
