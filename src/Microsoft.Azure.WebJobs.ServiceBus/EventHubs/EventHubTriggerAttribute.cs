@@ -31,5 +31,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Optional Name of the consumer group. If missing, then use the default name, "$Default"
         /// </summary>
         public string ConsumerGroup { get; set; }
+
+        /// <summary>
+        /// Optional connection name. If missing, tries to use a registered event hub receiver.
+        /// </summary>
+        public string Connection { get; set; }
     }
 }
