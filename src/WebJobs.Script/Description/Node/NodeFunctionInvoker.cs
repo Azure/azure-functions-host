@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             DataType dataType = _trigger.DataType ?? DataType.String;
 
             var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
-            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, userTraceWriter, context);
+            var scriptExecutionContext = await CreateScriptExecutionContextAsync(input, dataType, userTraceWriter, context).ConfigureAwait(false);
             var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
 
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
+        private async Task<Dictionary<string, object>> CreateScriptExecutionContextAsync(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -303,12 +303,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 context["_entryPoint"] = _entryPoint;
             }
 
-            if (input is HttpRequestMessage)
+            // convert the request to a json object
+            if (input is HttpRequestMessage request)
             {
-                // convert the request to a json object
-                HttpRequestMessage request = (HttpRequestMessage)input;
-                string rawBody = null;
-                var requestObject = CreateRequestObject(request, out rawBody);
+                (Dictionary<string, object> requestObject, string rawBody) = await CreateRequestObjectAsync(request).ConfigureAwait(false);
+
                 input = requestObject;
 
                 if (rawBody != null)
@@ -458,9 +457,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        private static Dictionary<string, object> CreateRequestObject(HttpRequestMessage request, out string rawBody)
+        private static async Task<(Dictionary<string, object> request, string rawBody)> CreateRequestObjectAsync(HttpRequestMessage request)
         {
-            rawBody = null;
+            string rawBody = null;
 
             // TODO: need to provide access to remaining request properties
             Dictionary<string, object> requestObject = new Dictionary<string, object>();
@@ -483,7 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     if (contentType.MediaType == "application/json")
                     {
-                        body = request.Content.ReadAsStringAsync().Result;
+                        body = await request.Content.ReadAsStringAsync().ConfigureAwait(false);
                         if (TryConvertJson((string)body, out jsonObject))
                         {
                             // if the content - type of the request is json, deserialize into an object or array
@@ -493,14 +492,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
                     else if (contentType.MediaType == "application/octet-stream")
                     {
-                        body = request.Content.ReadAsByteArrayAsync().Result;
+                        body = await request.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                     }
                 }
 
                 if (body == null)
                 {
                     // if we don't have a content type, default to reading as string
-                    body = rawBody = request.Content.ReadAsStringAsync().Result;
+                    body = rawBody = await request.Content.ReadAsStringAsync().ConfigureAwait(false);
                 }
 
                 requestObject["body"] = body;
@@ -514,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 requestObject["params"] = routeData;
             }
 
-            return requestObject;
+            return (requestObject, rawBody);
         }
 
         /// <summary>
