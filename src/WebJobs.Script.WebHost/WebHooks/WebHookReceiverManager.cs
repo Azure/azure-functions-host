@@ -15,6 +15,7 @@ using Autofac.Integration.WebApi;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.AspNet.WebHooks.Config;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 
@@ -57,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
         {
             // First check if there is a registered WebHook Receiver for this request, and if
             // so use it
-            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
-            string webHookReceiver = httpFunctionMetadata.WebHookType;
+            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            string webHookReceiver = httpTrigger.WebHookType;
             IWebHookReceiver receiver = null;
             if (string.IsNullOrEmpty(webHookReceiver) || !_receiverLookup.TryGetValue(webHookReceiver, out receiver))
             {

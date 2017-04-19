@@ -27,8 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     throw new ArgumentNullException("context");
                 }
 
-                context.Config.RegisterBindingExtension(new HttpTriggerAttributeBindingProvider());
-
                 context.AddBindingRule<ManualTriggerAttribute>()
                     .BindToTrigger(new ManualTriggerAttributeBindingProvider());
             }

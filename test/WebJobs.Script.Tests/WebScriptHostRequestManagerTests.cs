@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _httpConfig = new HttpConfiguration();
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             _requestManager = new WebScriptHostRequestManager(_httpConfig, _performanceManager.Object, _metricsLogger.Object, _traceWriter, 1);
-            _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>());
+            _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>(), null, null, null);
         }
 
         [Fact]

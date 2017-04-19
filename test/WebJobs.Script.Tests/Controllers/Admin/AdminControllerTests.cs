@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsTrigger = true
                 }
             };
-            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters));
+            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters, null, null, null));
 
             FunctionInvocation invocation = new FunctionInvocation
             {

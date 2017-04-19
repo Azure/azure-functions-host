@@ -756,8 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     string functionError = null;
                     FunctionMetadata functionMetadata = null;
-                    var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, mappedHttpFunctions, traceWriter, scriptDir, settingsManager, out functionMetadata, out functionError))
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, scriptDir, settingsManager, out functionMetadata, out functionError))
                     {
                         // for functions in error, log the error and don't
                         // add to the functions collection
@@ -779,8 +778,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, Dictionary<string, HttpTriggerBindingMetadata> mappedHttpFunctions,
-            TraceWriter traceWriter, string scriptDirectory, ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, string scriptDirectory,
+            ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
 
@@ -814,58 +813,28 @@ namespace Microsoft.Azure.WebJobs.Script
 
             functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
 
-            var httpTriggerBindingMetadata = functionMetadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
-            if (httpTriggerBindingMetadata != null)
-            {
-                if (string.IsNullOrWhiteSpace(httpTriggerBindingMetadata.Route))
-                {
-                    // if no explicit route is provided, default to the function name
-                    httpTriggerBindingMetadata.Route = functionName;
-                }
-
-                // disallow custom routes in our own reserved route space
-                string httpRoute = httpTriggerBindingMetadata.Route.Trim('/').ToLowerInvariant();
-                if (httpRoute.StartsWith("admin"))
-                {
-                    error = "The specified route conflicts with one or more built in routes.";
-                    return false;
-                }
-
-                // prevent duplicate/conflicting routes
-                foreach (var pair in mappedHttpFunctions)
-                {
-                    if (HttpRoutesConflict(httpTriggerBindingMetadata, pair.Value))
-                    {
-                        error = $"The route specified conflicts with the route defined by function '{pair.Key}'.";
-                        return false;
-                    }
-                }
-
-                mappedHttpFunctions.Add(functionName, httpTriggerBindingMetadata);
-            }
-
             return true;
         }
 
         // A route is in conflict if the route matches any other existing
         // route and there is intersection in the http methods of the two functions
-        internal static bool HttpRoutesConflict(HttpTriggerBindingMetadata functionMetadata, HttpTriggerBindingMetadata otherFunctionMetadata)
+        internal static bool HttpRoutesConflict(HttpTriggerAttribute httpTrigger, HttpTriggerAttribute otherHttpTrigger)
         {
-            if (string.Compare(functionMetadata.Route.Trim('/'), otherFunctionMetadata.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
+            if (string.Compare(httpTrigger.Route.Trim('/'), otherHttpTrigger.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
             {
                 // routes differ, so no conflict
                 return false;
             }
 
-            if (functionMetadata.Methods == null || functionMetadata.Methods.Count == 0 ||
-                otherFunctionMetadata.Methods == null || otherFunctionMetadata.Methods.Count == 0)
+            if (httpTrigger.Methods == null || httpTrigger.Methods.Length == 0 ||
+                otherHttpTrigger.Methods == null || otherHttpTrigger.Methods.Length == 0)
             {
                 // if either methods collection is null or empty that means
                 // "all methods", which will intersect with any method collection
                 return true;
             }
 
-            return functionMetadata.Methods.Intersect(otherFunctionMetadata.Methods).Any();
+            return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
         internal static void ValidateFunctionName(string functionName)
@@ -987,6 +956,8 @@ namespace Microsoft.Azure.WebJobs.Script
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+
             foreach (FunctionMetadata metadata in functions)
             {
                 try
@@ -999,6 +970,8 @@ namespace Microsoft.Azure.WebJobs.Script
                             break;
                         }
                     }
+
+                    ValidateFunction(descriptor, httpFunctions);
 
                     if (descriptor != null)
                     {
@@ -1013,6 +986,42 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionDescriptors;
+        }
+
+        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
+        {
+            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            if (httpTrigger != null)
+            {
+                ValidateHttpFunction(function.Name, httpTrigger);
+
+                // prevent duplicate/conflicting routes
+                foreach (var pair in httpFunctions)
+                {
+                    if (HttpRoutesConflict(httpTrigger, pair.Value))
+                    {
+                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                    }
+                }
+
+                httpFunctions.Add(function.Name, httpTrigger);
+            }
+        }
+
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
+        {
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
+            {
+                // if no explicit route is provided, default to the function name
+                httpTrigger.Route = functionName;
+            }
+
+            // disallow custom routes in our own reserved route space
+            string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
+            if (httpRoute.StartsWith("admin"))
+            {
+                throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
+            }
         }
 
         internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
@@ -1107,15 +1116,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
             }
-
-            // apply http configuration configuration
-            configSection = (JObject)config["http"];
-            HttpConfiguration httpConfig = null;
-            if (configSection != null)
-            {
-                httpConfig = configSection.ToObject<HttpConfiguration>();
-            }
-            scriptConfig.HttpConfiguration = httpConfig ?? new HttpConfiguration();
 
             if (config.TryGetValue("functionTimeout", out value))
             {

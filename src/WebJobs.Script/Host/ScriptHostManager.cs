@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets or sets the current state of the host.
+        /// Gets the current state of the host.
         /// </summary>
         public virtual ScriptHostState State { get; private set; }
 
         /// <summary>
-        /// Gets or sets the last host <see cref="Exception"/> that has occurred.
+        /// Gets the last host <see cref="Exception"/> that has occurred.
         /// </summary>
         public virtual Exception LastError { get; private set; }
 

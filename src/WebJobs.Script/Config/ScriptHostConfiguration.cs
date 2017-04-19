@@ -65,11 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileLoggingMode FileLoggingMode { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="HttpConfiguration"/>
-        /// </summary>
-        public HttpConfiguration HttpConfiguration { get; set; }
-
-        /// <summary>
         /// Gets or sets the list of functions that should be run. This list can be used to filter
         /// the set of functions that will be enabled - it can be a subset of the actual
         /// function directories. When left null (the default) all discovered functions will

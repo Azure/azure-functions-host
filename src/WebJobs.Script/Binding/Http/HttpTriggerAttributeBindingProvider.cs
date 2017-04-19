@@ -80,9 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
 
                 // add any route parameters to the contract
-                if (!string.IsNullOrEmpty(attribute.RouteTemplate))
+                if (!string.IsNullOrEmpty(attribute.Route))
                 {
-                    var routeParameters = _httpRouteFactory.GetRouteParameters(attribute.RouteTemplate);
+                    var routeParameters = _httpRouteFactory.GetRouteParameters(attribute.Route);
                     var parameters = ((MethodInfo)parameter.Member).GetParameters().ToDictionary(p => p.Name, p => p.ParameterType, StringComparer.OrdinalIgnoreCase);
                     foreach (string parameterName in routeParameters)
                     {

@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters);
+            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 

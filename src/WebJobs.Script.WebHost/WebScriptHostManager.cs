@@ -306,8 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (triggerParameter.Type != typeof(HttpRequestMessage))
             {
-                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
-                if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null && !string.IsNullOrEmpty(httpTrigger.WebHookType))
                 {
                     WebHookHandlerContext webHookContext;
                     if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsWebHookContextKey, out webHookContext))
@@ -423,13 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected override void OnHostCreated()
         {
-            // whenever the host is created (or recreated) we build a cache map of
-            // all http function routes
-            InitializeHttpFunctions(Instance.Functions);
-
-            // since the request manager is created based on configurable
-            // settings, it has to be recreated when host config changes
-            _httpRequestManager = new WebScriptHostRequestManager(Instance.ScriptConfig.HttpConfiguration, PerformanceManager, _metricsLogger, _config.TraceWriter);
+            InitializeHttp();
 
             base.OnHostCreated();
         }
@@ -442,22 +436,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             base.OnHostStarted();
         }
 
-        internal void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions)
+        private void InitializeHttp()
+        {
+            // get the registered http configuration from the extension registry
+            var extensions = Instance.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration>().Single();
+
+            // whenever the host is created (or recreated) we build a cache map of
+            // all http function routes
+            InitializeHttpFunctions(Instance.Functions, httpConfig);
+
+            // since the request manager is created based on configurable
+            // settings, it has to be recreated when host config changes
+            _httpRequestManager = new WebScriptHostRequestManager(httpConfig, PerformanceManager, _metricsLogger, _config.TraceWriter);
+        }
+
+        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration httpConfig)
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
-            var httpRouteFactory = new HttpRouteFactory(_config.HttpConfiguration.RoutePrefix);
+            var httpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
 
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
             foreach (var function in functions)
             {
-                var httpTriggerBinding = function.Metadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
-                if (httpTriggerBinding != null)
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null)
                 {
                     IHttpRoute httpRoute = null;
-                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTriggerBinding.Route, httpTriggerBinding.Methods, _httpRoutes, out httpRoute))
+                    IEnumerable<HttpMethod> httpMethods = null;
+                    if (httpTrigger.Methods != null)
+                    {
+                        httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
+                    }
+                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
                     {
                         _httpFunctions.Add(httpRoute, function);
                     }

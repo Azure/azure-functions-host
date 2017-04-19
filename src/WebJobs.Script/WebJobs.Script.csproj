@@ -337,6 +337,7 @@
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
     <Compile Include="Binding\Http\HttpConfiguration.cs" />
+    <Compile Include="Binding\Http\HttpJobHostConfigurationExtensions.cs" />
     <Compile Include="Binding\Http\HttpRequestManager.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
     <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
@@ -397,7 +398,6 @@
     <Compile Include="Description\DotNet\PackageAssemblyResolver.cs" />
     <Compile Include="Description\DotNet\PackageManager.cs" />
     <Compile Include="Description\DotNet\PackageReference.cs" />
-    <Compile Include="Description\Binding\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
@@ -440,7 +440,6 @@
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="Diagnostics\FileTraceWriter.cs" />
     <Compile Include="Host\ScriptHostState.cs" />
-    <Compile Include="HttpMethodJsonConverter.cs" />
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcher.cs" />

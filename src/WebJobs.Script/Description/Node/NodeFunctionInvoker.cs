@@ -318,9 +318,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // If this is a WebHook function, the input should be the
                 // request body
-                HttpTriggerBindingMetadata httpBinding = _trigger as HttpTriggerBindingMetadata;
-                if (httpBinding != null &&
-                    !string.IsNullOrEmpty(httpBinding.WebHookType))
+                var httpTrigger = _inputBindings.OfType<ExtensionBinding>().SingleOrDefault(p => p.Metadata.IsTrigger)?
+                    .Attributes.OfType<HttpTriggerAttribute>().SingleOrDefault();
+                if (httpTrigger != null && !string.IsNullOrEmpty(httpTrigger.WebHookType))
                 {
                     requestObject.TryGetValue("body", out input);
                 }

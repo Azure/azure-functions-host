@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // create the FunctionDefinition
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters);
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters, null, null, null);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 

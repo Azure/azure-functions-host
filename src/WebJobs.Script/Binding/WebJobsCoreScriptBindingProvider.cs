@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Binding.Http;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 
@@ -36,7 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
+            // apply http configuration configuration
+            configSection = (JObject)Metadata["http"];
+            HttpConfiguration httpConfig = null;
+            if (configSection != null)
+            {
+                httpConfig = configSection.ToObject<HttpConfiguration>();
+            }
+            httpConfig = httpConfig ?? new HttpConfiguration();
+
             Config.UseScriptExtensions();
+            Config.UseHttp(httpConfig);
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -72,14 +84,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             public override Collection<Attribute> GetAttributes()
             {
-                Collection<Attribute> attributes = new Collection<Attribute>();
+                var authLevel = Context.GetMetadataEnumValue<AuthorizationLevel>("authLevel", AuthorizationLevel.Function);
 
-                attributes.Add(new HttpTriggerAttribute
+                JArray methodArray = Context.GetMetadataValue<JArray>("methods");
+                string[] methods = null;
+                if (methodArray != null)
                 {
-                    RouteTemplate = Context.GetMetadataValue<string>("route")
-                });
+                    methods = methodArray.Select(p => p.Value<string>()).ToArray();
+                }
 
-                return attributes;
+                var attribute = new HttpTriggerAttribute(authLevel, methods)
+                {
+                    Route = Context.GetMetadataValue<string>("route"),
+                    WebHookType = Context.GetMetadataValue<string>("webHookType")
+                };
+
+                return new Collection<Attribute> { attribute };
             }
         }
 

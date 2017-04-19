@@ -76,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The new <see cref="BindingMetadata"/> instance.</returns>
         public static BindingMetadata Create(JObject raw)
         {
-            BindingMetadata bindingMetadata = null;
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
@@ -88,18 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
             }
 
-            // TODO: Validate the binding type somehow?
-
-            switch (bindingType.ToLowerInvariant())
-            {
-                case "httptrigger":
-                    bindingMetadata = raw.ToObject<HttpTriggerBindingMetadata>();
-                    break;
-                default:
-                    bindingMetadata = raw.ToObject<BindingMetadata>();
-                    break;
-            }
-
+            BindingMetadata bindingMetadata = raw.ToObject<BindingMetadata>();
             bindingMetadata.Type = bindingType;
             bindingMetadata.Direction = bindingDirection;
             bindingMetadata.Connection = connection;

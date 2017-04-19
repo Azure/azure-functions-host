@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
                 Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
-                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes);
+                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters,  methodAttributes, inputBindings, outputBindings);
 
                 return true;
             }
@@ -206,21 +206,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
-
-        protected ParameterDescriptor ParseHttpTrigger(HttpTriggerBindingMetadata trigger, Type triggerParameterType = null)
-        {
-            if (trigger == null)
-            {
-                throw new ArgumentNullException("trigger");
-            }
-
-            if (triggerParameterType == null)
-            {
-                triggerParameterType = typeof(string);
-            }
-
-            return new ParameterDescriptor(trigger.Name, triggerParameterType);
-        }
 
         protected ParameterDescriptor ParseManualTrigger(BindingMetadata trigger, Type triggerParameterType = null)
         {

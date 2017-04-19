@@ -2,10 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding.Http
 {
-    public class HttpConfiguration
+    public class HttpConfiguration : IExtensionConfigProvider
     {
         public HttpConfiguration()
         {
@@ -40,5 +41,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding.Http
         /// checks should be enabled.
         /// </summary>
         public bool DynamicThrottlesEnabled { get; set; }
+
+        public void Initialize(ExtensionConfigContext context)
+        {
+            context.Config.RegisterBindingExtension(new HttpTriggerAttributeBindingProvider());
+        }
     }
 }
