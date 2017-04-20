@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -75,7 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
         /// </summary>
-        [CLSCompliant(false)]
         public ICollection<ScriptBindingProvider> BindingProviders { get; internal set; }
 
         /// <summary>

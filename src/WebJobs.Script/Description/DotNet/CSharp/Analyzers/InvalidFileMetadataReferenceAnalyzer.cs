@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
 {
-    [CLSCompliant(false)]
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class InvalidFileMetadataReferenceAnalyzer : DiagnosticAnalyzer
     {

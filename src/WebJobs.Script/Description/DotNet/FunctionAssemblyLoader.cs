@@ -93,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result;
         }
 
-        [CLSCompliant(false)]
         public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, IFunctionMetadataResolver metadataResolver, TraceWriter traceWriter)
         {
             if (metadata == null)

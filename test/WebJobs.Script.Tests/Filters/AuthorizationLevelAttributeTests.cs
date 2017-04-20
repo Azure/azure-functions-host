@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.WebJobs.Script.Tests;
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public AuthorizationLevelAttributeTests()
         {
-            HttpConfig = new HttpConfiguration();
+            HttpConfig = new System.Web.Http.HttpConfiguration();
             _actionContext = CreateActionContext(typeof(TestController).GetMethod("Get"), HttpConfig);
 
             Mock<IDependencyResolver> mockDependencyResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockDependencyResolver.Setup(p => p.GetService(typeof(WebHostSettings))).Returns(_webHostSettings);
         }
 
-        protected HttpConfiguration HttpConfig { get; }
+        protected System.Web.Http.HttpConfiguration HttpConfig { get; }
 
         protected Mock<ISecretManager> MockSecretManager { get; }
 
@@ -351,9 +352,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(AuthorizationLevelAttribute.SkipAuthorization(actionContext));
         }
 
-        protected static HttpActionContext CreateActionContext(MethodInfo action, HttpConfiguration config = null)
+        protected static HttpActionContext CreateActionContext(MethodInfo action, System.Web.Http.HttpConfiguration config = null)
         {
-            config = config ?? new HttpConfiguration();
+            config = config ?? new System.Web.Http.HttpConfiguration();
             var actionContext = new HttpActionContext();
             var controllerDescriptor = new HttpControllerDescriptor(config, action.ReflectedType.Name, action.ReflectedType);
             var controllerContext = new HttpControllerContext();

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public interface ICompilationService
     {
         string Language { get; }

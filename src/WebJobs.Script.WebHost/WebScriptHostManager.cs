@@ -15,16 +15,14 @@ using System.Web.Hosting;
 using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -316,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // Stuff the resolved data into the request context so the HttpTrigger binding
                         // can access it
                         var webHookData = GetWebHookData(triggerParameter.Type, webHookContext);
-                        request.Properties.Add(ScriptConstants.AzureFunctionsWebHookDataKey, webHookData);
+                        request.Properties.Add(HttpExtensionConstants.AzureWebJobsWebHookDataKey, webHookData);
                     }
                 }
 
@@ -387,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     routeDataValues.Add(pair.Key, value);
                 }
 
-                request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
+                request.Properties.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeDataValues);
             }
         }
 
@@ -440,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // get the registered http configuration from the extension registry
             var extensions = Instance.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
-            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration>().Single();
+            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
 
             // whenever the host is created (or recreated) we build a cache map of
             // all http function routes
@@ -451,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _httpRequestManager = new WebScriptHostRequestManager(httpConfig, PerformanceManager, _metricsLogger, _config.TraceWriter);
         }
 
-        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration httpConfig)
+        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionConfiguration httpConfig)
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations

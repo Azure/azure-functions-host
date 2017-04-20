@@ -21,7 +21,6 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;

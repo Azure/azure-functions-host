@@ -15,7 +15,6 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class CSharpCompilationService : ICompilationService
     {
         private static readonly string[] FileTypes = { ".csx", ".cs" };

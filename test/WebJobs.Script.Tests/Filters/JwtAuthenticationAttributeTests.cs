@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 using Microsoft.Azure.Web.DataProtection;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager;

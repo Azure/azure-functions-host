@@ -8,7 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -24,14 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IMetricsLogger> _metricsLogger;
         private readonly Mock<HostPerformanceManager> _performanceManager;
         private readonly FunctionDescriptor _functionDescriptor;
-        private readonly HttpConfiguration _httpConfig;
+        private readonly HttpExtensionConfiguration _httpConfig;
         private readonly TestTraceWriter _traceWriter;
 
         public WebScriptHostRequestManagerTests()
         {
             _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
             _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { new ScriptSettingsManager(), _traceWriter });
-            _httpConfig = new HttpConfiguration();
+            _httpConfig = new HttpExtensionConfiguration();
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             _requestManager = new WebScriptHostRequestManager(_httpConfig, _performanceManager.Object, _metricsLogger.Object, _traceWriter, 1);
             _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>(), null, null, null);

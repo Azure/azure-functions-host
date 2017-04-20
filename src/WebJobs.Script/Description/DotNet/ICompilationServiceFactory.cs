@@ -6,7 +6,6 @@ using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public interface ICompilationServiceFactory
     {
         ImmutableArray<ScriptType> SupportedScriptTypes { get; }

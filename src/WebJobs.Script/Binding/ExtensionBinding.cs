@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// <summary>
     /// Wrapper used to adapt a <see cref="ScriptBinding"/> to the binding pipeline.
     /// </summary>
-    [CLSCompliant(false)]
     public class ExtensionBinding : FunctionBinding, IResultProcessingBinding
     {
         private ScriptBinding _binding;

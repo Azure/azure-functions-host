@@ -8,9 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public static class ScriptConstants
     {
         public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
-        public const string AzureFunctionsWebHookDataKey = "MS_AzureFunctionsWebHookData";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
-        public const string AzureFunctionsHttpRouteDataKey = "MS_AzureFunctionsHttpRouteData";
         public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
@@ -40,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
-        public const string DefaultHttpRoutePrefix = "api";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 

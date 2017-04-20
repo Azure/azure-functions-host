@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Net.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Xunit;
 
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Script
                 { "a", 123 },
                 { "b", 456 }
             };
-            request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeData);
+            request.Properties.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeData);
 
             ScriptFunctionInvokerBase.InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
             Assert.Equal(10, environmentVariables.Count);

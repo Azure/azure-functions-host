@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public interface ICompilation
     {
         ImmutableArray<Diagnostic> GetDiagnostics();

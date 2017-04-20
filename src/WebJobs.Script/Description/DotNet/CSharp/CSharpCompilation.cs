@@ -19,7 +19,6 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public sealed class CSharpCompilation : ICompilation
     {
         private readonly Compilation _compilation;

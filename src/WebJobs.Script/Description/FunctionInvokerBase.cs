@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Script.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private readonly Stopwatch _stopwatch = new Stopwatch();

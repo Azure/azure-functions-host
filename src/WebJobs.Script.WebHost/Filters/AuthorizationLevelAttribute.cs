@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {

@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Description.PowerShell;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class PowerShellFunctionInvoker : ScriptFunctionInvokerBase
     {
         private readonly ScriptHost _host;

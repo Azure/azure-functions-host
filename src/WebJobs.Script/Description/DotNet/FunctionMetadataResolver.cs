@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// Provides runtime and compile-time assembly/metadata resolution for a given assembly, loading privately deployed
     /// or package assemblies.
     /// </summary>
-    [CLSCompliant(false)]
     public sealed class FunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
     {
         private readonly string _privateAssembliesPath;

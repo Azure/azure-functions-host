@@ -6,9 +6,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
 
@@ -40,12 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             // apply http configuration configuration
             configSection = (JObject)Metadata["http"];
-            HttpConfiguration httpConfig = null;
+            HttpExtensionConfiguration httpConfig = null;
             if (configSection != null)
             {
-                httpConfig = configSection.ToObject<HttpConfiguration>();
+                httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
             }
-            httpConfig = httpConfig ?? new HttpConfiguration();
+            httpConfig = httpConfig ?? new HttpExtensionConfiguration();
 
             Config.UseScriptExtensions();
             Config.UseHttp(httpConfig);

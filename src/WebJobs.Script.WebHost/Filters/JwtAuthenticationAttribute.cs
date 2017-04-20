@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.Filters;
 using Microsoft.Azure.Web.DataProtection;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.IdentityModel.Tokens;
 using static Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;

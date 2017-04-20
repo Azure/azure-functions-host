@@ -9,13 +9,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    [CLSCompliant(false)]
     public class ScriptFunctionInvoker : ScriptFunctionInvokerBase
     {
         private const string BashPathEnvironmentKey = "AzureWebJobs_BashPath";

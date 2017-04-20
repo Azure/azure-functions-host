@@ -80,36 +80,32 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta3-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta3-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.BotFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.13-beta\lib\net46\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.Http, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Http.1.0.0-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.Http.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.Twilio, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.0.1-alpha1-10427\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.0.1-alpha1-10430\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.1-alpha1-10646\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
@@ -327,7 +323,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AuthorizationLevel.cs" />
     <Compile Include="Binding\ApiHubScriptBindingProvider.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\GeneralScriptBindingProvider.cs" />
@@ -336,12 +331,6 @@
     <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
-    <Compile Include="Binding\Http\HttpConfiguration.cs" />
-    <Compile Include="Binding\Http\HttpJobHostConfigurationExtensions.cs" />
-    <Compile Include="Binding\Http\HttpRequestManager.cs" />
-    <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
-    <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
-    <Compile Include="Binding\Http\HttpRouteFactory.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />

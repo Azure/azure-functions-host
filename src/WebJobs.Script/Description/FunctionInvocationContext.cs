@@ -7,7 +7,6 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class FunctionInvocationContext
     {
         public ExecutionContext ExecutionContext { get; set; }

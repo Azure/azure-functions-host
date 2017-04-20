@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -484,9 +485,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             provider.Initialize();
 
             IExtensionRegistry extensions = hostConfig.GetService<IExtensionRegistry>();
-            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration>().Single();
+            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
 
-            Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, httpConfig.RoutePrefix);
+            Assert.Equal(HttpExtensionConstants.DefaultRoutePrefix, httpConfig.RoutePrefix);
             Assert.Equal(false, httpConfig.DynamicThrottlesEnabled);
             Assert.Equal(DataflowBlockOptions.Unbounded, httpConfig.MaxConcurrentRequests);
             Assert.Equal(DataflowBlockOptions.Unbounded, httpConfig.MaxOutstandingRequests);
@@ -501,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             provider.Initialize();
 
             extensions = hostConfig.GetService<IExtensionRegistry>();
-            httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<Microsoft.Azure.WebJobs.Script.Binding.Http.HttpConfiguration>().Single();
+            httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
 
             Assert.Equal("myprefix", httpConfig.RoutePrefix);
             Assert.Equal(true, httpConfig.DynamicThrottlesEnabled);

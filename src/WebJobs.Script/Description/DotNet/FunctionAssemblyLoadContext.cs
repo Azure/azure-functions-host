@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// Assemblies loaded from this context are loaded using the <see cref="IFunctionMetadataResolver"/> associated
     /// with a given function.
     /// </summary>
-    [CLSCompliant(false)]
     public sealed class FunctionAssemblyLoadContext
     {
         private readonly IFunctionMetadataResolver _metadataResolver;

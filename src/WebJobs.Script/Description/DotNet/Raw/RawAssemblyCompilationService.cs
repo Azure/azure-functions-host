@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class RawAssemblyCompilationService : ICompilationService
     {
         private static string[] _supportedFileTypes = new[] { ".dll", ".exe" };

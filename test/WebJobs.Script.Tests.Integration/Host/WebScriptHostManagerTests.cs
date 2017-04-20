@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Routing;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -218,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
 
-            Assert.False(request.Properties.ContainsKey(ScriptConstants.AzureFunctionsHttpRouteDataKey));
+            Assert.False(request.Properties.ContainsKey(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey));
         }
 
         [Fact]
@@ -237,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
 
-            var result = (IDictionary<string, object>)request.Properties[ScriptConstants.AzureFunctionsHttpRouteDataKey];
+            var result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
             Assert.Equal(result["p1"], "abc");
             Assert.Equal(result["p2"], 123);
             Assert.Equal(result["p3"], null);

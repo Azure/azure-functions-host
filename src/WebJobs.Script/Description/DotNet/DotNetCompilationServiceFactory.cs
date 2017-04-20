@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory
     {
         private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp, ScriptType.DotNetAssembly }.ToImmutableArray();

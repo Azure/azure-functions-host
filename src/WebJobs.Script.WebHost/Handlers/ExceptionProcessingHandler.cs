@@ -10,22 +10,23 @@ using System.Security.Cryptography;
 using System.Web.Http;
 using System.Web.Http.ExceptionHandling;
 using System.Web.Http.Results;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Newtonsoft.Json;
 using ExceptionProcessor = System.Action<System.Web.Http.ExceptionHandling.ExceptionContext,
-    Microsoft.Azure.WebJobs.Script.AuthorizationLevel, Microsoft.Azure.WebJobs.Script.WebHost.Models.ApiErrorModel>;
+    Microsoft.Azure.WebJobs.Extensions.Http.AuthorizationLevel, Microsoft.Azure.WebJobs.Script.WebHost.Models.ApiErrorModel>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     public class ExceptionProcessingHandler : ExceptionHandler
     {
         private readonly IDictionary<Type, ExceptionProcessor> _handlers;
-        private readonly HttpConfiguration _config;
+        private readonly System.Web.Http.HttpConfiguration _config;
         private readonly Lazy<TraceWriter> _traceWriterLoader;
 
-        public ExceptionProcessingHandler(HttpConfiguration config)
+        public ExceptionProcessingHandler(System.Web.Http.HttpConfiguration config)
         {
             if (config == null)
             {

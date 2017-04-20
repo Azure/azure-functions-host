@@ -14,6 +14,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using EdgeJs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json;
@@ -22,7 +23,6 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    [CLSCompliant(false)]
     public class NodeFunctionInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
@@ -508,7 +508,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Apply any captured route parameters to the params collection
             object value = null;
-            if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            if (request.Properties.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out value))
             {
                 Dictionary<string, object> routeData = (Dictionary<string, object>)value;
                 requestObject["params"] = routeData;

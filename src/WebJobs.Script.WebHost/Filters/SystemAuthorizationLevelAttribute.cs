@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
