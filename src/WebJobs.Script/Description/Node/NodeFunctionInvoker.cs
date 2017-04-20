@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             DataType dataType = _trigger.DataType ?? DataType.String;
 
             var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
-            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, userTraceWriter, context);
+            var scriptExecutionContext = CreateScriptExecutionContext(input, dataType, userTraceWriter, context.Logger, context);
             var bindingData = (Dictionary<string, object>)scriptExecutionContext["bindingData"];
 
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
@@ -253,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
+        private Dictionary<string, object> CreateScriptExecutionContext(object input, DataType dataType, TraceWriter traceWriter, ILogger logger, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
             var log = (Func<object, Task<object>>)(p =>
@@ -266,7 +267,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         TraceLevel level = (TraceLevel)logData["lvl"];
                         var evt = new TraceEvent(level, message);
-                        traceWriter.Trace(evt);
+
+                        // Node captures the AsyncLocal value of the first invocation, which means that logs
+                        // are correlated incorrectly. Here we'll overwrite that value with the correct value
+                        // immediately before logging.
+                        using (logger.BeginScope(
+                            new Dictionary<string, object>
+                            {
+                                ["MS_FunctionInvocationId"] = invocationContext.ExecutionContext.InvocationId
+                            }))
+                        {
+                            // TraceWriter already logs to ILogger
+                            traceWriter.Trace(evt);
+                        }
                     }
                     catch (ObjectDisposedException)
                     {

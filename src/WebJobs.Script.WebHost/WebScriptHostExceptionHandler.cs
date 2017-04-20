@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -70,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _manager.Instance.TraceWriter.Error(message, exception);
             _manager.Instance.TraceWriter.Flush();
+
+            _manager.Instance.Logger?.LogError(0, exception, message);
         }
     }
 }

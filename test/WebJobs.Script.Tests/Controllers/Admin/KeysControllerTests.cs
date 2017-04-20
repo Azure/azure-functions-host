@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
-            _testController = new KeysController(_managerMock.Object, _secretsManagerMock.Object, traceWriter);
+            _testController = new KeysController(_managerMock.Object, _secretsManagerMock.Object, traceWriter, null);
 
             // setup some test functions
             string errorFunction = "ErrorFunction";

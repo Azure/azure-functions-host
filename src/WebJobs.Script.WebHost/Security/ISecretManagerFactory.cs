@@ -4,11 +4,13 @@
 using System;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
+    [CLSCompliant(false)]
     public interface ISecretManagerFactory
     {
-        ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ISecretsRepository secretsRepository);
+        ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ILoggerFactory loggerFactory, ISecretsRepository secretsRepository);
     }
 }

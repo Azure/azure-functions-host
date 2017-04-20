@@ -12,7 +12,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -30,11 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public PackageManager(FunctionMetadata metadata, TraceWriter traceWriter)
+        public PackageManager(FunctionMetadata metadata, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _functionMetadata = metadata;
             _traceWriter = traceWriter;
+            _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public Task<PackageRestoreResult> RestorePackagesAsync()
@@ -84,7 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     process.Close();
                 };
 
-                _traceWriter.Info("Starting NuGet restore");
+                string message = "Starting NuGet restore";
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
 
                 process.Start();
 
@@ -93,12 +99,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception exc)
             {
-                _traceWriter.Error($@"NuGet restore failed with message: '{exc.Message}'
+                string message = $@"NuGet restore failed with message: '{exc.Message}'
 Function directory: {functionDirectory}
 Project path: {projectPath}
 Packages path: {nugetHome}
 Nuget client path: {nugetFilePath}
-Lock file hash: {currentLockFileHash}");
+Lock file hash: {currentLockFileHash}";
+
+                _traceWriter.Error(message);
+                _logger?.LogError(message);
 
                 tcs.SetException(exc);
             }
@@ -314,7 +323,9 @@ Lock file hash: {currentLockFileHash}");
 
         private void ProcessDataReceived(object sender, DataReceivedEventArgs e)
         {
-            _traceWriter.Info(e.Data ?? string.Empty);
+            string message = e.Data ?? string.Empty;
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
         }
 
         private class FrameworkInfo

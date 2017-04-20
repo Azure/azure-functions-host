@@ -7,6 +7,7 @@ using System.Globalization;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -16,10 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp, ScriptType.DotNetAssembly }.ToImmutableArray();
         private static OptimizationLevel? _optimizationLevel;
         private readonly TraceWriter _traceWriter;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public DotNetCompilationServiceFactory(TraceWriter traceWriter)
+        public DotNetCompilationServiceFactory(TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _traceWriter = traceWriter;
+            _loggerFactory = loggerFactory;
         }
 
         ImmutableArray<ScriptType> ICompilationServiceFactory.SupportedScriptTypes => SupportedScriptTypes;
@@ -61,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 case ScriptType.CSharp:
                     return new CSharpCompilationService(metadataResolver, OptimizationLevel);
                 case ScriptType.FSharp:
-                    return new FSharpCompilationService(metadataResolver, OptimizationLevel, _traceWriter);
+                    return new FSharpCompilationService(metadataResolver, OptimizationLevel, _traceWriter, _loggerFactory);
                 case ScriptType.DotNetAssembly:
                     return new RawAssemblyCompilationService();
                 default:

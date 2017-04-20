@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
+    [CLSCompliant(false)]
     public sealed class WebHostResolver : IDisposable
     {
         private static object _syncLock = new object();
