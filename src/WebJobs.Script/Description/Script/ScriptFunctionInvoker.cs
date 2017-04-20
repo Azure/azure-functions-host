@@ -9,7 +9,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -92,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (e.Data != null)
                 {
+                    // the user's TraceWriter will automatically log to ILogger as well
                     userTraceWriter.Info(e.Data);
                 }
             };

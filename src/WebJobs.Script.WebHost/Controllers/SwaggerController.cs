@@ -8,6 +8,7 @@ using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -18,12 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public SwaggerController(ISwaggerDocumentManager swaggerDocumentManager, WebScriptHostManager scriptHostManager, TraceWriter traceWriter)
+        [CLSCompliant(false)]
+        public SwaggerController(ISwaggerDocumentManager swaggerDocumentManager, WebScriptHostManager scriptHostManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _swaggerDocumentManager = swaggerDocumentManager;
             _scriptHostManager = scriptHostManager;
             _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSwagger}.Api");
+            _logger = loggerFactory?.CreateLogger("Host.SwaggerDocumentation.Api");
         }
 
         [HttpGet]
@@ -31,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IHttpActionResult GetGeneratedSwaggerDocument()
         {
             _traceWriter.Verbose(Resources.SwaggerGenerateDocument);
+            _logger?.LogDebug(Resources.SwaggerGenerateDocument);
             var swaggerDocument = _swaggerDocumentManager.GenerateSwaggerDocument(_scriptHostManager.HttpFunctions);
             return Ok(swaggerDocument);
         }

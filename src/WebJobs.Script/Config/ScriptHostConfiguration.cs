@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -95,5 +97,16 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
+
+        /// Gets or sets the <see cref="LogCategoryFilter"/> to use when constructing providers for the
+        /// registered <see cref="ILoggerFactory"/>.
+        /// </summary>
+        [CLSCompliant(false)]
+        public LogCategoryFilter Filter { get; set; }
+
+        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
+        /// Insights client-side sampling. If null, client-side sampling is disabled.
+        [CLSCompliant(false)]
+        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
     }
 }

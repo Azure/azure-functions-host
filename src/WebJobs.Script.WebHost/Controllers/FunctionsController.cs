@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// <summary>
     /// Controller responsible for handling all http function invocations.
     /// </summary>
+    [CLSCompliant(false)]
     public class FunctionsController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
@@ -51,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // already exclude them)
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
-
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> processRequestHandler = async (req, ct) =>
             {
                 return await ProcessRequestAsync(req, function, ct);

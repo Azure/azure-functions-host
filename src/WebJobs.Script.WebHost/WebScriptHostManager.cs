@@ -24,11 +24,12 @@ using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
+    [CLSCompliant(false)]
     public class WebScriptHostManager : ScriptHostManager
     {
         private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
@@ -70,12 +71,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
+            if (config.HostConfig.LoggerFactory == null)
+            {
+                config.HostConfig.LoggerFactory = new LoggerFactory();
+            }
 
             _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory)
@@ -153,7 +158,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // context down to the function.
             using (var syncContextSuspensionScope = new SuspendedSynchronizationContextScope())
             {
-                await Instance.CallAsync(function.Name, arguments, cancellationToken);
+                // Add the request to the logging scope. This allows the App Insights logger to
+                // record details about the request.
+                ILoggerFactory loggerFactory = _config.HostConfig.GetService<ILoggerFactory>();
+                ILogger logger = loggerFactory.CreateLogger(LogCategories.Function);
+                using (logger.BeginScope(
+                    new Dictionary<string, object>()
+                    {
+                        ["MS_HttpRequest"] = request
+                    }))
+                {
+                    await Instance.CallAsync(function.Name, arguments, cancellationToken);
+                }
             }
 
             // Get the response
@@ -431,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected override void OnHostStarted()
         {
             // Purge any old Function secrets
-            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
+            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
 
             base.OnHostStarted();
         }
@@ -481,7 +497,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override void Shutdown()
         {
-            Instance?.TraceWriter.Info("Environment shutdown has been triggered. Stopping host and signaling shutdown.");
+            string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
+            Instance?.TraceWriter.Info(message);
+            Instance?.Logger?.LogInformation(message);
 
             Stop();
             HostingEnvironment.InitiateShutdown();

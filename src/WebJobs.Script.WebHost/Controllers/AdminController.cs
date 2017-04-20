@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -33,12 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter)
+        [CLSCompliant(false)]
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceHostAdmin}.Api");
+            _logger = loggerFactory?.CreateLogger("Host.Admin.Api");
         }
 
         [HttpPost]
@@ -125,7 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     };
                 }
 
-                _traceWriter.Info($"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}");
+                string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
 
                 return Ok(status);
             }

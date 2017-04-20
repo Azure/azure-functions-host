@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
     {
         private readonly ISecretManager _secretManager;
 
+        [CLSCompliant(false)]
         public DynamicWebHookReceiverConfig(ISecretManager secretManager)
         {
             _secretManager = secretManager;

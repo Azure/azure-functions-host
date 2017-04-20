@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.WebHooks
         private ISecretManager _secretManager;
         private bool disposedValue = false;
 
+        [CLSCompliant(false)]
         public WebHookReceiverManager(ISecretManager secretManager)
         {
             _secretManager = secretManager;

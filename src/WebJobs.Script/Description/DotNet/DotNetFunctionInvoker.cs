@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = metadataResolver ?? new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter);
+            _metadataResolver = metadataResolver ?? new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter, host.ScriptConfig.HostConfig.LoggerFactory);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -89,7 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string fileExtension = Path.GetExtension(e.Name);
             if (ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
             {
-                TraceWriter.Info("Assembly changes detected. Restarting host...");
+                string message = "Assembly changes detected. Restarting host...";
+                TraceWriter.Info(message);
+                Logger?.LogInformation(message);
 
                 // As a result of an assembly change, we initiate a full host shutdown
                 _shutdown();
@@ -282,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     ICompilation compilation = _compilationService.GetFunctionCompilation(Metadata);
 
                     Assembly assembly = compilation.EmitAndLoad(cancellationToken);
-                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter, Host.ScriptConfig.HostConfig.LoggerFactory);
 
                     FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 

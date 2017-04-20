@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
