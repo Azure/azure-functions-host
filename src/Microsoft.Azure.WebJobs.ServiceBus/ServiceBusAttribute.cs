@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs
     /// </description></item>
     /// </list>
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{QueueOrTopicName,nq}")]
     [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
     [Binding]

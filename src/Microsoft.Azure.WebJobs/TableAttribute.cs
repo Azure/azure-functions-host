@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs
     /// </description></item>
     /// </list>
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
     [Binding]

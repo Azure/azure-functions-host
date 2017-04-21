@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs
     /// </list>
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1813:AvoidUnsealedAttributes")]
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{QueueName,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
     [Binding]

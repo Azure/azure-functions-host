@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs
     /// </list>
     /// </remarks>
     [SuppressMessage("Microsoft.Design", "CA1019:DefineAccessorsForAttributeArguments", Justification = "There is an accessor for FileAccess")]
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{BlobPath,nq}")]
     [ConnectionProvider(typeof(StorageAccountAttribute))]
     [Binding]

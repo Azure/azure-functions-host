@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// <summary>
     /// Setup an 'output' binding to an EventHub. This can be any output type compatible with an IAsyncCollector.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [Binding]
     public sealed class EventHubAttribute : Attribute
     {
