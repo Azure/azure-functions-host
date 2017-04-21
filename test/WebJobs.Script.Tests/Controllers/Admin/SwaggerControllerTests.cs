@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
             _swaggerDocumentManagerMock = new Mock<ISwaggerDocumentManager>(MockBehavior.Strict);
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            _testController = new SwaggerController(_swaggerDocumentManagerMock.Object, _managerMock.Object, traceWriter);
+            _testController = new SwaggerController(_swaggerDocumentManagerMock.Object, _managerMock.Object, traceWriter, null);
         }
 
         [Fact]

@@ -3,10 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -18,6 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent);
 
-        Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter);
+        Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger);
     }
 }

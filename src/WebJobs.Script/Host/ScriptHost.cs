@@ -17,18 +17,22 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -54,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
+        private ILogger _startupLogger;
 
         protected internal ScriptHost(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
             : base(scriptConfig.HostConfig)
@@ -94,6 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public TraceWriter TraceWriter { get; internal set; }
+
+        public ILogger Logger { get; internal set; }
 
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
@@ -195,7 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script
             catch (Exception ex)
             {
                 // best effort
-                TraceWriter.Error("Unable to update the debug sentinel file.", ex);
+                string message = "Unable to update the debug sentinel file.";
+                TraceWriter.Error(message, ex);
+                Logger?.LogError(0, ex, message);
+
                 if (ex.IsFatal())
                 {
                     throw;
@@ -233,12 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
             this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
 
-            IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-            if (metricsLogger == null)
-            {
-                metricsLogger = new MetricsLogger();
-                ScriptConfig.HostConfig.AddService<IMetricsLogger>(metricsLogger);
-            }
+            IMetricsLogger metricsLogger = CreateMetricsLogger();
 
             using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
@@ -315,6 +320,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
 
+                ConfigureLoggerFactory(ScriptConfig, _settingsManager, metricsLogger, () => FileLoggingEnabled);
+
+                // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
+                // for all other logging after startup.
+                _startupLogger = ScriptConfig.HostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                Logger = ScriptConfig.HostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
                 _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName,
                     includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
 
@@ -330,13 +342,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter);
+                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter, ScriptConfig.HostConfig.LoggerFactory);
                 }
 
-                var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter);
+                var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter, _startupLogger);
                 ScriptConfig.BindingProviders = bindingProviders;
 
-                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath));
+                string message = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
+                TraceWriter.Info(message);
+                _startupLogger?.LogInformation(message);
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
@@ -370,7 +384,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         // If we're unable to initialize a binding provider for any reason, log the error
                         // and continue
-                        TraceWriter.Error(string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName), ex);
+                        string errorMsg = string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName);
+                        TraceWriter.Error(errorMsg, ex);
+                        _startupLogger?.LogError(0, ex, errorMsg);
                     }
                 }
 
@@ -392,7 +408,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 Collection<FunctionDescriptor> functions = GetFunctionDescriptors();
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
-                TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count));
+
+                string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count);
+                TraceWriter.Info(generatingMsg);
+                _startupLogger?.LogInformation(generatingMsg);
+
                 Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
                 List<Type> types = new List<Type>();
                 types.Add(type);
@@ -406,6 +426,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
+        }
+
+        private IMetricsLogger CreateMetricsLogger()
+        {
+            IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            if (metricsLogger == null)
+            {
+                metricsLogger = new MetricsLogger();
+                ScriptConfig.HostConfig.AddService<IMetricsLogger>(metricsLogger);
+            }
+            return metricsLogger;
         }
 
         // Scan the extensions directory and Load custom extension.
@@ -476,12 +507,40 @@ namespace Microsoft.Azure.WebJobs.Script
             config.AddExtension(instance);
         }
 
+        internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig,
+            ScriptSettingsManager settingsManager, IMetricsLogger metrics, Func<bool> isFileLoggingEnabled)
+        {
+            // We always want an ILoggerFactory, whether app insights is registered or not
+            if (scriptConfig.HostConfig.LoggerFactory == null)
+            {
+                scriptConfig.HostConfig.LoggerFactory = new LoggerFactory();
+            }
+
+            // Register a file logger that only logs user logs and only if file logging is enabled
+            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(scriptConfig,
+                (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
+
+            // Automatically register App Insights if the key is present
+            string instrumentationKey = settingsManager?.GetSetting(ScriptConstants.AppInsightsInstrumentationKey);
+            if (!string.IsNullOrEmpty(instrumentationKey))
+            {
+                metrics.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
+                ScriptTelemetryClientFactory factory = new ScriptTelemetryClientFactory();
+                scriptConfig.HostConfig.LoggerFactory
+                    .AddApplicationInsights(instrumentationKey, scriptConfig.LogFilter.Filter, factory, scriptConfig.ApplicationInsightsSamplingSettings);
+            }
+        }
+
         private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)
         {
-            TraceWriter.Info(string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", changeType, path));
+            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", changeType, path);
+            TraceWriter.Info(fileChangeMsg);
+            Logger?.LogInformation(fileChangeMsg);
 
             string action = isShutdown ? "shutdown" : "restart";
-            TraceWriter.Info($"Host configuration has changed. Signaling {action}");
+            string signalMessage = $"Host configuration has changed. Signaling {action}";
+            TraceWriter.Info(signalMessage);
+            Logger?.LogInformation(signalMessage);
         }
 
         internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
@@ -602,7 +661,9 @@ namespace Microsoft.Azure.WebJobs.Script
             catch (Exception ex)
             {
                 // Purge is best effort
-                TraceWriter.Error("An error occurred while purging log files", ex);
+                string errorMsg = "An error occurred while purging log files";
+                TraceWriter.Error(errorMsg, ex);
+                _startupLogger?.LogError(0, ex, errorMsg);
             }
         }
 
@@ -615,17 +676,19 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             catch (Exception ex)
             {
-                if (scriptHost.TraceWriter != null)
-                {
-                    scriptHost.TraceWriter.Error("ScriptHost initialization failed", ex);
-                }
+                string errorMsg = "ScriptHost initialization failed";
+                scriptHost.TraceWriter?.Error(errorMsg, ex);
+
+                ILogger logger = scriptConfig?.HostConfig?.LoggerFactory?.CreateLogger(LogCategories.Startup);
+                logger?.LogError(0, ex, errorMsg);
+
                 throw;
             }
 
             return scriptHost;
         }
 
-        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
+        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter, ILogger logger)
         {
             JobHostConfiguration hostConfig = config.HostConfig;
 
@@ -663,7 +726,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // If we're unable to load create a binding provider for any reason, log
                     // the error and continue
-                    traceWriter.Error(string.Format("Unable to create binding provider '{0}'", bindingProviderType.FullName), ex);
+                    string errorMsg = string.Format("Unable to create binding provider '{0}'", bindingProviderType.FullName);
+                    traceWriter.Error(errorMsg, ex);
+                    logger?.LogError(0, ex, errorMsg);
                 }
             }
 
@@ -714,7 +779,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        public static Collection<FunctionMetadata> ReadFunctionMetadata(ScriptHostConfiguration config, TraceWriter traceWriter, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null)
+        public static Collection<FunctionMetadata> ReadFunctionMetadata(ScriptHostConfiguration config, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null)
         {
             var functions = new Collection<FunctionMetadata>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -755,7 +820,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     string functionError = null;
                     FunctionMetadata functionMetadata = null;
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, scriptDir, settingsManager, out functionMetadata, out functionError))
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, scriptDir, settingsManager, out functionMetadata, out functionError))
                     {
                         // for functions in error, log the error and don't
                         // add to the functions collection
@@ -777,8 +842,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, string scriptDirectory,
-            ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, ILogger logger, string scriptDirectory,
+        ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
 
@@ -787,14 +852,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (functionMetadata.IsExcluded)
             {
-                traceWriter.Info(string.Format("Function '{0}' is marked as excluded", functionName));
+                string message = $"Function '{functionName}' is marked as excluded";
+                traceWriter.Info(message);
+                logger?.LogInformation(message);
                 functionMetadata = null;
                 return true;
             }
 
             if (functionMetadata.IsDisabled)
             {
-                traceWriter.Info(string.Format("Function '{0}' is disabled", functionName));
+                string message = $"Function '{functionName}' is disabled";
+                traceWriter.Info(message);
+                logger?.LogInformation(message);
             }
 
             try
@@ -935,7 +1004,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors()
         {
-            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, FunctionErrors, _settingsManager);
+            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
@@ -1147,6 +1216,92 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 scriptConfig.SwaggerEnabled = (bool)swaggerEnabled;
             }
+
+            ApplyLoggerConfig(config, scriptConfig);
+            ApplyApplicationInsightsConfig(config, scriptConfig);
+        }
+
+        internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
+        {
+            scriptConfig.LogFilter = new LogCategoryFilter();
+            JObject configSection = (JObject)configJson["logger"];
+            JToken value;
+            if (configSection != null)
+            {
+                JObject filterSection = (JObject)configSection["categoryFilter"];
+                if (filterSection != null)
+                {
+                    if (filterSection.TryGetValue("defaultLevel", out value))
+                    {
+                        LogLevel level;
+                        if (Enum.TryParse(value.ToString(), out level))
+                        {
+                            scriptConfig.LogFilter.DefaultLevel = level;
+                        }
+                    }
+
+                    if (filterSection.TryGetValue("categoryLevels", out value))
+                    {
+                        scriptConfig.LogFilter.CategoryLevels.Clear();
+                        foreach (var prop in ((JObject)value).Properties())
+                        {
+                            LogLevel level;
+                            if (Enum.TryParse(prop.Value.ToString(), out level))
+                            {
+                                scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
+                            }
+                        }
+                    }
+                }
+
+                JObject aggregatorSection = (JObject)configSection["aggregator"];
+                if (aggregatorSection != null)
+                {
+                    if (aggregatorSection.TryGetValue("batchSize", out value))
+                    {
+                        scriptConfig.HostConfig.Aggregator.BatchSize = (int)value;
+                    }
+
+                    if (aggregatorSection.TryGetValue("flushTimeout", out value))
+                    {
+                        scriptConfig.HostConfig.Aggregator.FlushTimeout = TimeSpan.Parse(value.ToString());
+                    }
+                }
+            }
+        }
+
+        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
+        {
+            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
+            JObject configSection = (JObject)configJson["applicationInsights"];
+            JToken value;
+            if (configSection != null)
+            {
+                JObject samplingSection = (JObject)configSection["sampling"];
+                if (samplingSection != null)
+                {
+                    if (samplingSection.TryGetValue("isEnabled", out value))
+                    {
+                        bool isEnabled;
+                        if (bool.TryParse(value.ToString(), out isEnabled) && !isEnabled)
+                        {
+                            scriptConfig.ApplicationInsightsSamplingSettings = null;
+                        }
+                    }
+
+                    if (scriptConfig.ApplicationInsightsSamplingSettings != null)
+                    {
+                        if (samplingSection.TryGetValue("maxTelemetryItemsPerSecond", out value))
+                        {
+                            double itemsPerSecond;
+                            if (double.TryParse(value.ToString(), out itemsPerSecond))
+                            {
+                                scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond = itemsPerSecond;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostConfiguration scriptConfig)
@@ -1213,8 +1368,11 @@ namespace Microsoft.Azure.WebJobs.Script
             // First, ensure that we've logged to the host log
             // Also ensure we flush immediately to ensure any buffered logs
             // are written
-            TraceWriter.Error("A ScriptHost error has occurred", exception);
+            string message = "A ScriptHost error has occurred";
+            TraceWriter.Error(message, exception);
             TraceWriter.Flush();
+
+            Logger?.LogError(0, exception, message);
 
             if (exception is FunctionInvocationException)
             {

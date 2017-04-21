@@ -8,12 +8,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretManagerFactory : ISecretManagerFactory
     {
-        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ISecretsRepository secretsRepository)
-            => new SecretManager(settingsManager, secretsRepository, traceWriter);
+        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ILoggerFactory loggerFactory, ISecretsRepository secretsRepository)
+            => new SecretManager(settingsManager, secretsRepository, traceWriter, loggerFactory);
     }
 }

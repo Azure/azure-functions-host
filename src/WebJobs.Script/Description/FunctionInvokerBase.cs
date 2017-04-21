@@ -10,8 +10,10 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { ScriptConstants.TracePropertyFunctionNameKey, Metadata.Name }
             };
             TraceWriter = TraceWriter.Apply(functionTraceProperties);
+
+            Logger = host.ScriptConfig.HostConfig.LoggerFactory?.CreateLogger(LogCategories.Executor);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }
@@ -64,6 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public TraceWriter TraceWriter { get; }
 
+        public ILogger Logger { get; }
+
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
         /// We format the error and write it to our function specific <see cref="TraceWriter"/>.
@@ -79,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected virtual void TraceError(string errorMessage)
         {
             TraceWriter.Error(errorMessage);
+            Logger?.LogError(errorMessage);
 
             // when any errors occur, we want to flush immediately
             TraceWriter.Flush();
@@ -106,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // These may not be present, so null is okay.
             TraceWriter functionTraceWriter = parameters.OfType<TraceWriter>().FirstOrDefault();
             Binder binder = parameters.OfType<Binder>().FirstOrDefault();
-
+            ILogger logger = parameters.OfType<ILogger>().FirstOrDefault();
             string invocationId = functionExecutionContext.InvocationId.ToString();
 
             var startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
@@ -116,19 +123,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                TraceWriter.Info($"Function started (Id={invocationId})");
+                string startMessage = $"Function started (Id={invocationId})";
+                TraceWriter.Info(startMessage);
+                Logger?.LogInformation(startMessage);
 
                 FunctionInvocationContext context = new FunctionInvocationContext
                 {
                     ExecutionContext = functionExecutionContext,
                     Binder = binder,
-                    TraceWriter = functionTraceWriter
+                    TraceWriter = functionTraceWriter,
+                    Logger = logger
                 };
 
                 await InvokeCore(parameters, context);
 
                 _stopwatch.Stop();
-                TraceWriter.Info($"Function completed (Success, Id={invocationId}, Duration={_stopwatch.ElapsedMilliseconds}ms)");
+
+                string completeMessage = $"Function completed (Success, Id={invocationId}, Duration={_stopwatch.ElapsedMilliseconds}ms)";
+                TraceWriter.Info(completeMessage);
+                Logger?.LogInformation(completeMessage);
             }
             catch (AggregateException ex)
             {
@@ -189,7 +202,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 startedEvent.Success = false;
             }
 
-            TraceWriter.Error($"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)");
+            string message = $"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)";
+            TraceWriter.Error(message);
+            Logger?.LogError(message);
         }
 
         protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)

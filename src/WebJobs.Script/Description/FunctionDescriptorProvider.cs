@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
                 Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
-                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters,  methodAttributes, inputBindings, outputBindings);
+                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes, inputBindings, outputBindings);
 
                 return true;
             }
@@ -105,6 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Add ExecutionContext to provide access to InvocationId, etc.
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
+
+            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemLoggerParameterName, typeof(ILogger)));
 
             return parameters;
         }

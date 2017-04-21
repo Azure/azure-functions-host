@@ -11,9 +11,11 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.FSharp.Compiler;
 using Microsoft.FSharp.Compiler.SimpleSourceCodeServices;
 using Microsoft.FSharp.Compiler.SourceCodeServices;
@@ -32,13 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly OptimizationLevel _optimizationLevel;
         private readonly Regex _hashRRegex;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public FSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, TraceWriter traceWriter)
+        public FSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _metadataResolver = metadataResolver;
             _optimizationLevel = optimizationLevel;
             _traceWriter = traceWriter;
             _hashRRegex = new Regex(@"^\s*#r\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public string Language => "FSharp";
@@ -178,7 +182,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 else
                 {
-                    _traceWriter.Verbose($"F# compilation failed with arguments: {string.Join(" ", otherFlags)}");
+                    string message = $"F# compilation failed with arguments: {string.Join(" ", otherFlags)}";
+                    _traceWriter.Verbose(message);
+                    _logger?.LogDebug(message);
                 }
             }
             finally
@@ -187,7 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .ContinueWith(
                     t => t.Exception.Handle(e =>
                 {
-                    _traceWriter.Warning($"Unable to delete F# compilation file: {e.ToString()}");
+                    string message = $"Unable to delete F# compilation file: {e.ToString()}";
+                    _traceWriter.Warning(message);
+                    _logger?.LogWarning(message);
                     return true;
                 }), TaskContinuationOptions.OnlyOnFaulted);
             }

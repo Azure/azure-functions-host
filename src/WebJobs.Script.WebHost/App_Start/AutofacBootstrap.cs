@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
             builder.Register<HostPerformanceManager>(ct => ct.Resolve<WebHostResolver>().GetPerformanceManager(settings)).ExternallyOwned();
+            builder.Register<ILoggerFactory>(ct => ct.ResolveOptional<WebScriptHostManager>()?.Instance.ScriptConfig.HostConfig.LoggerFactory).ExternallyOwned();
             builder.RegisterInstance(settings);
         }
     }

@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -39,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private AutoResetEvent _stopEvent = new AutoResetEvent(false);
         private AutoResetEvent _restartHostEvent = new AutoResetEvent(false);
         private TraceWriter _traceWriter;
+        private ILogger _logger;
 
         private ScriptSettingsManager _settingsManager;
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
@@ -116,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     OnInitializeConfig(_config);
                     newInstance = _scriptHostFactory.Create(_environment, _settingsManager, _config);
                     _traceWriter = newInstance.TraceWriter;
+                    _logger = newInstance.Logger;
 
                     _currentInstance = newInstance;
                     lock (_liveInstances)
@@ -125,12 +128,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     OnHostCreated();
 
-                    if (_traceWriter != null)
-                    {
-                        string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3}, Attempt={4})",
-                            newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString(), consecutiveErrorCount);
-                        _traceWriter.Info(message);
-                    }
+                    string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3}, Attempt={4})",
+                        newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString(), consecutiveErrorCount);
+                    _traceWriter?.Info(message);
+                    _logger?.LogInformation(message);
+
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
                     // log any function initialization errors
@@ -172,10 +174,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
-                    if (_traceWriter != null)
-                    {
-                        _traceWriter.Error("A ScriptHost error has occurred", ex);
-                    }
+                    string message = "A ScriptHost error has occurred";
+                    _traceWriter?.Error(message, ex);
+                    _logger?.LogError(0, ex, message);
 
                     // If a ScriptHost instance was created before the exception was thrown
                     // Orphan and cleanup that instance.
@@ -218,7 +219,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     string functionErrors = string.Join(Environment.NewLine, error.Value);
                     builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
                 }
-                host.TraceWriter.Error(builder.ToString());
+                string message = builder.ToString();
+                host.TraceWriter.Error(message);
+                host.Logger?.LogError(message);
             }
         }
 
@@ -242,10 +245,10 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // this thread now owns the instance
-                if (instance.TraceWriter != null)
-                {
-                    instance.TraceWriter.Info("Stopping Host");
-                }
+                string message = "Stopping Host";
+                instance.TraceWriter?.Info(message);
+                instance.Logger?.LogInformation(message);
+
                 await instance.StopAsync();
             }
             finally

@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             ISecretsRepository repository = new BlobStorageSecretsRepository(secretsDir, connectionString, "EmptyHost_StartsSuccessfully");
-            ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
+            ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null);
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
 
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             ISecretsRepository repository = new FileSystemSecretsRepository(_secretsDirectory.Path);
-            SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
+            SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null);
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
 
@@ -336,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 ISecretsRepository repository = new FileSystemSecretsRepository(SecretsPath);
-                ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance);
+                ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null);
                 WebHostSettings webHostSettings = new WebHostSettings();
                 webHostSettings.SecretsPath = SecretsPath;
 

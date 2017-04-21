@@ -179,6 +179,12 @@
       <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.1\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=1.1.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.1.0\lib\netstandard1.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
       <Private>True</Private>
@@ -454,6 +460,8 @@
     <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
+    <Compile Include="Diagnostics\FileLogger.cs" />
+    <Compile Include="Diagnostics\FileLoggerProvider.cs" />
     <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
@@ -465,6 +473,7 @@
     <Compile Include="Diagnostics\MetricEventNames.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
+    <Compile Include="Diagnostics\DictionaryLoggerScope.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ErrorCodes.cs" />
     <Compile Include="Extensions\AssemblyExtensions.cs" />
@@ -493,6 +502,7 @@
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="Diagnostics\FileTraceWriter.cs" />
     <Compile Include="Host\ScriptHostState.cs" />
+    <Compile Include="Host\ScriptTelemetryClientFactory.cs" />
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcher.cs" />

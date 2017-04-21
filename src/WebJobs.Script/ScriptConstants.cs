@@ -26,6 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceSwagger = "SwaggerDocumentation";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
 
+        public const string LoggerFunctionNameKey = "MS_FunctionName";
+        public const string LoggerHttpRequest = "MS_HttpRequest";
+
+        public const string LogCategoryAdminController = "Host.Controllers.Admin";
+        public const string LogCategorySwaggerController = "Host.Controllers.Swagger";
+        public const string LogCategoryKeysController = "Host.Controllers.Keys";
+        public const string LogCategoryHostGeneral = "Host.General";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";
@@ -34,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemBinderParameterName = "_binder";
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
+        public const string SystemLoggerParameterName = "_logger";
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";
@@ -61,5 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
 
         public const int MaximumHostIdLength = 32;
+        public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
     }
 }

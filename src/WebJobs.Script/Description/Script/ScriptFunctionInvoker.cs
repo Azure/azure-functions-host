@@ -90,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (e.Data != null)
                 {
+                    // the user's TraceWriter will automatically log to ILogger as well
                     userTraceWriter.Info(e.Data);
                 }
             };

@@ -218,8 +218,8 @@
     <Reference Include="Microsoft.Extensions.DependencyInjection, Version=1.0.2.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.1.0.2\lib\netstandard1.1\Microsoft.Extensions.DependencyInjection.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=1.0.2.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.0.2\lib\netstandard1.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=1.1.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.1.0\lib\netstandard1.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Extensions.FileProviders.Abstractions, Version=1.0.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Extensions.FileProviders.Abstractions.1.0.1\lib\netstandard1.0\Microsoft.Extensions.FileProviders.Abstractions.dll</HintPath>
@@ -486,6 +486,7 @@
     <Compile Include="Controllers\Admin\SwaggerControllerTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
+    <Compile Include="Diagnostics\FileLoggerTests.cs" />
     <Compile Include="Filters\JwtAuthenticationAttributeTests.cs" />
     <Compile Include="Diagnostics\FastLoggerTests.cs" />
     <Compile Include="Filters\SystemLevelAuthorizationAttributeTests.cs" />
@@ -534,6 +535,7 @@
     <Compile Include="Diagnostics\SystemTraceWriterTests.cs" />
     <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
     <Compile Include="Swagger\SwaggerDocumentManagerTests.cs" />
+    <Compile Include="TestMetricsLogger.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebApiApplicationTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />

@@ -20,6 +20,8 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var functionErrors = new Dictionary<string, Collection<string>>();
-            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, functionErrors);
+            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, null, functionErrors);
             Assert.Equal(49, metadata.Count);
         }
 
@@ -764,6 +766,199 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingDisabled_CreatesNullSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': false
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingDisabled_IgnoresOtherSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': false,
+                        'maxTelemetryItemsPerSecond': 25
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingEnabled_CreatesDefaultSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': true
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_Sets_MaxTelemetryItemsPerSecond()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'maxTelemetryItemsPerSecond': 25
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(25, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_NoSettings_CreatesDefaultSettings()
+        {
+            JObject config = JObject.Parse("{ }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_Sets_DefaultLevel()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Debug'
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Debug, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Empty(scriptConfig.LogFilter.CategoryLevels);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_Sets_CategoryLevels()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Trace',
+                        'categoryLevels': {
+                            'Host.General': 'Information',
+                            'Host.SomethingElse': 'Debug',
+                            'Some.Other.Category': 'None'
+                        }
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Trace, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Equal(3, scriptConfig.LogFilter.CategoryLevels.Count);
+            Assert.Equal(LogLevel.Information, scriptConfig.LogFilter.CategoryLevels["Host.General"]);
+            Assert.Equal(LogLevel.Debug, scriptConfig.LogFilter.CategoryLevels["Host.SomethingElse"]);
+            Assert.Equal(LogLevel.None, scriptConfig.LogFilter.CategoryLevels["Some.Other.Category"]);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_DefaultsToInfo()
+        {
+            JObject config = JObject.Parse("{}");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Information, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Empty(scriptConfig.LogFilter.CategoryLevels);
+        }
+
+        [Fact]
+        public void ConfigureLoggerFactory_Default()
+        {
+            var config = new ScriptHostConfiguration();
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
+
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, null);
+
+            var metricsLogger = new TestMetricsLogger();
+
+            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+
+            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.Empty(metricsLogger.LoggedEvents);
+        }
+
+        [Fact]
+        public void ConfigureLoggerFactory_ApplicationInsights()
+        {
+            var config = new ScriptHostConfiguration();
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
+
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, "Some_Instrumentation_Key");
+
+            var metricsLogger = new TestMetricsLogger();
+
+            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+
+            Assert.Equal(2, loggerFactory.Providers.Count);
+
+            Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+
+            // The app insights logger is internal, so just check the name
+            ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
+            Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
+
+            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+        }
+
+        [Fact]
         public void TryGetFunctionFromException_FunctionMatch()
         {
             string stack = "TypeError: Cannot read property 'is' of undefined\n" +
@@ -1070,6 +1265,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public ScriptHost Host { get; private set; }
+        }
+
+        private class TestLoggerFactory : ILoggerFactory
+        {
+            public TestLoggerFactory()
+            {
+                Providers = new List<ILoggerProvider>();
+            }
+
+            public IList<ILoggerProvider> Providers { get; private set; }
+
+            public void AddProvider(ILoggerProvider provider)
+            {
+                Providers.Add(provider);
+            }
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Dispose()
+            {
+            }
         }
     }
 }
