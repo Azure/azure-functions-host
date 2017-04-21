@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
     [Binding]
-    public sealed class EventHubTriggerAttribute : Attribute
+    public sealed class EventHubTriggerAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Create an instance of this attribute.
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <summary>
         /// Optional connection name. If missing, tries to use a registered event hub receiver.
         /// </summary>
+        [AppSetting]
         public string Connection { get; set; }
     }
 }

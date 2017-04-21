@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private readonly JobHost _host;
         private const string TestHubName = "webjobstesthub";
         private const string TestHub2Name = "webjobstesthub2";
+        private const string TestHub2Connection = "AzureWebJobsTestHubConnection2";
 
         public EventHubEndToEndTests()
         {
@@ -32,10 +33,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             eventHubConfig.AddSender(TestHubName, connection);
             eventHubConfig.AddReceiver(TestHubName, connection);
 
-            connection = Environment.GetEnvironmentVariable("AzureWebJobsTestHubConnection2");
+            connection = Environment.GetEnvironmentVariable(TestHub2Connection);
             Assert.True(!string.IsNullOrEmpty(connection), "Required test connection string is missing.");
-            eventHubConfig.AddSender(TestHub2Name, connection);
-            eventHubConfig.AddReceiver(TestHub2Name, connection);
 
             config.UseEventHub(eventHubConfig);
             _host = new JobHost(config);
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 evt.Properties.Add("TestProp2", "value2");
             }
 
-            public static void SendEvents_TestHub2(int numEvents, string input, [EventHub(TestHub2Name)] out EventData[] events)
+            public static void SendEvents_TestHub2(int numEvents, string input, [EventHub(TestHub2Name, Connection = TestHub2Connection)] out EventData[] events)
             {
                 events = new EventData[numEvents];
                 for (int i = 0; i < numEvents; i++)
@@ -151,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 }
             }
 
-            public static void ProcessMultipleEvents([EventHubTrigger(TestHub2Name)] string[] events,
+            public static void ProcessMultipleEvents([EventHubTrigger(TestHub2Name, Connection = TestHub2Connection)] string[] events,
                 string[] partitionKeyArray, DateTime[] enqueuedTimeUtcArray, IDictionary<string, object>[] propertiesArray,
                 IDictionary<string, object>[] systemPropertiesArray)
             {

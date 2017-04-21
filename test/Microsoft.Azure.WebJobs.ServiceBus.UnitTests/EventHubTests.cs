@@ -144,14 +144,30 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         public void EntityPathInConnectionString(string expectedPathName, string connectionString)
         {
             EventHubConfiguration config = new EventHubConfiguration();
-            IEventHubProvider provider = config;
 
             // Test sender 
             config.AddSender("k1", connectionString);
-            var client = config.GetEventHubClient("k1");
+            var client = config.GetEventHubClient("k1", null);
             Assert.Equal(expectedPathName, client.Path);
         }
 
+        private class TestNameResolver : INameResolver
+        {
+            public IDictionary<string, string> env = new Dictionary<string, string>();
+
+            public string Resolve(string name) => env[name];
+        }
+
+        // Validate that if connection string has EntityPath, that takes precedence over the parameter. 
+        [Theory]
+        [InlineData("k1", "Endpoint=sb://test89123-ns-x.servicebus.windows.net/;SharedAccessKeyName=ReceiveRule;SharedAccessKey=secretkey")]
+        [InlineData("path2", "Endpoint=sb://test89123-ns-x.servicebus.windows.net/;SharedAccessKeyName=ReceiveRule;SharedAccessKey=secretkey;EntityPath=path2")]
+        public void GetEventHubClient_AddsConnection(string expectedPathName, string connectionString)
+        {
+            EventHubConfiguration config = new EventHubConfiguration();
+            var client = config.GetEventHubClient("k1", connectionString);
+            Assert.Equal(expectedPathName, client.Path);
+        }
 
         [Theory]
         [InlineData("e", "n1", "n1/e/")]
