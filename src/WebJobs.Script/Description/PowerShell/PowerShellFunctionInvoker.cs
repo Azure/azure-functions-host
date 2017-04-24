@@ -31,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private List<string> _moduleFiles;
 
         internal PowerShellFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            : base(host, functionMetadata)
         {
             _host = host;
             _scriptFilePath = functionMetadata.ScriptFile;

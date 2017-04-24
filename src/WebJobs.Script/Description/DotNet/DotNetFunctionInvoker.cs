@@ -48,9 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IFunctionEntryPointResolver functionEntryPointResolver,
             FunctionAssemblyLoader assemblyLoader,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
-            ITraceWriterFactory traceWriterFactory = null,
             IFunctionMetadataResolver metadataResolver = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            : base(host, functionMetadata)
         {
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;

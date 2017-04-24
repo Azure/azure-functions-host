@@ -18,6 +18,7 @@ using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -150,7 +151,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // make sure the input string made it all the way through
             var logs = await TestHelpers.GetFunctionLogsAsync("ManualTrigger");
-            Assert.True(logs.Any(p => p.Contains(testData)));
+            Assert.True(logs.Any(p => p.Contains(testData)), string.Join(Environment.NewLine, logs));
+        }
+
+        public async Task FileLogging_SucceedsTest()
+        {
+            string functionName = "Scenarios";
+            TestHelpers.ClearFunctionLogs(functionName);
+
+            string guid1 = Guid.NewGuid().ToString();
+            string guid2 = Guid.NewGuid().ToString();
+
+            ScenarioInput input = new ScenarioInput
+            {
+                Scenario = "fileLogging",
+                Container = "scenarios-output",
+                Value = $"{guid1};{guid2}"
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                };
+
+            await Fixture.Host.CallAsync(functionName, arguments);
+
+            // wait for logs to flush
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+
+            IList<string> logs = null;
+            await TestHelpers.Await(() =>
+            {
+                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
+                return logs.Count > 0;
+            });
+
+            Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
+
+            // No need for assert; this will throw if there's not one and only one
+            logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
+            logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
         }
 
         public async Task QueueTriggerToBlobTest()
@@ -472,6 +511,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             logEntry = logEntry.Substring(idx);
 
             return JObject.Parse(logEntry);
+        }
+
+        public class ScenarioInput
+        {
+            public string Scenario { get; set; }
+
+            public string Container { get; set; }
+
+            public string Value { get; set; }
         }
     }
 }

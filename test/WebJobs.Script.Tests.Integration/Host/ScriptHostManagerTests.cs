@@ -2,13 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,6 +17,7 @@ using Moq;
 using Moq.Protected;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.FunctionTraceWriterFactory;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -301,6 +303,132 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("No job functions found.", hostLogs);
             Assert.Contains("Job host started", hostLogs);
             Assert.Contains("Job host stopped", hostLogs);
+        }
+
+        [Fact]
+        public void Restart_CreatesNew_FunctionTraceWriter()
+        {
+            string functionDir = @"TestScripts\CSharp";
+            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Info);
+            ScriptHostConfiguration config = new ScriptHostConfiguration
+            {
+                RootScriptPath = functionDir,
+                FileLoggingMode = FileLoggingMode.Always,
+                TraceWriter = traceWriter
+            };
+
+            string hostJsonPath = Path.Combine(functionDir, ScriptConstants.HostMetadataFileName);
+            string originalHostJson = File.ReadAllText(hostJsonPath);
+
+            // Only load two functions to start:
+            JObject hostConfig = new JObject
+            {
+                { "id", "123456" },
+                { "functions", new JArray("ManualTrigger", "Scenarios") }
+            };
+            File.WriteAllText(hostJsonPath, hostConfig.ToString());
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+            ExceptionDispatchInfo exception = null;
+
+            try
+            {
+                using (var manager = new ScriptHostManager(config))
+                {
+                    // Background task to run while the main thread is pumping events at RunAndBlock().
+                    Thread t = new Thread(_ =>
+                    {
+                        try
+                        {
+                            // don't start until the manager is running
+                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
+                            var firstFileWriters = GetRemovableTraceWriters(manager.Instance);
+                            Assert.Equal(2, firstFileWriters.Count());
+
+                            // update the host.json to only have one function
+                            hostConfig["functions"] = new JArray("ManualTrigger");
+                            traceWriter.Traces.Clear();
+                            File.WriteAllText(hostJsonPath, hostConfig.ToString());
+                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
+                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
+                            var secondFileWriters = GetRemovableTraceWriters(manager.Instance);
+                            Assert.Equal(1, secondFileWriters.Count());
+
+                            // make sure we have a new instance of the ManualTrigger writer and that it does
+                            // not throw an ObjectDisposedException when we use it
+                            Assert.DoesNotContain(secondFileWriters.Single(), firstFileWriters);
+                            secondFileWriters.Single().Info("test");
+
+                            // add back the other function -- make sure the writer is not disposed
+                            hostConfig["functions"] = new JArray("ManualTrigger", "Scenarios");
+                            traceWriter.Traces.Clear();
+                            File.WriteAllText(hostJsonPath, hostConfig.ToString());
+                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
+                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
+                            var thirdFileWriters = GetRemovableTraceWriters(manager.Instance);
+                            Assert.Equal(2, thirdFileWriters.Count());
+
+                            // make sure these are all new and that they also do not throw
+                            var previousWriters = firstFileWriters.Concat(secondFileWriters);
+                            Assert.DoesNotContain(thirdFileWriters.First(), previousWriters);
+                            Assert.DoesNotContain(thirdFileWriters.Last(), previousWriters);
+                            thirdFileWriters.First().Info("test");
+                            thirdFileWriters.Last().Info("test");
+                        }
+                        catch (Exception ex)
+                        {
+                            exception = ExceptionDispatchInfo.Capture(ex);
+                        }
+                        finally
+                        {
+                            cts.Cancel();
+                        }
+                    });
+                    t.Start();
+                    manager.RunAndBlock(cts.Token);
+                    t.Join();
+                }
+
+                Assert.True(exception == null, exception?.SourceException?.ToString());
+            }
+            finally
+            {
+                File.WriteAllText(hostJsonPath, originalHostJson);
+            }
+        }
+
+        private static IEnumerable<RemovableTraceWriter> GetRemovableTraceWriters(ScriptHost host)
+        {
+            List<RemovableTraceWriter> removableTraceWriters = new List<RemovableTraceWriter>();
+
+            foreach (var function in host.Functions)
+            {
+                var invokerBase = function.Invoker as FunctionInvokerBase;
+                if (invokerBase == null)
+                {
+                    continue;
+                }
+
+                RemovableTraceWriter instance = null;
+                if (invokerBase.FileTraceWriter is ConditionalTraceWriter conditional)
+                {
+                    instance = conditional.InnerWriter as RemovableTraceWriter;
+                }
+                else
+                {
+                    instance = invokerBase.FileTraceWriter as RemovableTraceWriter;
+                }
+
+                if (instance != null)
+                {
+                    removableTraceWriters.Add(instance);
+                }
+            }
+
+            return removableTraceWriters;
         }
 
         // Update the manifest for the timer function

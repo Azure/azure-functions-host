@@ -11,7 +11,7 @@ public static async Task Run(string input, TraceWriter log, CancellationToken to
             break;
         case "ignoreToken":
             int count = 0;
-            while (count < 10)
+            while (count < 15)
             {
                 count++;
                 Thread.Sleep(1000);

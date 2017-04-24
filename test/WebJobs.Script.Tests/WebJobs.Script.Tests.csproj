@@ -493,6 +493,7 @@
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilerTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Diagnostics\FileLoggerTests.cs" />
+    <Compile Include="Diagnostics\FunctionTraceWriterFactoryTests.cs" />
     <Compile Include="Eventing\File\FileWatcherEventSourceTests.cs" />
     <Compile Include="Eventing\ScriptEventManagerTests.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriterTests.cs" />

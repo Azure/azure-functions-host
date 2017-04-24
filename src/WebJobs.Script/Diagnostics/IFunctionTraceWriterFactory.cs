@@ -5,8 +5,8 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public interface ITraceWriterFactory
+    public interface IFunctionTraceWriterFactory
     {
-        TraceWriter Create();
+        TraceWriter Create(string functionName);
     }
 }

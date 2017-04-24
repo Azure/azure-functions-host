@@ -111,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ILogger Logger { get; internal set; }
 
+        public virtual IFunctionTraceWriterFactory FunctionTraceWriterFactory { get; set; }
+
         public ScriptHostConfiguration ScriptConfig { get; private set; }
 
         /// <summary>
@@ -252,6 +254,8 @@ namespace Microsoft.Azure.WebJobs.Script
             string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
             this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
 
+            FunctionTraceWriterFactory = new FunctionTraceWriterFactory(ScriptConfig);
+
             IMetricsLogger metricsLogger = CreateMetricsLogger();
 
             using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
@@ -314,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
 
-                ConfigureLoggerFactory(ScriptConfig, _settingsManager, metricsLogger, () => FileLoggingEnabled);
+                ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, metricsLogger, () => FileLoggingEnabled);
 
                 // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
                 // for all other logging after startup.
@@ -532,11 +536,11 @@ namespace Microsoft.Azure.WebJobs.Script
             config.AddExtension(instance);
         }
 
-        internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig,
+        internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig, IFunctionTraceWriterFactory traceWriteFactory,
             ScriptSettingsManager settingsManager, IMetricsLogger metrics, Func<bool> isFileLoggingEnabled)
         {
             // Register a file logger that only logs user logs and only if file logging is enabled
-            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(scriptConfig,
+            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
 
             // Automatically register App Insights if the key is present

@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (traceEvent == null)
             {
-                throw new ArgumentNullException("traceEvent");
+                throw new ArgumentNullException(nameof(traceEvent));
             }
 
             object value;
