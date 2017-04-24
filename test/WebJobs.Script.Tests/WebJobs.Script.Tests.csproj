@@ -541,6 +541,7 @@
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
     <Compile Include="WebHooks\WebHookReceiverManagerTests.cs" />
+    <Compile Include="WebHostResolverTests.cs" />
     <Compile Include="WebScriptHostRequestManagerTests.cs" />
     <AdditionalFiles Include="..\..\stylecop.json">
       <Link>stylecop.json</Link>

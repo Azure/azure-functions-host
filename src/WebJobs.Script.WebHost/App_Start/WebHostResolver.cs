@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
+        internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
         {
             InitializeFileSystem(settings.ScriptPath);
 
@@ -157,8 +157,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
-                TraceWriter = settings.TraceWriter
+                TraceWriter = settings.TraceWriter,
+                IsSelfHost = settings.IsSelfHost
             };
+
+            scriptHostConfig.HostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
 
             return scriptHostConfig;
         }

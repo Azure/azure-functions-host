@@ -5,10 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -306,6 +309,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsNullable_ReturnsExpectedResult(Type type, bool expected)
         {
             Assert.Equal(expected, Utility.IsNullable(type));
+        }
+
+        [Theory]
+        [InlineData("TEST-FUNCTIONS--", "test-functions")]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "test-functions-xxxxxxxxxxxxxxxxx")]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "test-functions-xxxxxxxxxxxxxxxx")] /* 32nd character is a '-' */
+        [InlineData(null, null)]
+        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
+        {
+            var config = new ScriptHostConfiguration();
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
+
+            string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+            Assert.Equal(expected, hostId);
+        }
+
+        [Fact]
+        public void GetDefaultHostId_SelfHost_ReturnsExpectedResult()
+        {
+            var config = new ScriptHostConfiguration
+            {
+                IsSelfHost = true,
+                RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
+            };
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+
+            string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+            string sanitizedMachineName = Environment.MachineName
+                    .Where(char.IsLetterOrDigit)
+                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
+            Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
         }
     }
 }
