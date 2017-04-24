@@ -256,13 +256,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
                 var parameter = context.Parameter;
                 var attributeSource = TypeUtility.GetResolvedAttribute<TAttribute>(parameter);
-
-                Func<TAttribute, Task<TAttribute>> hookWrapper = null;
-                if (parent.PostResolveHook != null)
-                {
-                    hookWrapper = (attrResolved) => parent.PostResolveHook(attrResolved, parameter, parent._nameResolver);
-                }
-
+                   
                 Func<object, object> buildFromAttribute;
                 FuncConverter<TMessage, TAttribute, TType> converter = null;
 
@@ -316,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     };
                 }
 
-                var cloner = new AttributeCloner<TAttribute>(attributeSource, context.BindingDataContract, parent._nameResolver, hookWrapper);
+                var cloner = new AttributeCloner<TAttribute>(attributeSource, context.BindingDataContract, parent._nameResolver);
                 return new ExactBinding<TMessage>(cloner, param, mode, buildFromAttribute, converter);
             }
 

@@ -14,6 +14,5 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class FluentBindingProvider<TAttribute>
     {
         protected internal Func<TAttribute, ParameterInfo, INameResolver, ParameterDescriptor> BuildParameterDescriptor { get; set; }
-        protected internal Func<TAttribute, ParameterInfo, INameResolver, Task<TAttribute>> PostResolveHook { get; set; }
     }
 }

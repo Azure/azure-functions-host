@@ -40,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 converter.AddAssemblies((type) => this.AddAssembly(type));
             }
+
+            AddTypesFromGraph(root as IRuleProvider);
         }
 
         // Resolve an assembly from the given name. 
@@ -257,6 +259,18 @@ namespace Microsoft.Azure.WebJobs.Host
                 output.Write(rule.UserType.GetDisplayName());
                 output.WriteLine();
             }          
-        }     
+        }
+
+        private void AddTypesFromGraph(IRuleProvider root)
+        {
+            foreach (var rule in root.GetRules())
+            {
+                var type = rule.UserType as ConverterManager.ExactMatch;
+                if (type != null)                
+                {
+                    AddAssembly(type.ExactType);
+                }
+            }
+        }
     }
 }

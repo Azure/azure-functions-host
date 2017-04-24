@@ -530,6 +530,9 @@ namespace Microsoft.Azure.WebJobs
             {
                 _type = type;
             }
+
+            internal Type ExactType => _type;
+
             public override bool IsMatch(Type type)
             {
                 return type == _type;

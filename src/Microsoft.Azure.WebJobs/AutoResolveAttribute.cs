@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -25,5 +26,11 @@ namespace Microsoft.Azure.WebJobs
         /// in the Microsoft.Azure.WebJobs.Host assembly.
         /// </summary>
         public Type ResolutionPolicyType { get; set; }
+
+        /// <summary>
+        /// A default value if the property is empty. 
+        /// The default value only has access to the {sys} binding data. 
+        /// </summary>
+        public string Default { get; set; }
     }
 }

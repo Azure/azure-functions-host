@@ -141,13 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 var parameter = context.Parameter;
                 var attributeSource = TypeUtility.GetResolvedAttribute<TAttribute>(parameter);
 
-                Func<TAttribute, Task<TAttribute>> hookWrapper = null;
-                if (parent.PostResolveHook != null)
-                {
-                    hookWrapper = (attrResolved) => parent.PostResolveHook(attrResolved, parameter, parent._nameResolver);
-                }
-
-                var cloner = new AttributeCloner<TAttribute>(attributeSource, context.BindingDataContract, parent._nameResolver, hookWrapper);
+                var cloner = new AttributeCloner<TAttribute>(attributeSource, context.BindingDataContract, parent._nameResolver);
 
                 Func<object, object> buildFromAttribute;
                 FuncConverter<TType, TAttribute, TUserType> converter = null;

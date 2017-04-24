@@ -10,6 +10,7 @@ using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using System.Threading;
 using Newtonsoft.Json;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 {
@@ -56,6 +57,46 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             {
                 _log = w._value;
             }         
+        }
+
+        // Simple end-2-end case with attribute that default binds to metho dname 
+        // Test with concrete types, no converters.
+        // Attr-->Widget 
+        [Fact]
+        public void TestDefaultToMethodName()
+        {
+            TestWorker<ConfigTestDefaultToMethodName>();
+        }
+
+        public class ConfigTestDefaultToMethodName : IExtensionConfigProvider, ITest<ConfigTestDefaultToMethodName>
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                var rule = context.AddBindingRule<Test2Attribute>();
+                rule.BindToInput<string>(attr => attr.Path);               
+            }
+
+            public void Test(TestJobHost<ConfigTestDefaultToMethodName> host)
+            {
+                host.Call("Func", new { k = 1 });
+                Assert.Equal("1", _log);
+
+                host.Call("Func2", new { k = 1 });
+                Assert.Equal("Func2", _log);
+            }
+
+            string _log;
+
+            public void Func([Test2(Path = "{k}")] string w)
+            {
+                _log = w;
+            }
+
+            // Missing path, will default to method name 
+            public void Func2([Test2] string w)
+            {
+                _log = w;
+            }
         }
 
         // Use OpenType (a general builder), still no converters. 
@@ -553,6 +594,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
 
             [AutoResolve]
+            public string Path { get; set; }
+        }
+
+        // A test attribute for binding.  
+        [Binding]
+        public class Test2Attribute : Attribute
+        {
+            [AutoResolve(Default = "{sys.methodname}")]
             public string Path { get; set; }
         }
 

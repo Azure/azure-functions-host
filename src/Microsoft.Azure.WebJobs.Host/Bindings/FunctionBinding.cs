@@ -31,6 +31,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             // if bindingData was a mutable dictionary, we could just add it. 
             // But since it's read-only, must create a new one. 
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            var funcContext = context.FunctionContext;
+            var methodName = funcContext.MethodName;
+            
             if (existingBindingData != null)
             {
                 foreach (var kv in existingBindingData)
@@ -45,7 +49,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     bindingData[kv.Key] = kv.Value;
                 }
             }
-            
+
+            // Add 'sys' binding data. 
+            var sysBindingData = new SystemBindingData
+            {
+                MethodName = methodName
+            };
+            sysBindingData.AddToBindingData(bindingData);
+
             BindingContext bindingContext = new BindingContext(context, bindingData);
             return bindingContext;
         }

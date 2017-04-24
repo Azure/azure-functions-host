@@ -5,3 +5,4 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1813:AvoidUnsealedAttributes", Scope = "type", Target = "Microsoft.Azure.WebJobs.TableAttribute")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1702:CompoundWordsShouldBeCasedCorrectly", MessageId = "AppSetting", Scope = "type", Target = "Microsoft.Azure.WebJobs.AppSettingAttribute")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1702:CompoundWordsShouldBeCasedCorrectly", MessageId = "AutoResolve", Scope = "type", Target = "Microsoft.Azure.WebJobs.AutoResolveAttribute")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1702:CompoundWordsShouldBeCasedCorrectly", MessageId = "AutoResolve", Scope = "type", Target = "Microsoft.Azure.WebJobs.Description.AutoResolveValue")]

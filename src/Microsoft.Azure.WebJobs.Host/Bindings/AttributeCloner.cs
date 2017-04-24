@@ -6,10 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
-{
+{    
     using BindingData = IReadOnlyDictionary<string, object>;
     using BindingDataContract = IReadOnlyDictionary<string, System.Type>;
     // Func to transform Attribute,BindingData into value for cloned attribute property/constructor arg
@@ -34,20 +35,15 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // Compute the values to apply to Settable properties on newly created attribute.
         private readonly Action<TAttribute, BindingData>[] _propertySetters;
 
-        // Optional hook for post-processing the attribute. This is intended for legacy hack rules.
-        private readonly Func<TAttribute, Task<TAttribute>> _hook;
-
         private readonly Dictionary<PropertyInfo, AutoResolveAttribute> _autoResolves = new Dictionary<PropertyInfo, AutoResolveAttribute>();
 
         private static readonly BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public;
 
-        public AttributeCloner(
+        internal AttributeCloner(
             TAttribute source,
             BindingDataContract bindingDataContract,
-            INameResolver nameResolver = null,
-            Func<TAttribute, Task<TAttribute>> hook = null)
+            INameResolver nameResolver = null)
         {
-            _hook = hook;
             nameResolver = nameResolver ?? new EmptyNameResolver();
             _source = source;
 
@@ -95,38 +91,58 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             object originalValue = propInfo.GetValue(_source);
             AppSettingAttribute appSettingAttr = propInfo.GetCustomAttribute<AppSettingAttribute>();
             AutoResolveAttribute autoResolveAttr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
-            
+
+            if (appSettingAttr == null && autoResolveAttr == null)
+            {
+                // No special attributes, treat as literal. 
+                return (newAttr, bindingData) => originalValue;
+            }
+
             if (appSettingAttr != null && autoResolveAttr != null)
             {
                 throw new InvalidOperationException($"Property '{propInfo.Name}' cannot be annotated with both AppSetting and AutoResolve.");
             }
 
+            // attributes only work on string properties. 
+            if (propInfo.PropertyType != typeof(string))
+            {
+                throw new InvalidOperationException($"AutoResolve or AppSetting property '{propInfo.Name}' must be of type string.");
+            }
+            var str = (string)originalValue;
+
             // first try to resolve with app setting
             if (appSettingAttr != null)
             {
-                return GetAppSettingResolver((string)originalValue, appSettingAttr, nameResolver, propInfo);
+                return GetAppSettingResolver(str, appSettingAttr, nameResolver, propInfo);
             }
+
+            // Must have an [AutoResolve]
             // try to resolve with auto resolve ({...}, %...%)
-            if (autoResolveAttr != null && originalValue != null)
-            {
-                _autoResolves[propInfo] = autoResolveAttr;
-                return GetTemplateResolver((string)originalValue, autoResolveAttr, nameResolver, propInfo, contract);
-            }
-            // resolve the original value
-            return (newAttr, bindingData) => originalValue;
-        }
-        
-        // AutoResolve
-        internal static BindingDataResolver GetTemplateResolver(string originalValue, AutoResolveAttribute attr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract)
-        {
-            string resolvedValue = nameResolver.ResolveWholeString(originalValue);
-            var template = BindingTemplate.FromString(resolvedValue);
-            IResolutionPolicy policy = GetPolicy(attr.ResolutionPolicyType, propInfo);
-            template.ValidateContractCompatibility(contract);
-            return (newAttr, bindingData) => TemplateBind(policy, propInfo, newAttr, template, bindingData);
+            return GetAutoResolveResolver(str, autoResolveAttr, nameResolver, propInfo, contract);            
         }
 
-        // AppSetting
+        // Apply AutoResolve attribute 
+        internal BindingDataResolver GetAutoResolveResolver(string originalValue, AutoResolveAttribute autoResolveAttr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract)
+        {
+            if (string.IsNullOrWhiteSpace(originalValue))
+            {
+                if (autoResolveAttr.Default != null)
+                {
+                    return GetBuiltinTemplateResolver(autoResolveAttr.Default, nameResolver);
+                }
+                else
+                {
+                    return (newAttr, bindingData) => originalValue;
+                }
+            }
+            else
+            {
+                _autoResolves[propInfo] = autoResolveAttr;
+                return GetTemplateResolver(originalValue, autoResolveAttr, nameResolver, propInfo, contract);
+            }
+        }
+
+        // Apply AppSetting attribute. 
         internal static BindingDataResolver GetAppSettingResolver(string originalValue, AppSettingAttribute attr, INameResolver nameResolver, PropertyInfo propInfo)
         {
             string appSettingName = originalValue ?? attr.Default;
@@ -143,6 +159,30 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 throw new InvalidOperationException($"Unable to resolve value for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'.");
             }
             return (newAttr, bindingData) => resolvedValue;
+        }
+
+        // Resolve for AutoResolve.Default templates. 
+        // These only have access to the {sys} builtin variable and don't get access to trigger binding data. 
+        internal static BindingDataResolver GetBuiltinTemplateResolver(string originalValue, INameResolver nameResolver)
+        {
+            string resolvedValue = nameResolver.ResolveWholeString(originalValue);
+
+            var template = BindingTemplate.FromString(resolvedValue);
+
+            SystemBindingData.ValidateStaticContract(template);
+
+            // For static default contracts, we only have access to the built in binding data. 
+            return (newAttr, bindingData) => template.Bind(SystemBindingData.GetSystemBindingData(bindingData));
+        }
+
+        // AutoResolve
+        internal static BindingDataResolver GetTemplateResolver(string originalValue, AutoResolveAttribute attr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract)
+        {
+            string resolvedValue = nameResolver.ResolveWholeString(originalValue);
+            var template = BindingTemplate.FromString(resolvedValue);
+            IResolutionPolicy policy = GetPolicy(attr.ResolutionPolicyType, propInfo);
+            template.ValidateContractCompatibility(contract);
+            return (newAttr, bindingData) => TemplateBind(policy, propInfo, newAttr, template, bindingData);
         }
 
         // Get a attribute with %% resolved, but not runtime {} resolved.
@@ -169,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return invokeString;
         }
 
-        public async Task<TAttribute> ResolveFromInvokeStringAsync(string invokeString)
+        public TAttribute ResolveFromInvokeString(string invokeString)
         {
             TAttribute attr;
             var resolver = _source as IAttributeInvokeDescriptor<TAttribute>;
@@ -181,20 +221,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 attr = resolver.FromInvokeString(invokeString);
             }
-            if (_hook != null)
-            {
-                attr = await _hook(attr);
-            }
             return attr;
         }
 
-        public async Task<TAttribute> ResolveFromBindingDataAsync(BindingContext ctx)
+        public TAttribute ResolveFromBindingData(BindingContext ctx)
         {
             var attr = ResolveFromBindings(ctx.BindingData);
-            if (_hook != null)
-            {
-                attr = await _hook(attr);
-            }
             return attr;
         }
 
@@ -242,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return newAttr;
         }
 
-        internal TAttribute ResolveFromBindings(IReadOnlyDictionary<string, object> bindingData)
+        internal TAttribute ResolveFromBindings(BindingData bindingData)
         {
             // Invoke ctor
             var ctorArgs = Array.ConvertAll(_ctorParamResolvers, func => func(_source, bindingData));
@@ -256,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return newAttr;
         }
 
-        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
+        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, BindingData bindingData)
         {
             if (bindingData == null)
             {

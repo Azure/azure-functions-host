@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
-            var attrResolved = await Cloner.ResolveFromBindingDataAsync(context);
+            var attrResolved = Cloner.ResolveFromBindingData(context);
             return await BuildAsync(attrResolved, context.ValueContext);
         }
 
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 // Called when we invoke from dashboard. 
                 // str --> attribute --> obj 
-                var resolvedAttr = await Cloner.ResolveFromInvokeStringAsync(str);
+                var resolvedAttr = Cloner.ResolveFromInvokeString(str);
                 return await BuildAsync(resolvedAttr, context);
             }
             else
