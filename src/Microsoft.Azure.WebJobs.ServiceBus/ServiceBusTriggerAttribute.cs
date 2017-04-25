@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
+    [Binding]
     public sealed class ServiceBusTriggerAttribute : Attribute, IConnectionProvider
     {
         private readonly string _queueName;

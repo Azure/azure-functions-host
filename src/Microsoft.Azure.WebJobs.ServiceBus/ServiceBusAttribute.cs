@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{QueueOrTopicName,nq}")]
     [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
+    [Binding]
     public sealed class ServiceBusAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
