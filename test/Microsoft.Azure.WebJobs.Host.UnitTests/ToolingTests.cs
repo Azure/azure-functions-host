@@ -107,7 +107,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal("x", blobAttr.BlobPath);
             Assert.Equal(FileAccess.Read, blobAttr.Access);
             Assert.Equal("cx1", blobAttr.Connection);
-            
+
+            blobAttr = GetAttr<BlobAttribute>(tooling,
+              new
+              {
+                  path = "x",
+                  direction = "in",
+                  connection = "" // empty, not null 
+              });
+            Assert.Equal("x", blobAttr.BlobPath);
+            Assert.Equal(FileAccess.Read, blobAttr.Access);
+            Assert.Equal("", blobAttr.Connection); // empty is passed straight through. 
+
             var blobTriggerAttr = GetAttr<BlobTriggerAttribute>(tooling, new { path = "x" });
             Assert.Equal("x", blobTriggerAttr.BlobPath);
 

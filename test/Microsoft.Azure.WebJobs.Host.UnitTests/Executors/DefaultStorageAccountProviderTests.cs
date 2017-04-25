@@ -268,6 +268,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             Assert.Equal("Storage account 'name' is of unsupported type 'Premium'. Supported types are 'General Purpose'", exception.Message);
         }
 
+        [Fact]
+        public async Task GetStorageAccountAsyncTest()
+        {
+            string cxEmpty= "";
+            var accountDefault = new Mock<IStorageAccount>().Object;
+
+            string cxReal = "MyAccount";
+            var accountReal = new Mock<IStorageAccount>().Object;
+
+            var provider = new Mock<IStorageAccountProvider>();
+            provider.Setup(c => c.TryGetAccountAsync(ConnectionStringNames.Storage, CancellationToken.None)).Returns(Task.FromResult<IStorageAccount>(accountDefault));
+            provider.Setup(c => c.TryGetAccountAsync(cxReal, CancellationToken.None)).Returns(Task.FromResult<IStorageAccount>(accountReal));
+
+            var account = await StorageAccountProviderExtensions.GetStorageAccountAsync(provider.Object, cxEmpty, CancellationToken.None);
+            Assert.Equal(accountDefault, account);
+
+            account = await StorageAccountProviderExtensions.GetStorageAccountAsync(provider.Object, cxReal, CancellationToken.None);
+            Assert.Equal(accountReal, account);
+        }
+
         private static IConnectionStringProvider CreateConnectionStringProvider(string connectionStringName,
             string connectionString)
         {
