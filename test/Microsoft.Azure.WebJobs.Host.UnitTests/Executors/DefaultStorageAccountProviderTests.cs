@@ -208,27 +208,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public void StorageAccountOverrides_MultipleLevels()
-        {
-            // param level
-            MethodInfo method = typeof(AccountOverrides).GetMethod("ParamOverride", BindingFlags.NonPublic | BindingFlags.Instance);
-            ParameterInfo parameter = method.GetParameters().Single(p => p.Name == "s");
-            string account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("param", account);
-
-            // method level
-            method = typeof(AccountOverrides).GetMethod("MethodOverride", BindingFlags.NonPublic | BindingFlags.Instance);
-            parameter = method.GetParameters().Single(p => p.Name == "s");
-            account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("method", account);
-
-            method = typeof(AccountOverrides).GetMethod("ClassOverride", BindingFlags.NonPublic | BindingFlags.Instance);
-            parameter = method.GetParameters().Single(p => p.Name == "s");
-            account = StorageAccountProviderExtensions.GetAccountOverrideOrNull(parameter);
-            Assert.Equal("class", account);
-        }
-
-        [Fact]
         public async Task GetAccountAsync_WhenWebJobsStorageAccountNotGeneral_Throws()
         {
             string connectionString = "valid-ignore";

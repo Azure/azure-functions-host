@@ -1,11 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 using System;
-using System.Globalization;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -69,31 +66,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 string message = StorageAccountParser.FormatParseAccountErrorMessage(StorageAccountParseResult.MissingOrEmptyConnectionStringError, connectionStringName);
                 throw new InvalidOperationException(message);
             }
-        }
-
-        /// <summary>
-        /// Determine whether the specified parameter declares an explicit storage
-        /// account to use, either by specifying a value for <see cref="IConnectionProvider.Connection"/> or
-        /// if <see cref="StorageAccountAttribute"/> has been applied up the hierarchy.
-        /// </summary>
-        internal static string GetAccountOverrideOrNull(ParameterInfo parameter)
-        {
-            // if this is a Storage attribute (e.g. Queues/Blobs/Tables) and
-            // it specifies an account, return it
-            var storageAttribute = parameter.GetCustomAttribute<StorageAccountAttribute>();
-            if (storageAttribute != null && !string.IsNullOrEmpty(storageAttribute.Account))
-            {
-                return storageAttribute.Account;
-            }
-
-            // walk up from the parameter looking for any StorageAccountAttribute overrides
-            var storageAccountAttribute = TypeUtility.GetHierarchicalAttributeOrNull<StorageAccountAttribute>(parameter);
-            if (storageAccountAttribute != null)
-            {
-                return storageAccountAttribute.Account;
-            }
-
-            return null;
         }
     }
 }
