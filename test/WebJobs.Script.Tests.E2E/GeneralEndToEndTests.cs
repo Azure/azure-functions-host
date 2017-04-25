@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.EndToEndTests
@@ -104,6 +107,85 @@ namespace WebJobs.Script.EndToEndTests
                  });
 
                 _fixture.Assert.True(requestsSucceeded);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task Invocation_Logs_AreReturned()
+        {
+            using (var client = CreateClient())
+            {
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+                string invocationId = await client.GetStringAsync($"api/GetInvocationId?code={_fixture.FunctionDefaultKey}");
+
+                string siteName = NormalizeFunctionName(Settings.SiteName);
+                JToken resultToken = null;
+                // We retry for a bit as data may take a while to become available
+                for (int i = 0; i < 20; i++)
+                {
+                    var invocationsRequest = new HttpRequestMessage(HttpMethod.Get, $"azurejobs/api/functions/definitions/{siteName}-GetInvocationId/invocations?limit=10");
+                    var response = await _fixture.KuduClient.SendAsync(invocationsRequest);
+
+                    var results = await response.Content.ReadAsAsync<JObject>();
+
+                    resultToken = results.SelectToken($"$..entries[?(@.id == '{invocationId}')]");
+
+                    if (resultToken != null)
+                    {
+                        break;
+                    }
+                    
+                    await Task.Delay(3000);
+                }
+
+                _fixture.Assert.True(resultToken != null);
+            }
+        }
+
+        // Assumes we have a valid function name.
+        // Function names are case-insensitive, case-preserving. 
+        // Table storage is case-sensitive. So need to normalize case to use as table keys. 
+        // Normalize must be one-to-one to avoid collisions. 
+        // Escape any non-alphanumeric characters so that we 
+        //  a) have a valid rowkey name 
+        //  b) don't have characeters that conflict with separators in the row key (like '-')
+        public static string NormalizeFunctionName(string functionName)
+        {
+            var sb = new StringBuilder();
+            foreach (var ch in functionName)
+            {
+                if (ch >= 'a' && ch <= 'z')
+                {
+                    sb.Append(ch);
+                }
+                else if (ch >= 'A' && ch <= 'Z')
+                {
+                    sb.Append((char)(ch - 'A' + 'a'));
+                }
+                else if (ch >= '0' && ch <= '9')
+                {
+                    sb.Append(ch);
+                }
+                else
+                {
+                    sb.Append(EscapeStorageCharacter(ch));
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static string EscapeStorageCharacter(char character)
+        {
+            var ordinalValue = (ushort)character;
+            if (ordinalValue < 0x100)
+            {
+                return string.Format(CultureInfo.InvariantCulture, ":{0:X2}", ordinalValue);
+            }
+            else
+            {
+                return string.Format(CultureInfo.InvariantCulture, "::{0:X4}", ordinalValue);
             }
         }
 
