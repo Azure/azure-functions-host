@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return assembly.DefinedTypes
-                .FirstOrDefault(t => string.Compare(t.Name, ParentTypeName, StringComparison.Ordinal) == 0)
+                .FirstOrDefault(t => string.Compare(t.FullName, ParentTypeName, StringComparison.Ordinal) == 0)
                 ?.GetMethod(MethodName);
         }
 

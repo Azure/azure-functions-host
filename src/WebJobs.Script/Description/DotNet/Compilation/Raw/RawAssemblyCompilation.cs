@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var functionParameters = method.GetParameters().Select(p => new FunctionParameter(p.Name, p.ParameterType.FullName, p.IsOptional, GetParameterRefKind(p)));
 
-            return new FunctionSignature(method.ReflectedType.Name, method.Name, ImmutableArray.CreateRange(functionParameters.ToArray()), method.ReturnType.Name, hasLocalTypeReference: false);
+            return new FunctionSignature(method.ReflectedType.FullName, method.Name, ImmutableArray.CreateRange(functionParameters.ToArray()), method.ReturnType.Name, hasLocalTypeReference: false);
         }
 
         private static RefKind GetParameterRefKind(ParameterInfo parameter)

@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bool hasLocalTypeReferences = HasLocalTypeReferences(entryPointReference);
             var functionParameters = entryPointReference.Parameters.Select(p => new FunctionParameter(p.Name, GetFullTypeName(p.Type), p.IsOptional, p.RefKind));
 
-            return new FunctionSignature(entryPointReference.ContainingType.Name, entryPointReference.Name,
+            return new FunctionSignature(entryPointReference.ContainingType.ToDisplayString(), entryPointReference.Name,
                 ImmutableArray.CreateRange(functionParameters.ToArray()), GetFullTypeName(entryPointReference.ReturnType), hasLocalTypeReferences);
         }
 

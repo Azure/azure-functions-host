@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
         /// <summary>
         ///   Looks up a localized string similar to {{
         ///    &quot;scriptFile&quot;:&quot;{0}&quot;,
-        ///    &quot;entryPoint&quot;: &quot;TestFunction.Function.Run&quot;,
+        ///    &quot;entryPoint&quot;: &quot;{1}&quot;,
         ///    &quot;bindings&quot;: [
         ///        {{
         ///            &quot;type&quot;: &quot;httpTrigger&quot;,
