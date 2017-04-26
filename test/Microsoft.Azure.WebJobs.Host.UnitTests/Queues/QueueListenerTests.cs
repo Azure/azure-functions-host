@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Moq;
 using Xunit;
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueListenerTests
     {
+        private Mock<IStorageQueue> _mockQueue;
         private QueueListener _listener;
         private Mock<QueueProcessor> _mockQueueProcessor;
         private Mock<ITriggerExecutor<IStorageQueueMessage>> _mockTriggerExecutor;
@@ -30,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         public QueueListenerTests()
         {
             CloudQueue queue = new CloudQueue(new Uri("https://test.queue.core.windows.net/testqueue"));
-            Mock<IStorageQueue> mockQueue = new Mock<IStorageQueue>(MockBehavior.Strict);
-            mockQueue.Setup(p => p.SdkObject).Returns(queue);
+            _mockQueue = new Mock<IStorageQueue>(MockBehavior.Strict);
+            _mockQueue.Setup(p => p.SdkObject).Returns(queue);
 
             _mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
             Mock<IWebJobsExceptionHandler> mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
@@ -51,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
             mockQueueProcessorFactory.Setup(p => p.Create(It.IsAny<QueueProcessorFactoryContext>())).Returns(_mockQueueProcessor.Object);
 
-            _listener = new QueueListener(mockQueue.Object, null, _mockTriggerExecutor.Object, mockExceptionDispatcher.Object, trace, _loggerFactory, null, queueConfig);
+            _listener = new QueueListener(_mockQueue.Object, null, _mockTriggerExecutor.Object, mockExceptionDispatcher.Object, trace, _loggerFactory, null, queueConfig);
 
             CloudQueueMessage cloudMessage = new CloudQueueMessage("TestMessage");
             _storageMessage = new StorageQueueMessage(cloudMessage);
@@ -139,6 +141,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             _mockQueueProcessor.Setup(p => p.CompleteProcessingMessageAsync(_storageMessage.SdkObject, result, cancellationToken)).Returns(Task.FromResult(true));
 
             await _listener.ProcessMessageAsync(_storageMessage, TimeSpan.FromMinutes(10), cancellationToken);
+        }
+
+        [Fact]
+        public async Task GetMessages_QueueCheckThrowsTransientError_ReturnsBackoffResult()
+        {
+            CancellationToken cancellationToken = new CancellationToken();
+            var exception = new StorageException(
+                new RequestResult
+                {
+                    HttpStatusCode = 503
+                },
+                string.Empty,
+                new Exception());
+
+            _mockQueue.Setup(p => p.GetMessagesAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), null, null, cancellationToken)).Throws(exception);
+
+            var result = await _listener.ExecuteAsync(cancellationToken);
+            Assert.NotNull(result);
+            await result.Wait;
         }
 
         [Fact]

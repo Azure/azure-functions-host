@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Extensions.Logging;
@@ -22,28 +21,28 @@ namespace SampleHost
                 config.UseDevelopmentSettings();
             }
 
-            config.Tracing.ConsoleLevel = TraceLevel.Off;
-
-            // Build up a LoggerFactory to log to App Insights, but only if this key exists.
-            string instrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
-            if (!string.IsNullOrEmpty(instrumentationKey))
-            {
-                // build up log filters
-                LogCategoryFilter logCategoryFilter = new LogCategoryFilter();
-                logCategoryFilter.DefaultLevel = LogLevel.Debug;
-                logCategoryFilter.CategoryLevels[LogCategories.Function] = LogLevel.Debug;
-                logCategoryFilter.CategoryLevels[LogCategories.Results] = LogLevel.Debug;
-                logCategoryFilter.CategoryLevels[LogCategories.Aggregator] = LogLevel.Debug;
-
-                config.LoggerFactory = new LoggerFactory()
-                    .AddApplicationInsights(instrumentationKey, logCategoryFilter.Filter)
-                    .AddConsole(logCategoryFilter.Filter);
-            }
-
-            config.CreateMetadataProvider().DebugDumpGraph(Console.Out);
+            CheckAndEnableAppInsights(config);
 
             var host = new JobHost(config);
             host.RunAndBlock();
+        }
+
+        private static void CheckAndEnableAppInsights(JobHostConfiguration config)
+        {
+            // If AppInsights is enabled, build up a LoggerFactory
+            string instrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
+            if (!string.IsNullOrEmpty(instrumentationKey))
+            {
+                var filter = new LogCategoryFilter();
+                filter.DefaultLevel = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Function] = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Results] = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Aggregator] = LogLevel.Debug;
+
+                config.LoggerFactory = new LoggerFactory()
+                    .AddApplicationInsights(instrumentationKey, filter.Filter)
+                    .AddConsole(filter.Filter);
+            }
         }
     }
 }

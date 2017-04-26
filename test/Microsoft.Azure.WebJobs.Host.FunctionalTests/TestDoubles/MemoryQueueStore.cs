@@ -41,6 +41,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public IEnumerable<MutableStorageQueueMessage> GetMessages(string queueName, int messageCount,
             TimeSpan visibilityTimeout)
         {
+            if (!_items.ContainsKey(queueName))
+            {
+                return Enumerable.Empty<MutableStorageQueueMessage>();
+            }
             return _items[queueName].GetMessages(messageCount, visibilityTimeout);
         }
 
