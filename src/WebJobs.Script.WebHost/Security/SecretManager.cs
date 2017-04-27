@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>();
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
         private readonly ISecretsRepository _repository;
         private HostSecretsInfo _hostSecrets;
 
@@ -27,17 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ScriptSettingsManager settingsManager, ISecretsRepository repository, TraceWriter traceWriter, bool createHostSecretsIfMissing = false)
-            : this(repository, new DefaultKeyValueConverterFactory(settingsManager), traceWriter, createHostSecretsIfMissing)
+        public SecretManager(ScriptSettingsManager settingsManager, ISecretsRepository repository, TraceWriter traceWriter, ILoggerFactory loggerFactory, bool createHostSecretsIfMissing = false)
+            : this(repository, new DefaultKeyValueConverterFactory(settingsManager), traceWriter, loggerFactory, createHostSecretsIfMissing)
         {
         }
 
-        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, TraceWriter traceWriter, bool createHostSecretsIfMissing = false)
+        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, TraceWriter traceWriter, ILoggerFactory loggerFactory, bool createHostSecretsIfMissing = false)
         {
             _repository = repository;
             _keyValueConverterFactory = keyValueConverterFactory;
             _traceWriter = traceWriter;
             _repository.SecretsChanged += OnSecretsChanged;
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
             if (createHostSecretsIfMissing)
             {
@@ -70,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (hostSecrets == null)
                 {
                     _traceWriter.Verbose(Resources.TraceHostSecretGeneration);
+                    _logger?.LogDebug(Resources.TraceHostSecretGeneration);
                     hostSecrets = GenerateHostSecrets();
                     await PersistSecretsAsync(hostSecrets);
                 }
@@ -83,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (hostSecrets.HasStaleKeys)
                 {
                     _traceWriter.Verbose(Resources.TraceStaleHostSecretRefresh);
+                    _logger?.LogDebug(Resources.TraceStaleHostSecretRefresh);
                     await RefreshSecretsAsync(hostSecrets);
                 }
 
@@ -113,7 +118,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
                 if (secrets == null)
                 {
-                    _traceWriter.VerboseFormat(Resources.TraceFunctionSecretGeneration, functionName);
+                    string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                    _traceWriter.Verbose(message);
+                    _logger?.LogDebug(message);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -130,7 +137,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (secrets.HasStaleKeys)
                 {
-                    _traceWriter.VerboseFormat(Resources.TraceStaleFunctionSecretRefresh, functionName);
+                    string message = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
+                    _traceWriter.Verbose(message);
+                    _logger?.LogDebug(message);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
@@ -173,7 +182,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             KeyOperationResult result = await AddOrUpdateSecretAsync(secretsType, keyScope, secretName, secret, secretsFactory);
 
-            _traceWriter.InfoFormat(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, keyScope ?? "host", result.Result);
+            string message = string.Format(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, keyScope ?? "host", result.Result);
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
 
             return result;
         }
@@ -207,7 +218,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             await PersistSecretsAsync(secrets);
 
-            _traceWriter.InfoFormat(Resources.TraceMasterKeyCreatedOrUpdated, result);
+            string message = string.Format(Resources.TraceMasterKeyCreatedOrUpdated, result);
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
 
             return new KeyOperationResult(masterKey, result);
         }
@@ -225,7 +238,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string target = secretsType == ScriptSecretsType.Function
                     ? $"Function ('{keyScope}')"
                     : $"Host (scope: '{keyScope}')";
-                _traceWriter.InfoFormat(Resources.TraceSecretDeleted, target, secretName);
+
+                string message = string.Format(Resources.TraceSecretDeleted, target, secretName);
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
             }
 
             return deleted;
@@ -414,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public async Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter)
+        public async Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter, ILogger logger)
         {
             if (!Directory.Exists(rootScriptPath))
             {
@@ -428,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // invalid unparsable states.
             var currentFunctions = Directory.EnumerateDirectories(rootScriptPath).Select(p => Path.GetFileName(p)).ToList();
 
-            await _repository.PurgeOldSecretsAsync(currentFunctions, traceWriter);
+            await _repository.PurgeOldSecretsAsync(currentFunctions, traceWriter, logger);
         }
     }
 }

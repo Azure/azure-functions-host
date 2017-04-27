@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json.Linq;
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "category", "produce" },
                 { "id", "789" }
             };
-            request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeData);
+            request.Properties.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeData);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {

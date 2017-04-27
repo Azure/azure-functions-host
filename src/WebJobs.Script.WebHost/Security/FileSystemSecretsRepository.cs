@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await FileUtility.WriteAsync(filePath, secretsContent);
         }
 
-        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter)
+        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger)
         {
             try
             {
@@ -124,7 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             catch (Exception ex)
             {
                 // Purge is best effort
-                traceWriter.Error("An error occurred while purging secret files", ex);
+                string message = "An error occurred while purging secret files";
+                traceWriter.Error(message, ex);
+                logger?.LogError(0, ex, message);
             }
         }
 

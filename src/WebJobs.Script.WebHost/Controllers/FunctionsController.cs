@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -11,6 +10,8 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
@@ -74,8 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<HttpResponseMessage> ProcessRequestAsync(HttpRequestMessage request, FunctionDescriptor function, CancellationToken cancellationToken)
         {
-            HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
-            bool isWebHook = !string.IsNullOrEmpty(httpFunctionMetadata.WebHookType);
+            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            bool isWebHook = !string.IsNullOrEmpty(httpTrigger.WebHookType);
             var authorizationLevel = request.GetAuthorizationLevel();
             HttpResponseMessage response = null;
 
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             else
             {
                 // Authorize
-                if (authorizationLevel < httpFunctionMetadata.AuthLevel)
+                if (authorizationLevel < httpTrigger.AuthLevel)
                 {
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }

@@ -2,10 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -77,6 +83,63 @@ public static void Run(string id, out string output)
 
             Assert.False(signatures.Item1.Equals(signatures.Item2));
             Assert.NotEqual(signatures.Item1.GetHashCode(), signatures.Item2.GetHashCode());
+        }
+
+        [Fact]
+        public void GetMethod_ReturnsExpectedMethod()
+        {
+            var function1 = @"using System;
+namespace Test.Function1
+{
+    public class Function
+    {
+        public static void Run(string identity, out string outputParam)
+        {
+            outputParam = nameof(Function1);
+        }
+    }
+}
+
+namespace Test.Function2
+{
+    public class Function
+    {
+        public static void Run(string identity, out string outputParam)
+        {
+            outputParam = nameof(Function2);
+        }
+    }
+}
+";
+
+            using (var path = new TempDirectory())
+            {
+                var tree = CSharpSyntaxTree.ParseText(function1);
+                var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
+
+                var compilation = CodeAnalysis.CSharp.CSharpCompilation.Create("TestAssembly", new[] { tree }, references: references)
+                    .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+                string assemblyPath = Path.Combine(path.Path, "TestAssembly.dll");
+                compilation.Emit(assemblyPath);
+
+                Assembly assembly = Assembly.LoadFrom(assemblyPath);
+
+                var parameters = new List<FunctionParameter>
+                {
+                    new FunctionParameter("identity", typeof(string).FullName, false, RefKind.None),
+                    new FunctionParameter("outputParam", typeof(string).FullName, false, RefKind.Out)
+                };
+
+                var signature1 = new FunctionSignature("Test.Function1.Function", "Run", parameters.ToImmutableArray(), typeof(void).FullName, false);
+                var signature2 = new FunctionSignature("Test.Function2.Function", "Run", parameters.ToImmutableArray(), typeof(void).FullName, false);
+
+                var method1 = signature1.GetMethod(assembly);
+                var method2 = signature2.GetMethod(assembly);
+
+                Assert.Equal("Test.Function1.Function", method1.DeclaringType.FullName);
+                Assert.Equal("Test.Function2.Function", method2.DeclaringType.FullName);
+            }
         }
 
         private Tuple<FunctionSignature, FunctionSignature> GetFunctionSignatures(string function1, string function2)

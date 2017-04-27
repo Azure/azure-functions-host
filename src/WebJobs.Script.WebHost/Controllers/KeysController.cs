@@ -3,15 +3,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -25,12 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, TraceWriter traceWriter)
+        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
             _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSecretManagement}.Api");
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
         }
 
         [HttpGet]
@@ -132,7 +135,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
             }
 
-            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result);
+            string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result);
+            _traceWriter.Verbose(message);
+            _logger?.LogDebug(message);
 
             switch (operationResult.Result)
             {
@@ -186,7 +191,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound();
             }
 
-            _traceWriter.VerboseFormat(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted");
+            string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted");
+            _traceWriter.VerboseFormat(message);
+            _logger?.LogDebug(message);
 
             return StatusCode(HttpStatusCode.NoContent);
         }

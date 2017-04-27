@@ -6,7 +6,6 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class FunctionParameter : IEquatable<FunctionParameter>
     {
         public FunctionParameter(string name, string typeName, bool isOptional, RefKind refkind)

@@ -9,12 +9,12 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class ScriptFunctionInvokerBase : FunctionInvokerBase
     {
         public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory)
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             object value = null;
-            if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsHttpRouteDataKey, out value))
+            if (request.Properties.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out value))
             {
                 Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
                 foreach (var pair in routeBindingData)

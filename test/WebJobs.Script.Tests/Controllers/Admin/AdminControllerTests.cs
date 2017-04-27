@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), _settingsManager, settings });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new AdminController(managerMock.Object, settings, new TestTraceWriter(TraceLevel.Verbose));
+            testController = new AdminController(managerMock.Object, settings, new TestTraceWriter(TraceLevel.Verbose), null);
         }
 
         [Fact]
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsTrigger = true
                 }
             };
-            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters));
+            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters, null, null, null));
 
             FunctionInvocation invocation = new FunctionInvocation
             {

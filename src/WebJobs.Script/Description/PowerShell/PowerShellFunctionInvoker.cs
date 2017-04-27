@@ -14,10 +14,10 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description.PowerShell;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public class PowerShellFunctionInvoker : ScriptFunctionInvokerBase
     {
         private readonly ScriptHost _host;
@@ -128,7 +128,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (moduleRelativePaths.Any())
             {
-                TraceWriter.Verbose(string.Format("Loaded modules:{0}{1}", Environment.NewLine, string.Join(Environment.NewLine, moduleRelativePaths)));
+                string message = string.Format("Loaded modules:{0}{1}", Environment.NewLine, string.Join(Environment.NewLine, moduleRelativePaths));
+                TraceWriter.Verbose(message);
+                Logger?.LogDebug(message);
             }
         }
 

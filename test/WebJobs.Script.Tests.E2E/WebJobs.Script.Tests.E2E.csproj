@@ -100,6 +100,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="Functions\wwwroot\GetInvocationId\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Functions\wwwroot\GetInvocationId\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Functions\wwwroot\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

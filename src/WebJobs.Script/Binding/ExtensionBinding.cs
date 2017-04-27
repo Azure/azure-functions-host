@@ -18,22 +18,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// <summary>
     /// Wrapper used to adapt a <see cref="ScriptBinding"/> to the binding pipeline.
     /// </summary>
-    [CLSCompliant(false)]
-    public class ExtensionBinding : FunctionBinding
+    public class ExtensionBinding : FunctionBinding, IResultProcessingBinding
     {
         private ScriptBinding _binding;
-        private Collection<Attribute> _attributes;
 
         public ExtensionBinding(ScriptHostConfiguration config, ScriptBinding binding, BindingMetadata metadata) : base(config, metadata, binding.Context.Access)
         {
             _binding = binding;
-            _attributes = _binding.GetAttributes();
+            Attributes = _binding.GetAttributes();
         }
+
+        internal Collection<Attribute> Attributes { get; private set; }
 
         public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
         {
             Collection<CustomAttributeBuilder> attributeBuilders = new Collection<CustomAttributeBuilder>();
-            foreach (var attribute in _attributes)
+            foreach (var attribute in Attributes)
             {
                 CustomAttributeBuilder builder = GetAttributeBuilder(attribute);
                 attributeBuilders.Add(builder);
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override async Task BindAsync(BindingContext context)
         {
-            context.Attributes = _attributes.ToArray();
+            context.Attributes = Attributes.ToArray();
 
             if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
@@ -177,6 +177,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return attributeData;
+        }
+
+        public virtual bool CanProcessResult(object result)
+        {
+            var returnBinding = _binding as IResultProcessingBinding;
+            if (returnBinding != null)
+            {
+                return returnBinding.CanProcessResult(result);
+            }
+            return false;
+        }
+
+        public virtual void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
+        {
+            var returnBinding = _binding as IResultProcessingBinding;
+            if (returnBinding != null)
+            {
+                returnBinding.ProcessResult(functionArguments, systemArguments, triggerInputName, result);
+            }
         }
 
         internal class AttributeBuilderInfo

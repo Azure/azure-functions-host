@@ -9,12 +9,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security.Policy;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// Provides runtime and compile-time assembly/metadata resolution for a given assembly, loading privately deployed
     /// or package assemblies.
     /// </summary>
-    [CLSCompliant(false)]
     public sealed class FunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
     {
         private readonly string _privateAssembliesPath;
@@ -30,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _id = Guid.NewGuid().ToString();
         private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ConcurrentDictionary<string, string> _externalReferences = new ConcurrentDictionary<string, string>();
         private readonly ExtensionSharedAssemblyProvider _extensionSharedAssemblyProvider;
 
@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Runtime",
                 "System.Threading.Tasks",
                 "Microsoft.CSharp",
+                typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
@@ -70,10 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Net.Http",
                 "System.Threading.Tasks",
                 "Microsoft.Azure.WebJobs",
-                "Microsoft.Azure.WebJobs.Host"
+                "Microsoft.Azure.WebJobs.Host",
+                "Microsoft.Extensions.Logging"
             };
 
-        public FunctionMetadataResolver(FunctionMetadata metadata, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter)
+        public FunctionMetadataResolver(FunctionMetadata metadata, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _functionMetadata = metadata;
             _traceWriter = traceWriter;
@@ -81,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _privateAssembliesPath = GetBinDirectory(metadata);
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
+            _loggerFactory = loggerFactory;
         }
 
         public ScriptOptions CreateScriptOptions()
@@ -232,6 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // Use LoadFile here to load into the correct context
                 assembly = Assembly.LoadFile(assemblyPath);
             }
+            else if (_extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName, out assembly))
+            {
+                return assembly;
+            }
 
             return assembly;
         }
@@ -257,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task<PackageRestoreResult> RestorePackagesAsync()
         {
-            var packageManager = new PackageManager(_functionMetadata, _traceWriter);
+            var packageManager = new PackageManager(_functionMetadata, _traceWriter, _loggerFactory);
             PackageRestoreResult result = await packageManager.RestorePackagesAsync();
 
             // Reload the resolver

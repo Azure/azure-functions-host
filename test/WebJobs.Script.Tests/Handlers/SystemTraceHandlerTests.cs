@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Dependencies;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.WebJobs.Script.Tests;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
         public SystemTraceHandlerTests()
         {
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            HttpConfiguration config = new HttpConfiguration();
+            var config = new System.Web.Http.HttpConfiguration();
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             mockResolver.Setup(p => p.GetService(typeof(TraceWriter))).Returns(_traceWriter);
             config.DependencyResolver = mockResolver.Object;

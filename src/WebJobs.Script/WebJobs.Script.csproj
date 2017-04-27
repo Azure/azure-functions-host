@@ -59,6 +59,30 @@
       <HintPath>..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.AI.Agent.Intercept, Version=2.0.7.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.Agent.Intercept.2.0.7\lib\net45\Microsoft.AI.Agent.Intercept.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.DependencyCollector, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.3.0\lib\net45\Microsoft.AI.DependencyCollector.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.PerfCounterCollector, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.3.0\lib\net45\Microsoft.AI.PerfCounterCollector.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.ServerTelemetryChannel, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.3.0\lib\net45\Microsoft.AI.ServerTelemetryChannel.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.WindowsServer, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.WindowsServer.2.3.0\lib\net45\Microsoft.AI.WindowsServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.ApplicationInsights, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.ApplicationInsights.2.3.0\lib\net46\Microsoft.ApplicationInsights.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Azure.ApiHub.Sdk, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.7.2-alpha\lib\net45\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
       <Private>True</Private>
@@ -76,45 +100,44 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.1-alpha1-10547\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.0.1-alpha1-10677\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta3-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta3-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.BotFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.13-beta\lib\net46\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.Http, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Http.1.0.0-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.Http.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.NotificationHubs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.1.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.NotificationHubs.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.SendGrid.2.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.SendGrid.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.Twilio, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.0.1-alpha1-10425\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.0.1-alpha1-10433\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.1-alpha1-10547\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.0.1-alpha1-10677\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2-10774\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2-10893\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.1-alpha1-10547\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.0.1-alpha1-10677\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Bot.Connector.DirectLine, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Bot.Connector.DirectLine.3.0.0-beta\lib\net45\Microsoft.Bot.Connector.DirectLine.dll</HintPath>
@@ -144,6 +167,16 @@
       <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.1\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=1.1.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.1.1.0\lib\netstandard1.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Rest.ClientRuntime, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Rest.ClientRuntime.2.3.3\lib\net45\Microsoft.Rest.ClientRuntime.dll</HintPath>
       <Private>True</Private>
@@ -154,6 +187,10 @@
     </Reference>
     <Reference Include="Microsoft.ServiceBus.Messaging.EventProcessorHost, Version=0.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.ServiceBus.EventProcessorHost.2.2.10\lib\net45-full\Microsoft.ServiceBus.Messaging.EventProcessorHost.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -222,14 +259,27 @@
       <HintPath>..\..\packages\System.Console.4.3.0\lib\net46\System.Console.dll</HintPath>
     </Reference>
     <Reference Include="System.Core" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=4.0.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Diagnostics.DiagnosticSource.4.3.0\lib\net46\System.Diagnostics.DiagnosticSource.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Diagnostics.FileVersionInfo, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Diagnostics.FileVersionInfo.4.3.0\lib\net46\System.Diagnostics.FileVersionInfo.dll</HintPath>
     </Reference>
     <Reference Include="System.Diagnostics.StackTrace, Version=4.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Diagnostics.StackTrace.4.3.0\lib\net46\System.Diagnostics.StackTrace.dll</HintPath>
     </Reference>
+    <Reference Include="System.Globalization.Calendars, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Globalization.Calendars.4.3.0\lib\net46\System.Globalization.Calendars.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.IO.Compression, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.IO.Compression.4.3.0\lib\net46\System.IO.Compression.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Compression.ZipFile, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.Compression.ZipFile.4.3.0\lib\net46\System.IO.Compression.ZipFile.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.IO.FileSystem, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.IO.FileSystem.4.3.0\lib\net46\System.IO.FileSystem.dll</HintPath>
@@ -238,6 +288,10 @@
       <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.3.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
     </Reference>
     <Reference Include="System.Net" />
+    <Reference Include="System.Net.Http, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Http.4.3.0\lib\net46\System.Net.Http.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Net.Http.2.2.29\lib\net45\System.Net.Http.Extensions.dll</HintPath>
       <Private>True</Private>
@@ -251,9 +305,17 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Net.Http.WebRequest" />
+    <Reference Include="System.Net.Sockets, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Sockets.4.3.0\lib\net46\System.Net.Sockets.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Numerics" />
     <Reference Include="System.Reflection.Metadata, Version=1.4.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Reflection.Metadata.1.4.2\lib\portable-net45+win8\System.Reflection.Metadata.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security.Cryptography.Algorithms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -296,7 +358,6 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.ReaderWriter, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Xml.ReaderWriter.4.3.0\lib\net46\System.Xml.ReaderWriter.dll</HintPath>
@@ -320,19 +381,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AuthorizationLevel.cs" />
     <Compile Include="Binding\ApiHubScriptBindingProvider.cs" />
     <Compile Include="Binding\BindingContext.cs" />
+    <Compile Include="Binding\GeneralScriptBindingProvider.cs" />
     <Compile Include="Binding\CoreExtensionsScriptBindingProvider.cs" />
     <Compile Include="Binding\DocumentDBScriptBindingProvider.cs" />
     <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
-    <Compile Include="Binding\Http\HttpConfiguration.cs" />
-    <Compile Include="Binding\Http\HttpRequestManager.cs" />
-    <Compile Include="Binding\Http\HttpTriggerAttribute.cs" />
-    <Compile Include="Binding\Http\HttpTriggerAttributeBindingProvider.cs" />
-    <Compile Include="Binding\Http\HttpRouteFactory.cs" />
     <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
@@ -340,38 +396,49 @@
     <Compile Include="Binding\NotificationHubScriptBindingProvider.cs" />
     <Compile Include="Binding\NullListener.cs" />
     <Compile Include="Binding\ScriptJobHostConfigurationExtensions.cs" />
-    <Compile Include="Binding\SendGridScriptBindingProvider.cs" />
     <Compile Include="Binding\ServiceBusScriptBindingProvider.cs" />
     <Compile Include="Binding\TwilioScriptBindingProvider.cs" />
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
+    <Compile Include="Description\Compilation\ICompilation.cs" />
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
-    <Compile Include="Description\DotNet\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\IDotNetCompilation.cs" />
     <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
-    <Compile Include="Description\DotNet\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
-    <Compile Include="Description\DotNet\CSharp\CSharpCompilation.cs" />
-    <Compile Include="Description\DotNet\CSharp\CSharpCompilationService.cs" />
-    <Compile Include="Description\DotNet\DotNetCompilationServiceFactory.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\DotNetCompilationServiceFactory.cs" />
     <Compile Include="Description\DotNet\ExtensionSharedAssemblyProvider.cs" />
-    <Compile Include="Description\DotNet\FSharp\FSharpCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilationService.cs" />
     <Compile Include="Description\DotNet\FunctionParameter.cs" />
-    <Compile Include="Description\DotNet\ICompilation.cs" />
-    <Compile Include="Description\DotNet\ICompilationServiceFactory.cs" />
-    <Compile Include="Description\DotNet\ICompilationService.cs" />
+    <Compile Include="Description\Compilation\ICompilationServiceFactory.cs" />
+    <Compile Include="Description\Compilation\ICompilationService.cs" />
     <Compile Include="Description\DotNet\IFunctionMetadataResolver.cs" />
     <Compile Include="Description\DotNet\ISharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\LocalSharedAssemblyProvider.cs" />
     <Compile Include="Description\DotNet\DirectSharedAssemblyProvider.cs" />
-    <Compile Include="Description\DotNet\Raw\RawAssemblyCompilation.cs" />
-    <Compile Include="Description\DotNet\Raw\RawAssemblyCompilationService.cs" />
+    <Compile Include="Description\DotNet\Compilation\Raw\RawAssemblyCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\Raw\RawAssemblyCompilationService.cs" />
     <Compile Include="Description\FunctionInvocationContext.cs" />
     <Compile Include="Description\FunctionLoader.cs" />
+    <Compile Include="Description\LogTargets.cs" />
+    <Compile Include="Description\Node\Compilation\ConditionalJavaScriptCompilationService.cs" />
+    <Compile Include="Description\Node\Compilation\IJavaScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\JavaScriptCompilationServiceFactory.cs" />
+    <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilationService.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\CompilationOption.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\StringCompilationOption.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilation.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptions.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationService.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
-    <Compile Include="Description\DotNet\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
@@ -390,10 +457,11 @@
     <Compile Include="Description\DotNet\PackageAssemblyResolver.cs" />
     <Compile Include="Description\DotNet\PackageManager.cs" />
     <Compile Include="Description\DotNet\PackageReference.cs" />
-    <Compile Include="Description\Binding\HttpTriggerBindingMetadata.cs" />
     <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
+    <Compile Include="Diagnostics\FileLogger.cs" />
+    <Compile Include="Diagnostics\FileLoggerProvider.cs" />
     <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
@@ -405,6 +473,7 @@
     <Compile Include="Diagnostics\MetricEventNames.cs" />
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
+    <Compile Include="Diagnostics\DictionaryLoggerScope.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ErrorCodes.cs" />
     <Compile Include="Extensions\AssemblyExtensions.cs" />
@@ -433,7 +502,7 @@
     <Compile Include="Extensions\ActionExtensions.cs" />
     <Compile Include="Diagnostics\FileTraceWriter.cs" />
     <Compile Include="Host\ScriptHostState.cs" />
-    <Compile Include="HttpMethodJsonConverter.cs" />
+    <Compile Include="Host\ScriptTelemetryClientFactory.cs" />
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcher.cs" />
@@ -534,6 +603,7 @@
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" /> -->
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

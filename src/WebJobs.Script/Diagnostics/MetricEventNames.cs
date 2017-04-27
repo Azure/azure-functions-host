@@ -8,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // host level events
         public const string ApplicationStartLatency = "host.application.start";
         public const string HostStartupLatency = "host.startup.latency";
+        public const string ApplicationInsightsEnabled = "host.applicationinsights";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";

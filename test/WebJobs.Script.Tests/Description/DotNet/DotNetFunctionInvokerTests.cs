@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RunDependencies dependencies = CreateDependencies();
             dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>()))
                 .Throws(exception);
-            dependencies.Compilation.Setup(c => c.EmitAndLoad(It.IsAny<CancellationToken>()))
+            dependencies.Compilation.Setup(c => c.Emit(It.IsAny<CancellationToken>()))
                 .Returns(typeof(object).Assembly);
 
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
 
             await invoker.GetFunctionTargetAsync();
 
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
@@ -253,17 +253,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
 
-            var compilation = new Mock<ICompilation>();
+            var compilation = new Mock<IDotNetCompilation>();
             compilation.Setup(c => c.GetDiagnostics())
                 .Returns(ImmutableArray<Diagnostic>.Empty);
 
-            var compilationService = new Mock<ICompilationService>();
+            var compilationService = new Mock<ICompilationService<IDotNetCompilation>>();
             compilationService.Setup(s => s.SupportedFileTypes)
                 .Returns(() => new[] { ".csx" });
-            compilationService.Setup(s => s.GetFunctionCompilation(It.IsAny<FunctionMetadata>()))
-                .Returns(compilation.Object);
+            compilationService.Setup(s => s.GetFunctionCompilationAsync(It.IsAny<FunctionMetadata>()))
+                .ReturnsAsync(compilation.Object);
 
-            var compilationServiceFactory = new Mock<ICompilationServiceFactory>();
+            var compilationServiceFactory = new Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>>();
             compilationServiceFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>()))
                 .Returns(compilationService.Object);
 
@@ -292,11 +292,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Mock<IFunctionEntryPointResolver> EntrypointResolver { get; set; }
 
-            public Mock<ICompilation> Compilation { get; set; }
+            public Mock<IDotNetCompilation> Compilation { get; set; }
 
-            public Mock<ICompilationService> CompilationService { get; set; }
+            public Mock<ICompilationService<IDotNetCompilation>> CompilationService { get; set; }
 
-            public Mock<ICompilationServiceFactory> CompilationServiceFactory { get; set; }
+            public Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>> CompilationServiceFactory { get; set; }
 
             public Mock<ITraceWriterFactory> TraceWriterFactory { get; set; }
 

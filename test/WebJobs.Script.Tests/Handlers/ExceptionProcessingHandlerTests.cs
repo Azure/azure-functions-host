@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Dependencies;
 using System.Web.Http.ExceptionHandling;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
-        private readonly HttpConfiguration _config;
+        private readonly System.Web.Http.HttpConfiguration _config;
         private readonly TestTraceWriter _traceWriter;
 
         public ExceptionProcessingHandlerTests()
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>();
             mockResolver.Setup(p => p.GetService(typeof(TraceWriter))).Returns(_traceWriter);
 
-            _config = new HttpConfiguration();
+            _config = new System.Web.Http.HttpConfiguration();
             _config.DependencyResolver = mockResolver.Object;
         }
 

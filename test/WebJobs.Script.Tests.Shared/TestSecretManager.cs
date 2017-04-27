@@ -3,17 +3,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestSecretManager : ISecretManager
     {
-        public virtual Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter)
+        public virtual Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter, ILogger logger)
         {
             throw new NotImplementedException();
         }

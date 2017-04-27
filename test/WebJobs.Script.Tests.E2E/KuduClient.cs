@@ -59,6 +59,8 @@ namespace WebJobs.Script.EndToEndTests
             return result.GetValue("masterKey").ToString();
         }
 
+        public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request) => _client.SendAsync(request);        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)

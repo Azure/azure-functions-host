@@ -4,6 +4,7 @@
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -24,6 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _secretManager = secretManager;
         }
 
-        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ISecretsRepository secretsRepository) => _secretManager ?? new SecretManager();
+        public ISecretManager Create(ScriptSettingsManager settingsManager, TraceWriter traceWriter, ILoggerFactory loggerFactory, ISecretsRepository secretsRepository) => _secretManager ?? new SecretManager();
     }
 }

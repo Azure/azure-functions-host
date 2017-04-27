@@ -151,7 +151,7 @@
   <data name="DotNetFunctionJson" xml:space="preserve">
     <value>{{
     "scriptFile":"{0}",
-    "entryPoint": "TestFunction.Function.Run",
+    "entryPoint": "{1}",
     "bindings": [
         {{
             "type": "httpTrigger",
@@ -198,6 +198,22 @@ namespace TestFunction
         {
             return "Hello";
         }
+    }
+}
+
+namespace Test.Function1
+{
+    public class TestFunction
+    {
+        public static string TestMethod(HttpRequestMessage req) =&gt; "Function1";
+    }
+}
+
+namespace Test.Function2
+{
+    public class TestFunction
+    {
+        public static string TestMethod(HttpRequestMessage req) =&gt; "Function2";
     }
 }</value>
   </data>

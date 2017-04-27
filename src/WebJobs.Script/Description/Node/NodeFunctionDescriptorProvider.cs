@@ -9,22 +9,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
     {
+        private readonly ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> _compilationServiceFactory;
+
         public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
+            : this(host, config, new JavaScriptCompilationServiceFactory())
+        {
+        }
+
+        public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
+            ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> compilationServiceFactory)
             : base(host, config)
         {
+            _compilationServiceFactory = compilationServiceFactory;
         }
 
         public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
         {
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException("functionMetadata");
+                throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            functionDescriptor = null;
-
-            if (functionMetadata.ScriptType != ScriptType.Javascript)
+            // We can only handle script types supported by the current compilation service factory
+            if (!_compilationServiceFactory.SupportedScriptTypes.Contains(functionMetadata.ScriptType))
             {
+                functionDescriptor = null;
                 return false;
             }
 
@@ -33,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new NodeFunctionInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings);
+            ICompilationService<IJavaScriptCompilation> compilationService = _compilationServiceFactory.CreateService(functionMetadata.ScriptType, functionMetadata);
+            return new NodeFunctionInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings, compilationService);
         }
     }
 }

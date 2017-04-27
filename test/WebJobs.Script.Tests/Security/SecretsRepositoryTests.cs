@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 // Purge, passing even named files as the existing functions
                 var currentFunctions = sequence.Where(i => i % 2 == 0).Select(i => i.ToString()).ToList();
 
-                await target.PurgeOldSecretsAsync(currentFunctions, new TestTraceWriter(TraceLevel.Off));
+                await target.PurgeOldSecretsAsync(currentFunctions, new TestTraceWriter(TraceLevel.Off), null);
 
                 // Ensure only expected files exist
                 Assert.True(sequence.All(i => (i % 2 == 0) == File.Exists(getFilePath(i))));
@@ -348,6 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             private void ClearAllBlobSecrets()
             {
+                BlobContainer.CreateIfNotExists();
                 var blobs = BlobContainer.ListBlobs(prefix: TestSiteName.ToLowerInvariant(), useFlatBlobListing: true);
                 foreach (IListBlobItem blob in blobs)
                 {

@@ -3,30 +3,31 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection.Emit;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     [DebuggerDisplay("{Name} ({Metadata.ScriptType})")]
     public class FunctionDescriptor
     {
-        public FunctionDescriptor(string name, IFunctionInvoker invoker, FunctionMetadata metadata, Collection<ParameterDescriptor> parameters)
-            : this(name, invoker, metadata, parameters, new Collection<CustomAttributeBuilder>())
-        {
-        }
-
         public FunctionDescriptor(
             string name,
             IFunctionInvoker invoker,
             FunctionMetadata metadata,
             Collection<ParameterDescriptor> parameters,
-            Collection<CustomAttributeBuilder> attributes)
+            Collection<CustomAttributeBuilder> attributes,
+            Collection<FunctionBinding> inputBindings,
+            Collection<FunctionBinding> outputBindings)
         {
             Name = name;
             Invoker = invoker;
             Parameters = parameters;
             CustomAttributes = attributes;
             Metadata = metadata;
+            InputBindings = inputBindings;
+            OutputBindings = outputBindings;
         }
 
         public string Name { get; private set; }
@@ -38,5 +39,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public IFunctionInvoker Invoker { get; private set; }
 
         public FunctionMetadata Metadata { get; private set; }
+
+        public Collection<FunctionBinding> InputBindings { get; set; }
+
+        public Collection<FunctionBinding> OutputBindings { get; set; }
+
+        public virtual TAttribute GetTriggerAttributeOrNull<TAttribute>()
+        {
+            var triggerBinding = InputBindings.SingleOrDefault(p => p.Metadata.IsTrigger);
+            if (triggerBinding != null)
+            {
+                ExtensionBinding extensionBinding = triggerBinding as ExtensionBinding;
+                if (extensionBinding != null)
+                {
+                    return extensionBinding.Attributes.OfType<TAttribute>().SingleOrDefault();
+                }
+            }
+
+            return default(TAttribute);
+        }
     }
 }

@@ -12,7 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// <summary>
     /// Provides function identity validation and identification.
     /// </summary>
-    [CLSCompliant(false)]
     public sealed class FunctionSignature : IEquatable<FunctionSignature>
     {
         private readonly ImmutableArray<FunctionParameter> _parameters;
@@ -31,8 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// Returns true if the function uses locally defined types (i.e. types defined in the function assembly) in its parameters;
-        /// otherwise, false.
+        /// Gets a value indicating whether the function uses locally defined types (i.e. types defined in the function assembly) in its parameters.
         /// </summary>
         public bool HasLocalTypeReference => _hasLocalTypeReference;
 
@@ -52,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return assembly.DefinedTypes
-                .FirstOrDefault(t => string.Compare(t.Name, ParentTypeName, StringComparison.Ordinal) == 0)
+                .FirstOrDefault(t => string.Compare(t.FullName, ParentTypeName, StringComparison.Ordinal) == 0)
                 ?.GetMethod(MethodName);
         }
 

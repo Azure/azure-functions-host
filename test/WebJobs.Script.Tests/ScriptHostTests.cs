@@ -9,16 +9,19 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -55,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var functionErrors = new Dictionary<string, Collection<string>>();
-            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, functionErrors);
-            Assert.Equal(49, metadata.Count);
+            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, null, functionErrors);
+            Assert.Equal(50, metadata.Count);
         }
 
         [Fact]
@@ -442,10 +445,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["queues"] = queuesConfig;
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
             TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
-            provider.Initialize();
+            scriptConfig.HostConfig.CreateMetadataProvider(); // will cause extensions to initialize and consume config metadata.
 
             Assert.Equal(60 * 1000, scriptConfig.HostConfig.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(16, scriptConfig.HostConfig.Queues.BatchSize);
@@ -459,14 +462,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             queuesConfig["newBatchThreshold"] = 123;
             queuesConfig["visibilityTimeout"] = "00:00:30";
 
-            provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
-            provider.Initialize();
+            scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
+            scriptConfig.HostConfig.CreateMetadataProvider(); // will cause extensions to initialize and consume config metadata.
 
             Assert.Equal(5000, scriptConfig.HostConfig.Queues.MaxPollingInterval.TotalMilliseconds);
             Assert.Equal(17, scriptConfig.HostConfig.Queues.BatchSize);
             Assert.Equal(3, scriptConfig.HostConfig.Queues.MaxDequeueCount);
             Assert.Equal(123, scriptConfig.HostConfig.Queues.NewBatchThreshold);
             Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.HostConfig.Queues.VisibilityTimeout);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Http()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject http = new JObject();
+            config["http"] = http;
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration();
+            TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, traceWriter);
+            provider.Initialize();
+
+            IExtensionRegistry extensions = hostConfig.GetService<IExtensionRegistry>();
+            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
+
+            Assert.Equal(HttpExtensionConstants.DefaultRoutePrefix, httpConfig.RoutePrefix);
+            Assert.Equal(false, httpConfig.DynamicThrottlesEnabled);
+            Assert.Equal(DataflowBlockOptions.Unbounded, httpConfig.MaxConcurrentRequests);
+            Assert.Equal(DataflowBlockOptions.Unbounded, httpConfig.MaxOutstandingRequests);
+
+            http["routePrefix"] = "myprefix";
+            http["dynamicThrottlesEnabled"] = true;
+            http["maxConcurrentRequests"] = 5;
+            http["maxOutstandingRequests"] = 10;
+
+            hostConfig = new JobHostConfiguration();
+            provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, traceWriter);
+            provider.Initialize();
+
+            extensions = hostConfig.GetService<IExtensionRegistry>();
+            httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
+
+            Assert.Equal("myprefix", httpConfig.RoutePrefix);
+            Assert.Equal(true, httpConfig.DynamicThrottlesEnabled);
+            Assert.Equal(5, httpConfig.MaxConcurrentRequests);
+            Assert.Equal(10, httpConfig.MaxOutstandingRequests);
         }
 
         [Fact]
@@ -477,20 +520,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject blobsConfig = new JObject();
             config["blobs"] = blobsConfig;
 
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            JobHostConfiguration hostConfig = new JobHostConfiguration();
             TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
             provider.Initialize();
 
-            Assert.True(scriptConfig.HostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.True(hostConfig.Blobs.CentralizedPoisonQueue);
 
             blobsConfig["centralizedPoisonQueue"] = false;
 
-            provider = new WebJobsCoreScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
             provider.Initialize();
 
-            Assert.False(scriptConfig.HostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.False(hostConfig.Blobs.CentralizedPoisonQueue);
         }
 
         [Fact]
@@ -524,35 +567,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(33, scriptConfig.HostConfig.Singleton.ListenerLockRecoveryPollingInterval.TotalSeconds);
             Assert.Equal(5, scriptConfig.HostConfig.Singleton.LockAcquisitionTimeout.TotalMinutes);
             Assert.Equal(8, scriptConfig.HostConfig.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
-        }
-
-        [Fact]
-        public void ApplyConfiguration_Http()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            JObject http = new JObject();
-            config["http"] = http;
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-
-            Assert.Equal(ScriptConstants.DefaultHttpRoutePrefix, scriptConfig.HttpConfiguration.RoutePrefix);
-            Assert.Equal(false, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxConcurrentRequests, DataflowBlockOptions.Unbounded);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxOutstandingRequests, DataflowBlockOptions.Unbounded);
-
-            http["routePrefix"] = "myprefix";
-            http["dynamicThrottlesEnabled"] = true;
-            http["maxConcurrentRequests"] = 5;
-            http["maxOutstandingRequests"] = 10;
-
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-
-            Assert.Equal("myprefix", scriptConfig.HttpConfiguration.RoutePrefix);
-            Assert.Equal(true, scriptConfig.HttpConfiguration.DynamicThrottlesEnabled);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxConcurrentRequests, 5);
-            Assert.Equal(scriptConfig.HttpConfiguration.MaxOutstandingRequests, 10);
         }
 
         // with swagger with setting name with value
@@ -752,6 +766,199 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingDisabled_CreatesNullSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': false
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingDisabled_IgnoresOtherSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': false,
+                        'maxTelemetryItemsPerSecond': 25
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_SamplingEnabled_CreatesDefaultSettings()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'isEnabled': true
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_Sets_MaxTelemetryItemsPerSecond()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'applicationInsights': {
+                    'sampling': {
+                        'maxTelemetryItemsPerSecond': 25
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(25, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyApplicationInsightsConfig_NoSettings_CreatesDefaultSettings()
+        {
+            JObject config = JObject.Parse("{ }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_Sets_DefaultLevel()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Debug'
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Debug, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Empty(scriptConfig.LogFilter.CategoryLevels);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_Sets_CategoryLevels()
+        {
+            JObject config = JObject.Parse(@"
+            {
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Trace',
+                        'categoryLevels': {
+                            'Host.General': 'Information',
+                            'Host.SomethingElse': 'Debug',
+                            'Some.Other.Category': 'None'
+                        }
+                    }
+                }
+            }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Trace, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Equal(3, scriptConfig.LogFilter.CategoryLevels.Count);
+            Assert.Equal(LogLevel.Information, scriptConfig.LogFilter.CategoryLevels["Host.General"]);
+            Assert.Equal(LogLevel.Debug, scriptConfig.LogFilter.CategoryLevels["Host.SomethingElse"]);
+            Assert.Equal(LogLevel.None, scriptConfig.LogFilter.CategoryLevels["Some.Other.Category"]);
+        }
+
+        [Fact]
+        public void ApplyLoggerConfig_DefaultsToInfo()
+        {
+            JObject config = JObject.Parse("{}");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyLoggerConfig(config, scriptConfig);
+
+            Assert.NotNull(scriptConfig.LogFilter);
+            Assert.Equal(LogLevel.Information, scriptConfig.LogFilter.DefaultLevel);
+            Assert.Empty(scriptConfig.LogFilter.CategoryLevels);
+        }
+
+        [Fact]
+        public void ConfigureLoggerFactory_Default()
+        {
+            var config = new ScriptHostConfiguration();
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
+
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, null);
+
+            var metricsLogger = new TestMetricsLogger();
+
+            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+
+            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.Empty(metricsLogger.LoggedEvents);
+        }
+
+        [Fact]
+        public void ConfigureLoggerFactory_ApplicationInsights()
+        {
+            var config = new ScriptHostConfiguration();
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
+
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, "Some_Instrumentation_Key");
+
+            var metricsLogger = new TestMetricsLogger();
+
+            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+
+            Assert.Equal(2, loggerFactory.Providers.Count);
+
+            Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+
+            // The app insights logger is internal, so just check the name
+            ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
+            Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
+
+            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+        }
+
+        [Fact]
         public void TryGetFunctionFromException_FunctionMatch()
         {
             string stack = "TypeError: Cannot read property 'is' of undefined\n" +
@@ -773,7 +980,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "SomeFunction",
                 ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
             };
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.False(result);
@@ -785,7 +992,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "HttpTriggerNode",
                 ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
             };
-            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>());
+            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.True(result);
@@ -842,22 +1049,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void HttpRoutesConflict_ReturnsExpectedResult()
         {
-            var first = new HttpTriggerBindingMetadata
+            var first = new HttpTriggerAttribute
             {
                 Route = "foo/bar/baz"
             };
-            var second = new HttpTriggerBindingMetadata
+            var second = new HttpTriggerAttribute
             {
                 Route = "foo/bar"
             };
             Assert.False(ScriptHost.HttpRoutesConflict(first, second));
             Assert.False(ScriptHost.HttpRoutesConflict(second, first));
 
-            first = new HttpTriggerBindingMetadata
+            first = new HttpTriggerAttribute
             {
                 Route = "foo/bar/baz"
             };
-            second = new HttpTriggerBindingMetadata
+            second = new HttpTriggerAttribute
             {
                 Route = "foo/bar/baz"
             };
@@ -865,39 +1072,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(ScriptHost.HttpRoutesConflict(second, first));
 
             // no conflict since methods do not intersect
-            first = new HttpTriggerBindingMetadata
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
             {
-                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head },
                 Route = "foo/bar/baz"
             };
-            second = new HttpTriggerBindingMetadata
+            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "post", "put")
             {
-                Methods = new Collection<HttpMethod>() { HttpMethod.Post, HttpMethod.Put },
                 Route = "foo/bar/baz"
             };
             Assert.False(ScriptHost.HttpRoutesConflict(first, second));
             Assert.False(ScriptHost.HttpRoutesConflict(second, first));
 
-            first = new HttpTriggerBindingMetadata
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
             {
-                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head },
                 Route = "foo/bar/baz"
             };
-            second = new HttpTriggerBindingMetadata
+            second = new HttpTriggerAttribute
             {
                 Route = "foo/bar/baz"
             };
             Assert.True(ScriptHost.HttpRoutesConflict(first, second));
             Assert.True(ScriptHost.HttpRoutesConflict(second, first));
 
-            first = new HttpTriggerBindingMetadata
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head", "put", "post")
             {
-                Methods = new Collection<HttpMethod>() { HttpMethod.Get, HttpMethod.Head, HttpMethod.Put, HttpMethod.Post },
                 Route = "foo/bar/baz"
             };
-            second = new HttpTriggerBindingMetadata
+            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "put")
             {
-                Methods = new Collection<HttpMethod>() { HttpMethod.Put },
                 Route = "foo/bar/baz"
             };
             Assert.True(ScriptHost.HttpRoutesConflict(first, second));
@@ -905,104 +1107,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void TryParseFunctionMetadata_ValidatesHttpRoutes()
+        public void ValidateFunction_ValidatesHttpRoutes()
         {
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+
             // first add an http function
-            JObject functionConfig = new JObject();
-            functionConfig.Add("bindings", new JArray(new JObject
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, null, null, null, null, null);
+            var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
-                { "type", "httpTrigger" },
-                { "name", "req" },
-                { "direction", "in" },
-                { "methods", new JArray("get") },
-                { "route", "products/{category}/{id?}" }
-            }));
-            var mappedHttpFunctions = new Dictionary<string, HttpTriggerBindingMetadata>();
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            FunctionMetadata functionMetadata = null;
-            string functionError = null;
-            var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(@"c:\functions\test\run.csx", new MockFileData(string.Empty));
-            fileSystem.AddFile(@"c:\functions\test2\run.csx", new MockFileData(string.Empty));
-            fileSystem.AddFile(@"c:\functions\test3\run.csx", new MockFileData(string.Empty));
-            fileSystem.AddFile(@"c:\functions\test4\run.csx", new MockFileData(string.Empty));
-            fileSystem.AddFile(@"c:\functions\test5\run.csx", new MockFileData(string.Empty));
-            bool result = ScriptHost.TryParseFunctionMetadata("test", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
-            Assert.True(result);
-            Assert.NotNull(functionMetadata);
-            Assert.Null(functionError);
-            Assert.Equal(1, mappedHttpFunctions.Count);
-            Assert.True(mappedHttpFunctions.ContainsKey("test"));
-            Assert.Equal(@"c:\functions\test\run.csx", functionMetadata.ScriptFile);
+                Route = "products/{category}/{id?}"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            Assert.Equal(1, httpFunctions.Count);
+            Assert.True(httpFunctions.ContainsKey("test"));
 
             // add another for a completely different route
-            functionConfig["bindings"] = new JArray(new JObject
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test2", null, null, null, null, null, null);
+            attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
-                { "type", "httpTrigger" },
-                { "name", "req" },
-                { "direction", "in" },
-                { "methods", new JArray("get") },
-                { "route", "/foo/bar/baz/" }
-            });
-            functionMetadata = null;
-            functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test2", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test2", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
-            Assert.True(result);
-            Assert.NotNull(functionMetadata);
-            Assert.Null(functionError);
-            Assert.True(mappedHttpFunctions.ContainsKey("test2"));
-            Assert.Equal(2, mappedHttpFunctions.Count);
+                Route = "/foo/bar/baz/"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            Assert.Equal(2, httpFunctions.Count);
+            Assert.True(httpFunctions.ContainsKey("test2"));
 
-            // add another that varies from another only by http method
-            functionConfig["bindings"] = new JArray(new JObject
+            // add another that varies from another only by http methods
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test3", null, null, null, null, null, null);
+            attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "put", "post")
             {
-                { "type", "httpTrigger" },
-                { "name", "req" },
-                { "direction", "in" },
-                { "methods", new JArray("put", "post") },
-                { "route", "/foo/bar/baz" }
-            });
-            functionMetadata = null;
-            functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test3", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test3", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
-            Assert.True(result);
-            Assert.NotNull(functionMetadata);
-            Assert.Null(functionError);
-            Assert.True(mappedHttpFunctions.ContainsKey("test3"));
-            Assert.Equal(3, mappedHttpFunctions.Count);
+                Route = "/foo/bar/baz/"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            Assert.Equal(3, httpFunctions.Count);
+            Assert.True(httpFunctions.ContainsKey("test3"));
 
             // now try to add a function for the same route
             // where the http methods overlap
-            functionConfig["bindings"] = new JArray(new JObject
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test4", null, null, null, null, null, null);
+            attribute = new HttpTriggerAttribute
             {
-                { "type", "httpTrigger" },
-                { "name", "req" },
-                { "direction", "in" },
-                { "route", "foo/bar/baz" }
+                Route = "/foo/bar/baz/"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions);
             });
-            functionMetadata = null;
-            functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test4", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test4", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
-            Assert.False(result);
-            Assert.NotNull(functionMetadata);
-            Assert.True(functionError.StartsWith("The route specified conflicts with the route defined by function"));
-            Assert.Equal(3, mappedHttpFunctions.Count);
+            Assert.Equal("The route specified conflicts with the route defined by function 'test2'.", ex.Message);
+            Assert.Equal(3, httpFunctions.Count);
 
             // try to add a route under reserved admin route
-            functionConfig["bindings"] = new JArray(new JObject
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test5", null, null, null, null, null, null);
+            attribute = new HttpTriggerAttribute
             {
-                { "type", "httpTrigger" },
-                { "name", "req" },
-                { "direction", "in" },
-                { "route", "admin/foo/bar" }
+                Route = "admin/foo/bar"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions);
             });
-            functionMetadata = null;
-            functionError = null;
-            result = ScriptHost.TryParseFunctionMetadata("test5", functionConfig, mappedHttpFunctions, traceWriter, @"c:\functions\test5", ScriptSettingsManager.Instance, out functionMetadata, out functionError, fileSystem);
-            Assert.False(result);
-            Assert.NotNull(functionMetadata);
-            Assert.Equal(3, mappedHttpFunctions.Count);
-            Assert.Equal("The specified route conflicts with one or more built in routes.", functionError);
+            Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
+
+            // verify that empty route is defaulted to function name
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, null, null, null, null, null);
+            attribute = new HttpTriggerAttribute();
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            Assert.Equal(4, httpFunctions.Count);
+            Assert.True(httpFunctions.ContainsKey("test6"));
+            Assert.Equal("test6", attribute.Route);
         }
 
         [Fact]
@@ -1022,7 +1199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             parameters.Add(new ParameterDescriptor("param1", typeof(string)));
             var metadata = new FunctionMetadata();
             var invoker = new TestInvoker();
-            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters);
+            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null);
             functions.Add(function);
 
             var errors = new Collection<string>();
@@ -1035,38 +1212,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(host.IsFunction("DoesNotExist"));
             Assert.False(host.IsFunction(string.Empty));
             Assert.False(host.IsFunction(null));
-        }
-
-        [Fact]
-        public void GetDefaultHostId_SelfHost_ReturnsExpectedResult()
-        {
-            var config = new ScriptHostConfiguration
-            {
-                IsSelfHost = true,
-                RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
-            };
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
-
-            string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
-            string sanitizedMachineName = Environment.MachineName
-                    .Where(char.IsLetterOrDigit)
-                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
-            Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
-        }
-
-        [Theory]
-        [InlineData("TEST-FUNCTIONS--", "test-functions")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "test-functions-xxxxxxxxxxxxxxxxx")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "test-functions-xxxxxxxxxxxxxxxx")] /* 32nd character is a '-' */
-        [InlineData(null, null)]
-        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
-        {
-            var config = new ScriptHostConfiguration();
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
-            scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
-
-            string hostId = ScriptHost.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
-            Assert.Equal(expected, hostId);
         }
 
         public class AssemblyMock : Assembly
@@ -1088,6 +1233,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public ScriptHost Host { get; private set; }
+        }
+
+        private class TestLoggerFactory : ILoggerFactory
+        {
+            public TestLoggerFactory()
+            {
+                Providers = new List<ILoggerProvider>();
+            }
+
+            public IList<ILoggerProvider> Providers { get; private set; }
+
+            public void AddProvider(ILoggerProvider provider)
+            {
+                Providers.Add(provider);
+            }
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Dispose()
+            {
+            }
         }
     }
 }

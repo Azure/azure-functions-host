@@ -15,15 +15,16 @@ using System.Web.Hosting;
 using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -39,6 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ScriptHostConfiguration _config;
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly object _syncLock = new object();
+
+        private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider();
+
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
@@ -65,12 +69,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
+            if (config.HostConfig.LoggerFactory == null)
+            {
+                config.HostConfig.LoggerFactory = new LoggerFactory();
+            }
 
             _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory)
@@ -82,6 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             : this(config, secretManagerFactory, settingsManager, webHostSettings, new ScriptHostFactory())
         {
         }
+
+        internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
 
@@ -146,7 +156,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // context down to the function.
             using (var syncContextSuspensionScope = new SuspendedSynchronizationContextScope())
             {
-                await Instance.CallAsync(function.Name, arguments, cancellationToken);
+                // Add the request to the logging scope. This allows the App Insights logger to
+                // record details about the request.
+                ILoggerFactory loggerFactory = _config.HostConfig.GetService<ILoggerFactory>();
+                ILogger logger = loggerFactory.CreateLogger(LogCategories.Function);
+                using (logger.BeginScope(
+                    new Dictionary<string, object>()
+                    {
+                        [ScriptConstants.LoggerHttpRequest] = request
+                    }))
+                {
+                    await Instance.CallAsync(function.Name, arguments, cancellationToken);
+                }
             }
 
             // Get the response
@@ -299,8 +320,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (triggerParameter.Type != typeof(HttpRequestMessage))
             {
-                HttpTriggerBindingMetadata httpFunctionMetadata = (HttpTriggerBindingMetadata)function.Metadata.InputBindings.FirstOrDefault(p => string.Compare("HttpTrigger", p.Type, StringComparison.OrdinalIgnoreCase) == 0);
-                if (!string.IsNullOrEmpty(httpFunctionMetadata.WebHookType))
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null && !string.IsNullOrEmpty(httpTrigger.WebHookType))
                 {
                     WebHookHandlerContext webHookContext;
                     if (request.Properties.TryGetValue(ScriptConstants.AzureFunctionsWebHookContextKey, out webHookContext))
@@ -309,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // Stuff the resolved data into the request context so the HttpTrigger binding
                         // can access it
                         var webHookData = GetWebHookData(triggerParameter.Type, webHookContext);
-                        request.Properties.Add(ScriptConstants.AzureFunctionsWebHookDataKey, webHookData);
+                        request.Properties.Add(HttpExtensionConstants.AzureWebJobsWebHookDataKey, webHookData);
                     }
                 }
 
@@ -380,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     routeDataValues.Add(pair.Key, value);
                 }
 
-                request.Properties.Add(ScriptConstants.AzureFunctionsHttpRouteDataKey, routeDataValues);
+                request.Properties.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeDataValues);
             }
         }
 
@@ -396,6 +417,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add our WebHost specific services
             var hostConfig = config.HostConfig;
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
+
+            config.HostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
 
             // Add our exception handler
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
@@ -414,13 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected override void OnHostCreated()
         {
-            // whenever the host is created (or recreated) we build a cache map of
-            // all http function routes
-            InitializeHttpFunctions(Instance.Functions);
-
-            // since the request manager is created based on configurable
-            // settings, it has to be recreated when host config changes
-            _httpRequestManager = new WebScriptHostRequestManager(Instance.ScriptConfig.HttpConfiguration, PerformanceManager, _metricsLogger, _config.TraceWriter);
+            InitializeHttp();
 
             base.OnHostCreated();
         }
@@ -428,27 +445,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         protected override void OnHostStarted()
         {
             // Purge any old Function secrets
-            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter);
+            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
 
             base.OnHostStarted();
         }
 
-        internal void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions)
+        private void InitializeHttp()
+        {
+            // get the registered http configuration from the extension registry
+            var extensions = Instance.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
+
+            // whenever the host is created (or recreated) we build a cache map of
+            // all http function routes
+            InitializeHttpFunctions(Instance.Functions, httpConfig);
+
+            // since the request manager is created based on configurable
+            // settings, it has to be recreated when host config changes
+            _httpRequestManager = new WebScriptHostRequestManager(httpConfig, PerformanceManager, _metricsLogger, _config.TraceWriter);
+        }
+
+        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionConfiguration httpConfig)
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
-            var httpRouteFactory = new HttpRouteFactory(_config.HttpConfiguration.RoutePrefix);
+            var httpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
 
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
             foreach (var function in functions)
             {
-                var httpTriggerBinding = function.Metadata.InputBindings.OfType<HttpTriggerBindingMetadata>().SingleOrDefault();
-                if (httpTriggerBinding != null)
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null)
                 {
                     IHttpRoute httpRoute = null;
-                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTriggerBinding.Route, httpTriggerBinding.Methods, _httpRoutes, out httpRoute))
+                    IEnumerable<HttpMethod> httpMethods = null;
+                    if (httpTrigger.Methods != null)
+                    {
+                        httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
+                    }
+                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
                     {
                         _httpFunctions.Add(httpRoute, function);
                     }
@@ -458,7 +495,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override void Shutdown()
         {
-            Instance?.TraceWriter.Info("Environment shutdown has been triggered. Stopping host and signaling shutdown.");
+            string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
+            Instance?.TraceWriter.Info(message);
+            Instance?.Logger?.LogInformation(message);
 
             Stop();
             HostingEnvironment.InitiateShutdown();

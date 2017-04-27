@@ -36,6 +36,8 @@ namespace WebJobs.Script.EndToEndTests
 
         public TelemetryClient Telemetry => TelemetryContext.Client;
 
+        public KuduClient KuduClient => _kuduClient;
+
         public string FunctionDefaultKey { get; }
 
         public string FunctionAppMasterKey { get; private set; }

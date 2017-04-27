@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -11,10 +12,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -30,12 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceHostAdmin}.Api");
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
         }
 
         [HttpPost]
@@ -122,7 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     };
                 }
 
-                _traceWriter.Info($"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}");
+                string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
 
                 return Ok(status);
             }
@@ -167,6 +176,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _scriptHostManager.Instance?.NotifyDebug();
 
             return base.ExecuteAsync(controllerContext, cancellationToken);
+        }
+
+        [Route("admin/extensions/{name}/{*extra}")]
+        [HttpGet]
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<HttpResponseMessage> ExtensionHook(string name, CancellationToken token)
+        {
+            var provider = this._scriptHostManager.BindingWebHookProvider;
+
+            var hook = provider.GetHandlerOrNull(name);
+            if (hook != null)
+            {
+                var response = await hook.ConvertAsync(this.Request, token);
+                return response;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        // Provides the URL for accessing the admin/hook route.
+        internal static Uri GetRouteForExtensionHook(string name)
+        {
+            var settings = ScriptSettingsManager.Instance;
+
+            var hostName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            if (hostName == null)
+            {
+                return null;
+            }
+
+            bool isLocalhost = hostName.StartsWith("localhost:", StringComparison.OrdinalIgnoreCase);
+            var scheme = isLocalhost ? "http" : "https";
+
+            return new Uri($"{scheme}://{hostName}/admin/extensions/{name}");
         }
     }
 }

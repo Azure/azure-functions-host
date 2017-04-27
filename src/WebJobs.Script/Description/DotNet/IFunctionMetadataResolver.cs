@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [CLSCompliant(false)]
     public interface IFunctionMetadataResolver
     {
         ScriptOptions CreateScriptOptions();

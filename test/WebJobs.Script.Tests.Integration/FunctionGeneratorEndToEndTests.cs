@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // create the FunctionDefinition
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters);
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters, null, null, null);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = secretsPath;
 
-            var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance);
+            var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance, null);
 
             using (var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), SettingsManager, webHostSettings))
             {

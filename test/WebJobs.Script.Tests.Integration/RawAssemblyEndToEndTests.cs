@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -26,28 +27,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Invoking_DotNetFunction()
         {
-            await InvokeDotNetFunction("DotNetFunction");
+            await InvokeDotNetFunction("DotNetFunction", "Hello from .NET");
         }
 
         [Fact]
         public async Task Invoking_DotNetFunctionShared()
         {
-            await InvokeDotNetFunction("DotNetFunctionShared");
+            await InvokeDotNetFunction("DotNetFunctionShared", "Hello from .NET");
         }
 
-        public async Task InvokeDotNetFunction(string functionName)
+        public async Task InvokeDotNetFunction(string functionName, string expectedResult)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }
             };
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            request.SetConfiguration(Fixture.RequestConfiguration);
 
             await Fixture.Host.CallAsync(functionName, arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            Assert.Equal("Hello from .NET", await response.Content.ReadAsStringAsync());
+            Assert.Equal(expectedResult, await response.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -66,16 +69,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(eventSet, "Shutdown was not called when assembly changes were made.");
         }
 
+        [Fact]
+        public async Task Invoke_WithSameTypeNames_InvokesExpectedMethod()
+        {
+            await InvokeDotNetFunction("Function1", "Function1");
+            await InvokeDotNetFunction("Function2", "Function2");
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\DotNet";
-            private static readonly string FunctionPath;
+            private static readonly string Function1Path;
+            private static readonly string Function2Path;
+            private static readonly string Function3Path;
             private static readonly string FunctionSharedPath;
             private static readonly string FunctionSharedBinPath;
 
             static TestFixture()
             {
-                FunctionPath = Path.Combine(ScriptRoot, "DotNetFunction");
+                Function1Path = Path.Combine(ScriptRoot, "DotNetFunction");
+                Function2Path = Path.Combine(ScriptRoot, "Function1");
+                Function3Path = Path.Combine(ScriptRoot, "Function2");
                 FunctionSharedPath = Path.Combine(ScriptRoot, "DotNetFunctionShared");
                 FunctionSharedBinPath = Path.Combine(ScriptRoot, "DotNetFunctionSharedBin");
                 CreateFunctionAssembly();
@@ -92,14 +106,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 base.Dispose();
 
                 Task.WaitAll(
-                    FileUtility.DeleteDirectoryAsync(FunctionPath, true),
+                    FileUtility.DeleteDirectoryAsync(Function1Path, true),
+                    FileUtility.DeleteDirectoryAsync(Function2Path, true),
+                    FileUtility.DeleteDirectoryAsync(Function3Path, true),
                     FileUtility.DeleteDirectoryAsync(FunctionSharedPath, true),
                     FileUtility.DeleteDirectoryAsync(FunctionSharedBinPath, true));
             }
 
             private static void CreateFunctionAssembly()
             {
-                Directory.CreateDirectory(FunctionPath);
+                Directory.CreateDirectory(Function1Path);
+                Directory.CreateDirectory(Function2Path);
+                Directory.CreateDirectory(Function3Path);
                 Directory.CreateDirectory(FunctionSharedBinPath);
                 Directory.CreateDirectory(FunctionSharedPath);
 
@@ -112,17 +130,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
-                compilation.Emit(Path.Combine(FunctionPath, "DotNetFunctionAssembly.dll"));
+                compilation.Emit(Path.Combine(Function1Path, "DotNetFunctionAssembly.dll"));
                 compilation.Emit(SharedAssemblyPath);
 
-                CreateFunctionMetadata(FunctionPath, "DotNetFunctionAssembly.dll");
+                CreateFunctionMetadata(Function1Path, "DotNetFunctionAssembly.dll");
+                CreateFunctionMetadata(Function2Path, $@"..\\{Path.GetFileName(FunctionSharedBinPath)}\\DotNetFunctionSharedAssembly.dll", "Test.Function1.TestFunction.TestMethod");
+                CreateFunctionMetadata(Function3Path, $@"..\\{Path.GetFileName(FunctionSharedBinPath)}\\DotNetFunctionSharedAssembly.dll", "Test.Function2.TestFunction.TestMethod");
                 CreateFunctionMetadata(FunctionSharedPath, $@"..\\{Path.GetFileName(FunctionSharedBinPath)}\\DotNetFunctionSharedAssembly.dll");
             }
 
-            private static void CreateFunctionMetadata(string path, string scriptFilePath)
+            private static void CreateFunctionMetadata(string path, string scriptFilePath, string entrypoint = "TestFunction.Function.Run")
             {
                 File.WriteAllText(Path.Combine(path, "function.json"),
-                     string.Format(Resources.DotNetFunctionJson, scriptFilePath));
+                     string.Format(Resources.DotNetFunctionJson, scriptFilePath, entrypoint));
             }
         }
     }

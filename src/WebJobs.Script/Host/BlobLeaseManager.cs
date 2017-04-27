@@ -7,6 +7,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TimeSpan _renewalInterval;
         private readonly TimeSpan _leaseRetryInterval;
         private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
         private readonly string _hostId;
         private readonly string _instanceId;
         private ICloudBlob _lockBlob;
@@ -31,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private DateTime _lastRenewal;
         private TimeSpan _lastRenewalLatency;
 
-        internal BlobLeaseManager(ICloudBlob lockBlob, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter, TimeSpan? renewalInterval = null)
+        internal BlobLeaseManager(ICloudBlob lockBlob, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter,
+            ILoggerFactory loggerFactory, TimeSpan? renewalInterval = null)
         {
             _lockBlob = lockBlob;
             _leaseTimeout = leaseTimeout;
@@ -46,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _leaseRetryInterval = TimeSpan.FromSeconds(5);
 
             _timer = new Timer(ProcessLeaseTimerTick, null, TimeSpan.Zero, _leaseRetryInterval);
+
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
         public event EventHandler HasLeaseChanged;
@@ -73,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnHasLeaseChanged() => HasLeaseChanged?.Invoke(this, EventArgs.Empty);
 
-        public static async Task<BlobLeaseManager> CreateAsync(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter)
+        public static async Task<BlobLeaseManager> CreateAsync(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId,
+            TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
             if (leaseTimeout.TotalSeconds < 15 || leaseTimeout.TotalSeconds > 60)
             {
@@ -81,13 +87,13 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ICloudBlob blob = await GetLockBlobAsync(accountConnectionString, GetBlobName(hostId));
-            var manager = new BlobLeaseManager(blob, leaseTimeout, hostId, instanceId, traceWriter);
+            var manager = new BlobLeaseManager(blob, leaseTimeout, hostId, instanceId, traceWriter, loggerFactory);
             return manager;
         }
 
-        public static BlobLeaseManager Create(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter)
+        public static BlobLeaseManager Create(string accountConnectionString, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
-            return CreateAsync(accountConnectionString, leaseTimeout, hostId, instanceId, traceWriter).GetAwaiter().GetResult();
+            return CreateAsync(accountConnectionString, leaseTimeout, hostId, instanceId, traceWriter, loggerFactory).GetAwaiter().GetResult();
         }
 
         private void ProcessLeaseTimerTick(object state)
@@ -132,7 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     _lastRenewal = DateTime.UtcNow;
                     _lastRenewalLatency = _lastRenewal - requestStart;
 
-                    _traceWriter.Info($"Host lock lease acquired by instance ID '{_instanceId}'.");
+                    string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
 
                     // We've successfully acquired the lease, change the timer to use our renewal interval
                     SetTimerInterval(_renewalInterval);
@@ -182,11 +190,15 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ResetLease();
 
-                _traceWriter.Info($"Failed to renew host lock lease: {reason}");
+                string message = $"Failed to renew host lock lease: {reason}";
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
             }
             else
             {
-                _traceWriter.Verbose($"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}");
+                string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
+                _traceWriter.Verbose(message);
+                _logger?.LogDebug(message);
             }
         }
 
@@ -247,7 +259,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (HasLease)
                 {
                     _lockBlob.ReleaseLease(new AccessCondition { LeaseId = LeaseId });
-                    _traceWriter.Verbose($"Host instance '{_instanceId}' released lock lease.");
+                    string message = $"Host instance '{_instanceId}' released lock lease.";
+                    _traceWriter.Verbose(message);
+                    _logger?.LogDebug(message);
                 }
             }
             catch (Exception)

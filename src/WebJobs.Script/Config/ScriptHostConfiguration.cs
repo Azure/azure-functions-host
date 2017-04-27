@@ -4,8 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            LogFilter = new LogCategoryFilter();
         }
 
         /// <summary>
@@ -65,11 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileLoggingMode FileLoggingMode { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="HttpConfiguration"/>
-        /// </summary>
-        public HttpConfiguration HttpConfiguration { get; set; }
-
-        /// <summary>
         /// Gets or sets the list of functions that should be run. This list can be used to filter
         /// the set of functions that will be enabled - it can be a subset of the actual
         /// function directories. When left null (the default) all discovered functions will
@@ -80,7 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
         /// </summary>
-        [CLSCompliant(false)]
         public ICollection<ScriptBindingProvider> BindingProviders { get; internal set; }
 
         /// <summary>
@@ -100,5 +96,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="LogCategoryFilter"/> to use when constructing providers for the
+        /// registered <see cref="ILoggerFactory"/>.
+        /// </summary>
+        public LogCategoryFilter LogFilter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
+        /// Insights client-side sampling. If null, client-side sampling is disabled.
+        /// </summary>
+        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
     }
 }

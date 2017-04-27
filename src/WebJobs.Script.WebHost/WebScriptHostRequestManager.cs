@@ -4,8 +4,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Net.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Binding.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private DateTime _lastPerformanceCheck;
         private bool _rejectAllRequests;
 
-        public WebScriptHostRequestManager(HttpConfiguration config, HostPerformanceManager performanceManager, IMetricsLogger metricsLogger, TraceWriter traceWriter, int performanceCheckPeriodSeconds = 15) : base(config, traceWriter)
+        public WebScriptHostRequestManager(HttpExtensionConfiguration config, HostPerformanceManager performanceManager, IMetricsLogger metricsLogger, TraceWriter traceWriter, int performanceCheckPeriodSeconds = 15) : base(config, traceWriter)
         {
             _performanceManager = performanceManager;
             _metricsLogger = metricsLogger;

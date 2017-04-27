@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 {
                     httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null)
+                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
                 }
             };
 
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string apiEndpoint = "/api/HttpTriggerCSharp1";
             Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
             {
-                { new HttpRoute(apiEndpoint.Substring(1)), new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null) }
+                { new HttpRoute(apiEndpoint.Substring(1)), new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null) }
             };
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
             var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 {
                     httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null)
+                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
                 }
             };
 
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 {
                     new HttpRoute(routeTemplate),
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, disabledFunction, null)
+                    new FunctionDescriptor("HttpTriggerCSharp1", null, disabledFunction, null, null, null, null)
                 },
             };
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 {
                     httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null)
+                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
                 }
             };
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 {
                     httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null)
+                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
                 }
             };
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
