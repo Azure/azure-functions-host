@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         [Fact]
         public async Task AutoRecovery_StopsWhenDisposed()
         {
-            await RecoveryTest(2, true);
+            await RecoveryTest(4, true);
         }
 
         public async Task RecoveryTest(int expectedNumberOfAttempts, bool isFailureScenario)
@@ -79,15 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 string fileWatcherLogSuffix = $"(path: '{directory.Path}')";
 
-                // 1 trace per attempt + 1 trace per failed attempt
-                int expectedTracesBeforeRecovery = (expectedNumberOfAttempts * 2) - 1;
+                // 1 recovery initiating trace + 1 trace per attempt + 1 trace per failed attempt
+                int expectedTracesBeforeRecovery = 1 + ((expectedNumberOfAttempts - 1) * 2);
 
-                // Before + recovery trace
-                int expectedTracesAfterRecovery = expectedTracesBeforeRecovery + 1;
-                if (!isFailureScenario)
-                {
-                    expectedTracesAfterRecovery++;
-                }
+                // Non failure: expected traces + last attempt + recovery trace
+                // Failure: expected traces + abort/failure trace
+                int expectedTracesAfterRecovery = expectedTracesBeforeRecovery + (isFailureScenario ? 1 : 2);
 
                 await TestHelpers.Await(() =>
                 {
@@ -109,16 +106,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                 }, pollingInterval: 500);
 
                 TraceEvent failureEvent = traceWriter.Traces.First();
-                var retryEvents = traceWriter.Traces.Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
-
                 Assert.Equal(TraceLevel.Warning, failureEvent.Level);
                 Assert.Contains("Failure detected", failureEvent.Message);
-                int expectedRetryEvents = expectedNumberOfAttempts;
+
+                var retryEvents = traceWriter.Traces.Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
+
                 if (isFailureScenario)
                 {
-                    expectedRetryEvents--;
+                    // If this is a failed scenario, we've aborted before the last attempt
+                    expectedNumberOfAttempts--;
                 }
-                Assert.Equal(expectedRetryEvents, retryEvents.Count);
+
+                Assert.Equal(expectedNumberOfAttempts, retryEvents.Count);
 
                 // Validate that our the events happened with the expected intervals
                 DateTime previoustTimeStamp = failureEvent.Timestamp;
@@ -130,7 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     var actualInterval = currentEvent.Timestamp - previoustTimeStamp;
                     previoustTimeStamp = currentEvent.Timestamp;
 
-                    Assert.Equal(expectedInterval, (int)actualInterval.TotalSeconds);
+                    int intervalInSeconds = (int)Math.Round(actualInterval.TotalSeconds, 0, MidpointRounding.ToEven);
+                    Assert.True(expectedInterval == intervalInSeconds,
+                        $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', actual '{intervalInSeconds}");
                 }
 
                 Assert.True(traceWriter.Traces.All(t => t.Message.EndsWith(fileWatcherLogSuffix)));
