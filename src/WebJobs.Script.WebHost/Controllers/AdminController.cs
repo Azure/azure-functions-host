@@ -103,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             var authorizationLevel = Request.GetAuthorizationLevel();
             if (authorizationLevel == AuthorizationLevel.Admin ||
-                Request.IsAntaresInternalRequest())
+                Request.IsAntaresInternalRequest() ||
+                _webHostSettings.IsAuthDisabled)
             {
                 var status = new HostStatus
                 {

@@ -437,9 +437,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiHubTestHelper.cs" />
+    <Compile Include="Controllers\ControllerDisabledAuthScenarioTestsFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostSystemKeysScenario.cs" />
     <Compile Include="Controllers\Keys\GetHostSystemKeysScenario.cs" />
+    <Compile Include="Controllers\Keys\GetHostStatusWithAuthDisabledScenario.cs" />
     <Compile Include="Controllers\Keys\PostFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\PostHostSystemKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PutFunctionKeysScenario.cs" />
