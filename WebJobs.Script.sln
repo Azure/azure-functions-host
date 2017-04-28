@@ -448,6 +448,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "H
 		sample\HttpTrigger-TypeScript\index.ts = sample\HttpTrigger-TypeScript\index.ts
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling", "src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj", "{292A9038-5807-4095-B37F-9A77170D7402}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling.Tests", "test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj", "{8088DC08-4BB1-442D-8CD4-571FC9330D54}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -491,6 +495,14 @@ Global
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A8111D1-A7A1-4D60-98D1-705D1C849588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{292A9038-5807-4095-B37F-9A77170D7402}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{292A9038-5807-4095-B37F-9A77170D7402}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{292A9038-5807-4095-B37F-9A77170D7402}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{292A9038-5807-4095-B37F-9A77170D7402}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -573,5 +585,7 @@ Global
 		{7D50E081-A161-4E83-A6D4-F8529E518613} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6} = {7D50E081-A161-4E83-A6D4-F8529E518613}
 		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{292A9038-5807-4095-B37F-9A77170D7402} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{8088DC08-4BB1-442D-8CD4-571FC9330D54} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 EndGlobal

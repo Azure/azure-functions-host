@@ -1,3 +1,4 @@
 vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%"
+vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Scaling.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Scaling.Tests.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%"
 call runNodeTests.cmd
 vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%"
