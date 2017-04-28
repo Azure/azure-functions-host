@@ -17,10 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public string Name { get; set; }
 
         /// <summary>
-        /// The primary entry point for the function (to disambiguate if there are multiple
+        /// Gets or sets the primary entry point for the function (to disambiguate if there are multiple
         /// scripts in the function directory).
         /// </summary>
         public string ScriptFile { get; set; }
+
+        /// <summary>
+        /// Gets or sets the function root directory.
+        /// </summary>
+        public string FunctionDirectory { get; set; }
 
         /// <summary>
         /// Gets or sets the optional named entry point for a function.

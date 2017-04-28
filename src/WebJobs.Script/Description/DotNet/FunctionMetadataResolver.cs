@@ -25,9 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class FunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
     {
         private readonly string _privateAssembliesPath;
+        private readonly string _functionDirectory;
+        private readonly string _scriptFileDirectory;
         private readonly string[] _assemblyExtensions = new[] { ".exe", ".dll" };
         private readonly string _id = Guid.NewGuid().ToString();
-        private readonly FunctionMetadata _functionMetadata;
         private readonly TraceWriter _traceWriter;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ConcurrentDictionary<string, string> _externalReferences = new ConcurrentDictionary<string, string>();
@@ -75,12 +76,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.Extensions.Logging"
             };
 
-        public FunctionMetadataResolver(FunctionMetadata metadata, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public FunctionMetadataResolver(string functionDirectory, string scriptFileDirectory, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
-            _functionMetadata = metadata;
+            _functionDirectory = functionDirectory;
+            _scriptFileDirectory = scriptFileDirectory;
             _traceWriter = traceWriter;
-            _packageAssemblyResolver = new PackageAssemblyResolver(metadata);
-            _privateAssembliesPath = GetBinDirectory(metadata);
+            _packageAssemblyResolver = new PackageAssemblyResolver(functionDirectory);
+            _privateAssembliesPath = GetBinDirectory(_functionDirectory);
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
             _loggerFactory = loggerFactory;
@@ -94,17 +96,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     .WithMetadataResolver(this)
                     .WithReferences(GetCompilationReferences())
                     .WithImports(DefaultNamespaceImports)
-                    .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, Path.GetDirectoryName(_functionMetadata.ScriptFile)));
+                    .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, _scriptFileDirectory));
         }
 
         /// <summary>
         /// Gets the private 'bin' path for a given script.
         /// </summary>
-        /// <param name="metadata">The function metadata.</param>
+        /// <param name="functionDirectory">The path to the function root.</param>
         /// <returns>The path to the function's private assembly folder</returns>
-        private static string GetBinDirectory(FunctionMetadata metadata)
+        private static string GetBinDirectory(string functionDirectory)
         {
-            string functionDirectory = Path.GetDirectoryName(metadata.ScriptFile);
             return Path.Combine(Path.GetFullPath(functionDirectory), DotNetConstants.PrivateAssembliesFolderName);
         }
 
@@ -195,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // If this is a relative assembly reference, use the function directory as the base probing path
                 if (reference.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) > -1)
                 {
-                    basePath = Path.GetDirectoryName(_functionMetadata.ScriptFile);
+                    basePath = _functionDirectory;
                     externalReference = true;
                 }
 
@@ -264,11 +265,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task<PackageRestoreResult> RestorePackagesAsync()
         {
-            var packageManager = new PackageManager(_functionMetadata, _traceWriter, _loggerFactory);
+            var packageManager = new PackageManager(_functionDirectory, _traceWriter, _loggerFactory);
             PackageRestoreResult result = await packageManager.RestorePackagesAsync();
 
             // Reload the resolver
-            _packageAssemblyResolver = new PackageAssemblyResolver(_functionMetadata);
+            _packageAssemblyResolver = new PackageAssemblyResolver(_functionDirectory);
 
             return result;
         }
