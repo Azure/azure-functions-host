@@ -97,8 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
-                string functionDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
-                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionDirectory);
+                string functionScriptDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
+                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionScriptDirectory);
                 _fileWatcher.Changed += OnScriptFileChanged;
 
                 return true;
@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // We require the ExecutionContext, so this will throw if one is not found.
             ExecutionContext functionExecutionContext = parameters.OfType<ExecutionContext>().First();
+            PopulateExecutionContext(functionExecutionContext);
 
             // These may not be present, so null is okay.
             TraceWriter functionTraceWriter = parameters.OfType<TraceWriter>().FirstOrDefault();
@@ -231,6 +232,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected void TraceOnPrimaryHost(string message, TraceLevel level)
         {
             TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
+        }
+
+        protected void PopulateExecutionContext(ExecutionContext context)
+        {
+            context.FunctionDirectory = Metadata.FunctionDirectory;
+            context.FunctionName = Metadata.Name;
         }
 
         internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)

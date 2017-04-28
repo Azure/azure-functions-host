@@ -735,11 +735,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return bindingProviders;
         }
 
-        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, ScriptSettingsManager settingsManager)
+        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, ScriptSettingsManager settingsManager)
         {
             FunctionMetadata functionMetadata = new FunctionMetadata
             {
-                Name = functionName
+                Name = functionName,
+                FunctionDirectory = scriptDirectory
             };
 
             JValue triggerDisabledValue = null;
@@ -848,7 +849,7 @@ namespace Microsoft.Azure.WebJobs.Script
             fileSystem = fileSystem ?? new FileSystem();
 
             error = null;
-            functionMetadata = ParseFunctionMetadata(functionName, functionConfig, settingsManager);
+            functionMetadata = ParseFunctionMetadata(functionName, functionConfig, scriptDirectory, settingsManager);
 
             if (functionMetadata.IsExcluded)
             {

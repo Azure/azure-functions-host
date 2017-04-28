@@ -86,6 +86,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        protected static void SetExecutionContextVariables(ExecutionContext context, IDictionary<string, string> environmentVariables)
+        {
+            void AddExecutionContextValue(string name, string contextValue)
+            {
+                environmentVariables.Add("EXECUTION_CONTEXT_" + name.ToUpperInvariant(), contextValue);
+            }
+
+            AddExecutionContextValue(nameof(ExecutionContext.FunctionDirectory), context.FunctionDirectory);
+            AddExecutionContextValue(nameof(ExecutionContext.FunctionName), context.FunctionName);
+            AddExecutionContextValue(nameof(ExecutionContext.InvocationId), context.InvocationId.ToString());
+        }
+
         protected virtual async Task ProcessOutputBindingsAsync(string functionInstanceOutputPath, Collection<FunctionBinding> outputBindings,
             object input, Binder binder, Dictionary<string, object> bindingData)
         {

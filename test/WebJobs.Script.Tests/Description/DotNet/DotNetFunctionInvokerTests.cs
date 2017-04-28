@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadata = new FunctionMetadata
             {
                 ScriptFile = filePath,
+                FunctionDirectory = Path.GetDirectoryName(filePath),
                 Name = Guid.NewGuid().ToString(),
                 ScriptType = ScriptType.CSharp
             };
@@ -96,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadata = new FunctionMetadata
             {
                 ScriptFile = filePath,
+                FunctionDirectory = Path.GetDirectoryName(filePath),
                 Name = Guid.NewGuid().ToString(),
                 ScriptType = ScriptType.CSharp
             };
@@ -134,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadata = new FunctionMetadata
             {
                 ScriptFile = filePath,
+                FunctionDirectory = Path.GetDirectoryName(filePath),
                 Name = Guid.NewGuid().ToString(),
                 ScriptType = ScriptType.CSharp
             };

@@ -22,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private readonly ImmutableArray<PackageReference> _packages;
 
-        public PackageAssemblyResolver(FunctionMetadata metadata)
+        public PackageAssemblyResolver(string workingDirectory)
         {
-            _packages = InitializeAssemblyRegistry(metadata);
+            _packages = InitializeAssemblyRegistry(workingDirectory);
         }
 
         public ImmutableArray<PackageReference> Packages
@@ -48,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private static ImmutableArray<PackageReference> InitializeAssemblyRegistry(FunctionMetadata metadata)
+        private static ImmutableArray<PackageReference> InitializeAssemblyRegistry(string functionDirectory)
         {
             var builder = ImmutableArray<PackageReference>.Empty.ToBuilder();
-            string fileName = Path.Combine(Path.GetDirectoryName(metadata.ScriptFile), DotNetConstants.ProjectLockFileName);
+            string fileName = Path.Combine(functionDirectory, DotNetConstants.ProjectLockFileName);
 
             if (File.Exists(fileName))
             {

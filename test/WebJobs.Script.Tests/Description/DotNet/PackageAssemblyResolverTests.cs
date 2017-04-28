@@ -52,14 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GivenLockFile_PackageReferencesAreResolved()
         {
-            var functionMetadata = new FunctionMetadata()
-            {
-                Name = "TestFunction",
-                ScriptFile = _lockFilePath, /*We just need the path from this*/
-                ScriptType = ScriptType.CSharp
-            };
-
-            var assemblyResolver = new PackageAssemblyResolver(functionMetadata);
+            PackageAssemblyResolver assemblyResolver = CreateResolver();
 
             PackageReference package = assemblyResolver.Packages.Single();
 
@@ -72,14 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GivenPackagesWithAssemblyReferences_AssemblyReferencesAreResolved()
         {
-            var functionMetadata = new FunctionMetadata()
-            {
-                Name = "TestFunction",
-                ScriptFile = _lockFilePath, /*We just need the path from this*/
-                ScriptType = ScriptType.CSharp
-            };
-
-            var assemblyResolver = new PackageAssemblyResolver(functionMetadata);
+            PackageAssemblyResolver assemblyResolver = CreateResolver();
 
             string nugetHome = PackageManager.GetNugetPackagesPath();
 
@@ -89,14 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GivenPackagesWithFrameworkReferences_FrameworkReferencesAreResolved()
         {
-            var functionMetadata = new FunctionMetadata()
-            {
-                Name = "TestFunction",
-                ScriptFile = _lockFilePath, /*We just need the path from this*/
-                ScriptType = ScriptType.CSharp
-            };
-
-            var assemblyResolver = new PackageAssemblyResolver(functionMetadata);
+            PackageAssemblyResolver assemblyResolver = CreateResolver();
 
             Assert.Contains<string>("System.Net.Http", assemblyResolver.AssemblyReferences);
             Assert.Contains<string>("System.Net.Http.WebRequest", assemblyResolver.AssemblyReferences);
@@ -105,17 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void TryResolveAssembly_WithReferencedAssemblyName_ResolvesAssemblyPathAndReturnsTrue()
         {
-            var functionMetadata = new FunctionMetadata()
-            {
-                Name = "TestFunction",
-                ScriptFile = _lockFilePath, /*We just need the path from this*/
-                ScriptType = ScriptType.CSharp
-            };
+            PackageAssemblyResolver assemblyResolver = CreateResolver();
 
-            var assemblyResolver = new PackageAssemblyResolver(functionMetadata);
-
-            string assemblyPath;
-            bool result = assemblyResolver.TryResolveAssembly(this.GetType().Assembly.FullName, out assemblyPath);
+            bool result = assemblyResolver.TryResolveAssembly(this.GetType().Assembly.FullName, out string assemblyPath);
 
             Assert.True(result);
             Assert.Equal(_targetAssemblyFilePath, assemblyPath);
@@ -124,6 +95,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void TryResolveAssembly_WithReferencedFrameworkAssemblyName_ResolvesAssemblyAndReturnsTrue()
         {
+            PackageAssemblyResolver assemblyResolver = CreateResolver();
+
+            bool result = assemblyResolver.TryResolveAssembly("System.Net.Http", out string assemblyPath);
+
+            Assert.True(result);
+            Assert.Equal("System.Net.Http", assemblyPath);
+        }
+
+        private PackageAssemblyResolver CreateResolver()
+        {
             var functionMetadata = new FunctionMetadata()
             {
                 Name = "TestFunction",
@@ -131,13 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptType = ScriptType.CSharp
             };
 
-            var assemblyResolver = new PackageAssemblyResolver(functionMetadata);
-
-            string assemblyPath;
-            bool result = assemblyResolver.TryResolveAssembly("System.Net.Http", out assemblyPath);
-
-            Assert.True(result);
-            Assert.Equal("System.Net.Http", assemblyPath);
+            string functionDirectory = Path.GetDirectoryName(functionMetadata.ScriptFile);
+            return new PackageAssemblyResolver(functionDirectory);
         }
     }
 }
