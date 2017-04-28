@@ -30,13 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string NugetPathEnvironmentKey = "AzureWebJobs_NuGetPath";
         private const string NuGetFileName = "nuget.exe";
 
-        private readonly FunctionMetadata _functionMetadata;
+        private readonly string _functionDirectory;
         private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
 
-        public PackageManager(FunctionMetadata metadata, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public PackageManager(string workingDirectory, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
-            _functionMetadata = metadata;
+            _functionDirectory = workingDirectory;
             _traceWriter = traceWriter;
             _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
@@ -45,18 +45,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             var tcs = new TaskCompletionSource<PackageRestoreResult>();
 
-            string functionDirectory = null;
             string projectPath = null;
             string nugetHome = null;
             string nugetFilePath = null;
             string currentLockFileHash = null;
             try
             {
-                functionDirectory = Path.GetDirectoryName(_functionMetadata.ScriptFile);
-                projectPath = Path.Combine(functionDirectory, DotNetConstants.ProjectFileName);
+                projectPath = Path.Combine(_functionDirectory, DotNetConstants.ProjectFileName);
                 nugetHome = GetNugetPackagesPath();
                 nugetFilePath = ResolveNuGetPath();
-                currentLockFileHash = GetCurrentLockFileHash(functionDirectory);
+                currentLockFileHash = GetCurrentLockFileHash(_functionDirectory);
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -66,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     ErrorDialog = false,
-                    WorkingDirectory = functionDirectory,
+                    WorkingDirectory = _functionDirectory,
                     Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" -PackagesDirectory \"{1}\"", projectPath, nugetHome)
                 };
 
@@ -77,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 process.Exited += (s, e) =>
                 {
-                    string newLockFileHash = GetCurrentLockFileHash(functionDirectory);
+                    string newLockFileHash = GetCurrentLockFileHash(_functionDirectory);
                     var result = new PackageRestoreResult
                     {
                         IsInitialInstall = string.IsNullOrEmpty(currentLockFileHash),
@@ -100,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch (Exception exc)
             {
                 string message = $@"NuGet restore failed with message: '{exc.Message}'
-Function directory: {functionDirectory}
+Function directory: {_functionDirectory}
 Project path: {projectPath}
 Packages path: {nugetHome}
 Nuget client path: {nugetFilePath}

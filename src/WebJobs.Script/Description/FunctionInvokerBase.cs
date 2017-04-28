@@ -97,8 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
-                string functionDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
-                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionDirectory);
+                string functionScriptDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
+                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionScriptDirectory);
                 _fileWatcher.Changed += OnScriptFileChanged;
 
                 return true;

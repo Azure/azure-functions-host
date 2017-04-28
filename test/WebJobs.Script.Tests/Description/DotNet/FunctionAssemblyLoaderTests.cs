@@ -19,7 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var resolver = new FunctionAssemblyLoader("c:\\");
 
-            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = @"c:\testroot\test1\test.tst" };
+            var metadata1Directory = @"c:\testroot\test1";
+            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = $@"{metadata1Directory}\test.tst" };
             var metadata2 = new FunctionMetadata { Name = "Test2", ScriptFile = @"c:\testroot\test2\test.tst" };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
               .Returns(new TestAssembly(new AssemblyName("MyTestAssembly")));
 
-            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter, null), traceWriter, null);
+            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1Directory, new Collection<ScriptBindingProvider>(), traceWriter, null), traceWriter, null);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter, null);
 
             Assembly result = resolver.ResolveAssembly(null, new System.ResolveEventArgs("MyTestAssembly.dll",
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var resolver = new FunctionAssemblyLoader("c:\\");
 
-            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = @"c:\testroot\test1\test.tst" };
+            var metadata1Directory = @"c:\testroot\test1";
+            var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = $@"{metadata1Directory}\test.tst" };
             var metadata2 = new FunctionMetadata { Name = "Test2", ScriptFile = @"c:\testroot\test2\test.tst" };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
@@ -49,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
               .Returns<Assembly>(null);
 
-            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1, new Collection<ScriptBindingProvider>(), traceWriter, null), traceWriter, null);
+            resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1Directory, new Collection<ScriptBindingProvider>(), traceWriter, null), traceWriter, null);
             resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, traceWriter, null);
 
             Assembly result = resolver.ResolveAssembly(AppDomain.CurrentDomain, new System.ResolveEventArgs("MyTestAssembly.dll",

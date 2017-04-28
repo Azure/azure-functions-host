@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = metadataResolver ?? new FunctionMetadataResolver(functionMetadata, host.ScriptConfig.BindingProviders, TraceWriter, host.ScriptConfig.HostConfig.LoggerFactory);
+            _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, TraceWriter);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -75,6 +75,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
+        }
+
+        private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, TraceWriter traceWriter)
+        {
+            string functionScriptDirectory = Path.GetDirectoryName(functionMetadata.ScriptFile);
+            return new FunctionMetadataResolver(functionScriptDirectory, host.ScriptConfig.BindingProviders,
+                traceWriter, host.ScriptConfig.HostConfig.LoggerFactory);
         }
 
         private void InitializeFileWatcher()
