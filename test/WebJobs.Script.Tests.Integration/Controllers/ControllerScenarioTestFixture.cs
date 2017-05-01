@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         private HttpConfiguration _config;
 
         public ControllerScenarioTestFixture()
-            : this(isAuthDisabled: true)
+            : this(isAuthDisabled: false)
         {
         }
 
