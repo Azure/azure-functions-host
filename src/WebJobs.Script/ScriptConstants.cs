@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
         public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
+        public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
 

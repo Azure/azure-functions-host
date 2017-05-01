@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private HttpMessageInvoker _invoker;
         private Mock<WebScriptHostManager> _managerMock;
+        private WebHostSettings _webHostSettings;
 
         public WebScriptHostHandlerTests()
         {
@@ -32,6 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _managerMock.SetupGet(p => p.Initialized).Returns(true);
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             mockResolver.Setup(p => p.GetService(typeof(WebScriptHostManager))).Returns(_managerMock.Object);
+
+            _webHostSettings = new WebHostSettings();
+            mockResolver.Setup(p => p.GetService(typeof(WebHostSettings))).Returns(_webHostSettings);
 
             HttpConfiguration config = new HttpConfiguration();
             config.DependencyResolver = mockResolver.Object;
@@ -45,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void SetRequestId_SetsExpectedValue()
         {
-            // if the log header is present, it is used
+            // if the log header is present, it is used;
             var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
             string logIdValue = Guid.NewGuid().ToString();
             request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, logIdValue);
@@ -58,6 +62,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebScriptHostHandler.SetRequestId(request);
             requestId = request.GetRequestId();
             Guid.Parse(requestId);
+        }
+
+        [Fact]
+        public async Task SendAsync_AuthDisabled_SetsExpectedRequestProperty()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/admin/host/status");
+            var response = await _invoker.SendAsync(request, CancellationToken.None);
+            Assert.False(request.IsAuthDisabled());
+
+            _webHostSettings.IsAuthDisabled = true;
+            request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/admin/host/status");
+            response = await _invoker.SendAsync(request, CancellationToken.None);
+            Assert.True(request.IsAuthDisabled());
         }
 
         [Fact]

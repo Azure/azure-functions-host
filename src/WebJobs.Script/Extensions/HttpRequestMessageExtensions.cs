@@ -50,6 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return !request.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName);
         }
 
+        public static bool IsAuthDisabled(this HttpRequestMessage request)
+        {
+            return request.GetRequestPropertyOrDefault<bool>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey);
+        }
+
         public static string GetHeaderValueOrDefault(this HttpRequestMessage request, string headerName)
         {
             IEnumerable<string> values = null;

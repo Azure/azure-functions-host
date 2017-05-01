@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             var authorizationLevel = await DetermineAuthorizationLevelAsync(request, function, controllerContext.Configuration.DependencyResolver);
             if (function.Metadata.IsExcluded ||
-               (function.Metadata.IsDisabled && authorizationLevel != AuthorizationLevel.Admin))
+               (function.Metadata.IsDisabled && !(request.IsAuthDisabled() || authorizationLevel == AuthorizationLevel.Admin)))
             {
                 // disabled functions are not publicly addressable w/o Admin level auth,
                 // and excluded functions are also ignored here (though the check above will
@@ -63,11 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public static async Task<AuthorizationLevel> DetermineAuthorizationLevelAsync(HttpRequestMessage request, FunctionDescriptor function, IDependencyResolver resolver)
         {
             var secretManager = resolver.GetService<ISecretManager>();
-            var settings = resolver.GetService<WebHostSettings>();
-
-            var authorizationLevel = settings.IsAuthDisabled
-                ? AuthorizationLevel.Admin
-                : await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: function.Name);
+            var authorizationLevel = await AuthorizationLevelAttribute.GetAuthorizationLevelAsync(request, secretManager, functionName: function.Name);
             request.SetAuthorizationLevel(authorizationLevel);
 
             return authorizationLevel;

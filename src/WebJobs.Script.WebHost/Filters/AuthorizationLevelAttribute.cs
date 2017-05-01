@@ -37,19 +37,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             AuthorizationLevel requestAuthorizationLevel = actionContext.Request.GetAuthorizationLevel();
 
             // If the request has not yet been authenticated, authenticate it
+            var request = actionContext.Request;
             if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
             {
                 // determine the authorization level for the function and set it
                 // as a request property
                 var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
 
-                requestAuthorizationLevel = await GetAuthorizationLevelAsync(actionContext.Request, secretManager, EvaluateKeyMatch);
-                actionContext.Request.SetAuthorizationLevel(requestAuthorizationLevel);
+                requestAuthorizationLevel = await GetAuthorizationLevelAsync(request, secretManager, EvaluateKeyMatch);
+                request.SetAuthorizationLevel(requestAuthorizationLevel);
             }
 
-            var settings = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<WebHostSettings>();
-
-            if (settings.IsAuthDisabled || SkipAuthorization(actionContext) || Level == AuthorizationLevel.Anonymous)
+            if (request.IsAuthDisabled() ||
+                SkipAuthorization(actionContext) ||
+                Level == AuthorizationLevel.Anonymous)
             {
                 return;
             }
