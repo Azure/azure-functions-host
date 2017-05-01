@@ -31,20 +31,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var scriptHostManager = _config.DependencyResolver.GetService<WebScriptHostManager>();
-
             SetRequestId(request);
 
-            // some routes do not require the host to be running (most do)
-            // in standby mode, we don't want to wait for host start
-            bool bypassHostCheck = request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().EndsWith("admin/host/status") ||
-                WebScriptHostManager.InStandbyMode;
-
+            var resolver = _config.DependencyResolver;
+            var scriptHostManager = resolver.GetService<WebScriptHostManager>();
             if (!scriptHostManager.Initialized)
             {
                 scriptHostManager.Initialize();
             }
 
+            var webHostSettings = resolver.GetService<WebHostSettings>();
+            if (webHostSettings.IsAuthDisabled)
+            {
+                request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
+            }
+
+            // some routes do not require the host to be running (most do)
+            // in standby mode, we don't want to wait for host start
+            bool bypassHostCheck = request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().EndsWith("admin/host/status") ||
+                WebScriptHostManager.InStandbyMode;
             if (!bypassHostCheck)
             {
                 // If the host is not running, we'll wait a bit for it to fully
