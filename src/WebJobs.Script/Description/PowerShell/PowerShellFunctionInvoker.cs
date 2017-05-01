@@ -56,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
             await ProcessInputBindingsAsync(convertedInput, functionInstanceOutputPath, context.Binder, _inputBindings, _outputBindings, bindingData, environmentVariables);
 
+            SetExecutionContextVariables(context.ExecutionContext, environmentVariables);
+
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
 
             var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);

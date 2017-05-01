@@ -23,6 +23,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 using ScriptFunc = System.Func<object, System.Threading.Tasks.Task<object>>;
 
@@ -388,6 +389,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var context = new Dictionary<string, object>()
             {
                 { "invocationId", invocationContext.ExecutionContext.InvocationId },
+                { "functionDirectory", invocationContext.ExecutionContext.FunctionDirectory },
+                { "functionName", invocationContext.ExecutionContext.FunctionName },
                 { "log", log },
                 { "bindings", bindings },
                 { "bind", bind }
