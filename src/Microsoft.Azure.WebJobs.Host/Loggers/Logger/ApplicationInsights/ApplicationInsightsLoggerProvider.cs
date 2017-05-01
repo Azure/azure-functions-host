@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
@@ -13,15 +13,18 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         private readonly TelemetryClient _client;
         private readonly Func<string, LogLevel, bool> _filter;
 
-        public ApplicationInsightsLoggerProvider(string instrumentationKey, Func<string, LogLevel, bool> filter,
-            ITelemetryClientFactory clientFactory, SamplingPercentageEstimatorSettings samplingSettings)
+        private ITelemetryClientFactory _clientFactory;
+        private bool _disposed;
+
+        public ApplicationInsightsLoggerProvider(Func<string, LogLevel, bool> filter, ITelemetryClientFactory clientFactory)
         {
-            if (instrumentationKey == null)
+            if (clientFactory == null)
             {
-                throw new ArgumentNullException(nameof(instrumentationKey));
+                throw new ArgumentNullException(nameof(clientFactory));
             }
 
-            _client = clientFactory.Create(instrumentationKey, samplingSettings);
+            _clientFactory = clientFactory;
+            _client = _clientFactory.Create();
             _filter = filter;
         }
 
@@ -29,6 +32,28 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         public void Dispose()
         {
+            if (!_disposed)
+            {
+                if (_client != null)
+                {
+                    try
+                    {
+                        _client.Flush();
+
+                        // This sleep isn't ideal, but the flush is async so it's the best we have right now. This is
+                        // being tracked at https://github.com/Microsoft/ApplicationInsights-dotnet/issues/407
+                        Thread.Sleep(2000);
+                    }
+                    catch
+                    {
+                        // Ignore failures on dispose
+                    }
+                }
+
+                _clientFactory.Dispose();
+
+                _disposed = true;
+            }
         }
     }
 }

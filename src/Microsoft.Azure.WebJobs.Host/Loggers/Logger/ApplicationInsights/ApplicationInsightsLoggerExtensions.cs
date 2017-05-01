@@ -28,34 +28,31 @@ namespace Microsoft.Extensions.Logging
             string instrumentationKey,
             Func<string, LogLevel, bool> filter)
         {
-            return AddApplicationInsights(loggerFactory, instrumentationKey, filter, new DefaultTelemetryClientFactory(),
-                new SamplingPercentageEstimatorSettings());
+            ITelemetryClientFactory defaultFactory = new DefaultTelemetryClientFactory(instrumentationKey, new SamplingPercentageEstimatorSettings());
+            return AddApplicationInsights(loggerFactory, defaultFactory, filter);
         }
 
         /// <summary>
         /// Registers an <see cref="ApplicationInsightsLoggerProvider"/> with an <see cref="ILoggerFactory"/>.
         /// </summary>
-        /// <param name="loggerFactory">The factory.</param>
-        /// <param name="instrumentationKey">The Application Insights instrumentation key.</param>
+        /// <param name="loggerFactory">The factory.</param>        
+        /// <param name="telemetryClientFactory">The factory to use when creating the <see cref="TelemetryClient"/> </param>
         /// <param name="filter">A filter that returns true if a message with the specified <see cref="LogLevel"/>
         /// and category should be logged. You can use <see cref="LogCategoryFilter.Filter(string, LogLevel)"/>
         /// or write a custom filter.</param>
-        /// <param name="telemetryClientFactory">The factory to use when creating the <see cref="TelemetryClient"/> </param>
-        /// <param name="samplingSettings">The adaptive sampling settings, or null to disable sampling.</param>
         /// <returns>A <see cref="ILoggerFactory"/> for chaining additional operations.</returns>
         public static ILoggerFactory AddApplicationInsights(
             this ILoggerFactory loggerFactory,
-            string instrumentationKey,
-            Func<string, LogLevel, bool> filter,
             ITelemetryClientFactory telemetryClientFactory,
-            SamplingPercentageEstimatorSettings samplingSettings)
+            Func<string, LogLevel, bool> filter)
         {
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            loggerFactory.AddProvider(new ApplicationInsightsLoggerProvider(instrumentationKey, filter, telemetryClientFactory, samplingSettings));
+            // Note: LoggerFactory calls Dispose() on all registered providers.
+            loggerFactory.AddProvider(new ApplicationInsightsLoggerProvider(filter, telemetryClientFactory));
 
             return loggerFactory;
         }

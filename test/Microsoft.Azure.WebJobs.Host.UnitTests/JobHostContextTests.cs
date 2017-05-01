@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -22,10 +23,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var mockExecutor = new Mock<IFunctionExecutor>(MockBehavior.Strict);
             var mockListener = new Mock<IListener>(MockBehavior.Strict);
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var mockLoggerFactory = new Mock<ILoggerFactory>(MockBehavior.Strict);
 
             mockListener.Setup(p => p.Dispose());
+            mockLoggerFactory.Setup(p => p.Dispose());
 
-            var context = new JobHostContext(mockLookup.Object, mockExecutor.Object, mockListener.Object, traceWriter);
+            var context = new JobHostContext(mockLookup.Object, mockExecutor.Object, mockListener.Object, traceWriter, loggerFactory: mockLoggerFactory.Object);
 
             Assert.Same(traceWriter, context.Trace);
 
@@ -40,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             context.Dispose();
 
             mockListener.Verify(p => p.Dispose(), Times.Once);
+            mockLoggerFactory.Verify(p => p.Dispose(), Times.Once);
         }
     }
 }

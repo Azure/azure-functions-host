@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -11,14 +10,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     /// Interface for creating <see cref="TelemetryClient"/> instances.
     /// </summary>
     [CLSCompliant(false)]
-    public interface ITelemetryClientFactory
+    public interface ITelemetryClientFactory : IDisposable
     {
         /// <summary>
         /// Creates a <see cref="TelemetryClient"/>.
-        /// </summary>        
-        /// <param name="instrumentationKey">The Application Insights instrumentation key.</param>
-        /// <param name="samplingSettings">The sampling settings, or null to disable sampling.</param>
+        /// </summary>
         /// <returns>The <see cref="TelemetryClient"/>. </returns>
-        TelemetryClient Create(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings);
+        TelemetryClient Create();
     }
 }
