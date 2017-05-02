@@ -9,17 +9,17 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
             _nameResolver = new TestNameResolver();
-                        
+
             ILoggerFactory loggerFactory = new LoggerFactory();
             // We want to see all logs, so set the default level to Trace.
             LogCategoryFilter filter = new LogCategoryFilter { DefaultLevel = Extensions.Logging.LogLevel.Trace };
@@ -420,7 +420,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor() {
+                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor()
+                {
                     SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
                 }, isTriggered: true);
             });

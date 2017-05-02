@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests

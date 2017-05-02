@@ -4,9 +4,10 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging
 {
     /// <summary>
     /// A <see cref="TraceWriter"/> wrapper around an <see cref="ILogger"/>.  

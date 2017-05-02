@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Extensions.Logging;
@@ -76,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
             // Validate Logger
             var logMessage = loggerProvider.CreatedLoggers.Single().LogMessages.Single();
             Assert.Equal(LogLevel.Information, logMessage.Level);
-            Assert.Equal(LogCategories.Startup, logMessage.Category);
+            Assert.Equal(Logging.LogCategories.Startup, logMessage.Category);
             Assert.Equal(expectedMessage, logMessage.FormattedMessage);
 
             Environment.SetEnvironmentVariable("EnvironmentSettingTrue", null);

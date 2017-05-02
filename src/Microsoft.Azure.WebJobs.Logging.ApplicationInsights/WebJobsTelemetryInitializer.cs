@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     internal class WebJobsTelemetryInitializer : ITelemetryInitializer
     {

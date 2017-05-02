@@ -3,6 +3,7 @@
 
 
 using System;
+using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers

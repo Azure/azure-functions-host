@@ -5,7 +5,7 @@
 using System.Linq;
 using Microsoft.ApplicationInsights.WindowsServer;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers

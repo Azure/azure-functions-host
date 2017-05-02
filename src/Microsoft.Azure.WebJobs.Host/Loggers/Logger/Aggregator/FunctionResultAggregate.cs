@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging
 {
     internal class FunctionResultAggregate
     {

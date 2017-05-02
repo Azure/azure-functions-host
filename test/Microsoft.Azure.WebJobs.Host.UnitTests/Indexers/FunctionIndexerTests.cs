@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -171,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.Equal(expectedMessage, traceWarning.Message);
 
             // Validate Logger
-            var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
+            var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == Logging.LogCategories.Startup);
             var loggerWarning = logger.LogMessages.Single();
             Assert.Equal(LogLevel.Warning, loggerWarning.Level);
             Assert.Equal(expectedMessage, loggerWarning.FormattedMessage);
@@ -436,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         {
         }
 
-        private class TestIndexCollector: IFunctionIndexCollector
+        private class TestIndexCollector : IFunctionIndexCollector
         {
             public List<FunctionDescriptor> Functions = new List<FunctionDescriptor>();
 

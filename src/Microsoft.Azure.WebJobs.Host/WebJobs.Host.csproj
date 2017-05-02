@@ -507,7 +507,7 @@
     <Compile Include="Loggers\Logger\Constants\ScopeKeys.cs" />
     <Compile Include="Loggers\Logger\LoggerExtensions.cs" />
     <Compile Include="Loggers\Logger\LogCategoryFilter.cs" />
-    <Compile Include="Loggers\Logger\LogValueCollection.cs" />
+    <Compile Include="Loggers\Logger\FormattedLogValuesCollection.cs" />
     <Compile Include="Loggers\Logger\TraceWriter\LoggerTraceWriter.cs" />
     <Compile Include="Loggers\TraceEventExtensions.cs" />
     <Compile Include="Exceptions\FunctionException.cs" />

@@ -8,9 +8,10 @@ using System.Net.Http;
 using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     internal class ApplicationInsightsLogger : ILogger
     {

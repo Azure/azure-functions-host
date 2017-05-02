@@ -6,7 +6,7 @@ using System.Threading;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     internal class ApplicationInsightsLoggerProvider : ILoggerProvider
     {

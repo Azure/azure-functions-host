@@ -13,7 +13,7 @@ using Microsoft.ApplicationInsights.WindowsServer;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     /// <summary>
     /// Creates a <see cref="TelemetryClient"/> for use by the <see cref="ApplicationInsightsLogger"/>. 

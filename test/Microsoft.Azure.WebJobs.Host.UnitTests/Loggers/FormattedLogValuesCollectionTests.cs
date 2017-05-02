@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers

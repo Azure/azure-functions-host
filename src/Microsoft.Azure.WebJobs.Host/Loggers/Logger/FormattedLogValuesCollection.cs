@@ -8,7 +8,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Internal;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging
 {
     /// <summary>
     /// The <see cref="FormattedLogValues"/> object created by the framework <see cref="ILogger"/> extensions

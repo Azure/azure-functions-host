@@ -2,9 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging
 {
     internal class FunctionResultAggregatorFactory : IFunctionResultAggregatorFactory
     {

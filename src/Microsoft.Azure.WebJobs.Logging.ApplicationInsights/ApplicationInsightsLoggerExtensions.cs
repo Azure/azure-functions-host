@@ -4,7 +4,8 @@
 using System;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 
 namespace Microsoft.Extensions.Logging
 {

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         private string _triggerReason = "new queue message";
         private string _functionShortName = "TestFunction";
         private string _functionFullName = "Functions.TestFunction";
-        private IDictionary<string, string> _arguments;        
+        private IDictionary<string, string> _arguments;
 
         public LoggerExtensionsTests()
         {

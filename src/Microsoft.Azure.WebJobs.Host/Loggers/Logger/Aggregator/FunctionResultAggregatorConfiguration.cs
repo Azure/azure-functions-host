@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host
+namespace Microsoft.Azure.WebJobs.Logging
 {
     /// <summary>
     /// Configuration options for function result aggregation.

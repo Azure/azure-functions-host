@@ -4,7 +4,7 @@
 using System;
 using Microsoft.ApplicationInsights;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     /// <summary>
     /// Interface for creating <see cref="TelemetryClient"/> instances.

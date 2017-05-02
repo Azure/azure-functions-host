@@ -7,9 +7,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Logging
 {
     internal class FunctionResultAggregator : IAsyncCollector<FunctionInstanceLogEntry>, IDisposable
     {
