@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>$NuGetPackageId$</id>
+    <title>Microsoft.Azure.WebJobs.Logging.ApplicationInsights</title>
+    <version>$NuGetPackageVersion$</version>
+    <authors>Microsoft</authors>
+    <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
+    <summary>Microsoft.Azure.WebJobs.Logging.ApplicationInsights is a library for writing WebJobs logs with ILogger and Application Insights.</summary>
+    <description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Logging.ApplicationInsights. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
+    <language>en-US</language>
+    <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
+    <licenseUrl>$PackageEULA$</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <tags>Microsoft Azure WebJobs Jobs Logging Application Insights windowsazureofficial Web</tags>
+    <dependencies>
+      <dependency id="Microsoft.Azure.WebJobs" version="[$WebJobsPackageVersion$]" />
+      <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.3.0" />
+    </dependencies>
+  </metadata>
+</package>

@@ -11,7 +11,6 @@ namespace Microsoft.Extensions.Logging
     /// <summary>
     /// Extensions for adding the <see cref="ApplicationInsightsLoggerProvider"/> to an <see cref="ILoggerFactory"/>. 
     /// </summary>
-    [CLSCompliant(false)]
     public static class ApplicationInsightsLoggerExtensions
     {
         /// <summary>

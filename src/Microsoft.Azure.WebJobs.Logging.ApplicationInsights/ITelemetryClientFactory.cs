@@ -9,7 +9,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     /// <summary>
     /// Interface for creating <see cref="TelemetryClient"/> instances.
     /// </summary>
-    [CLSCompliant(false)]
     public interface ITelemetryClientFactory : IDisposable
     {
         /// <summary>

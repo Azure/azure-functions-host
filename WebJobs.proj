@@ -36,6 +36,10 @@
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
+    <Build Include="src\Microsoft.Azure.WebJobs.Logging.ApplicationInsights\WebJobs.Logging.ApplicationInsights.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
     <Build Include="src\Dashboard\Dashboard.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
@@ -62,6 +66,10 @@
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
     <Build Include="src\Microsoft.Azure.WebJobs.Logging.NuGet\WebJobs.Logging.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.NuGet\WebJobs.Logging.ApplicationInsights.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>

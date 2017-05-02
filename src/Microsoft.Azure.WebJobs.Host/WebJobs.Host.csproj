@@ -54,30 +54,6 @@
     <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.AI.Agent.Intercept, Version=2.0.7.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.Agent.Intercept.2.0.7\lib\net45\Microsoft.AI.Agent.Intercept.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.AI.DependencyCollector, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.3.0\lib\net45\Microsoft.AI.DependencyCollector.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.AI.PerfCounterCollector, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.3.0\lib\net45\Microsoft.AI.PerfCounterCollector.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.AI.ServerTelemetryChannel, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.3.0\lib\net45\Microsoft.AI.ServerTelemetryChannel.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.AI.WindowsServer, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.WindowsServer.2.3.0\lib\net45\Microsoft.AI.WindowsServer.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.ApplicationInsights, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.ApplicationInsights.2.3.0\lib\net46\Microsoft.ApplicationInsights.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
       <Private>True</Private>
@@ -190,7 +166,6 @@
       <HintPath>..\..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
@@ -517,7 +492,6 @@
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\IJobHostMetadataProvider.cs" />
     <Compile Include="Extensions\JobHostMetadataProvider.cs" />
-    <Compile Include="Extensions\DictionaryExtensions.cs" />
     <Compile Include="FuncConverter.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
     <Compile Include="Exceptions\RecoverableException.cs" />
@@ -528,15 +502,7 @@
     <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregator.cs" />
     <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorFactory.cs" />
     <Compile Include="Loggers\Logger\Aggregator\IFunctionResultAggregatorFactory.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\ApplicationInsightsLogger.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\ApplicationInsightsLoggerExtensions.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\ApplicationInsightsLoggerProvider.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\ApplicationInsightsScope.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\ITelemetryClientFactory.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\DefaultTelemetryClientFactory.cs" />
-    <Compile Include="Loggers\Logger\ApplicationInsights\WebJobsTelemetryInitializer.cs" />
     <Compile Include="Loggers\Logger\Constants\LogCategories.cs" />
-    <Compile Include="Loggers\Logger\Constants\LoggingConstants.cs" />
     <Compile Include="Loggers\Logger\Constants\LoggingKeys.cs" />
     <Compile Include="Loggers\Logger\Constants\ScopeKeys.cs" />
     <Compile Include="Loggers\Logger\LoggerExtensions.cs" />

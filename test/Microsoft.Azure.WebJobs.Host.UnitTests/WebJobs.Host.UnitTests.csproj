@@ -378,6 +378,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Logging.ApplicationInsights\WebJobs.Logging.ApplicationInsights.csproj">
+      <Project>{d3ff0fde-ebdf-4751-8131-3375cf2a5c21}</Project>
+      <Name>WebJobs.Logging.ApplicationInsights</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Logging\WebJobs.Logging.csproj">
       <Project>{b5a04006-ab0c-4800-ae4c-080d31867de3}</Project>
       <Name>WebJobs.Logging</Name>

@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     /// <summary>
     /// Creates a <see cref="TelemetryClient"/> for use by the <see cref="ApplicationInsightsLogger"/>. 
     /// </summary>
-    [CLSCompliant(false)]
     public class DefaultTelemetryClientFactory : ITelemetryClientFactory
     {
         private readonly string _instrumentationKey;
@@ -64,8 +63,10 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         internal TelemetryConfiguration InitializeConfiguration()
         {
-            TelemetryConfiguration config = new TelemetryConfiguration();
-            config.InstrumentationKey = _instrumentationKey;
+            TelemetryConfiguration config = new TelemetryConfiguration()
+            {
+                InstrumentationKey = _instrumentationKey
+            };
 
             AddInitializers(config);
 

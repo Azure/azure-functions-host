@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     internal class WebJobsTelemetryInitializer : ITelemetryInitializer
     {
         private const string ComputerNameKey = "COMPUTERNAME";
+        private const string WebSiteInstanceIdKey = "WEBSITE_INSTANCE_ID";
 
         private static string _roleInstanceName = GetRoleInstanceName();
 
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         private static string GetRoleInstanceName()
         {
-            string instanceName = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteInstanceIdKey);
+            string instanceName = Environment.GetEnvironmentVariable(WebSiteInstanceIdKey);
             if (string.IsNullOrEmpty(instanceName))
             {
                 instanceName = Environment.GetEnvironmentVariable(ComputerNameKey);

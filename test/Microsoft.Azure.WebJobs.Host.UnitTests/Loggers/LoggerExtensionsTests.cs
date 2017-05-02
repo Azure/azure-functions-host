@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Assert.Equal(116, payload[LoggingKeys.Successes]);
                 Assert.Equal(TimeSpan.FromMilliseconds(200), (TimeSpan)payload[LoggingKeys.MinDuration]);
                 Assert.Equal(TimeSpan.FromMilliseconds(2180), (TimeSpan)payload[LoggingKeys.MaxDuration]);
-                Assert.Equal(TimeSpan.FromMilliseconds(340), (TimeSpan)payload[LoggingKeys.AvgDuration]);
+                Assert.Equal(TimeSpan.FromMilliseconds(340), (TimeSpan)payload[LoggingKeys.AverageDuration]);
                 Assert.Equal(now, payload[LoggingKeys.Timestamp]);
                 Assert.Equal(120, payload[LoggingKeys.Count]);
                 Assert.Equal(96.67, payload[LoggingKeys.SuccessRate]);

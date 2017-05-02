@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(116, metricDict[$"{_functionFullName} {LoggingKeys.Successes}"]);
             Assert.Equal(200, metricDict[$"{_functionFullName} {LoggingKeys.MinDuration}"]);
             Assert.Equal(2180, metricDict[$"{_functionFullName} {LoggingKeys.MaxDuration}"]);
-            Assert.Equal(340, metricDict[$"{_functionFullName} {LoggingKeys.AvgDuration}"]);
+            Assert.Equal(340, metricDict[$"{_functionFullName} {LoggingKeys.AverageDuration}"]);
             Assert.Equal(96.67, metricDict[$"{_functionFullName} {LoggingKeys.SuccessRate}"]);
             Assert.Equal(120, metricDict[$"{_functionFullName} {LoggingKeys.Count}"]);
         }
@@ -150,13 +150,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var request = new HttpRequestMessage(HttpMethod.Post, "http://someuri/api/path");
             request.Headers.Add("User-Agent", "my custom user agent");
             var response = new HttpResponseMessage();
-            request.Properties[ScopeKeys.FunctionsHttpResponse] = response;
+            request.Properties[ApplicationInsightsScopeKeys.FunctionsHttpResponse] = response;
 
             MockIpAddress(request, "1.2.3.4");
 
             ILogger logger = CreateLogger(LogCategories.Results);
             var scopeProps = CreateScopeDictionary(_invocationId, _functionShortName);
-            scopeProps[ScopeKeys.HttpRequest] = request;
+            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request;
 
             using (logger.BeginScope(scopeProps))
             {
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             ILogger logger = CreateLogger(LogCategories.Results);
             var scopeProps = CreateScopeDictionary(_invocationId, _functionShortName);
-            scopeProps[ScopeKeys.HttpRequest] = request;
+            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request;
 
             using (logger.BeginScope(scopeProps))
             {
@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         public void GetIpAddress_ChecksHeaderFirst(string headerIp)
         {
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(ScopeKeys.ForwardedForHeaderName, headerIp);
+            request.Headers.Add(ApplicationInsightsScopeKeys.ForwardedForHeaderName, headerIp);
             MockIpAddress(request, "5.6.7.8");
 
             string ip = ApplicationInsightsLogger.GetIpAddress(request);
@@ -419,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Mock<HttpRequestBase> mockRequest = new Mock<HttpRequestBase>(MockBehavior.Strict);
             mockRequest.Setup(r => r.UserHostAddress).Returns(ipAddress);
             mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
-            request.Properties[ScopeKeys.HttpContext] = mockContext.Object;
+            request.Properties[ApplicationInsightsScopeKeys.HttpContext] = mockContext.Object;
         }
 
         private ILogger CreateLogger(string category)

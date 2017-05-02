@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 [LoggingKeys.Name] = Name,
                 [LoggingKeys.Count] = Count,
                 [LoggingKeys.Timestamp] = Timestamp,
-                [LoggingKeys.AvgDuration] = AverageDuration,
+                [LoggingKeys.AverageDuration] = AverageDuration,
                 [LoggingKeys.MaxDuration] = MaxDuration,
                 [LoggingKeys.MinDuration] = MinDuration,
                 [LoggingKeys.Successes] = Successes,

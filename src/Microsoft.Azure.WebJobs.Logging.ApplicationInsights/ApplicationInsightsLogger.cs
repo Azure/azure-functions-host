@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
             // Functions attaches the HttpRequest, which allows us to log richer request details.
             object request;
-            if (scopeProps.TryGetValue(ScopeKeys.HttpRequest, out request))
+            if (scopeProps.TryGetValue(ApplicationInsightsScopeKeys.HttpRequest, out request))
             {
                 ApplyHttpRequestProperties(requestTelemetry, request as HttpRequestMessage);
             }
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         {
             // first check for X-Forwarded-For; used by load balancers
             IEnumerable<string> headers;
-            if (httpRequest.Headers.TryGetValues(ScopeKeys.ForwardedForHeaderName, out headers))
+            if (httpRequest.Headers.TryGetValues(ApplicationInsightsScopeKeys.ForwardedForHeaderName, out headers))
             {
                 string ip = headers.FirstOrDefault();
                 if (!string.IsNullOrWhiteSpace(ip))
@@ -319,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 }
             }
 
-            HttpContextBase context = httpRequest.Properties.GetValueOrDefault<HttpContextBase>(ScopeKeys.HttpContext);
+            HttpContextBase context = httpRequest.Properties.GetValueOrDefault<HttpContextBase>(ApplicationInsightsScopeKeys.HttpContext);
             return context?.Request?.UserHostAddress ?? LoggingConstants.ZeroIpAddress;
         }
 
@@ -339,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         internal static HttpResponseMessage GetResponse(HttpRequestMessage httpRequest)
         {
             // Grab the response stored by functions
-            return httpRequest.Properties.GetValueOrDefault<HttpResponseMessage>(ScopeKeys.FunctionsHttpResponse);
+            return httpRequest.Properties.GetValueOrDefault<HttpResponseMessage>(ApplicationInsightsScopeKeys.FunctionsHttpResponse);
         }
     }
 }

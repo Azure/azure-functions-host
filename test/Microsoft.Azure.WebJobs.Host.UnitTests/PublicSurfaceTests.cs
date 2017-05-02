@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Xunit;
 
@@ -228,11 +229,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "FunctionListenerException",
                 "ExceptionFormatter",
                 "FunctionResultAggregatorConfiguration",
-                "ApplicationInsightsLoggerExtensions",
                 "LogCategoryFilter",
                 "LogCategories",
+                "LoggingKeys",
+                "ScopeKeys"
+            };
+
+            AssertPublicTypes(expected, assembly);
+        }
+
+        [Fact]
+        public void ApplicationInsightsPublicSurface_LimitedToSpecificTypes()
+        {
+            var assembly = typeof(ApplicationInsightsLogger).Assembly;
+
+            var expected = new[]
+            {
                 "ITelemetryClientFactory",
-                "DefaultTelemetryClientFactory"
+                "DefaultTelemetryClientFactory",
+                "ApplicationInsightsLoggerExtensions"
             };
 
             AssertPublicTypes(expected, assembly);

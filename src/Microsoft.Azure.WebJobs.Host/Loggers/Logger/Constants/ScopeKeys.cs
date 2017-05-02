@@ -3,19 +3,19 @@
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
-    internal static class ScopeKeys
+    /// <summary>
+    /// A collection of constants used for logging scope keys.
+    /// </summary>
+    public static class ScopeKeys
     {
-        // These are used internally for passing values via scopes
+        /// <summary>
+        /// A key identifying the function invocation id.
+        /// </summary>
         public const string FunctionInvocationId = "MS_FunctionInvocationId";
+
+        /// <summary>
+        /// A key identifying the function name.
+        /// </summary>
         public const string FunctionName = "MS_FunctionName";
-        public const string HttpRequest = "MS_HttpRequest";
-
-        // HTTP context is set automatically by ASP.NET, this isn't ours.
-        internal const string HttpContext = "MS_HttpContext";
-
-        // This is set by Functions
-        internal const string FunctionsHttpResponse = "MS_AzureFunctionsHttpResponse";
-
-        internal const string ForwardedForHeaderName = "X-Forwarded-For";
     }
 }
