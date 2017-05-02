@@ -11,7 +11,6 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Gets the name of the connection string to use.
         /// </summary>
-        [AppSetting]
         string Connection { get; set; }
     }
 }
