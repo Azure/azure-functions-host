@@ -1160,38 +1160,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task PromiseApi_ResolveAfterDone()
-        {
-            TestHelpers.ClearFunctionLogs("Scenarios");
-
-            JObject input = new JObject
-            {
-                { "scenario", "promiseApiDone" }
-            };
-
-            var arguments = new Dictionary<string, object>()
-            {
-                { "input", input.ToString() }
-            };
-
-            // call multiple times to reduce flakiness (function can exit before Promise.resolve executes)
-            for (int i = 0; i < 10; i++)
-            {
-                await Task.WhenAny(Fixture.Host.CallAsync("Scenarios", arguments), Task.Delay(2000));
-
-                var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
-                if (logs.Any(p => p.Contains("Error: Choose either to return a promise or call 'done'.  Do not use both in your script.")))
-                {
-                    // short circuit if we find log
-                    return;
-                }
-            }
-
-            // this should never be reached
-            Assert.True(false, "There was no log found for duplicate calls to done");
-        }
-
-        [Fact]
         public async Task ExecutionContext_IsProvided()
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
