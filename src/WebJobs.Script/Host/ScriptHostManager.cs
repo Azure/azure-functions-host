@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
         private readonly IScriptHostEnvironment _environment;
+        private readonly IDisposable _fileEventSubscription;
         private ScriptHost _currentInstance;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance.
@@ -44,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _logger;
 
         private ScriptSettingsManager _settingsManager;
-        private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private CancellationTokenSource _restartDelayTokenSource;
 
         public ScriptHostManager(ScriptHostConfiguration config, IScriptEventManager eventManager = null, IScriptHostEnvironment environment = null)
@@ -52,8 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (config.FileWatchingEnabled)
             {
-                _scriptFileWatcher = new AutoRecoveringFileSystemWatcher(config.RootScriptPath);
-                _scriptFileWatcher.Changed += OnScriptFileChanged;
+                // We only setup a subscription here as the actual ScriptHost will create the publisher
+                // when initialized.
+                _fileEventSubscription = EventManager.OfType<FileEvent>()
+                     .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
+                     .Subscribe(e => OnScriptFileChanged(null, e.FileChangeArguments));
             }
         }
 
@@ -372,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _stopEvent.Dispose();
                 _restartDelayTokenSource?.Dispose();
-                _scriptFileWatcher?.Dispose();
+                _fileEventSubscription?.Dispose();
                 _restartHostEvent.Dispose();
 
                 _disposed = true;

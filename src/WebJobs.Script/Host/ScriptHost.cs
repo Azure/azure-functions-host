@@ -11,6 +11,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
@@ -30,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
@@ -49,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private string _instanceId;
         private Func<Task> _restart;
         private Action _shutdown;
-        private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private ImmutableArray<string> _directorySnapshot;
         private BlobLeaseManager _blobLeaseManager;
@@ -61,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
+        private FileWatcherEventSource _fileEventSource;
+        private IDisposable _fileEventsSubscription;
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -361,9 +364,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
-                    _scriptFileWatcher = new AutoRecoveringFileSystemWatcher(ScriptConfig.RootScriptPath);
+                    _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptConfig.RootScriptPath);
 
-                    _scriptFileWatcher.Changed += OnFileChanged;
+                    _fileEventsSubscription = EventManager.OfType<FileEvent>()
+                        .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
+                        .Subscribe(e => OnFileChanged(e.FileChangeArguments));
                 }
 
                 // If a file change should result in a restart, we debounce the event to
@@ -1419,7 +1424,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private void OnFileChanged(object sender, FileSystemEventArgs e)
+        private void OnFileChanged(FileSystemEventArgs e)
         {
             string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
             bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory);
@@ -1517,7 +1522,8 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_NODE
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
 #endif
-                _scriptFileWatcher?.Dispose();
+                _fileEventsSubscription?.Dispose();
+                _fileEventSource?.Dispose();
                 _debugModeFileWatcher?.Dispose();
                 _blobLeaseManager?.Dispose();
 

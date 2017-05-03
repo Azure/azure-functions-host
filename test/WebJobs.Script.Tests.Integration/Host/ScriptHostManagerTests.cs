@@ -39,11 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
-            var eventManagerMock = new Mock<IScriptEventManager>();
 
             ExceptionDispatchInfo exception = null;
-
-            using (var manager = new ScriptHostManager(config, eventManagerMock.Object))
+            using (var eventManager = new ScriptEventManager())
+            using (var manager = new ScriptHostManager(config, eventManager))
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
@@ -111,9 +110,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
 
             ExceptionDispatchInfo exception = null;
-            var eventManagerMock = new Mock<IScriptEventManager>();
-            using (var manager = new ScriptHostManager(config, eventManagerMock.Object))
+            var mockEnvironment = new Mock<IScriptHostEnvironment>();
+            using (var eventManager = new ScriptEventManager())
+            using (var manager = new ScriptHostManager(config, eventManager, mockEnvironment.Object))
+            using (var resetEvent = new ManualResetEventSlim())
             {
+                mockEnvironment.Setup(e => e.RestartHost())
+                    .Callback(() =>
+                    {
+                        resetEvent.Set();
+                        manager.RestartHost();
+                    });
+
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
                 {
@@ -141,6 +149,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                         // rename directory & delete old blob
                         Directory.Move(oldDirectory, newDirectory);
+
+                        resetEvent.Wait(TimeSpan.FromSeconds(10));
+
                         blob.Delete();
 
                         // wait for newly executed

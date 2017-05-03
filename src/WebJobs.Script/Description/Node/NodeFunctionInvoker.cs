@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             await ClearRequireCacheFunc(null);
         }
 
-        protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        protected override void OnScriptFileChanged(FileSystemEventArgs e)
         {
             if (_scriptFunc != null)
             {

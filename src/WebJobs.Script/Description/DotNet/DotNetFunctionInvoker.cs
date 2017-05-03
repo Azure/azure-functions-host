@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected override void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        protected override void OnScriptFileChanged(FileSystemEventArgs e)
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileExtension = Path.GetExtension(e.Name);

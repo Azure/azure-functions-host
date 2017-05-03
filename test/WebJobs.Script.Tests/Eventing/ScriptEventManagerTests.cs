@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var eventCount = 10;
             for (int i = 0; i < eventCount; i++)
             {
-                eventManager.Publish(new ScriptEvent(i.ToString()));
+                eventManager.Publish(new ScriptEvent(i.ToString(), string.Empty));
             }
 
             await TestHelpers.Await(() => events1.Count == eventCount && events2.Count == eventCount);
@@ -51,14 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var eventCount = 5;
             for (int i = 0; i < eventCount; i++)
             {
-                eventManager.Publish(new ScriptEvent(i.ToString()));
+                eventManager.Publish(new ScriptEvent(i.ToString(), string.Empty));
             }
 
             subscription.Dispose();
 
             for (int i = 0; i < eventCount; i++)
             {
-                eventManager.Publish(new ScriptEvent(i.ToString()));
+                eventManager.Publish(new ScriptEvent(i.ToString(), string.Empty));
             }
 
             await TestHelpers.Await(() => events1.Count == eventCount * 2 && events2.Count == eventCount);

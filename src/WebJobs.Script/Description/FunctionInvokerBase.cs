@@ -8,11 +8,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -22,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private readonly Stopwatch _stopwatch = new Stopwatch();
-        private AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
         private IMetricsLogger _metrics;
+        private IDisposable _fileChangeSubscription;
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
         {
@@ -97,9 +99,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (Host.ScriptConfig.FileWatchingEnabled)
             {
-                string functionScriptDirectory = Path.GetDirectoryName(Metadata.ScriptFile);
-                _fileWatcher = new AutoRecoveringFileSystemWatcher(functionScriptDirectory);
-                _fileWatcher.Changed += OnScriptFileChanged;
+                string functionBasePath = Path.GetDirectoryName(Metadata.ScriptFile) + Path.DirectorySeparatorChar;
+                _fileChangeSubscription = Host.EventManager.OfType<FileEvent>()
+                    .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal) &&
+                    f.FileChangeArguments.FullPath.StartsWith(functionBasePath, StringComparison.OrdinalIgnoreCase))
+                    .Subscribe(e => OnScriptFileChanged(e.FileChangeArguments));
 
                 return true;
             }
@@ -225,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);
 
-        protected virtual void OnScriptFileChanged(object sender, FileSystemEventArgs e)
+        protected virtual void OnScriptFileChanged(FileSystemEventArgs e)
         {
         }
 
@@ -272,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (disposing)
                 {
-                    _fileWatcher?.Dispose();
+                    _fileChangeSubscription?.Dispose();
 
                     (TraceWriter as IDisposable)?.Dispose();
                 }

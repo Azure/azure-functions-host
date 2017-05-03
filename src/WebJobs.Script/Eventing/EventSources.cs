@@ -9,16 +9,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    public class ScriptEvent
+    public static class EventSources
     {
-        public ScriptEvent(string name, string source)
-        {
-            Name = name;
-            Source = source;
-        }
-
-        public string Name { get; }
-
-        public string Source { get; }
+        public const string ScriptFiles = "ScriptFiles";
     }
 }

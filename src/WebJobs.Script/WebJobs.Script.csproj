@@ -489,6 +489,9 @@
     <Compile Include="Diagnostics\DictionaryLoggerScope.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ErrorCodes.cs" />
+    <Compile Include="Eventing\File\FileEvent.cs" />
+    <Compile Include="Eventing\EventSources.cs" />
+    <Compile Include="Eventing\File\FileWatcherEventSource.cs" />
     <Compile Include="Eventing\ScriptEvent.cs" />
     <Compile Include="Eventing\IScriptEventManager.cs" />
     <Compile Include="Eventing\ScriptEventManager.cs" />

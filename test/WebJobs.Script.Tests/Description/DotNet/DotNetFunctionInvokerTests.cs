@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             dependencies.Compilation.Setup(c => c.Emit(It.IsAny<CancellationToken>()))
                 .Returns(typeof(object).Assembly);
 
-            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string functionName = Guid.NewGuid().ToString();
+            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), functionName);
             Directory.CreateDirectory(rootFunctionsFolder);
 
             // Create a dummy file to represent our function
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 ScriptFile = filePath,
                 FunctionDirectory = Path.GetDirectoryName(filePath),
-                Name = Guid.NewGuid().ToString(),
+                Name = functionName,
                 ScriptType = ScriptType.CSharp
             };
 
@@ -61,8 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty),
                 dependencies.CompilationServiceFactory.Object, dependencies.TraceWriterFactory.Object);
 
-            // Update the file to trigger a reload
-            File.WriteAllText(filePath, string.Empty);
+            // Send file change notification to trigger a reload
+            var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
+            dependencies.Host.Object.EventManager.Publish(new FileEvent(EventSources.ScriptFiles, fileEventArgs));
 
             await TestHelpers.Await(() =>
             {
@@ -251,8 +253,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
-            var eventManager = new Mock<IScriptEventManager>();
-            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager.Object, scriptHostConfiguration, null);
+            var eventManager = new ScriptEventManager();
+            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager, scriptHostConfiguration, null);
             host.SetupGet(h => h.IsPrimary).Returns(true);
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
