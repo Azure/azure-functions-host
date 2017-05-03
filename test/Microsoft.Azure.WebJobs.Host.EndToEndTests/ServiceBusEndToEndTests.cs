@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus;
@@ -66,12 +67,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 // Try running the tests using jobs that declare restricted access
                 // levels. We expect a failure.
-                MessagingEntityNotFoundException expectedException = null;
+                FunctionListenerException expectedException = null;
                 try
                 {
                     await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess));
                 }
-                catch (MessagingEntityNotFoundException e)
+                catch (FunctionListenerException e)
                 {
                     expectedException = e;
                 }
@@ -96,6 +97,43 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             finally
             {
                 Cleanup();
+            }
+        }
+
+        [Fact]
+        public async Task ServiceBusEndToEnd_CreatesEntities()
+        {
+            JobHost host = null;
+            var startName = ResolveName(StartQueueName);
+            var topicName = ResolveName(TopicName);
+            var queueName = ResolveName(QueueNamePrefix);
+            try
+            {
+                host = CreateHost(typeof(ServiceBusTestJobs_EntityCreation));
+                await host.StartAsync();
+                CreateStartMessage(_serviceBusConfig.ConnectionString, startName);
+                CreateStartMessage(_serviceBusConfig.ConnectionString, startName + '1');
+                CreateStartMessage(_serviceBusConfig.ConnectionString, startName + '2');
+
+                await TestHelpers.Await(() =>
+                {
+                    return _namespaceManager.TopicExists(topicName)
+                      && _namespaceManager.QueueExists(queueName + '1')
+                      && _namespaceManager.QueueExists(queueName + '2');
+                }, 30000);
+
+                Assert.Throws<MessagingException>(() => _namespaceManager.QueueExists(topicName));
+                Assert.Throws<MessagingException>(() => _namespaceManager.TopicExists(queueName + '1'));
+                Assert.Throws<MessagingException>(() => _namespaceManager.TopicExists(queueName + '2'));
+            }
+            finally
+            {
+                host?.StopAsync();
+                host?.Dispose();
+                Cleanup();
+                CleanupQueue(startName + '1');
+                CleanupQueue(startName + '2');
+                CleanupQueue(queueName + '2');
             }
         }
 
@@ -175,13 +213,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
-        private void Cleanup()
+        private void CleanupQueue(string elementName)
         {
-            string elementName = ResolveName(StartQueueName);
             if (_namespaceManager.QueueExists(elementName))
             {
                 _namespaceManager.DeleteQueue(elementName);
             }
+        }
+
+        private void Cleanup()
+        {
+            string elementName = ResolveName(StartQueueName);
+            CleanupQueue(elementName);
 
             if (_secondaryNamespaceManager.QueueExists(elementName))
             {
@@ -189,16 +232,24 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
 
             elementName = ResolveName(QueueNamePrefix + "1");
-            if (_namespaceManager.QueueExists(elementName))
-            {
-                _namespaceManager.DeleteQueue(elementName);
-            }
+            CleanupQueue(elementName);
 
             elementName = ResolveName(TopicName);
             if (_namespaceManager.TopicExists(elementName))
             {
                 _namespaceManager.DeleteTopic(elementName);
             }
+        }
+
+        private JobHost CreateHost(Type jobContainerType)
+        {
+            JobHostConfiguration config = new JobHostConfiguration()
+            {
+                NameResolver = _nameResolver,
+                TypeLocator = new FakeTypeLocator(jobContainerType)
+            };
+            config.UseServiceBus(_serviceBusConfig);
+            return new JobHost(config);
         }
 
         private async Task ServiceBusEndToEndInternal(Type jobContainerType, JobHost host = null, bool verifyLogs = true)
@@ -214,13 +265,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             if (host == null)
             {
-                JobHostConfiguration config = new JobHostConfiguration()
-                {
-                    NameResolver = _nameResolver,
-                    TypeLocator = new FakeTypeLocator(jobContainerType)
-                };
-                config.UseServiceBus(_serviceBusConfig);
-                host = new JobHost(config);
+                host = CreateHost(jobContainerType);
             }
 
             string startQueueName = ResolveName(StartQueueName);
@@ -364,9 +409,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             // Passes service bus message from a queue to another queue
             public static void SBQueue2SBQueue(
-                [ServiceBusTrigger(StartQueueName)] string start,
+                [ServiceBusTrigger(StartQueueName)] string start, int deliveryCount,
                 [ServiceBus(QueueNamePrefix + "1")] out string message)
             {
+                Assert.Equal(1, deliveryCount);
                 message = SBQueue2SBQueue_GetOutputMessage(start);
             }
 
@@ -398,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // Demonstrate triggering on a queue in one account, and writing to a topic
             // in the primary subscription
             public static void MultipleAccounts(
-                [ServiceBusTrigger(StartQueueName), ServiceBusAccount("ServiceBusSecondary")] string input,
+                [ServiceBusTrigger(StartQueueName, Connection = "ServiceBusSecondary")] string input,
                 [ServiceBus(TopicName)] out string output)
             {
                 output = input;
@@ -440,6 +486,30 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2", AccessRights.Listen)] BrokeredMessage message)
             {
                 SBTopicListener2Impl(message);
+            }
+        }
+
+        public class ServiceBusTestJobs_EntityCreation : ServiceBusTestJobsBase
+        {
+            public static void SBQueueTriggerToTopicOutput(
+                [ServiceBusTrigger(StartQueueName)] string message,
+                [ServiceBus(TopicName, EntityType = EntityType.Topic)] out string output)
+            {
+                output = "should create topic";
+            }
+
+            public static void SBQueueTriggerToDefaultOutput(
+                [ServiceBusTrigger(StartQueueName + "1")] string message,
+                [ServiceBus(QueueNamePrefix + "1")] out string output)
+            {
+                output = "should create queue";
+            }
+
+            public static void SBQueueTriggerToQueueOutput(
+                [ServiceBusTrigger(StartQueueName + "2")] string message,
+                [ServiceBus(QueueNamePrefix + "2", EntityType = EntityType.Queue)] out string output)
+            {
+                output = "should create queue";
             }
         }
 

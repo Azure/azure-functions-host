@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Cancellation;
@@ -9,10 +10,12 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Bindings;
 using Microsoft.Azure.WebJobs.Host.Tables;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -20,28 +23,18 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         public static IBindingProvider Create(
             INameResolver nameResolver,
-            IConverterManager converterManager,
+            ILoggerFactory loggerFactory,
             IStorageAccountProvider storageAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
-            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter,
             IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter,
-            IExtensionRegistry extensions)            
+            IExtensionRegistry extensions)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
-
-            if (converterManager == null)
-            {
-                converterManager = new ConverterManager();
-            }
-
-            // Wire up new bindings 
-            var ruleQueueOutput = QueueBindingProvider.Build(storageAccountProvider, messageEnqueuedWatcherGetter, nameResolver, converterManager);
-            innerProviders.Add(ruleQueueOutput);
-
+                     
             innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider, extensionTypeLocator, blobWrittenWatcherGetter));
-            innerProviders.Add(TableAttributeBindingProvider.Build(nameResolver, converterManager, storageAccountProvider, extensions));
 
             // add any registered extension binding providers
+            // Queue and Table bindings were added as an extension, so those rules get included here.  
             foreach (IBindingProvider provider in extensions.GetExtensions(typeof(IBindingProvider)))
             {
                 innerProviders.Add(provider);
@@ -52,7 +45,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             // The TraceWriter binder handles all remaining TraceWriter/TextWriter parameters. It must come after the
             // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
-            innerProviders.Add(new TraceWriterBindingProvider());
+            innerProviders.Add(new TraceWriterBindingProvider(loggerFactory));
+
+            innerProviders.Add(new LoggerBindingProvider(loggerFactory));
 
             ContextAccessor<IBindingProvider> bindingProviderAccessor = new ContextAccessor<IBindingProvider>();
             innerProviders.Add(new RuntimeBindingProvider(bindingProviderAccessor));
@@ -61,6 +56,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IBindingProvider bindingProvider = new CompositeBindingProvider(innerProviders);
             bindingProviderAccessor.SetValue(bindingProvider);
             return bindingProvider;
-        }      
+        }
     }
 }

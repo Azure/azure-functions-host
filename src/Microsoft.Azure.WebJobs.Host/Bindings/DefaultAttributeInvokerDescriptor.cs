@@ -40,19 +40,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
         }
 
-        public static string ToInvokeString(TAttribute source)
+        public static string ToInvokeString(IDictionary<PropertyInfo, AutoResolveAttribute> resolvableProps, TAttribute source)
         {
             Dictionary<string, string> vals = new Dictionary<string, string>();
-            foreach (var prop in typeof(TAttribute).GetProperties(BindingFlags.Instance | BindingFlags.Public))
-            {
-                bool resolve = prop.GetCustomAttribute<AutoResolveAttribute>() != null;
-                if (resolve)
+            foreach (var pair in resolvableProps.AsEnumerable())
+            { 
+                var prop = pair.Key;
+                var str = (string)prop.GetValue(source);
+                if (!string.IsNullOrWhiteSpace(str))
                 {
-                    var str = (string)prop.GetValue(source);
-                    if (!string.IsNullOrWhiteSpace(str))
-                    {
-                        vals[prop.Name] = str;
-                    }
+                    vals[prop.Name] = str;
                 }
             }
 

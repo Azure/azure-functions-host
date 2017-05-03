@@ -9,17 +9,12 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ServiceProviderExtensions
     {
-        public static IJobHostContextFactory GetJobHostContextFactory(this IServiceProvider serviceProvider)
-        {
-            return GetService<IJobHostContextFactory>(serviceProvider);
-        }
-
         public static IExtensionRegistry GetExtensions(this IServiceProvider serviceProvider)
         {
             return GetService<IExtensionRegistry>(serviceProvider);
         }
 
-        private static T GetService<T>(this IServiceProvider serviceProvider) where T : class
+        public static T GetService<T>(this IServiceProvider serviceProvider) where T : class
         {
             if (serviceProvider == null)
             {

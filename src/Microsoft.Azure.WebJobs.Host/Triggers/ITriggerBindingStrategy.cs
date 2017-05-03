@@ -36,8 +36,9 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         /// then the properties on that type are route parameters that can feed into other bindings. 
         /// Intentionally make this mutable so that callers can add more items to it and override defaults. 
         /// </summary>
+        /// <param name="isSingleDispatch">true if this is the BindSingle contract; false if it's the BindMultiple contract</param>
         /// <returns>A map of the names of items in the binding contract and their types.</returns>
-        Dictionary<string, Type> GetStaticBindingContract();
+        Dictionary<string, Type> GetBindingContract(bool isSingleDispatch);
 
         /// <summary>
         /// Get the values of the route-parameters given an instance of the trigger value. 
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         /// </summary>
         /// <param name="value">The instance of the trigger object.</param>
         /// <returns>Runtime values based on the trigger value for the binding contract.</returns>
-        Dictionary<string, object> GetContractInstance(TTriggerValue value);
+        Dictionary<string, object> GetBindingData(TTriggerValue value);
 
         /// <summary>
         /// Bind as a single-item dispatch. 

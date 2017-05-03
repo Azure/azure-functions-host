@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Cannot enqueue a null brokered message instance.");
             }
 
-            _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId,
+            _entity.SendAndCreateEntityIfNotExistsAsync(message, _functionInstanceId,
                 CancellationToken.None).GetAwaiter().GetResult();
         }
     }

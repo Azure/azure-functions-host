@@ -2,14 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     /// <summary>
     /// Setup an 'output' binding to an EventHub. This can be any output type compatible with an IAsyncCollector.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Parameter)]
-    public sealed class EventHubAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
+    [Binding]
+    public sealed class EventHubAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Initialize a new instance of the <see cref="EventHubAttribute"/>
@@ -25,5 +27,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// </summary>
         [AutoResolve]
         public string EventHubName { get; private set; }
+
+        /// <summary>
+        /// Optional connection name. If missing, tries to use a registered event hub sender.
+        /// </summary>
+        [AppSetting]
+        public string Connection { get; set; }
     }    
 }

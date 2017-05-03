@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
 
         public QueueTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
@@ -38,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (accountProvider == null)
             {
@@ -77,12 +80,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
+            _loggerFactory = loggerFactory;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            QueueTriggerAttribute queueTrigger = parameter.GetCustomAttribute<QueueTriggerAttribute>(inherit: false);
+            var queueTrigger = TypeUtility.GetResolvedAttribute<QueueTriggerAttribute>(context.Parameter);
 
             if (queueTrigger == null)
             {
@@ -100,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                     "Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(queueTrigger, context.CancellationToken, _nameResolver);
             // requires storage account with queue support
             account.AssertTypeOneOf(StorageAccountType.GeneralPurpose);
 
@@ -113,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
                 _queueConfiguration, _exceptionHandler, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _trace);
+                _sharedContextProvider, _trace, _loggerFactory);
             return binding;
         }
 

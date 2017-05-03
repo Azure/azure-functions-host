@@ -16,5 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public LeaseState LeaseState { get; set; }
 
         public LeaseStatus LeaseStatus { get; set; }
+
+        public BlobProperties SdkObject { get; set; }
     }
 }

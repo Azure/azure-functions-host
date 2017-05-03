@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// Provide configuration for event hubs. 
     /// This is primarily mapping names to underlying EventHub listener and receiver objects from the EventHubs SDK. 
     /// </summary>
-    public class EventHubConfiguration : IExtensionConfigProvider, IEventHubProvider
+    public class EventHubConfiguration : IExtensionConfigProvider
     {
         // Event Hub Names are case-insensitive.
         // The same path can have multiple connection strings with different permissions (sending and receiving), 
@@ -201,17 +201,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             };
         }
         
-        internal EventHubClient GetEventHubClient(string eventHubName)
+        internal EventHubClient GetEventHubClient(string eventHubName, string connection)
         {
             EventHubClient client;
             if (_senders.TryGetValue(eventHubName, out client))             
             {
                 return client;
             }
+            else if (!string.IsNullOrWhiteSpace(connection))
+            {
+                AddSender(eventHubName, connection);
+                return _senders[eventHubName];
+            }
             throw new InvalidOperationException("No event hub sender named " + eventHubName);
         }
 
-        EventProcessorHost IEventHubProvider.GetEventProcessorHost(string eventHubName, string consumerGroup)
+        // Lookup a listener for receiving events given the name provided in the [EventHubTrigger] attribute. 
+        internal EventProcessorHost GetEventProcessorHost(string eventHubName, string consumerGroup)
         {
             ReceiverCreds creds;
             if (this._receiverCreds.TryGetValue(eventHubName, out creds))
@@ -355,10 +361,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             return key;
         }
 
-        EventProcessorOptions IEventHubProvider.GetOptions()
-        {
-            return _options;
-        }
+        // Get the eventhub options, used by the EventHub SDK for listening on event. 
+        internal EventProcessorOptions GetOptions() => _options;
 
         void IExtensionConfigProvider.Initialize(ExtensionConfigContext context)
         {
@@ -369,56 +373,41 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             _defaultStorageString = context.Config.StorageConnectionString;
 
-            // get the services we need to construct our binding providers
-            INameResolver nameResolver = context.Config.NameResolver;
-            IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
-
-            IConverterManager cm = context.Config.GetService<IConverterManager>();
-            cm.AddConverter<string, EventData>(ConvertString2EventData);
-            cm.AddConverter<EventData, string>(ConvertEventData2String);
-            cm.AddConverter<byte[], EventData>(ConvertBytes2EventData); // direct, handles non-string representations
-            cm.AddConverter<EventData, byte[]>(ConvertEventData2Bytes); // direct, handles non-string representations
-
-            var bf = new BindingFactory(nameResolver, cm);
+            context
+                .AddConverter<string, EventData>(ConvertString2EventData)
+                .AddConverter<EventData, string>(ConvertEventData2String)
+                .AddConverter<byte[], EventData>(ConvertBytes2EventData)
+                .AddConverter<EventData, byte[]>(ConvertEventData2Bytes);
 
             // register our trigger binding provider
+            INameResolver nameResolver = context.Config.NameResolver;
+            IConverterManager cm = context.Config.GetService<IConverterManager>();
             var triggerBindingProvider = new EventHubTriggerAttributeBindingProvider(nameResolver, cm, this);
-            extensions.RegisterExtension<ITriggerBindingProvider>(triggerBindingProvider);
+            context.AddBindingRule<EventHubTriggerAttribute>()
+                .BindToTrigger(triggerBindingProvider);
 
             // register our binding provider
-            var ruleOutput = bf.BindToCollector<EventHubAttribute, EventData>(BuildFromAttribute);
-            extensions.RegisterBindingRules<EventHubAttribute>(ruleOutput);
+            context.AddBindingRule<EventHubAttribute>()
+                .BindToCollector(BuildFromAttribute);           
         }
 
         private IAsyncCollector<EventData> BuildFromAttribute(EventHubAttribute attribute)
         {
-            EventHubClient client = this.GetEventHubClient(attribute.EventHubName);
+            EventHubClient client = this.GetEventHubClient(attribute.EventHubName, attribute.Connection);
             return new EventHubAsyncCollector(client);
         }
 
-        // EventData --> String
-        private static string ConvertEventData2String(EventData x)
-        {
-            return Encoding.UTF8.GetString(x.GetBytes());
-        }
+        private static string ConvertEventData2String(EventData x) 
+            => Encoding.UTF8.GetString(ConvertEventData2Bytes(x));
 
-        private static EventData ConvertBytes2EventData(byte[] input)
-        {
-            var eventData = new EventData(input);
-            return eventData;
-        }
+        private static EventData ConvertBytes2EventData(byte[] input) 
+            => new EventData(input);
 
-        private static byte[] ConvertEventData2Bytes(EventData input)
-        {
-            var bytes = input.GetBytes();
-            return bytes;
-        }
+        private static byte[] ConvertEventData2Bytes(EventData input) 
+            => input.GetBytes();
 
-        private static EventData ConvertString2EventData(string input)
-        {
-            var eventData = new EventData(Encoding.UTF8.GetBytes(input));
-            return eventData;
-        }
+        private static EventData ConvertString2EventData(string input) 
+            => ConvertBytes2EventData(Encoding.UTF8.GetBytes(input));
 
         // Hold credentials for a given eventHub name. 
         // Multiple consumer groups (and multiple listeners) on the same hub can share the same credentials. 

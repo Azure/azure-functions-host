@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Cannot enqueue a null brokered message instance.");
             }
 
-            return _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
+            return _entity.SendAndCreateEntityIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))

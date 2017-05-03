@@ -6,20 +6,20 @@ using Microsoft.ServiceBus.Messaging;
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     // The core object we get when an EventHub is triggered. 
-    // This gets converter to the user type (EventData, string, poco, etc) 
+    // This gets converted to the user type (EventData, string, poco, etc) 
     internal sealed class EventHubTriggerInput      
     {        
         // If != -1, then only process a single event in this batch. 
         private int _selector = -1;
 
         internal EventData[] Events { get; set; }
-        internal PartitionContext Context { get; set; }
+        internal PartitionContext PartitionContext { get; set; }
 
         public static EventHubTriggerInput New(EventData eventData)
         {
             return new EventHubTriggerInput
             {
-                Context = null,
+                PartitionContext = null,
                 Events = new EventData[]
                 {
                       eventData
@@ -28,12 +28,20 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
             };
         }
 
+        public bool IsSingleDispatch
+        {
+            get
+            {
+                return _selector != -1;
+            }
+        }
+
         public EventHubTriggerInput GetSingleEventTriggerInput(int idx)
         {
             return new EventHubTriggerInput
             {
                 Events = this.Events,
-                Context = this.Context,
+                PartitionContext = this.PartitionContext,
                 _selector = idx
             };
         }

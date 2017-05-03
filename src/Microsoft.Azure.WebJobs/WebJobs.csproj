@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Microsoft.Azure.WebJobs</RootNamespace>
     <AssemblyName>Microsoft.Azure.WebJobs</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
@@ -58,10 +58,14 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="AppSettingAttribute.cs" />
     <Compile Include="AutoResolveAttribute.cs" />
+    <Compile Include="BindingAttribute.cs" />
     <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="BinderExtensions.cs" />
+    <Compile Include="ConnectionProviderAttribute.cs" />
     <Compile Include="DisableAttribute.cs" />
+    <Compile Include="FunctionNameAttribute.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IAsyncCollector.cs" />
     <Compile Include="IAttributeInvokeDescriptor.cs" />
@@ -76,6 +80,7 @@
     <Compile Include="SingletonMode.cs" />
     <Compile Include="SingletonScope.cs" />
     <Compile Include="StorageAccountAttribute.cs" />
+    <Compile Include="IConnectionProvider.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

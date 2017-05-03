@@ -10,6 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
@@ -22,14 +24,19 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly IJobActivator _activator;
         private readonly INameResolver _nameResolver;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
 
-        public HostListenerFactory(IEnumerable<IFunctionDefinition> functionDefinitions, SingletonManager singletonManager, IJobActivator activator, INameResolver nameResolver, TraceWriter trace)
+        public HostListenerFactory(IEnumerable<IFunctionDefinition> functionDefinitions, SingletonManager singletonManager, IJobActivator activator, INameResolver nameResolver,
+            TraceWriter trace, ILoggerFactory loggerFactory)
         {
             _functionDefinitions = functionDefinitions;
             _singletonManager = singletonManager;
             _activator = activator;
             _nameResolver = nameResolver;
             _trace = trace;
+            _loggerFactory = loggerFactory;
+            _logger = _loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
@@ -48,7 +55,9 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 MethodInfo method = functionDefinition.Descriptor.Method;
                 if (IsDisabled(method, _nameResolver, _activator))
                 {
-                    _trace.Info(string.Format("Function '{0}' is disabled", functionDefinition.Descriptor.ShortName), TraceSource.Host);
+                    string msg = string.Format("Function '{0}' is disabled", functionDefinition.Descriptor.ShortName);
+                    _trace.Info(msg, TraceSource.Host);
+                    _logger?.LogInformation(msg);
                     continue;
                 }
 
@@ -58,9 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 SingletonAttribute singletonAttribute = SingletonManager.GetListenerSingletonOrNull(listener.GetType(), method);
                 if (singletonAttribute != null)
                 {
-                    listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener, _trace);
+                    listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener, _trace, _loggerFactory);
                 }
 
+                // wrap the listener with a function listener to handle exceptions
+                listener = new FunctionListener(listener, functionDefinition.Descriptor, _trace, _loggerFactory);
                 listeners.Add(listener);
             }
 
@@ -132,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
             if (methodInfo == null || methodInfo.ReturnType != typeof(bool))
             {
-                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, 
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture,
                     "Type '{0}' must declare a method 'IsDisabled' returning bool and taking a single parameter of Type MethodInfo.", providerType.Name));
             }
 

@@ -9,10 +9,13 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
@@ -38,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private Mock<IWebJobsExceptionHandler> _mockExceptionDispatcher;
         private Mock<IStorageBlockBlob> _mockStorageBlob;
         private TestTraceWriter _trace = new TestTraceWriter(TraceLevel.Verbose);
+        private TestLoggerProvider _loggerProvider;
         private Dictionary<string, string> _mockBlobMetadata;
         private TestNameResolver _nameResolver;
 
@@ -78,7 +82,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _singletonConfig.LockAcquisitionTimeout = TimeSpan.FromMilliseconds(200);
 
             _nameResolver = new TestNameResolver();
-            _singletonManager = new SingletonManager(_mockAccountProvider.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, new FixedHostIdProvider(TestHostId), _nameResolver);
+
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            // We want to see all logs, so set the default level to Trace.
+            LogCategoryFilter filter = new LogCategoryFilter { DefaultLevel = Extensions.Logging.LogLevel.Trace };
+            _loggerProvider = new TestLoggerProvider(filter.Filter);
+            loggerFactory.AddProvider(_loggerProvider);
+
+            _singletonManager = new SingletonManager(_mockAccountProvider.Object, _mockExceptionDispatcher.Object, _singletonConfig, _trace, loggerFactory, new FixedHostIdProvider(TestHostId), _nameResolver);
 
             _singletonManager.MinimumLeaseRenewalInterval = TimeSpan.FromMilliseconds(250);
         }
@@ -168,6 +179,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             // verify the traces
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock acquired (testid)")));
             Assert.Equal(1, _trace.Traces.Count(p => p.ToString().Contains("Verbose Singleton lock released (testid)")));
+
+            // verify the logger
+            TestLogger logger = _loggerProvider.CreatedLoggers.Single() as TestLogger;
+            Assert.Equal(LogCategories.Singleton, logger.Category);
+            Assert.Equal(2, logger.LogMessages.Count);
+            Assert.NotNull(logger.LogMessages.Single(m => m.Level == Extensions.Logging.LogLevel.Debug && m.FormattedMessage == "Singleton lock acquired (testid)"));
+            Assert.NotNull(logger.LogMessages.Single(m => m.Level == Extensions.Logging.LogLevel.Debug && m.FormattedMessage == "Singleton lock released (testid)"));
 
             renewCount = 0;
             await Task.Delay(1000);
@@ -333,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             Mock<IHostIdProvider> mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
             mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync(TestHostId);
-            SingletonManager singletonManager = new SingletonManager(null, null, null, null, mockHostIdProvider.Object);
+            SingletonManager singletonManager = new SingletonManager(null, null, null, null, null, mockHostIdProvider.Object);
 
             Assert.Equal(TestHostId, singletonManager.HostId);
             Assert.Equal(TestHostId, singletonManager.HostId);
@@ -402,7 +420,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: true);
+                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor()
+                {
+                    SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+                }, isTriggered: true);
             });
             Assert.Equal("Only one SingletonAttribute using mode 'Function' is allowed.", exception.Message);
         }
@@ -414,7 +435,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetFunctionSingletonOrNull(method, isTriggered: false);
+                SingletonManager.GetFunctionSingletonOrNull(new FunctionDescriptor()
+                {
+                    SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+                }, isTriggered: false);
             });
             Assert.Equal("SingletonAttribute using mode 'Listener' cannot be applied to non-triggered functions.", exception.Message);
         }

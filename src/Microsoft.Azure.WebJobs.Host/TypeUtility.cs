@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -57,18 +58,44 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <param name="parameter">The parameter to check.</param>
         internal static T GetHierarchicalAttributeOrNull<T>(ParameterInfo parameter) where T : Attribute
         {
+            return (T)GetHierarchicalAttributeOrNull(parameter, typeof(T));
+        }
+
+        /// <summary>
+        /// Walk from the parameter up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="parameter">The parameter to check.</param>
+        /// <param name="attributeType">The attribute type to look for.</param>
+        internal static Attribute GetHierarchicalAttributeOrNull(ParameterInfo parameter, Type attributeType)
+        {
             if (parameter == null)
             {
                 return null;
             }
 
-            T attribute = parameter.GetCustomAttribute<T>();
+            var attribute = parameter.GetCustomAttribute(attributeType);
             if (attribute != null)
             {
                 return attribute;
             }
 
-            return GetHierarchicalAttributeOrNull<T>((MethodInfo)parameter.Member);
+            var method = parameter.Member as MethodInfo;
+            if (method == null)
+            {
+                return null;
+            }
+            return GetHierarchicalAttributeOrNull(method, attributeType);
+        }
+
+        /// <summary>
+         /// Walk from the method up to the containing type, looking for an instance
+         /// of the specified attribute type, returning it if found.
+         /// </summary>
+         /// <param name="method">The method to check.</param>
+        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        {
+            return (T)GetHierarchicalAttributeOrNull(method, typeof(T));
         }
 
         /// <summary>
@@ -76,21 +103,45 @@ namespace Microsoft.Azure.WebJobs.Host
         /// of the specified attribute type, returning it if found.
         /// </summary>
         /// <param name="method">The method to check.</param>
-        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        /// <param name="type">The attribute type to look for.</param>
+        internal static Attribute GetHierarchicalAttributeOrNull(MethodInfo method, Type type)
         {
-            T attribute = method.GetCustomAttribute<T>();
+            var attribute = method.GetCustomAttribute(type);
             if (attribute != null)
             {
                 return attribute;
             }
 
-            attribute = method.DeclaringType.GetCustomAttribute<T>();
+            attribute = method.DeclaringType.GetCustomAttribute(type);
             if (attribute != null)
             {
                 return attribute;
             }
 
             return null;
+        }
+
+        internal static TAttribute GetResolvedAttribute<TAttribute>(ParameterInfo parameter) where TAttribute : Attribute
+        {
+            var attribute = parameter.GetCustomAttribute<TAttribute>();
+
+            var attributeConnectionProvider = attribute as IConnectionProvider;
+            if (attributeConnectionProvider != null && string.IsNullOrEmpty(attributeConnectionProvider.Connection))
+            {
+                // if the attribute doesn't specify an explicit connnection, walk up
+                // the hierarchy looking for an override specified via attribute
+                var connectionProviderAttribute = attribute.GetType().GetCustomAttribute<ConnectionProviderAttribute>();
+                if (connectionProviderAttribute?.ProviderType != null)
+                {
+                    var connectionOverrideProvider = GetHierarchicalAttributeOrNull(parameter, connectionProviderAttribute.ProviderType) as IConnectionProvider;
+                    if (connectionOverrideProvider != null && !string.IsNullOrEmpty(connectionOverrideProvider.Connection))
+                    {
+                        attributeConnectionProvider.Connection = connectionOverrideProvider.Connection;
+                    }
+                }
+            }
+
+            return attribute;
         }
 
         public static bool IsAsync(MethodInfo methodInfo)

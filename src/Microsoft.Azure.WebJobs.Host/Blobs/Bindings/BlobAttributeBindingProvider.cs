@@ -17,7 +17,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal class BlobAttributeBindingProvider : IBindingProvider
+    internal class BlobAttributeBindingProvider : IBindingProvider, IRuleProvider
     {
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobAttribute blobAttribute = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
+            var blobAttribute = TypeUtility.GetResolvedAttribute<BlobAttribute>(parameter);
 
             if (blobAttribute == null)
             {
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             string resolvedPath = Resolve(blobAttribute.BlobPath);
             IBindableBlobPath path = null;
-            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.Parameter, context.CancellationToken, _nameResolver);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(blobAttribute, context.CancellationToken, _nameResolver);
             StorageClientFactoryContext clientFactoryContext = new StorageClientFactoryContext
             {
                 Parameter = context.Parameter
@@ -146,6 +146,41 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             where TConverter : IConverter<IStorageBlob, TValue>, new()
         {
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
+        }
+        public IEnumerable<Rule> GetRules()
+        {
+            // Once we have a BindToStream rule, we shouldn't need this. 
+            // https://github.com/Azure/azure-webjobs-sdk/issues/1001 
+            foreach (var type in new Type[]
+            {
+                typeof(Stream),
+                typeof(TextReader),
+                typeof(TextWriter),
+                typeof(ICloudBlob),
+                typeof(CloudBlockBlob),
+                typeof(CloudPageBlob),
+                typeof(CloudAppendBlob),
+                typeof(string),
+                typeof(byte[]),
+                typeof(string).MakeByRefType(),
+                typeof(byte[]).MakeByRefType()
+            })
+            {
+                yield return new Rule
+                {
+                    SourceAttribute = typeof(BlobAttribute),
+                    UserType = new ConverterManager.ExactMatch(type)
+                };
+            }
+        }
+
+        public Type GetDefaultType(Attribute attribute, FileAccess access, Type requestedType)
+        {
+            if (attribute is BlobAttribute)
+            {
+                return typeof(Stream);
+            }
+            return null;
         }
     }
 }

@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
@@ -28,7 +30,7 @@ namespace Microsoft.Azure.WebJobs
         private const int StateStarted = 2;
         private const int StateStoppingOrStopped = 3;
 
-        private readonly IJobHostContextFactory _contextFactory;
+        private readonly JobHostConfiguration _config;
         private readonly CancellationTokenSource _shutdownTokenSource;
         private readonly WebJobsShutdownWatcher _shutdownWatcher;
         private readonly CancellationTokenSource _stoppingTokenSource;
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs
         private Task _stopTask;
         private object _stopTaskLock = new object();
         private bool _disposed;
+
+        private ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -69,27 +73,13 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         /// <param name="configuration">The job host configuration.</param>
         public JobHost(JobHostConfiguration configuration)
-            : this((IServiceProvider)ThrowIfNull(configuration))
         {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="JobHost"/> class using the service provider provided.
-        /// </summary>
-        /// <param name="serviceProvider">The service provider.</param>
-        internal JobHost(IServiceProvider serviceProvider)
-        {
-            if (serviceProvider == null)
+            if (configuration == null)
             {
-                throw new ArgumentNullException("serviceProvider");
+                throw new ArgumentNullException("configuration");
             }
 
-            _contextFactory = serviceProvider.GetJobHostContextFactory();
-            if (_contextFactory == null)
-            {
-                throw new InvalidOperationException("The IJobHostContextFactory service must not be null.");
-            }
-
+            _config = configuration;
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
@@ -128,7 +118,10 @@ namespace Microsoft.Azure.WebJobs
             await EnsureHostStartedAsync(cancellationToken);
 
             await _listener.StartAsync(cancellationToken);
-            _context.Trace.Info("Job host started", Host.TraceSource.Host);
+
+            string msg = "Job host started";
+            _context.Trace.Info(msg, Host.TraceSource.Host);
+            _logger?.LogInformation(msg);
 
             _state = StateStarted;
         }
@@ -170,13 +163,15 @@ namespace Microsoft.Azure.WebJobs
             await _listener.StopAsync(cancellationToken);
 
             // Flush remaining logs
-            var fastLogger = _context.FastLogger;
-            if (fastLogger != null)
+            var functionEventCollector = _context.FunctionEventCollector;
+            if (functionEventCollector != null)
             {
-                await fastLogger.FlushAsync(cancellationToken);
+                await functionEventCollector.FlushAsync(cancellationToken);
             }
 
-            _context.Trace.Info("Job host stopped", Host.TraceSource.Host);
+            string msg = "Job host stopped";
+            _context.Trace.Info(msg, Host.TraceSource.Host);
+            _logger?.LogInformation(msg);
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>
@@ -334,19 +329,9 @@ namespace Microsoft.Azure.WebJobs
             return function;
         }
 
-        private static JobHostConfiguration ThrowIfNull(JobHostConfiguration configuration)
-        {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException("configuration");
-            }
-
-            return configuration;
-        }
-
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
+            JobHostContext context = await _config.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
 
             lock (_contextLock)
             {
@@ -356,6 +341,8 @@ namespace Microsoft.Azure.WebJobs
                     _listener = context.Listener;
                 }
             }
+
+            _logger = _context.LoggerFactory?.CreateLogger(LogCategories.Startup);
 
             return _context;
         }

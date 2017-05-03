@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -335,6 +336,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             var tracer = new TestTraceWriter(TraceLevel.Verbose);
             hostConfig.Tracing.Tracers.Add(tracer);
 
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+            hostConfig.LoggerFactory = loggerFactory;
+
             // The jobs host is started
             JobHost host = new JobHost(hostConfig);
             host.Start();
@@ -385,6 +391,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // make sure the exception is being properly logged
             var errors = tracer.Traces.Where(t => t.Level == TraceLevel.Error);
             Assert.True(errors.All(t => t.Exception.InnerException.InnerException is FormatException));
+
+            // Validate Logger
+            var loggerErrors = loggerProvider.GetAllLogMessages().Where(l => l.Level == Extensions.Logging.LogLevel.Error);
+            Assert.True(loggerErrors.All(t => t.Exception.InnerException.InnerException is FormatException));
         }
 
         private void UploadTestObject()

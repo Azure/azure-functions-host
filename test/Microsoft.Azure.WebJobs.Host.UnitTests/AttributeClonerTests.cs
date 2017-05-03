@@ -40,8 +40,37 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             public string ConstantProp { get; private set; }
 
-            [AutoResolve(AllowTokens = false)]
+            [AppSetting]
             public string ResolvedSetting { get; set; }
+
+            [AppSetting(Default = "default")]
+            public string DefaultSetting { get; set; }
+        }
+
+        public class Attr3: Attribute
+        {
+            [AppSetting]
+            public string Required { get; set; }
+
+            [AppSetting(Default = "default")]
+            public string Default { get; set; }
+        }
+
+        public class Attr4: Attribute
+        {
+            [AppSetting]
+            public string AppSetting { get; set; }
+
+            [AutoResolve]
+            public string AutoResolve { get; set; }
+        }
+
+        public class InvalidAnnotation: Attribute
+        {
+            // only one of appsetting/autoresolve allowed
+            [AppSetting]
+            [AutoResolve]
+            public string Required { get; set; }
         }
 
         public class AttributeWithResolutionPolicy : Attribute
@@ -159,7 +188,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public async Task InvokeStringMultipleResolvedProperties()
         {
-            Attr2 attr = new Attr2("{p2}", "constant") { ResolvedProp1 = "{p1}" };
+            Attr2 attr = new Attr2("{p2}", "constant") {
+                ResolvedProp1 = "{p1}"
+            };
 
             var cloner = new AttributeCloner<Attr2>(attr, GetBindingContract("p1", "p2"));
 
@@ -232,10 +263,50 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
-        public void Setting_WithNoValueInResolver_Throws()
+        public void Setting_WithNoValueInResolver_ThrowsIfNoDefault()
         {
             Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
             Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, EmptyContract, null));
+        }
+
+        [Fact]
+        public void Setting_WithNoValueInResolver_UsesDefault()
+        {
+            Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
+            var nameResolver = new FakeNameResolver().Add("appsetting", "ABC").Add("default", "default");
+            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract, nameResolver);
+
+            var a2Cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("default", a2Cloned.DefaultSetting);
+        }
+
+        [Fact]
+        public void AppSettingAttribute_Resolves_IfDefaultSet()
+        {
+            Attr3 a3 = new Attr3() { Required = "req", Default = "env" };
+            var nameResolver = new FakeNameResolver().Add("env", "envval").Add("req", "reqval");
+            var cloner = new AttributeCloner<Attr3>(a3, EmptyContract, nameResolver);
+            var cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("reqval", cloned.Required);
+            Assert.Equal("envval", cloned.Default);
+        }
+
+        [Fact]
+        public void AppSettingAttribute_Resolves_IfDefaultMatched()
+        {
+            Attr3 a3 = new Attr3() { Required = "req" };
+            var nameResolver = new FakeNameResolver().Add("default", "defaultval").Add("req", "reqval");
+            var cloner = new AttributeCloner<Attr3>(a3, EmptyContract, nameResolver);
+            var cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("reqval", cloned.Required);
+            Assert.Equal("defaultval", cloned.Default);
+        }
+
+        [Fact]
+        public void AppSettingAttribute_Throws_IfDefaultUnmatched()
+        {
+            Attr3 a3 = new Attr3() { Required = "req" };
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr3>(a3, EmptyContract, null));
         }
 
         [Fact]
@@ -248,6 +319,46 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Attr2 a2Clone = await cloner.ResolveFromBindingDataAsync(GetCtx(null));
 
             Assert.Null(a2Clone.ResolvedSetting);
+        }
+
+        [Fact]
+        public void AppSettingAttribute_ResolvesWholeValueAsSetting()
+        {
+            Attr4 a4 = new Attr4();
+            var name = "test{x}and%y%";
+            a4.AppSetting = a4.AutoResolve = name;
+
+            var nameResolver = new FakeNameResolver()
+                .Add("y", "Setting")
+                .Add(name, "AppSetting");
+            var cloner = new AttributeCloner<Attr4>(a4, GetBindingContract("x"), nameResolver);
+            var cloned = cloner.GetNameResolvedAttribute();
+            // autoresolve resolves tokens
+            Assert.Equal("test{x}andSetting", cloned.AutoResolve);
+            // appsetting treats entire string as app setting name
+            Assert.Equal("AppSetting", cloned.AppSetting);
+        }
+
+        [Fact]
+        public void AppSettingAttribute_DoesNotThrowIfNullValueAndNoDefault()
+        {
+            Attr4 a4 = new Attr4();
+            a4.AutoResolve = "auto";
+            a4.AppSetting = null;
+
+            var nameResolver = new FakeNameResolver();
+            var cloner = new AttributeCloner<Attr4>(a4, EmptyContract, nameResolver);
+            var cloned = cloner.GetNameResolvedAttribute();
+            Assert.Equal("auto", cloned.AutoResolve);
+            Assert.Equal(null, cloned.AppSetting);
+        }
+
+        [Fact]
+        public void AttributeCloner_Throws_IfAppSettingAndAutoResolve()
+        {
+            InvalidAnnotation a = new InvalidAnnotation();
+            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<InvalidAnnotation>(a, EmptyContract, null));
+            Assert.Equal("Property 'Required' cannot be annotated with both AppSetting and AutoResolve.", exc.Message);
         }
 
         [Fact]
@@ -326,9 +437,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 ResolvedSetting = "MySetting"
             };
             var prop = attribute.GetType().GetProperty("ResolvedSetting");
-            string resolvedValue = null;
+            var attr = prop.GetCustomAttribute<AppSettingAttribute>();
+            string resolvedValue = "MySetting";
 
-            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.TryAutoResolveValue(attribute, prop, resolver, out resolvedValue));
+            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop));
             Assert.Equal("Unable to resolve value for property 'Attr2.ResolvedSetting'.", ex.Message);
         }
 
@@ -336,8 +448,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void GetPolicy_ReturnsDefault_WhenNoSpecifiedPolicy()
         {
             PropertyInfo propInfo = typeof(AttributeWithResolutionPolicy).GetProperty(nameof(AttributeWithResolutionPolicy.PropWithoutPolicy));
-
-            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(propInfo);
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo);
 
             Assert.IsType<DefaultResolutionPolicy>(policy);
         }
@@ -347,7 +459,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             PropertyInfo propInfo = typeof(AttributeWithResolutionPolicy).GetProperty(nameof(AttributeWithResolutionPolicy.PropWithPolicy));
 
-            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(propInfo);
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo);
 
             Assert.IsType<TestResolutionPolicy>(policy);
         }
@@ -359,7 +472,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // because BindingTemplate doesn't exist in the core assembly.
             PropertyInfo propInfo = typeof(AttributeWithResolutionPolicy).GetProperty(nameof(AttributeWithResolutionPolicy.PropWithMarkerPolicy));
 
-            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(propInfo);
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            IResolutionPolicy policy = AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo);
 
             Assert.IsType<Host.Bindings.ODataFilterResolutionPolicy>(policy);
         }
@@ -368,8 +482,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void GetPolicy_Throws_IfPolicyDoesNotImplementInterface()
         {
             PropertyInfo propInfo = typeof(AttributeWithResolutionPolicy).GetProperty(nameof(AttributeWithResolutionPolicy.PropWithInvalidPolicy));
-
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(propInfo));
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo));
 
             Assert.Equal($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {nameof(AttributeWithResolutionPolicy.PropWithInvalidPolicy)} must derive from {typeof(IResolutionPolicy).Name}.", ex.Message);
         }
@@ -378,8 +492,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void GetPolicy_Throws_IfPolicyHasNoDefaultConstructor()
         {
             PropertyInfo propInfo = typeof(AttributeWithResolutionPolicy).GetProperty(nameof(AttributeWithResolutionPolicy.PropWithConstructorlessPolicy));
-
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(propInfo));
+            AutoResolveAttribute attr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo));
 
             Assert.Equal($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {nameof(AttributeWithResolutionPolicy.PropWithConstructorlessPolicy)} must derive from {typeof(IResolutionPolicy).Name} and have a default constructor.", ex.Message);
         }

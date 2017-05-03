@@ -2,16 +2,19 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     // General rule for binding to input parameters.
     // Can invoke Converter manager. 
     // Can leverage OpenTypes for pattern matchers.
-    internal class BindToInputBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider
+    internal class BindToInputBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IRuleProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
@@ -50,6 +53,68 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return Task.FromResult<IBinding>(binding);
         }
 
+        public IEnumerable<Rule> GetRules()
+        {
+            var cm = (ConverterManager)_converterManager;
+            var types = cm.GetPossibleDestinationTypesFromSource(typeof(TAttribute), typeof(TType));
+                        
+            yield return new Rule
+            {
+                SourceAttribute = typeof(TAttribute),
+                UserType = new ConverterManager.ExactMatch(typeof(TType))
+            };
+
+            var converters = new Type[] { typeof(TType) };
+
+            foreach (var type in types)
+            {
+                yield return new Rule
+                {
+                    SourceAttribute = typeof(TAttribute),
+                    Converters = converters,
+                    UserType = type
+                };
+            }
+        }
+
+        // DefaultTypes (in precedence order) that we check for input bindings. 
+        private static readonly Type[] DefaultTypes = new Type[] 
+        {
+            typeof(string),
+            typeof(JObject),
+            typeof(JArray),
+            typeof(byte[]),
+            typeof(Stream)
+        };
+
+        public Type GetDefaultType(Attribute attribute, FileAccess access, Type requestedType)
+        {
+            if (!(attribute is TAttribute))
+            {
+                return null;
+            }
+            IEnumerable<Type> targets = (requestedType != typeof(object)) ? new Type[] { requestedType } : DefaultTypes;
+
+            if (access == FileAccess.Write)
+            {
+                return null;
+            }
+
+            // if no requestedType, then search for string, JObject, byte[], stream            
+            foreach (var rule in GetRules())
+            {
+                foreach (var target in targets)
+                {
+                    if (rule.UserType.IsMatch(target))
+                    {
+                        return target;
+                    }
+                }
+            }
+        
+            return null;
+        }
+
         private class ExactBinding<TUserType> : BindingBase<TAttribute>
         {
             private readonly Func<object, object> _buildFromAttribute;
@@ -74,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 var patternMatcher = parent._patternMatcher;
 
                 var parameter = context.Parameter;
-                TAttribute attributeSource = parameter.GetCustomAttribute<TAttribute>(inherit: false);
+                var attributeSource = TypeUtility.GetResolvedAttribute<TAttribute>(parameter);
 
                 Func<TAttribute, Task<TAttribute>> hookWrapper = null;
                 if (parent.PostResolveHook != null)

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 { 
@@ -49,9 +50,11 @@ namespace Microsoft.Azure.WebJobs
     /// </list>
     /// </remarks>
     [SuppressMessage("Microsoft.Design", "CA1019:DefineAccessorsForAttributeArguments", Justification = "There is an accessor for FileAccess")]
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{BlobPath,nq}")]
-    public sealed class BlobAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    [Binding]
+    public sealed class BlobAttribute : Attribute, IConnectionProvider
     {
         private readonly string _blobPath;
         private readonly FileAccess? _access;
@@ -79,10 +82,15 @@ namespace Microsoft.Azure.WebJobs
             get { return _blobPath; }
         }
 
-        /// <summary>Gets the kind of operations that can be performed on the blob.</summary>
+        /// <summary>
+        /// Gets the kind of operations that can be performed on the blob.
+        /// </summary>
         public FileAccess? Access
         {
             get { return _access; }
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
     }
 }

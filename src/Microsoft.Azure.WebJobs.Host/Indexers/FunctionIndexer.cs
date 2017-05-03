@@ -12,8 +12,11 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -28,8 +31,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly HashSet<Assembly> _jobAttributeAssemblies;
         private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
+        private readonly ILogger _logger;
 
-        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager, TraceWriter trace)
+        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager,
+            TraceWriter trace, ILoggerFactory loggerFactory)
         {
             if (triggerBindingProvider == null)
             {
@@ -73,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _singletonManager = singletonManager;
             _jobAttributeAssemblies = GetJobAttributeAssemblies(extensions);
             _trace = trace;
+            _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
 
         public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
@@ -85,20 +91,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
                 catch (FunctionIndexingException fex)
                 {
-                    // Route the indexing exception through the TraceWriter pipeline
-                    _trace.Error(fex.Message, fex);
-
-                    // If the error has been marked as handled, ignore the indexing exception
-                    // and continue on to the rest of the methods. In this case the method in
-                    // error simply won't be running in the JobHost.
-                    if (fex.Handled)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    fex.TryRecover(_trace, _logger);
+                    // If recoverable, continue to the rest of the methods.
+                    // The method in error simply won't be running in the JobHost.
+                    continue;
                 }
             }
         }
@@ -133,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             // create a set containing our own core assemblies
             HashSet<Assembly> assemblies = new HashSet<Assembly>();
             assemblies.Add(typeof(BlobAttribute).Assembly);
-       
+
             // add any extension assemblies
             assemblies.UnionWith(extensions.GetExtensionAssemblies());
 
@@ -216,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     if (triggerBinding != null && !hasNoAutomaticTriggerAttribute)
                     {
                         throw new InvalidOperationException(
-                            string.Format(Constants.UnableToBindParameterFormat, 
+                            string.Format(Constants.UnableToBindParameterFormat,
                             parameter.Name, parameter.ParameterType.Name, Constants.ExtensionInitializationMessage));
                     }
                     else
@@ -256,7 +252,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             if (TypeUtility.IsAsyncVoid(method))
             {
-                this._trace.Warning($"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.");
+                string msg = $"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.";
+                _trace.Warning(msg);
+                _logger?.LogWarning(msg);
             }
 
             Type returnType = method.ReturnType;
@@ -284,7 +282,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             if (triggerBinding != null)
             {
-                functionDefinition = CreateTriggeredFunctionDefinition(triggerBinding, triggerParameterName, _executor, functionDescriptor, nonTriggerBindings, invoker, _singletonManager);
+                Type triggerValueType = triggerBinding.TriggerValueType;
+                var methodInfo = typeof(FunctionIndexer).GetMethod("CreateTriggeredFunctionDefinition", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(triggerValueType);
+                functionDefinition = (FunctionDefinition)methodInfo.Invoke(this, new object[] { triggerBinding, triggerParameterName, functionDescriptor, nonTriggerBindings, invoker });
 
                 if (hasNoAutomaticTriggerAttribute && functionDefinition != null)
                 {
@@ -300,23 +300,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             index.Add(functionDefinition, functionDescriptor, method);
         }
 
-        private static FunctionDefinition CreateTriggeredFunctionDefinition(ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, 
-            FunctionDescriptor descriptor, IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
+        private FunctionDefinition CreateTriggeredFunctionDefinition<TTriggerValue>(
+            ITriggerBinding triggerBinding, string parameterName, FunctionDescriptor descriptor,
+            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker)
         {
-            Type triggerValueType = triggerBinding.TriggerValueType;
-            MethodInfo createTriggeredFunctionDefinitionMethodInfo = typeof(FunctionIndexer).GetMethod("CreateTriggeredFunctionDefinitionImpl", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(triggerValueType);
-            FunctionDefinition functionDefinition = (FunctionDefinition)createTriggeredFunctionDefinitionMethodInfo.Invoke(null, new object[] { triggerBinding, parameterName, executor, descriptor, nonTriggerBindings, invoker, singletonManager });
-
-            return functionDefinition;
-        }
-
-        private static FunctionDefinition CreateTriggeredFunctionDefinitionImpl<TTriggerValue>(
-            ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, FunctionDescriptor descriptor,
-            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
-        {
-            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(descriptor, parameterName, triggerBinding, nonTriggerBindings, singletonManager);
+            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(descriptor, parameterName, triggerBinding, nonTriggerBindings, _singletonManager);
             ITriggeredFunctionInstanceFactory<TTriggerValue> instanceFactory = new TriggeredFunctionInstanceFactory<TTriggerValue>(functionBinding, invoker, descriptor);
-            ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
+            ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, _executor, instanceFactory);
             IListenerFactory listenerFactory = new ListenerFactory(descriptor, triggerExecutor, triggerBinding);
 
             return new FunctionDefinition(descriptor, instanceFactory, listenerFactory);
@@ -341,13 +331,20 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
             }
 
+            // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
+            TraceLevelAttribute traceAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(method);
+
             return new FunctionDescriptor
             {
                 Id = method.GetFullName(),
                 Method = method,
                 FullName = method.GetFullName(),
                 ShortName = method.GetShortName(),
-                Parameters = parameters
+                Parameters = parameters,
+                TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
+                TriggerParameterDescriptor = parameters.OfType<TriggerParameterDescriptor>().FirstOrDefault(),
+                TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
+                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
             };
         }
 

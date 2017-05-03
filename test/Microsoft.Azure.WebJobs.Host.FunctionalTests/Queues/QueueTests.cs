@@ -143,8 +143,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // BindingData is case insensitive. 
             // And queue name is normalized to lowercase. 
+            // Connection="" is same as Connection=null
             public const string QueueOutName = "qName-{XYZ}";
-            public void Func([QueueTrigger(QueueName)] Poco triggers,  [Queue(QueueOutName)] ICollector<string> q)
+            public void Func([QueueTrigger(QueueName, Connection ="")] Poco triggers,  [Queue(QueueOutName)] ICollector<string> q)
             {
                 q.Add("123");
             }        
@@ -173,7 +174,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(1, msgs.Length);
             Assert.Equal("123", msgs[0].AsString);
         }
-
 
         public class ProgramSimple
         {

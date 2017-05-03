@@ -3,6 +3,8 @@
 
 using System;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace SampleHost
 {
@@ -19,8 +21,28 @@ namespace SampleHost
                 config.UseDevelopmentSettings();
             }
 
+            CheckAndEnableAppInsights(config);
+
             var host = new JobHost(config);
             host.RunAndBlock();
+        }
+
+        private static void CheckAndEnableAppInsights(JobHostConfiguration config)
+        {
+            // If AppInsights is enabled, build up a LoggerFactory
+            string instrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
+            if (!string.IsNullOrEmpty(instrumentationKey))
+            {
+                var filter = new LogCategoryFilter();
+                filter.DefaultLevel = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Function] = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Results] = LogLevel.Debug;
+                filter.CategoryLevels[LogCategories.Aggregator] = LogLevel.Debug;
+
+                config.LoggerFactory = new LoggerFactory()
+                    .AddApplicationInsights(instrumentationKey, filter.Filter)
+                    .AddConsole(filter.Filter);
+            }
         }
     }
 }

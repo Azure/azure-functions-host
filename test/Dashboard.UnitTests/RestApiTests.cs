@@ -21,6 +21,7 @@ namespace Dashboard.UnitTests
     // Test calling the REST API surface. 
     // This surface area is important because the APIs are public and called by the Portal.
     // This explicitly goes through the HttpClient and tests things like serialization, rest interfaces, etc. 
+    [Trait("SecretsRequired", "true")]
     public class RestApiTests : IClassFixture<RestApiTests.Fixture>
     {
         private readonly Fixture _fixture;

@@ -7,8 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly IExtensionRegistry _extensions;
         private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
 
         private IFunctionIndex _index;
 
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IFunctionExecutor executor,
             IExtensionRegistry extensions,
             SingletonManager singletonManager,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (typeLocator == null)
             {
@@ -82,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _extensions = extensions;
             _singletonManager = singletonManager;
             _trace = trace;
+            _loggerFactory = loggerFactory;
         }
 
         public async Task<IFunctionIndex> GetAsync(CancellationToken cancellationToken)
@@ -97,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions, _singletonManager, _trace);
+            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions, _singletonManager, _trace, _loggerFactory);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

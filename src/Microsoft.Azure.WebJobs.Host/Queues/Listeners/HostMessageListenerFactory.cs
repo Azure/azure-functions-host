@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionExecutor _executor;
@@ -27,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IQueueConfiguration queueConfiguration,
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
+            ILoggerFactory loggerFactory,
             IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger,
             IFunctionExecutor executor)
@@ -70,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queueConfiguration = queueConfiguration;
             _exceptionHandler = exceptionHandler;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
             _executor = executor;
@@ -89,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 triggerExecutor: triggerExecutor,
                 exceptionHandler: _exceptionHandler,
                 trace: _trace,
+                loggerFactory: _loggerFactory,
                 sharedWatcher: null,
                 queueConfiguration: _queueConfiguration,
                 maxPollingInterval: maxPollingInterval);

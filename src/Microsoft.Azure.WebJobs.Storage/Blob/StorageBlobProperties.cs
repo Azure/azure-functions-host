@@ -50,5 +50,11 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         {
             get { return _sdk.Properties.LeaseStatus; }
         }
+
+        /// <inheritdoc />
+        public BlobProperties SdkObject
+        {
+            get { return _sdk.Properties; }
+        }
     }
 }

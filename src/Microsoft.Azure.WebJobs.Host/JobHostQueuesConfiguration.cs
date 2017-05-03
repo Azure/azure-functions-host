@@ -5,6 +5,7 @@ using System;
 using System.Globalization;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -83,11 +84,12 @@ namespace Microsoft.Azure.WebJobs.Host
                 _newBatchThreshold = value;
             }
         }
-
+         
         /// <summary>
         /// Gets or sets the longest period of time to wait before checking for a message to arrive when a queue remains
         /// empty.
         /// </summary>
+        [JsonIgnore]
         public TimeSpan MaxPollingInterval
         {
             get { return _maxPollingInterval; }
@@ -102,6 +104,20 @@ namespace Microsoft.Azure.WebJobs.Host
                 }
 
                 _maxPollingInterval = value;
+            }
+        }
+
+        // Host.json serializes MaxPollingInterval as an integer, not a timespan. 
+        [JsonProperty("MaxPollingInterval")]
+        private int MaxPollingIntervalInt
+        {
+            get
+            {
+                return (int)this.MaxPollingInterval.TotalMilliseconds;
+            }
+            set
+            {
+                this.MaxPollingInterval = TimeSpan.FromMilliseconds((int)value);
             }
         }
 

@@ -2,9 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -24,9 +23,11 @@ namespace Microsoft.Azure.WebJobs
     /// </list>
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1813:AvoidUnsealedAttributes")]
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{QueueName,nq}")]
-    public class QueueAttribute : Attribute
+    [ConnectionProvider(typeof(StorageAccountAttribute))]
+    [Binding]
+    public class QueueAttribute : Attribute, IConnectionProvider
     {
         private readonly string _queueName;
 
@@ -44,6 +45,9 @@ namespace Microsoft.Azure.WebJobs
         public string QueueName
         {
             get { return _queueName; }
-        }      
+        }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
     }
 }

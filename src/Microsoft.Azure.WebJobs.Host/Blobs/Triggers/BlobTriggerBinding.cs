@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
         private readonly SingletonManager _singletonManager;
@@ -55,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             SingletonManager singletonManager,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (parameter == null)
             {
@@ -147,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _sharedContextProvider = sharedContextProvider;
             _singletonManager = singletonManager;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _converter = CreateConverter(_blobClient);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -190,8 +194,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(IBlobPathSource path)
         {
-            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            var contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("BlobTrigger", typeof(string));
+            contract.Add("Uri", typeof(Uri));
+            contract.Add("Properties", typeof(BlobProperties));
+            contract.Add("Metadata", typeof(IDictionary<string, string>));
 
             IReadOnlyDictionary<string, Type> contractFromPath = path.CreateBindingDataContract();
 
@@ -205,6 +212,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             return contract;
+        }
+
+        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageBlob value)
+        {
+            var bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            bindingData.Add("BlobTrigger", value.GetBlobPath());
+            bindingData.Add("Uri", value.Uri);
+            bindingData.Add("Properties", value.Properties?.SdkObject);
+            bindingData.Add("Metadata", value.Metadata);
+
+            IReadOnlyDictionary<string, object> bindingDataFromPath = _path.CreateBindingData(value.ToBlobPath());
+
+            if (bindingDataFromPath != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingDataFromPath)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    bindingData[item.Key] = item.Value;
+                }
+            }
+            return bindingData;
         }
 
         private static IAsyncObjectToTypeConverter<IStorageBlob> CreateConverter(IStorageBlobClient client)
@@ -239,9 +267,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageBlobContainer container = _blobClient.GetContainerReference(_path.ContainerNamePattern);
 
-            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration, _blobsConfiguration,
-                _exceptionHandler, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _trace, context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
+            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration, _blobsConfiguration, _exceptionHandler,
+                _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, _loggerFactory,
+                context.Descriptor.Id, _hostAccount, _dataAccount, container, _path, context.Executor, _singletonManager);
 
             return factory.CreateAsync(context.CancellationToken);
         }
@@ -256,24 +284,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 BlobName = _path.BlobNamePattern,
                 Access = Access
             };
-        }
-
-        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageBlob value)
-        {
-            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            bindingData.Add("BlobTrigger", value.GetBlobPath());
-
-            IReadOnlyDictionary<string, object> bindingDataFromPath = _path.CreateBindingData(value.ToBlobPath());
-
-            if (bindingDataFromPath != null)
-            {
-                foreach (KeyValuePair<string, object> item in bindingDataFromPath)
-                {
-                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
-                    bindingData[item.Key] = item.Value;
-                }
-            }
-            return bindingData;
         }
     }
 }

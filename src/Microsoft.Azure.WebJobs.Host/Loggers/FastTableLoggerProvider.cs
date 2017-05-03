@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 return this;
             }
 
-            public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)
+            public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace, ILogger logger)
             {
                 return null;
             }
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                     {                        
                         // 0123456789
                         // abcdefghij
-                        str = "..." + str.Substring(str.Length - (FunctionInstanceLogEntry.MaxLogOutputLength - 3));
+                        str = str.Substring(0, FunctionInstanceLogEntry.MaxLogOutputLength - 1) + "…";
                     }
 
                     item.LogOutput = str;

@@ -37,5 +37,10 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// Gets the LeaseStatus of the blob.
         /// </summary>
         LeaseStatus LeaseStatus { get; }
+
+        /// <summary>
+        /// Gets the underlying SDK object.
+        /// </summary>
+        BlobProperties SdkObject { get; }
     }
 }

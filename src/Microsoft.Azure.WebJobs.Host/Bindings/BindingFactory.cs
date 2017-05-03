@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             Func<TAttribute, IAsyncCollector<TMessage>> buildFromAttribute)
             where TAttribute : Attribute
         {
-            var converter = new DelegateAdapterCollectorBuilder<TAttribute, TMessage> { BuildFromAttribute = buildFromAttribute };
+            var converter = new DelegateConverterBuilder<TAttribute, IAsyncCollector<TMessage>> { BuildFromAttribute = buildFromAttribute };
             var pm = PatternMatcher.New(converter);
             return new AsyncCollectorBindingProvider<TAttribute, TMessage>(this._nameResolver, this._converterManager, pm);
         }
@@ -226,14 +226,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return binding;
         }
 
-        // Adapter to expose a delegate veneer over IAsyncCollector builders. 
+        // Adapter to expose a delegate veneer over builders. 
         // Delegates are more convenient for concrete types. 
-        internal class DelegateAdapterCollectorBuilder<TAttribute, TMessage> : IConverter<TAttribute, IAsyncCollector<TMessage>>
+        internal class DelegateConverterBuilder<TAttribute, TType> : IConverter<TAttribute, TType>
             where TAttribute : Attribute
         {
-            public Func<TAttribute, IAsyncCollector<TMessage>> BuildFromAttribute { get; set; }
+            public Func<TAttribute, TType> BuildFromAttribute { get; set; }
 
-            public IAsyncCollector<TMessage> Convert(TAttribute input)
+            public TType Convert(TAttribute input)
             {
                 var result = BuildFromAttribute(input);
                 return result;

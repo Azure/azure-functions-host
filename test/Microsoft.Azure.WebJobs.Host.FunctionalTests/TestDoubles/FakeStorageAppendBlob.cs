@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         private readonly string _containerName;
         private readonly IDictionary<string, string> _metadata;
         private readonly CloudAppendBlob _sdkObject;
+        private readonly StorageBlobProperties _properties;
 
         public FakeStorageAppendBlob(MemoryBlobStore store, string blobName, IStorageBlobContainer parent)
         {
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _containerName = parent.Name;
             _metadata = new Dictionary<string, string>();
             _sdkObject = new CloudAppendBlob(new Uri("http://localhost/" + _containerName + "/" + blobName));
+            _properties = new StorageBlobProperties(_sdkObject);
         }
 
         public StorageBlobType BlobType
@@ -44,7 +46,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IDictionary<string, string> Metadata
         {
-            get { throw new NotImplementedException(); }
+            get { return _sdkObject.Metadata; }
+        }
+
+        /// <inheritdoc />
+        public Uri Uri
+        {
+            get { return _sdkObject.Uri; }
         }
 
         public string Name
@@ -54,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageBlobProperties Properties
         {
-            get { throw new NotImplementedException(); }
+            get { return _properties; }
         }
 
         public CloudAppendBlob SdkObject

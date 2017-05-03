@@ -7,6 +7,9 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
@@ -17,11 +20,12 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly SingletonConfiguration _singletonConfig;
         private readonly IListener _innerListener;
         private readonly TraceWriter _trace;
+        private readonly ILogger _logger;
         private string _lockId;
         private object _lockHandle;
         private bool _isListening;
 
-        public SingletonListener(MethodInfo method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener, TraceWriter trace)
+        public SingletonListener(MethodInfo method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener, TraceWriter trace, ILoggerFactory loggerFactory)
         {
             _attribute = attribute;
             _singletonManager = singletonManager;
@@ -33,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _lockId += ".Listener";
 
             _trace = trace;
+            _logger = loggerFactory?.CreateLogger(LogCategories.Singleton);
         }
 
         // exposed for testing
@@ -47,7 +52,9 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
             if (_lockHandle == null)
             {
-                _trace.Verbose(string.Format(CultureInfo.InvariantCulture, "Unable to acquire Singleton lock ({0}).", _lockId), source: TraceSource.Execution);
+                string msg = string.Format(CultureInfo.InvariantCulture, "Unable to acquire Singleton lock ({0}).", _lockId);
+                _trace.Verbose(msg, source: TraceSource.Execution);
+                _logger?.LogDebug(msg);
 
                 // If we're unable to acquire the lock, it means another listener
                 // has it so we return w/o starting our listener.

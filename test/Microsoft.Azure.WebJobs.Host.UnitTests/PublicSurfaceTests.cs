@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
@@ -82,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             var expected = new[]
             {
+                "EntityType",
                 "EventHubAttribute",
                 "EventHubConfiguration",
                 "EventHubJobHostConfigurationExtensions",
@@ -107,7 +109,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var expected = new[]
             {
                 "IAttributeInvokeDescriptor`1",
+                "BindingAttribute",
                 "AutoResolveAttribute",
+                "AppSettingAttribute",
                 "BinderExtensions",
                 "BlobAttribute",
                 "BlobTriggerAttribute",
@@ -122,11 +126,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "SingletonAttribute",
                 "SingletonMode",
                 "SingletonScope",
+                "IConnectionProvider",
+                "ConnectionProviderAttribute",
                 "StorageAccountAttribute",
                 "DisableAttribute",
                 "TimeoutAttribute",
                 "TraceLevelAttribute",
-                "ODataFilterResolutionPolicy"
+                "ODataFilterResolutionPolicy",
+                "FunctionNameAttribute"
             };
 
             AssertPublicTypes(expected, assembly);
@@ -161,6 +168,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingProviderContext",
                 "BindingTemplate",
                 "BindStepOrder",
+                "FluentBindingRule`1",
+                "IJobHostMetadataProvider",
+                "FluentConverterRules`2",
+                "IWebHookProvider",
                 "OpenType",
                 "FunctionBindingContext",
                 "IBinding",
@@ -212,7 +223,31 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "WebJobsExceptionHandler",
                 "FunctionTimeoutException",
                 "PoisonMessageEventArgs",
-                "IResolutionPolicy"
+                "IResolutionPolicy",
+                "RecoverableException",
+                "FunctionException",
+                "FunctionListenerException",
+                "ExceptionFormatter",
+                "FunctionResultAggregatorConfiguration",
+                "LogCategoryFilter",
+                "LogCategories",
+                "LoggingKeys",
+                "ScopeKeys"
+            };
+
+            AssertPublicTypes(expected, assembly);
+        }
+
+        [Fact]
+        public void ApplicationInsightsPublicSurface_LimitedToSpecificTypes()
+        {
+            var assembly = typeof(ApplicationInsightsLogger).Assembly;
+
+            var expected = new[]
+            {
+                "ITelemetryClientFactory",
+                "DefaultTelemetryClientFactory",
+                "ApplicationInsightsLoggerExtensions"
             };
 
             AssertPublicTypes(expected, assembly);

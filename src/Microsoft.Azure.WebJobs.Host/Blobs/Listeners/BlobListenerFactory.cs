@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly string _functionId;
         private readonly IStorageAccount _hostAccount;
         private readonly IStorageAccount _dataAccount;
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             TraceWriter trace,
+            ILoggerFactory loggerFactory,
             string functionId,
             IStorageAccount hostAccount,
             IStorageAccount dataAccount,
@@ -128,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _functionId = functionId;
             _hostAccount = hostAccount;
             _dataAccount = dataAccount;
@@ -168,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // notification queue and dispatch to the target job function.
             SharedBlobQueueListener sharedBlobQueueListener = _sharedContextProvider.GetOrCreateInstance<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(_hostAccount, sharedQueueWatcher, hostBlobTriggerQueue,
-                    _queueConfiguration, _exceptionHandler, _trace, sharedBlobListener.BlobWritterWatcher));
+                    _queueConfiguration, _exceptionHandler, _trace, _loggerFactory, sharedBlobListener.BlobWritterWatcher));
             var queueListener = new BlobListener(sharedBlobQueueListener);
 
             // determine which client to use for the poison queue

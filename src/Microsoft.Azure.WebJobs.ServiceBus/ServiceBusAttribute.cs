@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Description;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
@@ -23,9 +25,11 @@ namespace Microsoft.Azure.WebJobs
     /// </description></item>
     /// </list>
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     [DebuggerDisplay("{QueueOrTopicName,nq}")]
-    public sealed class ServiceBusAttribute : Attribute
+    [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
+    [Binding]
+    public sealed class ServiceBusAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
@@ -52,6 +56,14 @@ namespace Microsoft.Azure.WebJobs
         /// Gets the name of the queue or topic to bind to.
         /// </summary>
         public string QueueOrTopicName { get; private set; }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
+
+        /// <summary>
+        /// Value indicating the type of the entity to bind to.
+        /// </summary>
+        public EntityType EntityType { get; set; } = EntityType.Queue;
 
         /// <summary>
         /// Gets the <see cref="AccessRights"/> the client has to the queue or topic.

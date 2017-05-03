@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public SingletonValueProviderTests()
         {
             _attribute = new SingletonAttribute("TestScope");
-            SingletonManager singletonManager = new SingletonManager(null, null, null, null, new FixedHostIdProvider(TestHostId));
+            SingletonManager singletonManager = new SingletonManager(null, null, null, null, null, new FixedHostIdProvider(TestHostId));
             _method = GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.Public);
             _lockId = SingletonManager.FormatLockId(_method, SingletonScope.Function, TestHostId, _attribute.ScopeId);
             _valueProvider = new SingletonValueProvider(_method, "TestScope", TestInstanceId, _attribute, singletonManager);
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [Fact]
         public async Task ToInvokeString_ReturnsExpectedValue()
         {
-            SingletonManager singletonManager = new SingletonManager(null, null, null, null, new FixedHostIdProvider(TestHostId));
+            SingletonManager singletonManager = new SingletonManager(null, null, null, null, null, new FixedHostIdProvider(TestHostId));
             SingletonAttribute attribute = new SingletonAttribute();
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, attribute.ScopeId, TestInstanceId, attribute, singletonManager);
             SingletonLock singletonLock = (SingletonLock)(await localValueProvider.GetValueAsync());
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         [Fact]
         public async Task SingletonWatcher_GetStatus_ReturnsExpectedValue()
         {
-            Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
+            Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
             mockSingletonManager.Setup(p => p.GetLockOwnerAsync(_attribute, _lockId, CancellationToken.None)).ReturnsAsync("someotherguy");
             SingletonValueProvider localValueProvider = new SingletonValueProvider(_method, _attribute.ScopeId, TestInstanceId, _attribute, mockSingletonManager.Object);
             SingletonLock localSingletonLock = (SingletonLock)(await localValueProvider.GetValueAsync());

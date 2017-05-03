@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs
     /// is in that order.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter)]
-    public sealed class ServiceBusAccountAttribute : Attribute
+    public sealed class ServiceBusAccountAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Constructs a new instance.
@@ -31,5 +31,18 @@ namespace Microsoft.Azure.WebJobs
         /// Gets the name of the ServiceBus connection string to use.
         /// </summary>
         public string Account { get; private set; }
+
+        /// <inheritdoc />
+        string IConnectionProvider.Connection
+        {
+            get
+            {
+                return Account;
+            }
+            set
+            {
+                Account = value;
+            }
+        }
     }
 }

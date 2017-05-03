@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -9,7 +10,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     /// Setup an 'trigger' on a parameter to listen on events from an event hub. 
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
-    public sealed class EventHubTriggerAttribute : Attribute
+    [Binding]
+    public sealed class EventHubTriggerAttribute : Attribute, IConnectionProvider
     {
         /// <summary>
         /// Create an instance of this attribute.
@@ -29,5 +31,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Optional Name of the consumer group. If missing, then use the default name, "$Default"
         /// </summary>
         public string ConsumerGroup { get; set; }
+
+        /// <summary>
+        /// Optional connection name. If missing, tries to use a registered event hub receiver.
+        /// </summary>
+        [AppSetting]
+        public string Connection { get; set; }
     }
 }

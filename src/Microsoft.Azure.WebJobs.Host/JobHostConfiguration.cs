@@ -4,12 +4,18 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -25,8 +31,12 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostBlobsConfiguration _blobsConfiguration = new JobHostBlobsConfiguration();
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
-        private IJobHostContextFactory _contextFactory;
+
+        private readonly JobHostMetadataProvider _tooling;
+
         private string _hostId;
+
+        private ServiceProviderWrapper _partialInitServices;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
@@ -54,13 +64,18 @@ namespace Microsoft.Azure.WebJobs
             }
 
             Singleton = new SingletonConfiguration();
+            Aggregator = new FunctionResultAggregatorConfiguration();
 
             // add our built in services here
-            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+            _tooling = new JobHostMetadataProvider(this);
+            IExtensionRegistry extensions = new DefaultExtensionRegistry(_tooling);
             ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             IConverterManager converterManager = new ConverterManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
 
+            AddService<IQueueConfiguration>(_queueConfiguration);
+            AddService<IConsoleProvider>(ConsoleProvider);
+            AddService<IStorageAccountProvider>(_storageAccountProvider);
             AddService<IExtensionRegistry>(extensions);
             AddService<StorageClientFactory>(new StorageClientFactory());
             AddService<INameResolver>(new DefaultNameResolver());
@@ -68,9 +83,10 @@ namespace Microsoft.Azure.WebJobs
             AddService<ITypeLocator>(typeLocator);
             AddService<IConverterManager>(converterManager);
             AddService<IWebJobsExceptionHandler>(exceptionHandler);
+            AddService<IFunctionResultAggregatorFactory>(new FunctionResultAggregatorFactory());
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Constants.EnvironmentSettingName);
-            IsDevelopment = string.Compare(Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
+            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Host.Constants.EnvironmentSettingName);
+            IsDevelopment = string.Compare(Host.Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         /// <summary>
@@ -246,6 +262,31 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
+        /// Gets the configuration used by the logging aggregator.
+        /// </summary>
+        public FunctionResultAggregatorConfiguration Aggregator
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="ILoggerFactory"/>. 
+        /// </summary>
+        [CLSCompliant(false)]
+        public ILoggerFactory LoggerFactory
+        {
+            get
+            {
+                return GetService<ILoggerFactory>();
+            }
+            set
+            {
+                AddService<ILoggerFactory>(value);
+            }
+        }
+
+        /// <summary>
         /// Gets the configuration for event tracing.
         /// </summary>
         public JobHostTraceConfiguration Tracing
@@ -256,23 +297,11 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        internal IJobHostContextFactory ContextFactory
-        {
-            get
-            {
-                if (_contextFactory == null)
-                {
-                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, ConsoleProvider, this);
-                }
-
-                return _contextFactory;
-            }
-            set
-            {
-                // Expose this for unit tests to override.
-                _contextFactory = value;
-            }
-        }
+        /// <summary>
+        /// get host-level metadata which the extension may read to do configuration. 
+        /// </summary>
+        [Obsolete("Not ready for public consumption.")]
+        public JObject HostConfigMetadata { get; set; }
 
         /// <summary>
         /// Gets or sets the <see cref="Host.StorageClientFactory"/> that will be used to create
@@ -323,13 +352,6 @@ namespace Microsoft.Azure.WebJobs
             object service = null;
             _services.TryGetValue(serviceType, out service);
 
-            if (service == null && serviceType == typeof(IJobHostContextFactory))
-            {
-                // ContextFactory must be delay created at the right time
-                AddService<IJobHostContextFactory>(ContextFactory);
-                return ContextFactory;
-            }
-
             return service;
         }
 
@@ -360,10 +382,10 @@ namespace Microsoft.Azure.WebJobs
             }
 
             _services.AddOrUpdate(serviceType, serviceInstance, (key, existingValue) =>
-                {
-                    // always replace existing values
-                    return serviceInstance;
-                });
+            {
+                // always replace existing values
+                return serviceInstance;
+            });
         }
 
         /// <summary>
@@ -374,6 +396,55 @@ namespace Microsoft.Azure.WebJobs
         public void AddService<TService>(TService serviceInstance)
         {
             AddService(typeof(TService), serviceInstance);
+        }
+
+        /// <summary>
+        /// Add an extension to register new binding attributes and converters.
+        /// </summary>
+        /// <param name="extension"></param>
+        public void AddExtension(IExtensionConfigProvider extension)
+        {
+            var exts = this.GetExtensions();
+            exts.RegisterExtension<IExtensionConfigProvider>(extension);
+        }
+
+        internal void AddAttributesFromAssembly(Assembly assembly)
+        {
+            _tooling.AddAttributesFromAssembly(assembly);
+        }
+
+        /// <summary>
+        /// Get a tooling interface for inspecting current extensions. 
+        /// </summary>
+        /// <returns></returns>
+        public IJobHostMetadataProvider CreateMetadataProvider()
+        {
+            var ctx = this.CreateStaticServices();
+            var provider = ctx.GetService<IBindingProvider>();
+
+            _tooling.Init(provider);
+
+            // Ensure all extensions have been called 
+
+            lock (this)
+            {
+                if (_partialInitServices == null)
+                {
+                    _partialInitServices = ctx;
+                }
+            }
+
+            return _tooling;
+        }
+
+        internal ServiceProviderWrapper TakeOwnershipOfPartialInitialization()
+        {
+            lock (this)
+            {
+                var ctx = this._partialInitServices;
+                this._partialInitServices = null;
+                return ctx;
+            }
         }
     }
 }

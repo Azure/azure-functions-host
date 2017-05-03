@@ -1,9 +1,7 @@
-﻿using Microsoft.ServiceBus.Messaging;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.ServiceBus.Messaging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
@@ -11,13 +9,114 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
     public class EventHubTests
     {
         [Fact]
-        public void StrategyStaticContract()
+        public void GetStaticBindingContract_ReturnsExpectedValue()
         {
             var strategy = new EventHubTriggerBindingStrategy();
-            var contract = strategy.GetStaticBindingContract();
+            var contract = strategy.GetBindingContract();
 
-            Assert.Equal(1, contract.Count);
-            Assert.Equal(typeof(PartitionContext), contract["partitionContext"]);
+            Assert.Equal(7, contract.Count);
+            Assert.Equal(typeof(PartitionContext), contract["PartitionContext"]);
+            Assert.Equal(typeof(string), contract["Offset"]);
+            Assert.Equal(typeof(long), contract["SequenceNumber"]);
+            Assert.Equal(typeof(DateTime), contract["EnqueuedTimeUtc"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["Properties"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingContract_SingleDispatch_ReturnsExpectedValue()
+        {
+            var strategy = new EventHubTriggerBindingStrategy();
+            var contract = strategy.GetBindingContract(true);
+
+            Assert.Equal(7, contract.Count);
+            Assert.Equal(typeof(PartitionContext), contract["PartitionContext"]);
+            Assert.Equal(typeof(string), contract["Offset"]);
+            Assert.Equal(typeof(long), contract["SequenceNumber"]);
+            Assert.Equal(typeof(DateTime), contract["EnqueuedTimeUtc"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["Properties"]);
+            Assert.Equal(typeof(IDictionary<string, object>), contract["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingContract_MultipleDispatch_ReturnsExpectedValue()
+        {
+            var strategy = new EventHubTriggerBindingStrategy();
+            var contract = strategy.GetBindingContract(false);
+
+            Assert.Equal(7, contract.Count);
+            Assert.Equal(typeof(PartitionContext), contract["PartitionContext"]);
+            Assert.Equal(typeof(string[]), contract["PartitionKeyArray"]);
+            Assert.Equal(typeof(string[]), contract["OffsetArray"]);
+            Assert.Equal(typeof(long[]), contract["SequenceNumberArray"]);
+            Assert.Equal(typeof(DateTime[]), contract["EnqueuedTimeUtcArray"]);
+            Assert.Equal(typeof(IDictionary<string, object>[]), contract["PropertiesArray"]);
+            Assert.Equal(typeof(IDictionary<string, object>[]), contract["SystemPropertiesArray"]);
+        }
+
+        [Fact]
+        public void GetBindingData_SingleDispatch_ReturnsExpectedValue()
+        {
+            var evt = new EventData();
+            evt.PartitionKey = "TestKey";
+            var input = EventHubTriggerInput.New(evt);
+            input.PartitionContext = new PartitionContext();
+
+            var strategy = new EventHubTriggerBindingStrategy();
+            var bindingData = strategy.GetBindingData(input);
+
+            Assert.Equal(7, bindingData.Count);
+            Assert.Same(input.PartitionContext, bindingData["PartitionContext"]);
+            Assert.Equal(evt.PartitionKey, bindingData["PartitionKey"]);
+            Assert.Equal(evt.Offset, bindingData["Offset"]);
+            Assert.Equal(evt.SequenceNumber, bindingData["SequenceNumber"]);
+            Assert.Equal(evt.EnqueuedTimeUtc, bindingData["EnqueuedTimeUtc"]);
+            Assert.Same(evt.Properties, bindingData["Properties"]);
+            Assert.Same(evt.SystemProperties, bindingData["SystemProperties"]);
+        }
+
+        [Fact]
+        public void GetBindingData_MultipleDispatch_ReturnsExpectedValue()
+        {
+            var events = new EventData[3]
+            {
+                new EventData(Encoding.UTF8.GetBytes("Event 1"))
+                {
+                    PartitionKey = "pk1"
+                },
+                new EventData(Encoding.UTF8.GetBytes("Event 2"))
+                {
+                    PartitionKey = "pk2"
+                },
+                new EventData(Encoding.UTF8.GetBytes("Event 3"))
+                {
+                    PartitionKey = "pk3"
+                },
+            };
+
+            var input = new EventHubTriggerInput
+            {
+                PartitionContext = new PartitionContext(),
+                Events = events
+            };
+            var strategy = new EventHubTriggerBindingStrategy();
+            var bindingData = strategy.GetBindingData(input);
+
+            Assert.Equal(7, bindingData.Count);
+            Assert.Same(input.PartitionContext, bindingData["PartitionContext"]);
+
+            // verify an array was created for each binding data type
+            Assert.Equal(events.Length, ((string[])bindingData["PartitionKeyArray"]).Length);
+            Assert.Equal(events.Length, ((string[])bindingData["OffsetArray"]).Length);
+            Assert.Equal(events.Length, ((long[])bindingData["SequenceNumberArray"]).Length);
+            Assert.Equal(events.Length, ((DateTime[])bindingData["EnqueuedTimeUtcArray"]).Length);
+            Assert.Equal(events.Length, ((IDictionary<string, object>[])bindingData["PropertiesArray"]).Length);
+            Assert.Equal(events.Length, ((IDictionary<string, object>[])bindingData["SystemPropertiesArray"]).Length);
+
+            // verify event values are distributed to arrays properly
+            Assert.Equal(events[0].PartitionKey, ((string[])bindingData["PartitionKeyArray"])[0]);
+            Assert.Equal(events[1].PartitionKey, ((string[])bindingData["PartitionKeyArray"])[1]);
+            Assert.Equal(events[2].PartitionKey, ((string[])bindingData["PartitionKeyArray"])[2]);
         }
 
         [Fact]
@@ -28,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             var strategy = new EventHubTriggerBindingStrategy();
             EventHubTriggerInput triggerInput = strategy.ConvertFromString(data);
 
-            var contract = strategy.GetContractInstance(triggerInput);
+            var contract = strategy.GetBindingData(triggerInput);
 
             EventData single = strategy.BindSingle(triggerInput, null);
             string body = Encoding.UTF8.GetString(single.GetBytes());
@@ -45,14 +144,30 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         public void EntityPathInConnectionString(string expectedPathName, string connectionString)
         {
             EventHubConfiguration config = new EventHubConfiguration();
-            IEventHubProvider provider = config;
 
             // Test sender 
             config.AddSender("k1", connectionString);
-            var client = config.GetEventHubClient("k1");
+            var client = config.GetEventHubClient("k1", null);
             Assert.Equal(expectedPathName, client.Path);
         }
 
+        private class TestNameResolver : INameResolver
+        {
+            public IDictionary<string, string> env = new Dictionary<string, string>();
+
+            public string Resolve(string name) => env[name];
+        }
+
+        // Validate that if connection string has EntityPath, that takes precedence over the parameter. 
+        [Theory]
+        [InlineData("k1", "Endpoint=sb://test89123-ns-x.servicebus.windows.net/;SharedAccessKeyName=ReceiveRule;SharedAccessKey=secretkey")]
+        [InlineData("path2", "Endpoint=sb://test89123-ns-x.servicebus.windows.net/;SharedAccessKeyName=ReceiveRule;SharedAccessKey=secretkey;EntityPath=path2")]
+        public void GetEventHubClient_AddsConnection(string expectedPathName, string connectionString)
+        {
+            EventHubConfiguration config = new EventHubConfiguration();
+            var client = config.GetEventHubClient("k1", connectionString);
+            Assert.Equal(expectedPathName, client.Path);
+        }
 
         [Theory]
         [InlineData("e", "n1", "n1/e/")]

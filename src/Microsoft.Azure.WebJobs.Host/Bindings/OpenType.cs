@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -14,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     ///  GenericClass&lt;OpenType&gt; 
     /// </summary>
     [Obsolete("Not ready for public consumption.")]
+    [DebuggerDisplay("{GetDisplayName()}")]
     public abstract class OpenType
     {
         /// <summary>
@@ -22,5 +24,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <param name="type">Type to check</param>
         /// <returns></returns>
         public abstract bool IsMatch(Type type);
+
+        internal virtual string GetDisplayName()
+        {
+            return "?";
+        }
     }
 }

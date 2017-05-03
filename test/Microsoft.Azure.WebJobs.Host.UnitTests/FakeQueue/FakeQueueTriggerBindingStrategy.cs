@@ -32,12 +32,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
         }
 
-        public Dictionary<string, object> GetContractInstance(FakeQueueDataBatch value)
+        public Dictionary<string, object> GetBindingData(FakeQueueDataBatch value)
         {
             return new Dictionary<string, object>();
         }
 
-        public Dictionary<string, Type> GetStaticBindingContract()
+        public Dictionary<string, Type> GetBindingContract(bool isSingleDispatch)
         {
             // No contract exposed
             return new Dictionary<string, Type>();

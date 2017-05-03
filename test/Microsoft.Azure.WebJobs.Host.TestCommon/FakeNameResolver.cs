@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public string Resolve(string name)
         {
+            // some name resolvers can't handle null values
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
             string value;
             if (_dict.TryGetValue(name, out value))
             {

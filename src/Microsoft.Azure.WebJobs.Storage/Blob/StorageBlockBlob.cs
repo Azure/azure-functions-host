@@ -57,6 +57,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public Uri Uri
+        {
+            get { return _sdk.Uri; }
+        }
+
+        /// <inheritdoc />
         public string Name
         {
             get { return _sdk.Name; }

@@ -1070,6 +1070,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
+        [Trait("SecretsRequired", "true")]
         public void TableEntity_IfBoundToJArray_CanCall()
         {
             IStorageAccount account = GetRealStorage(); // Fake storage doesn't implement table filters

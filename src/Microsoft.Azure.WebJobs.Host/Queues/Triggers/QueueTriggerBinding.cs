@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TraceWriter _trace;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName,
@@ -36,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IWebJobsExceptionHandler exceptionHandler,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TraceWriter trace)
+            TraceWriter trace,
+            ILoggerFactory loggerFactory)
         {
             if (queue == null)
             {
@@ -76,12 +79,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _parameterName = parameterName;
             _queue = queue;
             _argumentBinding = argumentBinding;
-            _bindingDataContract = CreateBindingDataContract(argumentBinding);
+            _bindingDataContract = CreateBindingDataContract(argumentBinding.BindingDataContract);
             _queueConfiguration = queueConfiguration;
             _exceptionHandler = exceptionHandler;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
             _trace = trace;
+            _loggerFactory = loggerFactory;
             _converter = CreateConverter(queue);
         }
 
@@ -103,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             get { return _queue.Name; }
         }
 
-        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(IReadOnlyDictionary<string, Type> argumentBindingContract)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("QueueTrigger", typeof(string));
@@ -114,9 +118,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             contract.Add("NextVisibleTime", typeof(DateTimeOffset));
             contract.Add("PopReceipt", typeof(string));
 
-            if (argumentBinding.BindingDataContract != null)
+            if (argumentBindingContract != null)
             {
-                foreach (KeyValuePair<string, Type> item in argumentBinding.BindingDataContract)
+                foreach (KeyValuePair<string, Type> item in argumentBindingContract)
                 {
                     // In case of conflict, binding data from the value type overrides the built-in binding data above.
                     contract[item.Key] = item.Value;
@@ -156,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("context");
             }
 
-            var factory = new QueueListenerFactory(_queue, _queueConfiguration, _exceptionHandler, 
-                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, context.Executor);
+            var factory = new QueueListenerFactory(_queue, _queueConfiguration, _exceptionHandler,
+                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, _loggerFactory, context.Executor);
 
             return factory.CreateAsync(context.CancellationToken);
         }
@@ -191,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             bindingData.Add("InsertionTime", value.InsertionTime.GetValueOrDefault(DateTimeOffset.UtcNow));
             bindingData.Add("NextVisibleTime", value.NextVisibleTime.GetValueOrDefault(DateTimeOffset.MaxValue));
             bindingData.Add("PopReceipt", value.PopReceipt);
-            
+
             if (bindingDataFromValueType != null)
             {
                 foreach (KeyValuePair<string, object> item in bindingDataFromValueType)

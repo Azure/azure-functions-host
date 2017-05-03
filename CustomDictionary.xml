@@ -74,7 +74,9 @@
       <Word>ScopeId</Word>
       <Word>poco</Word>
       <Word>ResolutionPolicyType</Word>
-	</Recognized>
+      <Word>AppSetting</Word>
+      <Word>AutoResolve</Word>
+    </Recognized>
     <Deprecated/>
     <Compound>
       <Term CompoundAlternate="CancellationToken">cancellationToken</Term>

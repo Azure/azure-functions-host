@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
@@ -22,7 +23,9 @@ namespace Microsoft.Azure.WebJobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public sealed class ServiceBusTriggerAttribute : Attribute
+    [ConnectionProvider(typeof(ServiceBusAccountAttribute))]
+    [Binding]
+    public sealed class ServiceBusTriggerAttribute : Attribute, IConnectionProvider
     {
         private readonly string _queueName;
         private readonly string _topicName;
@@ -73,6 +76,9 @@ namespace Microsoft.Azure.WebJobs
             _subscriptionName = subscriptionName;
             Access = access;
         }
+
+        /// <inheritdoc />
+        public string Connection { get; set; }
 
         /// <summary>
         /// Gets the name of the queue to which to bind.

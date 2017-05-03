@@ -1,9 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
 using Xunit;
 
@@ -12,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
     public class TextWriterTraceAdapterTests
     {
         private readonly Mock<TraceWriter> _mockTraceWriter;
-        private readonly TextWriterTraceAdapter _adapter;
+        private readonly TextWriter _adapter;
 
         public TextWriterTraceAdapterTests()
         {
             _mockTraceWriter = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Verbose);
-            _adapter = new TextWriterTraceAdapter(_mockTraceWriter.Object);
+            _adapter = TextWriterTraceAdapter.Synchronized(_mockTraceWriter.Object);
         }
 
         [Fact]
@@ -69,6 +72,41 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             _adapter.Flush();
 
             _mockTraceWriter.VerifyAll();
+        }
+
+        [Fact]
+        public void Flush_ClearsInternalBuffer()
+        {
+            _mockTraceWriter.Setup(p => p.Trace(It.IsAny<TraceEvent>()));
+            _mockTraceWriter.Setup(p => p.Flush());
+
+            _adapter.Write("This");
+            _adapter.Write(" is ");
+            _adapter.Write("a ");
+            _adapter.Write("test");
+            _adapter.Flush();
+            _adapter.Flush();
+
+            _mockTraceWriter.Verify(p => p.Trace(It.Is<TraceEvent>(q => q.Level == TraceLevel.Info && q.Message == "This is a test")), Times.Exactly(1));
+        }
+
+        [Fact]
+        public async Task TestMultipleThreads()
+        {
+            // This validates a bug where writing from multiple threads throws an exception.             
+            TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            TextWriter adapter = TextWriterTraceAdapter.Synchronized(trace);
+
+            // Start Tasks to write
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < 1000; i++)
+            {
+                tasks.Add(adapter.WriteLineAsync(string.Empty));
+            }
+
+            await Task.WhenAll(tasks);
+
+            Assert.Equal(1000, trace.Traces.Count);
         }
     }
 }

@@ -15,13 +15,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     internal class EventHubTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
         private readonly INameResolver _nameResolver;
-        private readonly IEventHubProvider _eventHubConfig;
+        private readonly EventHubConfiguration _eventHubConfig;
         private readonly IConverterManager _converterManager;
 
         public EventHubTriggerAttributeBindingProvider(
             INameResolver nameResolver,
             IConverterManager converterManager,
-            IEventHubProvider eventHubConfig)
+            EventHubConfiguration eventHubConfig)
         {
             this._nameResolver = nameResolver;
             this._converterManager = converterManager;
@@ -44,20 +44,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 return Task.FromResult<ITriggerBinding>(null);
             }
 
-            string eventHubName = attribute.EventHubName;
-            string resolvedEventHubName = _nameResolver.ResolveWholeString(eventHubName);
+            string resolvedEventHubName = _nameResolver.ResolveWholeString(attribute.EventHubName);
 
-            string consumerGroup = attribute.ConsumerGroup;
-            if (consumerGroup == null)
-            {
-                consumerGroup = Microsoft.ServiceBus.Messaging.EventHubConsumerGroup.DefaultGroupName;
-            }
+            string consumerGroup = attribute.ConsumerGroup ?? EventHubConsumerGroup.DefaultGroupName;
             string resolvedConsumerGroup = _nameResolver.ResolveWholeString(consumerGroup);
 
+            if (!string.IsNullOrWhiteSpace(attribute.Connection))
+            {
+                _eventHubConfig.AddReceiver(resolvedEventHubName, _nameResolver.Resolve(attribute.Connection));
+            }
+            
             var eventHostListener = _eventHubConfig.GetEventProcessorHost(resolvedEventHubName, resolvedConsumerGroup);
                         
             var options = _eventHubConfig.GetOptions();
-            var hooks = new EventHubTriggerBindingStrategy();
 
             Func<ListenerFactoryContext, bool, Task<IListener>> createListener =
              (factoryContext, singleDispatch) =>
@@ -66,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                  return Task.FromResult(listener);
              };
 
-            ITriggerBinding binding = BindingFactory.GetTriggerBinding<EventData, EventHubTriggerInput>(hooks, parameter, _converterManager, createListener);
+            ITriggerBinding binding = BindingFactory.GetTriggerBinding(new EventHubTriggerBindingStrategy(), parameter, _converterManager, createListener);
             return Task.FromResult<ITriggerBinding>(binding);         
         }
     } // end class

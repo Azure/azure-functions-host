@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Microsoft.Azure.WebJobs.Host</RootNamespace>
     <AssemblyName>Microsoft.Azure.WebJobs.Host</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
@@ -18,6 +18,7 @@
     <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -69,6 +70,14 @@
       <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.2\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.3.2.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
       <Private>True</Private>
@@ -82,19 +91,89 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.AppContext.4.3.0\lib\net46\System.AppContext.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Configuration" />
+    <Reference Include="System.Console, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Console.4.3.0\lib\net46\System.Console.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Core" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=4.0.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Diagnostics.DiagnosticSource.4.3.0\lib\net46\System.Diagnostics.DiagnosticSource.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Globalization.Calendars, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Globalization.Calendars.4.3.0\lib\net46\System.Globalization.Calendars.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.Compression.4.3.0\lib\net46\System.IO.Compression.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Compression.ZipFile, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.Compression.ZipFile.4.3.0\lib\net46\System.IO.Compression.ZipFile.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.FileSystem, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.FileSystem.4.3.0\lib\net46\System.IO.FileSystem.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.FileSystem.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.3.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Http, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Http.4.3.1\lib\net46\System.Net.Http.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Sockets, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Sockets.4.3.0\lib\net46\System.Net.Sockets.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security.Cryptography.Algorithms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Security.Cryptography.Algorithms.4.3.0\lib\net46\System.Security.Cryptography.Algorithms.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Encoding, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Security.Cryptography.Encoding.4.3.0\lib\net46\System.Security.Cryptography.Encoding.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Security.Cryptography.Primitives.4.3.0\lib\net46\System.Security.Cryptography.Primitives.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.X509Certificates, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Security.Cryptography.X509Certificates.4.3.0\lib\net46\System.Security.Cryptography.X509Certificates.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Spatial, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Spatial.5.8.2\lib\net40\System.Spatial.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Dataflow, Version=4.5.24.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.ReaderWriter, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Xml.ReaderWriter.4.3.0\lib\net46\System.Xml.ReaderWriter.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
@@ -376,10 +455,13 @@
     <Compile Include="AzureStorageDeploymentValidator.cs" />
     <Compile Include="Bindings\AmbientBindingContext.cs" />
     <Compile Include="Bindings\AttributeCloner.cs" />
+    <Compile Include="Bindings\AttributeConverter.cs" />
     <Compile Include="Bindings\BindingBase.cs" />
     <Compile Include="Bindings\BindingFactory.cs" />
     <Compile Include="Bindings\BindingProviders\BindToInputBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\AsyncCollectorBindingProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\IRuleProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\Rule.cs" />
     <Compile Include="Bindings\BindingProviders\FluentBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\FilteringBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\FluidBindingProviderExtensions.cs" />
@@ -389,6 +471,8 @@
     <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
     <Compile Include="Bindings\FuncArgumentBuilder.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\Logger\LoggerBinding.cs" />
+    <Compile Include="Bindings\Logger\LoggerBindingProvider.cs" />
     <Compile Include="Bindings\OpenType.cs" />
     <Compile Include="Bindings\Path\BindingParameterResolver.cs" />
     <Compile Include="Bindings\PatternMatcher.cs" />
@@ -398,13 +482,35 @@
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
     <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
+    <Compile Include="Config\IWebhookProvider.cs" />
+    <Compile Include="Config\FluentConverterRules.cs" />
+    <Compile Include="Config\FluentBindingRule.cs" />
+    <Compile Include="Config\ServiceProviderWrapper.cs" />
     <Compile Include="DefaultNameResolver.cs" />
+    <Compile Include="Diagnostics\ExceptionFormatter.cs" />
+    <Compile Include="Executors\CompositeFunctionEventCollector.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
-    <Compile Include="Extensions\ExceptionExtensions.cs" />
+    <Compile Include="Extensions\IJobHostMetadataProvider.cs" />
+    <Compile Include="Extensions\JobHostMetadataProvider.cs" />
     <Compile Include="FuncConverter.cs" />
     <Compile Include="FunctionTimeoutException.cs" />
+    <Compile Include="Exceptions\RecoverableException.cs" />
     <Compile Include="JobHostBlobsConfiguration.cs" />
+    <Compile Include="Listeners\FunctionListener.cs" />
+    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorConfiguration.cs" />
+    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregate.cs" />
+    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregator.cs" />
+    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorFactory.cs" />
+    <Compile Include="Loggers\Logger\Aggregator\IFunctionResultAggregatorFactory.cs" />
+    <Compile Include="Loggers\Logger\Constants\LogCategories.cs" />
+    <Compile Include="Loggers\Logger\Constants\LoggingKeys.cs" />
+    <Compile Include="Loggers\Logger\Constants\ScopeKeys.cs" />
+    <Compile Include="Loggers\Logger\LoggerExtensions.cs" />
+    <Compile Include="Loggers\Logger\LogCategoryFilter.cs" />
+    <Compile Include="Loggers\Logger\FormattedLogValuesCollection.cs" />
+    <Compile Include="Loggers\Logger\TraceWriter\LoggerTraceWriter.cs" />
     <Compile Include="Loggers\TraceEventExtensions.cs" />
+    <Compile Include="Exceptions\FunctionException.cs" />
     <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
     <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
     <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
@@ -422,13 +528,15 @@
     <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />
     <Compile Include="Blobs\Listeners\ContainerScanInfo.cs" />
     <Compile Include="Blobs\Listeners\ScanBlobScanLogHybridPollingStrategy.cs" />
-    <Compile Include="Bindings\AsyncCollector\AsyncCollectorBinding.cs" />
     <Compile Include="Config\ExtensionConfigContextExtensions.cs" />
     <Compile Include="Storage\IStorageAccountExtensions.cs" />
     <Compile Include="Storage\StorageAccountType.cs" />
     <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
     <Compile Include="Bindings\ODataFilterResolutionPolicy.cs" />
+    <Compile Include="Tables\TableExtension.cs" />
+    <Compile Include="Storage\StorageAccountTypeExtensions.cs" />
     <Compile Include="Tables\TableFilterFormatter.cs" />
+    <Compile Include="Listeners\FunctionListenerException.cs" />
     <Compile Include="Triggers\StrategyTriggerBinding.cs" />
     <Compile Include="Bindings\ConstantValueProvider.cs" />
     <Compile Include="Bindings\ConverterManager.cs" />
@@ -460,7 +568,6 @@
     <Compile Include="Executors\FunctionInvokerFactory.cs" />
     <Compile Include="Executors\FunctionResult.cs" />
     <Compile Include="Executors\IFunctionInvoker.cs" />
-    <Compile Include="Executors\IJobHostContextFactory.cs" />
     <Compile Include="Executors\ActivatorInstanceFactory.cs" />
     <Compile Include="Executors\ITriggeredFunctionExecutor.cs" />
     <Compile Include="Executors\NullInstanceFactory.cs" />
@@ -646,7 +753,7 @@
     <Compile Include="Executors\DefaultStorageCredentialsValidator.cs" />
     <Compile Include="Executors\IStorageCredentialsValidator.cs" />
     <Compile Include="Executors\JobHostContext.cs" />
-    <Compile Include="Executors\JobHostContextFactory.cs" />
+    <Compile Include="Executors\JobHostConfigurationExtensions.cs" />
     <Compile Include="Indexers\IFunctionIndex.cs" />
     <Compile Include="Indexers\IFunctionIndexLookup.cs" />
     <Compile Include="Indexers\FunctionIndex.cs" />
@@ -776,7 +883,7 @@
     <Compile Include="Listeners\IListenerFactory.cs" />
     <Compile Include="Queues\Listeners\QueueListener.cs" />
     <Compile Include="Listeners\TimerListener.cs" />
-    <Compile Include="Executors\ExceptionExtensions.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Executors\IFunctionExecutor.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />

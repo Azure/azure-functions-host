@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -24,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _poisonQueue;
         private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
-        private readonly TraceWriter _trace;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IWebJobsExceptionHandler exceptionHandler,
             TraceWriter trace,
+            ILoggerFactory loggerFactory,
             SharedQueueWatcher sharedWatcher,
             IQueueConfiguration queueConfiguration,
             QueueProcessor queueProcessor = null,
@@ -71,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
             _exceptionHandler = exceptionHandler;
-            _trace = trace;
             _queueConfiguration = queueConfiguration;
 
             // if the function runs longer than this, the invisibility will be updated
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             EventHandler<PoisonMessageEventArgs> poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler<PoisonMessageEventArgs>)null;
             _queueProcessor = queueProcessor ?? CreateQueueProcessor(
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
-                _trace, _queueConfiguration, poisonMessageEventHandler);
+                trace, loggerFactory, _queueConfiguration, poisonMessageEventHandler);
 
             TimeSpan maximumInterval = _queueProcessor.MaxPollingInterval;
             if (maxPollingInterval.HasValue && maximumInterval > maxPollingInterval.Value)
@@ -142,12 +142,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _stopWaitingTaskSource = new TaskCompletionSource<object>();
             }
 
-            if (!await _queue.ExistsAsync(cancellationToken))
-            {
-                // Back off when no message is available.
-                return CreateBackoffResult();
-            }
-
             IEnumerable<IStorageQueueMessage> batch;
             try
             {
@@ -163,7 +157,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                     exception.IsConflictQueueBeingDeletedOrDisabled() ||
                     exception.IsServerSideError())
                 {
-                    // Back off when no message is available.
+                    // Back off when no message is available, or when
+                    // transient errors occur
                     return CreateBackoffResult();
                 }
                 else
@@ -178,8 +173,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
 
             bool foundMessage = false;
-
-            foreach (IStorageQueueMessage message in batch)
+            foreach (var message in batch)
             {
                 if (message == null)
                 {
@@ -309,9 +303,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TraceWriter trace, IQueueConfiguration queueConfig, EventHandler<PoisonMessageEventArgs> poisonQueueMessageAddedHandler)
+        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TraceWriter trace, ILoggerFactory loggerFactory,
+            IQueueConfiguration queueConfig, EventHandler<PoisonMessageEventArgs> poisonQueueMessageAddedHandler)
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, queueConfig, poisonQueue);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, loggerFactory, queueConfig, poisonQueue);
 
             QueueProcessor queueProcessor = null;
             if (HostQueueNames.IsHostQueue(queue.Name) &&

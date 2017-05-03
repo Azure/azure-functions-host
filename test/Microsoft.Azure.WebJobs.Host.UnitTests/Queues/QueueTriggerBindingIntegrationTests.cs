@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding,
                 new Mock<IQueueConfiguration>(MockBehavior.Strict).Object, exceptionHandler,
                 new Mock<IContextSetter<IMessageEnqueuedWatcher>>(MockBehavior.Strict).Object,
-                new SharedContextProvider(), new TestTraceWriter(TraceLevel.Verbose));
+                new SharedContextProvider(), new TestTraceWriter(TraceLevel.Verbose), null);
         }
 
         [Theory]

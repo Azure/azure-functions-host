@@ -16,6 +16,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
+        public void GetSettingFromConfigOrEnvironment_NameNull_ReturnsEmpty()
+        {
+            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(null);
+            Assert.Equal(null, value);
+        }
+
+        [Fact]
         public void GetSettingFromConfigOrEnvironment_ConfigSetting_NoEnvironmentSetting()
         {
             string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment("DisableSetting0");

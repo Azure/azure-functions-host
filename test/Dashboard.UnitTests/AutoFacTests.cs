@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Dashboard.UnitTests
 {
+    [Trait("SecretsRequired", "true")]
     public class AutoFacTests
     {
         private const string FunctionLogTableAppSettingName = "AzureWebJobsLogTableName";

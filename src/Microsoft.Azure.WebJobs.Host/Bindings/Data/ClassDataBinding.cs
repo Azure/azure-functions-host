@@ -53,24 +53,19 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
                 throw new ArgumentNullException("context");
             }
 
-            IReadOnlyDictionary<string, object> bindingData = context.BindingData;
-
+            var bindingData = context.BindingData;
             if (bindingData == null || !bindingData.ContainsKey(_parameterName))
             {
-                throw new InvalidOperationException(
-                    "Binding data does not contain expected value '" + _parameterName + "'.");
+                throw new InvalidOperationException($"Binding data does not contain expected value '{_parameterName}'.");
             }
 
             object untypedValue = bindingData[_parameterName];
-
             if (!(untypedValue is TBindingData))
             {
-                throw new InvalidOperationException("Binding data for '" + _parameterName +
-                    "' is not of expected type " + typeof(TBindingData).Name + ".");
+                throw new InvalidOperationException($"Binding data for '{_parameterName}' is not of expected type {typeof(TBindingData).Name}.");
             }
 
-            TBindingData typedValue = (TBindingData)untypedValue;
-            return BindAsync(typedValue, context.ValueContext);
+            return BindAsync((TBindingData)untypedValue, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()
