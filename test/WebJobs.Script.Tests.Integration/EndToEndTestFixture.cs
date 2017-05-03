@@ -7,6 +7,7 @@ using System.Linq;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
@@ -46,13 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
+            EventManagerMock = new Mock<IScriptEventManager>();
             ScriptHostEnvironmentMock = new Mock<IScriptHostEnvironment>();
 
             // Reset the timer logs first, since one of the tests will
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
-            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, config, _settingsManager);
+            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManagerMock.Object, config, _settingsManager);
             Host.Start();
         }
 
@@ -83,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string FixtureId { get; private set; }
 
         public HttpConfiguration RequestConfiguration { get; }
+
+        public Mock<IScriptEventManager> EventManagerMock { get; }
 
         public CloudQueue GetNewQueue(string queueName)
         {

@@ -15,6 +15,7 @@ using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
@@ -115,8 +116,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null);
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
+            var mockEventManager = new Mock<IScriptEventManager>();
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,  _settingsManager, webHostSettings);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -157,14 +159,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
 
+            var mockEventManager = new Mock<IScriptEventManager>();
             var factoryMock = new Mock<IScriptHostFactory>();
             int count = 0;
-            factoryMock.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), _settingsManager, config)).Callback(() =>
+            factoryMock.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, config)).Callback(() =>
             {
                 count++;
             }).Throws(new Exception("Kaboom!"));
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings, factoryMock.Object);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
+                _settingsManager, webHostSettings, factoryMock.Object);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -273,7 +277,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
-            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
+            var mockEventManager = new Mock<IScriptEventManager>();
+            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
 
@@ -343,7 +348,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var hostConfig = config.HostConfig;
                 var testEventGenerator = new TestSystemEventGenerator();
                 hostConfig.AddService<IEventGenerator>(EventGenerator);
-                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), _settingsManager, webHostSettings);
+                var mockEventManager = new Mock<IScriptEventManager>();
+                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings);
                 HostManager = mockHostManager;
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 

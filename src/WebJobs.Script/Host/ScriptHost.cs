@@ -13,7 +13,6 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
@@ -62,7 +62,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
 
-        protected internal ScriptHost(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+        protected internal ScriptHost(IScriptHostEnvironment environment,
+            IScriptEventManager eventManager,
+            ScriptHostConfiguration scriptConfig = null,
+            ScriptSettingsManager settingsManager = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -71,13 +74,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
             }
             ScriptConfig = scriptConfig;
-
             _scriptHostEnvironment = environment;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 #if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
 #endif
             TraceWriter = ScriptConfig.TraceWriter;
+            EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
         }
@@ -99,6 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 return _instanceId;
             }
         }
+
+        public IScriptEventManager EventManager { get; }
 
         public TraceWriter TraceWriter { get; internal set; }
 
@@ -671,9 +676,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static ScriptHost Create(IScriptHostEnvironment environment, ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+        public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
         {
-            ScriptHost scriptHost = new ScriptHost(environment, scriptConfig, settingsManager);
+            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager);
             try
             {
                 scriptHost.Initialize();

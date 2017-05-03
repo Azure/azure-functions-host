@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -188,7 +190,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class MockScriptHostManager : ScriptHostManager
         {
-            public MockScriptHostManager(ScriptHostConfiguration config) : base(config)
+            public MockScriptHostManager(ScriptHostConfiguration config)
+                : base(config, new Mock<IScriptEventManager>().Object)
+            {
+            }
+
+            public MockScriptHostManager(ScriptHostConfiguration config, IScriptEventManager eventManager)
+                : base(config, eventManager)
             {
             }
 

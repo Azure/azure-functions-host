@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Moq;
 using Xunit;
 
@@ -25,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var config = new ScriptHostConfiguration();
             config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
-            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), config, null });
+            var eventManager = new Mock<IScriptEventManager>();
+            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), eventManager.Object, config, null });
             hostMock.Object.TraceWriter = _traceWriter;
 
             var metadata = new FunctionMetadata

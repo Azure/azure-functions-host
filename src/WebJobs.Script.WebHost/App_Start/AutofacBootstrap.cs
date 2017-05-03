@@ -5,6 +5,7 @@ using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using Microsoft.Extensions.Logging;
 
@@ -18,9 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             builder.RegisterType<WebHostResolver>().SingleInstance();
 
+            builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
+            builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
+
             // these services are externally owned by the WebHostResolver, and will be disposed
             // when the resolver is disposed
-            builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.Register<TraceWriter>(ct => ct.ResolveOptional<WebScriptHostManager>()?.Instance?.TraceWriter ?? NullTraceWriter.Instance).ExternallyOwned();
             builder.Register<ISecretManager>(ct => ct.Resolve<WebHostResolver>().GetSecretManager(settings)).ExternallyOwned();
             builder.Register<ISwaggerDocumentManager>(ct => ct.Resolve<WebHostResolver>().GetSwaggerDocumentManager(settings)).ExternallyOwned();

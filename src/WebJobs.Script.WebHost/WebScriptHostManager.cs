@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -50,8 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private HttpRouteCollection _httpRoutes;
         private HttpRequestManager _httpRequestManager;
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory = null, ISecretsRepositoryFactory secretsRepositoryFactory = null)
-            : base(config, settingsManager, scriptHostFactory)
+        public WebScriptHostManager(ScriptHostConfiguration config,
+            ISecretManagerFactory secretManagerFactory,
+            IScriptEventManager eventManager,
+            ScriptSettingsManager settingsManager,
+            WebHostSettings webHostSettings,
+            IScriptHostFactory scriptHostFactory = null,
+            ISecretsRepositoryFactory secretsRepositoryFactory = null)
+            : base(config, settingsManager, scriptHostFactory, eventManager)
         {
             _config = config;
             _metricsLogger = new WebHostMetricsLogger();
@@ -82,13 +89,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, IScriptHostFactory scriptHostFactory)
-            : this(config, secretManagerFactory, settingsManager, webHostSettings, scriptHostFactory, new DefaultSecretsRepositoryFactory())
+        public WebScriptHostManager(ScriptHostConfiguration config,
+            ISecretManagerFactory secretManagerFactory,
+            IScriptEventManager eventManager,
+            ScriptSettingsManager settingsManager,
+            WebHostSettings webHostSettings,
+            IScriptHostFactory scriptHostFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, scriptHostFactory, new DefaultSecretsRepositoryFactory())
         {
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config, ISecretManagerFactory secretManagerFactory, ScriptSettingsManager settingsManager, WebHostSettings webHostSettings)
-            : this(config, secretManagerFactory, settingsManager, webHostSettings, new ScriptHostFactory())
+        public WebScriptHostManager(ScriptHostConfiguration config,
+            ISecretManagerFactory secretManagerFactory,
+            IScriptEventManager eventManager,
+            ScriptSettingsManager settingsManager,
+            WebHostSettings webHostSettings)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, new ScriptHostFactory())
         {
         }
 
@@ -192,11 +208,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         if (!_webHostSettings.IsSelfHost)
                         {
-                            HostingEnvironment.QueueBackgroundWorkItem((ct) => WarmUp(_webHostSettings));
+                            HostingEnvironment.QueueBackgroundWorkItem((ct) => WarmUp(_webHostSettings, EventManager));
                         }
                         else
                         {
-                            Task.Run(() => WarmUp(_webHostSettings));
+                            Task.Run(() => WarmUp(_webHostSettings, EventManager));
                         }
 
                         _warmupComplete = true;
@@ -218,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static void WarmUp(WebHostSettings settings)
+        public static void WarmUp(WebHostSettings settings, IScriptEventManager eventManager)
         {
             var traceWriter = new FileTraceWriter(Path.Combine(settings.LogPath, "Host"), TraceLevel.Info);
             ScriptHost host = null;
@@ -265,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.HostConfig.StorageConnectionString = null;
                 config.HostConfig.DashboardConnectionString = null;
 
-                host = ScriptHost.Create(new NullScriptHostEnvironment(), config, ScriptSettingsManager.Instance);
+                host = ScriptHost.Create(new NullScriptHostEnvironment(), eventManager, config, ScriptSettingsManager.Instance);
                 traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
 
                 host.Start();

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -250,8 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
-
-            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), scriptHostConfiguration, null);
+            var eventManager = new Mock<IScriptEventManager>();
+            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager.Object, scriptHostConfiguration, null);
             host.SetupGet(h => h.IsPrimary).Returns(true);
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 
@@ -46,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private AutoRecoveringFileSystemWatcher _scriptFileWatcher;
         private CancellationTokenSource _restartDelayTokenSource;
 
-        public ScriptHostManager(ScriptHostConfiguration config, IScriptHostEnvironment environment = null)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), environment)
+        public ScriptHostManager(ScriptHostConfiguration config, IScriptEventManager eventManager = null, IScriptHostEnvironment environment = null)
+            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment)
         {
             if (config.FileWatchingEnabled)
             {
@@ -56,13 +57,21 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public ScriptHostManager(ScriptHostConfiguration config, ScriptSettingsManager settingsManager, IScriptHostFactory scriptHostFactory, IScriptHostEnvironment environment = null)
+        public ScriptHostManager(ScriptHostConfiguration config,
+            ScriptSettingsManager settingsManager,
+            IScriptHostFactory scriptHostFactory,
+            IScriptEventManager eventManager = null,
+            IScriptHostEnvironment environment = null)
         {
             _environment = environment ?? this;
             _config = config;
             _settingsManager = settingsManager;
             _scriptHostFactory = scriptHostFactory;
+
+            EventManager = eventManager ?? new ScriptEventManager();
         }
+
+        protected IScriptEventManager EventManager { get; }
 
         public virtual ScriptHost Instance
         {
@@ -116,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         HostId = _config.HostConfig.HostId
                     };
                     OnInitializeConfig(_config);
-                    newInstance = _scriptHostFactory.Create(_environment, _settingsManager, _config);
+                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
                     _traceWriter = newInstance.TraceWriter;
                     _logger = newInstance.Logger;
 

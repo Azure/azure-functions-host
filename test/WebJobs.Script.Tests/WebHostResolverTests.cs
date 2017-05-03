@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Moq;
 using Xunit;
@@ -25,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 var settingsManager = new ScriptSettingsManager();
                 var secretManagerFactoryMock = new Mock<ISecretManagerFactory>();
-                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object);
+                var eventManagerMock = new Mock<IScriptEventManager>();
+                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object);
 
                 var settings = new WebHostSettings
                 {

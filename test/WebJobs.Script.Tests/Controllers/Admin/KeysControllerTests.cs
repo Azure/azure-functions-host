@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web.Http.Results;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -40,14 +41,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var config = new ScriptHostConfiguration();
             var environment = new NullScriptHostEnvironment();
-            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, config, null });
+            var eventManager = new Mock<IScriptEventManager>();
+            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null });
             _hostMock.Setup(p => p.Functions).Returns(_testFunctions);
             _hostMock.Setup(p => p.FunctionErrors).Returns(_testFunctionErrors);
 
             WebHostSettings settings = new WebHostSettings();
             settings.SecretsPath = _secretsDirectory.Path;
             _secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(_secretsManagerMock.Object), _settingsManager, settings });
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(_secretsManagerMock.Object), eventManager.Object, _settingsManager, settings });
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
 
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);

@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static object _syncLock = new object();
 
         private readonly ISecretManagerFactory _secretManagerFactory;
+        private readonly IScriptEventManager _eventManager;
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
         private WebHookReceiverManager _standbyReceiverManager;
@@ -28,10 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static ScriptSettingsManager _settingsManager;
 
-        public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory)
+        public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory, IScriptEventManager eventManager)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
+            _eventManager = eventManager;
         }
 
         public ISwaggerDocumentManager GetSwaggerDocumentManager(WebHostSettings settings)
@@ -111,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
+                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
 
                     _standbyHostManager?.Dispose();
@@ -129,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _settingsManager, settings);
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
                 }
             }

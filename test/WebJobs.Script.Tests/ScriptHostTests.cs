@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -371,10 +372,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                ScriptHost.Create(environment.Object, scriptConfig, _settingsManager);
+                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
             });
 
             Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
@@ -407,7 +409,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootScriptPath = rootPath
                 };
                 var environment = new Mock<IScriptHostEnvironment>();
-                var scriptHost = ScriptHost.Create(environment.Object, scriptConfig, _settingsManager);
+                var eventManager = new Mock<IScriptEventManager>();
+
+                var scriptHost = ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
 
                 Assert.Equal(1, scriptHost.FunctionErrors.Count);
                 Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
@@ -1187,8 +1191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostConfiguration();
-
-            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, config, null });
+            var eventManager = new Mock<IScriptEventManager>();
+            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null });
 
             var functions = new Collection<FunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();
@@ -1229,7 +1233,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
                 var environment = new Mock<IScriptHostEnvironment>();
-                Host = ScriptHost.Create(environment.Object, config);
+                var eventManager = new Mock<IScriptEventManager>();
+                Host = ScriptHost.Create(environment.Object, eventManager.Object, config);
             }
 
             public ScriptHost Host { get; private set; }

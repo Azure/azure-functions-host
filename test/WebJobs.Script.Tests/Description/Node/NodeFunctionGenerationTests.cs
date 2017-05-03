@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.ServiceBus.Messaging;
 using Moq;
@@ -222,14 +223,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functions.Add(metadata);
 
             var environment = new Mock<IScriptHostEnvironment>();
-
+            var eventManager = new Mock<IScriptEventManager>();
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath
             };
 
             Collection<FunctionDescriptor> functionDescriptors = null;
-            using (ScriptHost host = ScriptHost.Create(environment.Object, scriptConfig, SettingsManager))
+            using (ScriptHost host = ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, SettingsManager))
             {
                 FunctionDescriptorProvider[] descriptorProviders = new FunctionDescriptorProvider[]
                 {

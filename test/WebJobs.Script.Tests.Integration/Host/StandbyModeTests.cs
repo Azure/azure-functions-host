@@ -5,7 +5,9 @@ using System;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -19,7 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public StandbyModeTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false));
+            var eventManagerMock = new Mock<IScriptEventManager>();
+
+            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object);
         }
 
         [Fact]
@@ -122,7 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (new TestEnvironment())
             {
                 var settings = GetWebHostSettings();
-                WebScriptHostManager.WarmUp(settings);
+                var eventManagerMock = new Mock<IScriptEventManager>();
+                WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
 
                 var hostLogPath = Path.Combine(settings.LogPath, @"host");
                 var hostLogFile = Directory.GetFiles(hostLogPath).First();

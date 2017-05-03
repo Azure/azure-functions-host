@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
@@ -38,10 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
+            var eventManagerMock = new Mock<IScriptEventManager>();
 
             ExceptionDispatchInfo exception = null;
 
-            using (var manager = new ScriptHostManager(config))
+            using (var manager = new ScriptHostManager(config, eventManagerMock.Object))
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
@@ -109,8 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
 
             ExceptionDispatchInfo exception = null;
-
-            using (var manager = new ScriptHostManager(config))
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            using (var manager = new ScriptHostManager(config, eventManagerMock.Object))
             {
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
@@ -191,12 +193,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), config, null);
+            var eventManager = new Mock<IScriptEventManager>();
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), _settingsManager, It.IsAny<ScriptHostConfiguration>()))
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, new NullScriptHostEnvironment());
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment());
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
@@ -221,7 +224,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Throw = true
             };
-            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory);
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object);
             Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
 
             // we expect a host exception immediately
@@ -266,7 +270,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always
             };
-            ScriptHostManager hostManager = new ScriptHostManager(config);
+
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            ScriptHostManager hostManager = new ScriptHostManager(config, eventManagerMock.Object);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -307,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public bool Throw { get; set; }
 
-            public ScriptHost Create(IScriptHostEnvironment environment, ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
+            public ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager, ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
             {
                 if (Throw)
                 {
@@ -321,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>(), It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return ScriptHost.Create(environment, config, settingsManager);
+                return ScriptHost.Create(environment, eventManager, config, settingsManager);
             }
         }
     }
