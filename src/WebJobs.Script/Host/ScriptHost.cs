@@ -25,6 +25,8 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -525,9 +527,11 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrEmpty(instrumentationKey))
             {
                 metrics.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
-                ScriptTelemetryClientFactory factory = new ScriptTelemetryClientFactory();
-                scriptConfig.HostConfig.LoggerFactory
-                    .AddApplicationInsights(instrumentationKey, scriptConfig.LogFilter.Filter, factory, scriptConfig.ApplicationInsightsSamplingSettings);
+
+                ITelemetryClientFactory factory = scriptConfig.HostConfig.GetService<ITelemetryClientFactory>() ??
+                    new ScriptTelemetryClientFactory(instrumentationKey, scriptConfig.ApplicationInsightsSamplingSettings);
+
+                scriptConfig.HostConfig.LoggerFactory.AddApplicationInsights(factory, scriptConfig.LogFilter.Filter);
             }
         }
 

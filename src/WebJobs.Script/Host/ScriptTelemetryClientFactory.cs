@@ -4,19 +4,23 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
     /// <summary>
     /// Overrides the default client creation by adding a custom SdkVersion for backend tracking.
     /// </summary>
-    internal class ScriptTelemetryClientFactory : ITelemetryClientFactory
+    internal class ScriptTelemetryClientFactory : DefaultTelemetryClientFactory
     {
-        public TelemetryClient Create(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings)
+        public ScriptTelemetryClientFactory(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings)
+            : base(instrumentationKey, samplingSettings)
         {
-            ITelemetryClientFactory defaultFactory = new DefaultTelemetryClientFactory();
-            TelemetryClient client = defaultFactory.Create(instrumentationKey, samplingSettings);
+        }
+
+        public override TelemetryClient Create()
+        {
+            TelemetryClient client = base.Create();
 
             string assemblyVersion = ScriptHost.GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
             client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {assemblyVersion}";

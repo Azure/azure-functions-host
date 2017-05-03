@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public static class TestHelpers
     {
         /// <summary>
-        /// Common root directory that functions tests create temporary directories under.
+        /// Gets the common root directory that functions tests create temporary directories under.
         /// This enables us to clean up test files by deleting this single directory.
         /// </summary>
         public static string FunctionsTestDirectory
