@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
         private static Lazy<Task> _initializer = new Lazy<Task>(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+        private static ILogger _consoleLogger;
 
         static NodeFunctionInvoker()
         {
@@ -77,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _functionLoader = new FunctionLoader<ScriptFunc>(CreateFunctionTarget);
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            _consoleLogger = _consoleLogger ?? Host.ScriptConfig.HostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostNodeConsoleLogs);
 
             _reloadScript = ReloadScriptAsync;
             _reloadScript = _reloadScript.Debounce();
@@ -725,9 +728,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
                 return Task.FromResult<object>(null);
             });
+
+            var console = (Func<object, Task<object>>)(msg =>
+            {
+                _consoleLogger?.LogDebug((string)msg);
+                return Task.FromResult<object>(null);
+            });
+
             var context = new Dictionary<string, object>()
             {
-                { "handleUncaughtException", handle }
+                { "handleUncaughtException", handle },
+                { "console", console }
             };
 
             await GlobalInitializationFunc(context);

@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
     public abstract class ScriptBindingProvider
     {
         /// <summary>
-        /// Constructs a new instance.
+        /// Initializes a new instance of the <see cref="ScriptBindingProvider"/> class.
         /// </summary>
         /// <param name="config">The <see cref="JobHostConfiguration"/>.</param>
         /// <param name="hostMetadata">The host configuration metadata.</param>

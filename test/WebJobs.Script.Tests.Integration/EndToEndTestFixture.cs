@@ -40,8 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath,
                 TraceWriter = TraceWriter,
-                FileLoggingMode = FileLoggingMode.Always
+                FileLoggingMode = FileLoggingMode.Always,
             };
+
+            config.LogFilter.DefaultLevel = Microsoft.Extensions.Logging.LogLevel.Debug; // CategoryLevels.Add(ScriptConstants.LogCategoryHostNodeFunctionInvoker, Microsoft.Extensions.Logging.LogLevel.Debug);
+            config.HostConfig.Tracing.ConsoleLevel = TraceLevel.Verbose;
 
             RequestConfiguration = new HttpConfiguration();
             RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());

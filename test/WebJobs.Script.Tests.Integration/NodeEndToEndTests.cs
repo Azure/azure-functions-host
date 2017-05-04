@@ -1215,6 +1215,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, array[1]);
         }
 
+        [Fact]
+        public async Task ConsoleLog_Capturing()
+        {
+            TestHelpers.ClearCategoryLogs(ScriptConstants.LogCategoryHostNodeConsoleLogs);
+
+            JObject input = new JObject
+            {
+                { "scenario", "consoleLog" }
+            };
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", input.ToString() }
+            };
+
+            await Fixture.Host.CallAsync("Scenarios", arguments);
+            await Task.Delay(1000);
+
+            var logs = await TestHelpers.GetCategoryLogsAsync(ScriptConstants.LogCategoryHostNodeConsoleLogs);
+            Assert.Contains(logs, (log) => log.Contains("console.log"));
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() : base(@"TestScripts\Node", "node")

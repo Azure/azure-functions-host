@@ -329,4 +329,28 @@ describe('functions', () => {
             });
         });
     });
+
+    describe('global init', (done) => {
+        it('captures stdout and stderr if context.console', () => {
+            var stdo = process.stdout;
+            var stde = process.stderr;
+
+            var logs = [];
+            var console = (log) => logs.push(log);
+            var context = {
+                console: console,
+                unauthorizedException: () => { }
+            }
+
+            var func = functions.globalInitialization(context, () => {
+                process.stdout.write("stdout");
+                process.stderr.write("stderr");
+                process.stdout = stdo;
+                process.stderr = stde;
+
+                expect(logs[0]).to.equal("stdout");
+                expect(logs[1]).to.equal("stderr");
+            });
+        });
+    });
 });
