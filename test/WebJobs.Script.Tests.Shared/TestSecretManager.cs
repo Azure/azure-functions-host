@@ -40,6 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     { "HostKey1", "HostValue1" },
                     { "HostKey2", "HostValue2" },
+                },
+                SystemKeys = new Dictionary<string, string>
+                {
+                    { "SystemKey1", "HostValue1" },
+                    { "SystemKey2", "HostValue2" },
                 }
             });
         }
