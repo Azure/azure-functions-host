@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public Dictionary<string, string> TestFunctionKeys { get; set; }
 
+        public Dictionary<string, string> TestSystemKeys { get; set; }
+
         public Mock<TestSecretManager> SecretManagerMock { get; set; }
 
         public virtual string TestKeyScope => _testFunctionName;

@@ -40,12 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/keys")]
         public async Task<IHttpActionResult> Get(string name)
         {
-            if (!_scriptHostManager.Instance.IsFunction(name))
-            {
-                return NotFound();
-            }
-
-            var functionKeys = await _secretManager.GetFunctionSecretsAsync(name);
+            IDictionary<string, string> functionKeys = await GetFunctionKeys(name);
             return GetKeysResult(functionKeys);
         }
 
@@ -57,6 +52,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope);
             return GetKeysResult(keys);
+        }
+
+        [HttpGet]
+        [Route("admin/functions/{functionName}/keys/{name}")]
+        public async Task<IHttpActionResult> Get(string functionName, string name)
+        {
+            IDictionary<string, string> functionKeys = await GetFunctionKeys(functionName);
+            if (functionKeys.TryGetValue(name, out string keyValue))
+            {
+                var keyResponse = ApiModelUtility.CreateApiModel(new { name = name, value = keyValue }, Request);
+                return Ok(keyResponse);
+            }
+
+            return NotFound();
+        }
+
+        [HttpGet]
+        [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{name}")]
+        public async Task<IHttpActionResult> GetHostKey(string name)
+        {
+            string hostKeyScope = GetHostKeyScopeForRequest();
+
+            Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope, true);
+
+            string keyValue = null;
+            if (keys?.TryGetValue(name, out keyValue) ?? false)
+            {
+                var keyResponse = ApiModelUtility.CreateApiModel(new { name = name, value = keyValue }, Request);
+                return Ok(keyResponse);
+            }
+
+            return NotFound();
+        }
+
+        private async Task<IDictionary<string, string>> GetFunctionKeys(string functionName)
+        {
+            if (!_scriptHostManager.Instance.IsFunction(functionName))
+            {
+                throw new HttpResponseException(HttpStatusCode.NotFound);
+            }
+
+            return await _secretManager.GetFunctionSecretsAsync(functionName);
         }
 
         [HttpPost]
@@ -160,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
-        private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope)
+        private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
         {
             var hostSecrets = await _secretManager.GetHostSecretsAsync();
 
@@ -170,7 +207,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (string.Equals(secretsScope, HostKeyScopes.SystemKeys, StringComparison.OrdinalIgnoreCase))
             {
-                return hostSecrets.SystemKeys;
+                Dictionary<string, string> keys = hostSecrets.SystemKeys ?? new Dictionary<string, string>();
+
+                if (includeMasterInSystemKeys)
+                {
+                    keys.Add(MasterKeyName, hostSecrets.MasterKey);
+                }
+
+                return keys;
             }
 
             return null;
