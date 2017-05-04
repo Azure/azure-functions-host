@@ -211,7 +211,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
                 if (includeMasterInSystemKeys)
                 {
-                    keys.Add(MasterKeyName, hostSecrets.MasterKey);
+                    keys = new Dictionary<string, string>(keys)
+                    {
+                        { MasterKeyName, hostSecrets.MasterKey }
+                    };
                 }
 
                 return keys;
