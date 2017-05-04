@@ -8,6 +8,8 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
@@ -47,6 +49,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private CloudStorageAccount _storageAccount;
         private RandomNameResolver _resolver;
         private static object TestResult;
+
+        private static string _lastMessageId;
+        private static string _lastMessagePopReceipt;
 
         public AzureStorageEndToEndTests(TestFixture fixture)
         {
@@ -321,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             // - trigger BadMessage_CloudQueueMessage, which will put it into a second queue that will
             // - trigger BadMessage_String, which should fail
             // - BadMessage_String should fail repeatedly until it is moved to the poison queue
-            // The test will watch that poison queue to know when to complete            
+            // The test will watch that poison queue to know when to complete
 
             // Reinitialize the name resolver to avoid conflicts
             _resolver = new RandomNameResolver();
@@ -333,6 +338,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     this.GetType(),
                     typeof(BlobToCustomObjectBinder))
             };
+
+            // use a custom processor so we can grab the Id and PopReceipt
+            hostConfig.Queues.QueueProcessorFactory = new TestQueueProcessorFactory();
+
             var tracer = new TestTraceWriter(TraceLevel.Verbose);
             hostConfig.Tracing.Tracers.Add(tracer);
 
@@ -372,6 +381,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 {
                     poisonMessage = poisonQueue.GetMessage();
                     done = poisonMessage != null;
+
+                    if (done)
+                    {
+                        // Sleep briefly, then make sure the other message has been deleted.
+                        // If so, trying to delete it again will throw an error.
+                        Thread.Sleep(1000);
+
+                        // The message is in the second queue
+                        var queue2 = queueClient.GetQueueReference(_resolver.ResolveInString(BadMessageQueue2));
+
+                        StorageException ex = Assert.Throws<StorageException>(
+                            () => queue2.DeleteMessage(_lastMessageId, _lastMessagePopReceipt));
+                        Assert.Equal("MessageNotFound", ex.RequestInformation.ExtendedErrorInformation.ErrorCode);
+                    }
                 }
                 return done;
             });
@@ -478,6 +501,30 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public int Age { get; set; }
             public string Location { get; set; }
             public string Name { get; set; }
+        }
+
+        private class TestQueueProcessorFactory : IQueueProcessorFactory
+        {
+            public QueueProcessor Create(QueueProcessorFactoryContext context)
+            {
+                return new TestQueueProcessor(context);
+            }
+        }
+
+        private class TestQueueProcessor : QueueProcessor
+        {
+            public TestQueueProcessor(QueueProcessorFactoryContext context)
+                : base(context)
+            {
+            }
+
+            public override Task<bool> BeginProcessingMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+            {
+                _lastMessageId = message.Id;
+                _lastMessagePopReceipt = message.PopReceipt;
+
+                return base.BeginProcessingMessageAsync(message, cancellationToken);
+            }
         }
 
         public class TestFixture : IDisposable
