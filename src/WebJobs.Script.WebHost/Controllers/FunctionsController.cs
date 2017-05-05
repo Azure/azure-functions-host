@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             if (isWebHook)
             {
-                if (authorizationLevel == AuthorizationLevel.Admin)
+                if (request.HasAuthorizationLevel(AuthorizationLevel.Admin))
                 {
                     // Admin level requests bypass the WebHook auth pipeline
                     response = await _scriptHostManager.HandleRequestAsync(function, request, cancellationToken);
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             else
             {
                 // Authorize
-                if (authorizationLevel < httpTrigger.AuthLevel)
+                if (!request.HasAuthorizationLevel(httpTrigger.AuthLevel))
                 {
                     return new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 }

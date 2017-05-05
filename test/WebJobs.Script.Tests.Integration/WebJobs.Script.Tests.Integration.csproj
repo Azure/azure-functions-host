@@ -396,7 +396,7 @@
     <Compile Include="Controllers\Keys\GetHostMasterKeyScenario.cs" />
     <Compile Include="Controllers\Keys\GetHostSystemKeyScenario.cs" />
     <Compile Include="Controllers\Keys\GetHostSystemKeysScenario.cs" />
-    <Compile Include="Controllers\Keys\GetHostStatusWithAuthDisabledScenario.cs" />
+    <Compile Include="Controllers\Keys\AuthDisabledScenario.cs" />
     <Compile Include="Controllers\Keys\PostFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\PostHostSystemKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PutFunctionKeysScenario.cs" />

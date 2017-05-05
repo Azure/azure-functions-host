@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -108,6 +109,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("text/html", headers["Content-Type"]);
             Assert.Equal("form-data; name=\"fieldName\"; filename=\"filename.jpg\"", headers["Content-Disposition"]);
             Assert.Equal("bytes 200-1000/67589", headers["Content-Range"]);
+        }
+
+        [Fact]
+        public void IsAuthDisabled_ReturnsExpectedValue()
+        {
+            var request = new HttpRequestMessage();
+            Assert.False(request.IsAuthDisabled());
+
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, false);
+            Assert.False(request.IsAuthDisabled());
+
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
+            Assert.True(request.IsAuthDisabled());
+        }
+
+        [Fact]
+        public void HasAuthorizationLevel_ReturnsExpectedValue()
+        {
+            var request = new HttpRequestMessage();
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+
+            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
+            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Function);
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+
+            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Admin);
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
+            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
+            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
         }
     }
 }
