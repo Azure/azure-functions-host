@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -17,7 +19,20 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             _filter = filter;
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _config, _filter);
+        public ILogger CreateLogger(string categoryName)
+        {
+            switch (categoryName)
+            {
+                case ScriptConstants.LogCategoryHostNodeConsoleLogs:
+                    return new FileLogger(categoryName, _config, _filter, (ConcurrentDictionary<string, TraceWriter> cache) =>
+                    {
+                        return cache.GetOrAdd(categoryName, (cat) => new CategoryTraceWriterFactory(cat, _config).Create());
+                    });
+
+                default:
+                    return new FileLogger(categoryName, _config, _filter);
+            }
+        }
 
         public void Dispose()
         {

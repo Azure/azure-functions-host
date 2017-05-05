@@ -436,6 +436,7 @@
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
+    <Compile Include="Diagnostics\CategoryTraceWriterFactory.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />

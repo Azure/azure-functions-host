@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategorySwaggerController = "Host.Controllers.Swagger";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
+        public const string LogCategoryHostNodeConsoleLogs = "Host.NodeConsoleLogs";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters

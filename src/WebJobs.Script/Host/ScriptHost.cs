@@ -522,6 +522,9 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(scriptConfig,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
 
+            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(scriptConfig,
+                (category, level) => (category == ScriptConstants.LogCategoryHostNodeConsoleLogs) && isFileLoggingEnabled()));
+
             // Automatically register App Insights if the key is present
             string instrumentationKey = settingsManager?.GetSetting(ScriptConstants.AppInsightsInstrumentationKey);
             if (!string.IsNullOrEmpty(instrumentationKey))

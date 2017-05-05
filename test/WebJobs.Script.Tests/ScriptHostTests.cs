@@ -928,7 +928,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
 
-            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.First());
             Assert.Empty(metricsLogger.LoggedEvents);
         }
 
@@ -947,9 +947,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
 
-            Assert.Equal(2, loggerFactory.Providers.Count);
+            Assert.Equal(3, loggerFactory.Providers.Count);
 
-            Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+            Assert.Equal(2, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
 
             // The app insights logger is internal, so just check the name
             ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();

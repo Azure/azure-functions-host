@@ -44,6 +44,10 @@ var assert = require('assert');
 
         context.done();
     }
+    else if (scenario === 'consoleLog') {
+        console.log("console.log");
+        context.done();
+    }
     else if (scenario === 'bindingData') {
         var bindingData = context.bindingData;
 

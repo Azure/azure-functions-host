@@ -67,7 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static void ClearFunctionLogs(string functionName)
         {
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
+            ClearLogs(GetFunctionLogFileDirectory(functionName));
+        }
+
+        private static void ClearLogs(DirectoryInfo directory)
+        {
             if (directory.Exists)
             {
                 foreach (var file in directory.GetFiles())
@@ -77,11 +81,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
+        public static void ClearCategoryLogs(string category)
+        {
+            ClearLogs(GetCategoryLogFileDirectory(category));
+        }
+
+        public static Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
+        {
+            return GetLogsAsync(GetFunctionLogFileDirectory(functionName), throwOnNoLogs);
+        }
+
+        public static Task<IList<string>> GetCategoryLogsAsync(string category, bool throwOnNoLogs = true)
+        {
+            return GetLogsAsync(GetCategoryLogFileDirectory(category), throwOnNoLogs);
+        }
+
+        private static async Task<IList<string>> GetLogsAsync(DirectoryInfo directory, bool throwOnNoLogs = true)
         {
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
-
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
             FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
 
             if (lastLogFile != null)
@@ -115,6 +132,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
             return new DirectoryInfo(functionLogsPath);
+        }
+
+        public static DirectoryInfo GetCategoryLogFileDirectory(string category)
+        {
+            string categoryLogPath = Path.Combine(Path.GetTempPath(), "Functions", category);
+            return new DirectoryInfo(categoryLogPath);
         }
 
         public static FunctionBinding CreateTestBinding(JObject json)

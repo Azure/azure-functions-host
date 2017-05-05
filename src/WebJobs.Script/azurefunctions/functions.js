@@ -16,6 +16,19 @@ function globalInitialization(context, callback) {
     process.on('uncaughtException', function (err) {
         context.handleUncaughtException(err.stack);
     });
+
+    var capture = (stream) => {
+        if (!stream._oldwrite) {
+            stream._oldwrite = stream.write;
+            stream.write = (...args) => {
+                context.console(args[0]);
+                stream._oldwrite(...args);
+            }
+        }
+    };
+    capture(process.stdout);
+    capture(process.stderr);
+
     callback();
 }
 
