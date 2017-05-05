@@ -410,14 +410,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // convert the request to a json object
             if (input is HttpRequestMessage request)
             {
-                (Dictionary<string, object> requestObject, string rawBody) = await CreateRequestObjectAsync(request).ConfigureAwait(false);
-
+                var requestObject = await CreateRequestObjectAsync(request).ConfigureAwait(false);
                 input = requestObject;
-
-                if (rawBody != null)
-                {
-                    requestObject["rawBody"] = rawBody;
-                }
 
                 // If this is a WebHook function, the input should be the
                 // request body
@@ -561,10 +555,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        private static async Task<(Dictionary<string, object> request, string rawBody)> CreateRequestObjectAsync(HttpRequestMessage request)
+        private static async Task<Dictionary<string, object>> CreateRequestObjectAsync(HttpRequestMessage request)
         {
-            string rawBody = null;
-
             // TODO: need to provide access to remaining request properties
             Dictionary<string, object> requestObject = new Dictionary<string, object>();
             requestObject["originalUrl"] = request.RequestUri.ToString();
@@ -577,6 +569,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             requestObject["headers"] = headers;
 
             // if the request includes a body, add it to the request object
+            string rawBody = null;
             if (request.Content != null && request.Content.Headers.ContentLength > 0)
             {
                 MediaTypeHeaderValue contentType = request.Content.Headers.ContentType;
@@ -617,7 +610,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 requestObject["params"] = routeData;
             }
 
-            return (requestObject, rawBody);
+            if (rawBody != null)
+            {
+                requestObject["rawBody"] = rawBody;
+            }
+
+            return requestObject;
         }
 
         /// <summary>
