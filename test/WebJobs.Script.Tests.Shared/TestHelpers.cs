@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 await Task.Delay(pollingInterval);
 
-                if ((DateTime.Now - start).TotalMilliseconds > timeout)
+                if (!Debugger.IsAttached && (DateTime.Now - start).TotalMilliseconds > timeout)
                 {
                     throw new ApplicationException("Condition not reached within timeout.");
                 }
