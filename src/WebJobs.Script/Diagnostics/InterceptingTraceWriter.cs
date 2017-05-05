@@ -7,25 +7,16 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public sealed class InterceptingTraceWriter : TraceWriter
+    public sealed class InterceptingTraceWriter : TraceWriter, IDisposable
     {
         private readonly Action<TraceEvent> _interceptor;
+        private bool _disposed = false;
 
         public InterceptingTraceWriter(TraceWriter innerWriter, Action<TraceEvent> interceptor)
             : base(innerWriter?.Level ?? TraceLevel.Off)
         {
-            if (innerWriter == null)
-            {
-                throw new ArgumentNullException(nameof(innerWriter));
-            }
-
-            if (interceptor == null)
-            {
-                throw new ArgumentNullException(nameof(interceptor));
-            }
-
-            InnerWriter = innerWriter;
-            _interceptor = interceptor;
+            InnerWriter = innerWriter ?? throw new ArgumentNullException(nameof(innerWriter));
+            _interceptor = interceptor ?? throw new ArgumentNullException(nameof(interceptor));
         }
 
         public TraceWriter InnerWriter { get; }
@@ -45,6 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             InnerWriter.Flush();
             base.Flush();
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                (InnerWriter as IDisposable)?.Dispose();
+                _disposed = true;
+            }
         }
     }
 }

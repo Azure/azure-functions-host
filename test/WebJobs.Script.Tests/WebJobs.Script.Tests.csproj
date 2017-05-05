@@ -474,6 +474,8 @@
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptionsTests.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
+    <Compile Include="Diagnostics\ConditionalTraceWriterTests.cs" />
+    <Compile Include="Diagnostics\InterceptingTraceWriterTests.cs" />
     <Compile Include="Filters\JwtAuthenticationAttributeTests.cs" />
     <Compile Include="Diagnostics\FastLoggerTests.cs" />
     <Compile Include="Filters\SystemLevelAuthorizationAttributeTests.cs" />

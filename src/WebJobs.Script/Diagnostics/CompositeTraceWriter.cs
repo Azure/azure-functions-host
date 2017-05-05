@@ -10,19 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     // TODO: The core WebJobs SDK also defines a CompositeTraceWriter, but that is internal.
     // We should consider exposing the core SDK CompositeTraceWriter and adopting that instead.
-    public class CompositeTraceWriter : TraceWriter
+    public class CompositeTraceWriter : TraceWriter, IDisposable
     {
         private readonly IEnumerable<TraceWriter> _innerTraceWriters;
+        private bool _disposed = false;
 
         public CompositeTraceWriter(IEnumerable<TraceWriter> traceWriters, TraceLevel level = TraceLevel.Verbose)
             : base(level)
         {
-            if (traceWriters == null)
-            {
-                throw new ArgumentNullException("traceWriters");
-            }
-
-            _innerTraceWriters = traceWriters;
+            _innerTraceWriters = traceWriters ?? throw new ArgumentNullException("traceWriters");
         }
 
         public override void Trace(TraceEvent traceEvent)
@@ -49,6 +45,28 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             base.Flush();
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    foreach (var traceWriter in _innerTraceWriters)
+                    {
+                        (traceWriter as IDisposable)?.Dispose();
+                    }
+                }
+
+                _disposed = true;
+            }
         }
     }
 }

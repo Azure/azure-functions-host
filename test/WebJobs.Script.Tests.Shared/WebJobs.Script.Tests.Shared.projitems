@@ -9,6 +9,7 @@
     <Import_RootNamespace>Microsoft.WebJobs.Script.Tests</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)DisposableTraceWriter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
