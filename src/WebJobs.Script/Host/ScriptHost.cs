@@ -1488,9 +1488,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (isDisabledValue != null)
             {
-                if (isDisabledValue.Type == JTokenType.Boolean && (bool)isDisabledValue)
+                if (isDisabledValue.Type == JTokenType.Boolean)
                 {
-                    return true;
+                    return (bool)isDisabledValue;
                 }
                 else
                 {
