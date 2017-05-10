@@ -244,6 +244,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         internal async Task ProcessMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
+            // These values may change if the message is inserted into another queue. We'll store them here and make sure
+            // the message always has the original values before we pass it to a customer-facing method.
+            string id = message.Id;
+            string popReceipt = message.PopReceipt;
+
             try
             {
                 if (!await _queueProcessor.BeginProcessingMessageAsync(message.SdkObject, cancellationToken))
@@ -260,6 +265,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
                     await timer.StopAsync(cancellationToken);
                 }
+
+                // TEMP: Re-evaluate these property updates when we update Storage SDK: https://github.com/Azure/azure-webjobs-sdk/issues/1144
+                message.SdkObject.UpdateChangedProperties(id, popReceipt);
 
                 await _queueProcessor.CompleteProcessingMessageAsync(message.SdkObject, result, cancellationToken);
             }

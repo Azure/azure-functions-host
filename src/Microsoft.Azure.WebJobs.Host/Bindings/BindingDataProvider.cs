@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             if (_bindingTemplateSource != null && value.GetType() == typeof(string))
             {
-               return _bindingTemplateSource.CreateBindingData((string)value);
+                return _bindingTemplateSource.CreateBindingData((string)value);
             }
             else
             {
@@ -107,10 +107,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 if (contract.ContainsKey(property.Name))
                 {
                     throw new InvalidOperationException(
-                        string.Format(CultureInfo.InvariantCulture, 
+                        string.Format(CultureInfo.InvariantCulture,
                         "Multiple properties named '{0}' found in type '{1}'.", property.Name, type.Name));
                 }
-                contract.Add(property.Name, property.PropertyType);
+                contract.Add(property.Name, property.Property.PropertyType);
             }
 
             return new BindingDataProvider(type, contract, bindingDataProperties);
