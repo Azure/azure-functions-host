@@ -9,7 +9,7 @@ module.exports = function (context, req) {
     }
 
     var res;
-    if (typeof req.query.name == 'undefined') {
+    if (typeof req.query.name === 'undefined') {
         res = {
             status: 400,
             body: "Please pass a name on the query string",
@@ -30,4 +30,4 @@ module.exports = function (context, req) {
     }
 
     context.done(null, res);
-}
+};

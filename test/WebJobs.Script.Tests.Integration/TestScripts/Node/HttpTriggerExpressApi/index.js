@@ -8,7 +8,7 @@ module.exports = function (context, req) {
             context.res.sendStatus(400);
             break;
 
-        default: 
+        default:
             context.res.status(200)
                 .set('test-req-header', context.req.get('test-header'))
                 .set('test-header', 'Test Response Header')
@@ -24,6 +24,4 @@ module.exports = function (context, req) {
                 });
             break;
     }
-
-    
-}
+};

@@ -319,6 +319,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Name: Mathew Charles, Location: Seattle", body);
         }
 
+        [Fact]
+        public async Task HttpTriggerToBlob()
+        {
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/HttpTriggerToBlob?suffix=TestSuffix"),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Add("Prefix", "TestPrefix");
+            request.Headers.Add("value", "TestValue");
+
+            var id = Guid.NewGuid().ToString();
+            var metadata = new JObject()
+            {
+                { "M1", "AAA" },
+                { "M2", "BBB" }
+            };
+            var input = new JObject()
+            {
+                { "Id", id },
+                { "Value", "TestInput" },
+                { "Metadata", metadata }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            var arguments = new Dictionary<string, object>
+            {
+                { "input", request },
+                { ScriptConstants.SystemTriggerParameterName, request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerToBlob", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            string expectedValue = $"TestInput{id}TestValue";
+            Assert.Equal(expectedValue, body);
+
+            // verify blob was written
+            string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
+            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
+            Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
+        }
+
         [Theory]
         [InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]

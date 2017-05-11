@@ -429,6 +429,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(customHeader, reqHeaders["custom-1"]);
         }
 
+        [Fact]
+        public async Task HttpTriggerToBlob()
+        {
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/HttpTriggerToBlob?suffix=TestSuffix"),
+                Method = HttpMethod.Post,
+            };
+            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Add("Prefix", "TestPrefix");
+            request.Headers.Add("value", "TestValue");
+
+            var id = Guid.NewGuid().ToString();
+            var input = new JObject()
+            {
+                { "id", id },
+                { "value", "TestInput" }
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var arguments = new Dictionary<string, object>
+            {
+                { "req", request }
+            };
+            await Fixture.Host.CallAsync("HttpTriggerToBlob", arguments);
+
+            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            string expectedValue = $"TestInput{id}TestValue";
+            Assert.Equal(expectedValue, body);
+
+            // verify blob was written
+            string blobName = $"TestPrefix-{id}-TestSuffix";
+            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
+            Assert.Equal(expectedValue, result);
+        }
+
         [Theory]
         [InlineData("application/json", "{\"name\": \"test\" }", "rawresponse")]
         [InlineData("application/json", 1, "rawresponse")]

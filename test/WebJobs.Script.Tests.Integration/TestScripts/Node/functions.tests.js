@@ -1,7 +1,7 @@
 ﻿var expect = require('chai').expect;
 
-var config = process.argv[process.argv.length - 1]
-config = (config.indexOf('--config=') !== -1)? config.substr(9): 'Debug';
+var config = process.argv[process.argv.length - 1];
+config = config.indexOf('--config=') !== -1 ? config.substr(9): 'Debug';
 
 function testRequire(script) {
     return require('../../bin/' + config + '/azurefunctions/' + script);
@@ -174,7 +174,7 @@ describe('functions', () => {
         it('runs single export', () => {
             var run = false;
             var func = functions.createFunction({
-                f: () => run = true,
+                f: () => run = true
             });
 
             func(context);
@@ -271,8 +271,8 @@ describe('functions', () => {
                     { lvl: 1, msg: 'error' },
                     { lvl: 2, msg: 'warn' },
                     { lvl: 3, msg: 'info' },
-                    { lvl: 4, msg: 'verbose' },
-                ])
+                    { lvl: 4, msg: 'verbose' }
+                ]);
                 done();
             });
         });

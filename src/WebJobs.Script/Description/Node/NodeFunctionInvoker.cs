@@ -23,8 +23,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
-
 using ScriptFunc = System.Func<object, System.Threading.Tasks.Task<object>>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
