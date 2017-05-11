@@ -55,9 +55,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
         public void BindStringableParameter_CanInvoke()
         {
             // Arrange
-            using (var host = JobHostFactory.Create<StringableFunctions>())
+            using (var host = JobHostFactory.Create<TestFunctions>())
             {
-                MethodInfo method = typeof(StringableFunctions).GetMethod("BindStringableParameter");
+                MethodInfo method = typeof(TestFunctions).GetMethod("BindStringableParameter");
                 Assert.NotNull(method); // Guard
                 Guid guid = Guid.NewGuid();
                 string expectedGuidValue = guid.ToString("D");
@@ -69,12 +69,28 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
                     host.Call(method, new { message = message });
 
                     // Assert
-                    Assert.Equal(expectedGuidValue, StringableFunctions.GuidValue);
+                    Assert.Equal(expectedGuidValue, TestFunctions.Result);
                 }
                 finally
                 {
-                    StringableFunctions.GuidValue = null;
+                    TestFunctions.Result = null;
                 }
+            }
+        }
+
+        [Fact]
+        public void ParameterBindings_WithNullableParameters_CanInvoke()
+        {
+            // Arrange
+            using (var host = JobHostFactory.Create<TestFunctions>())
+            {
+                MethodInfo method = typeof(TestFunctions).GetMethod("ParameterBindings");
+                TestFunctions.Result = null;
+                host.Call(method, new { a = 123, b = default(int?), c = "Testing" });
+                Assert.Equal("123Testing", TestFunctions.Result);
+
+                host.Call(method, new { a = 123, b = default(int?), c = (string)null });
+                Assert.Equal("123", TestFunctions.Result);
             }
         }
 
@@ -83,14 +99,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
             public Guid GuidValue { get; set; }
         }
 
-        private class StringableFunctions
+        private class TestFunctions
         {
-            public static string GuidValue { get; set; }
+            public static string Result { get; set; }
 
             public static void BindStringableParameter([QueueTrigger("ignore")] MessageWithStringableProperty message,
                 string guidValue)
             {
-                GuidValue = guidValue;
+                Result = guidValue;
+            }
+
+            [NoAutomaticTrigger]
+            public static void ParameterBindings(int a, int? b, string c)
+            {
+                Result = $"{a}{b}{c}";
             }
         }
     }

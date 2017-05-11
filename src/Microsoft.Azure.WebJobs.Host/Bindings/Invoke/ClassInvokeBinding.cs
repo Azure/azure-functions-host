@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
         {
             TValue typedValue = null;
 
-            if (!Converter.TryConvert(value, out typedValue))
+            if (value != null && !Converter.TryConvert(value, out typedValue))
             {
-                throw new InvalidOperationException("Unable to convert value to " + typeof(TValue).Name + ".");
+                throw new InvalidOperationException($"Unable to convert value to {typeof(TValue).Name}.");
             }
 
             return BindAsync(typedValue, context);
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            throw new InvalidOperationException("No value was provided for parameter '" + _parameterName + "'.");
+            throw new InvalidOperationException($"No value was provided for parameter '{_parameterName}'.");
         }
 
         public ParameterDescriptor ToParameterDescriptor()

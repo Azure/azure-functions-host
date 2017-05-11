@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
             }
 
             object untypedValue = bindingData[_parameterName];
-            if (!(untypedValue is TBindingData))
+            if (!(untypedValue is TBindingData) && untypedValue != null)
             {
                 throw new InvalidOperationException($"Binding data for '{_parameterName}' is not of expected type {typeof(TBindingData).Name}.");
             }

@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
     public class DataBindingProviderTests
     {
         [Fact]
-        public async Task Create_HandlesNullableTypes()
+        public async Task Create_HandlesNullableInteger()
         {
             // Arrange
             IBindingProvider product = new DataBindingProvider();
@@ -40,6 +40,40 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
             var valueProvider = await binding.BindAsync(bindingContext);
             var value = await valueProvider.GetValueAsync();
             Assert.Equal(123, value);
+
+            bindingData["p"] = null;
+            bindingContext = new BindingContext(valueBindingContext, bindingData);
+            valueProvider = await binding.BindAsync(bindingContext);
+            value = await valueProvider.GetValueAsync();
+            Assert.Null(value);
+        }
+
+        [Fact]
+        public async Task Create_HandlesNullableString()
+        {
+            // Arrange
+            IBindingProvider product = new DataBindingProvider();
+
+            string parameterName = "p";
+            Type parameterType = typeof(string);
+            BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
+
+            // Act
+            IBinding binding = await product.TryCreateAsync(context);
+
+            // Assert
+            Assert.NotNull(binding);
+
+            var functionBindingContext = new FunctionBindingContext(Guid.NewGuid(), CancellationToken.None, null);
+            var valueBindingContext = new ValueBindingContext(functionBindingContext, CancellationToken.None);
+            var bindingData = new Dictionary<string, object>
+            {
+                { "p", "Testing" }
+            };
+            var bindingContext = new BindingContext(valueBindingContext, bindingData);
+            var valueProvider = await binding.BindAsync(bindingContext);
+            var value = await valueProvider.GetValueAsync();
+            Assert.Equal("Testing", value);
 
             bindingData["p"] = null;
             bindingContext = new BindingContext(valueBindingContext, bindingData);

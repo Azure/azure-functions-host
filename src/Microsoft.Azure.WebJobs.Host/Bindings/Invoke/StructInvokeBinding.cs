@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
 {
     internal class StructInvokeBinding<TValue> : IBinding
-        where TValue : struct
     {
         private static readonly IObjectToTypeConverter<TValue> Converter =
             ObjectToTypeConverterFactory.CreateForStruct<TValue>();
@@ -39,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
         {
             TValue typedValue = default(TValue);
 
-            if (!Converter.TryConvert(value, out typedValue))
+            if (value != null && !Converter.TryConvert(value, out typedValue))
             {
-                throw new InvalidOperationException("Unable to convert value to " + typeof(TValue).Name + ".");
+                throw new InvalidOperationException($"Unable to convert value to {TypeUtility.GetFriendlyName(typeof(TValue))}.");
             }
 
             return BindAsync(typedValue, context);
