@@ -23,7 +23,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -55,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<string> _directorySnapshot;
         private BlobLeaseManager _blobLeaseManager;
         private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(20);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
@@ -1214,7 +1214,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
                 // Apply a default if this is running on Dynamic.
-                scriptConfig.FunctionTimeout = MaxTimeout;
+                scriptConfig.FunctionTimeout = DefaultTimeout;
             }
 
             // apply swagger configuration

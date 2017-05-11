@@ -757,7 +757,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
-                config["functionTimeout"] = "00:05:01";
+                config["functionTimeout"] = "00:20:01";
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
 
                 config["functionTimeout"] = "00:00:00.9";
