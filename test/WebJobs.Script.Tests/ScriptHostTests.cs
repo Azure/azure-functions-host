@@ -709,7 +709,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ApplyConfiguration_TimeoutDefaults5Minutes_IfDynamic()
+        public void ApplyConfiguration_AppliesDefaultTimeout_IfDynamic()
         {
             JObject config = new JObject();
             config["id"] = ID;
@@ -720,7 +720,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
-                Assert.Equal(TimeSpan.FromMinutes(5), scriptConfig.FunctionTimeout);
+                Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
             }
             finally
             {
@@ -736,13 +736,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
 
-            config["functionTimeout"] = "00:05:01";
+            var timeout = ScriptHost.MaxFunctionTimeout + TimeSpan.FromSeconds(1);
+            config["functionTimeout"] = timeout.ToString();
             ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.Equal(TimeSpan.FromSeconds(301), scriptConfig.FunctionTimeout);
+            Assert.Equal(timeout, scriptConfig.FunctionTimeout);
 
-            config["functionTimeout"] = "00:00:00.9";
+            timeout = ScriptHost.MinFunctionTimeout - TimeSpan.FromSeconds(1);
+            config["functionTimeout"] = timeout.ToString();
             ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.Equal(TimeSpan.FromMilliseconds(900), scriptConfig.FunctionTimeout);
+            Assert.Equal(timeout, scriptConfig.FunctionTimeout);
         }
 
         [Fact]
@@ -757,11 +759,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
-                config["functionTimeout"] = "00:20:01";
-                Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+                config["functionTimeout"] = (ScriptHost.MaxFunctionTimeout + TimeSpan.FromSeconds(1)).ToString();
+                var ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+                var expectedMessage = "FunctionTimeout must be between 00:00:01 and 00:10:00.";
+                Assert.Equal(expectedMessage, ex.Message);
 
-                config["functionTimeout"] = "00:00:00.9";
+                config["functionTimeout"] = (ScriptHost.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
                 Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
+                Assert.Equal(expectedMessage, ex.Message);
             }
             finally
             {

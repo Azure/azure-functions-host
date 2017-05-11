@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private ImmutableArray<string> _directorySnapshot;
         private BlobLeaseManager _blobLeaseManager;
-        private static readonly TimeSpan MinTimeout = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
-        private static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(20);
+        internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
+        internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
@@ -1208,9 +1208,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
 
                 // Only apply limits if this is Dynamic.
-                if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinTimeout || requestedTimeout > MaxTimeout))
+                if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
                 {
-                    string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinTimeout} and {MaxTimeout}.";
+                    string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
                     throw new ArgumentException(message);
                 }
 
@@ -1219,7 +1219,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
                 // Apply a default if this is running on Dynamic.
-                scriptConfig.FunctionTimeout = DefaultTimeout;
+                scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
             }
 
             // apply swagger configuration
