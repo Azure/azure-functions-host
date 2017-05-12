@@ -324,12 +324,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var request = new HttpRequestMessage
             {
-                RequestUri = new Uri($"http://localhost/api/HttpTriggerToBlob?suffix=TestSuffix"),
+                RequestUri = new Uri($"http://localhost/api/HttpTriggerToBlob?Suffix=TestSuffix"),
                 Method = HttpMethod.Post,
             };
             request.SetConfiguration(Fixture.RequestConfiguration);
             request.Headers.Add("Prefix", "TestPrefix");
-            request.Headers.Add("value", "TestValue");
+            request.Headers.Add("Value", "TestValue");
 
             var id = Guid.NewGuid().ToString();
             var metadata = new JObject()

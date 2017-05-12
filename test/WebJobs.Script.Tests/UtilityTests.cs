@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ApplyBindingData_HandlesNestedJsonPayloads()
         {
-            string input = "{ 'test': 'testing', 'baz': 123, 'nested': [ { 'nesting': 'yes' } ] }";
+            string input = "{ 'test': 'testing', 'baz': 123, 'subObject': { 'p1': 777, 'p2': 888 }, 'subArray': [ { 'subObject': 'foobar' } ] }";
 
             var bindingData = new Dictionary<string, object>
             {
@@ -171,9 +171,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Utility.ApplyBindingData(input, bindingData);
 
+            Assert.Equal(5, bindingData.Count);
             Assert.Equal("Value1", bindingData["foo"]);
             Assert.Equal("Value2", bindingData["bar"]);
             Assert.Equal("testing", bindingData["test"]);
+
+            JObject subObject = (JObject)bindingData["subObject"];
+            Assert.Equal(888, (int)subObject["p2"]);
 
             // input data overrides ambient data
             Assert.Equal("123", bindingData["baz"]);

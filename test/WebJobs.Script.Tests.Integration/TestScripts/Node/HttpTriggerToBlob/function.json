@@ -10,7 +10,7 @@
             "type": "blob",
             "name": "outBlob",
             "direction": "out",
-            "path": "test-output-node/{headers.prefix}-{id}-{query.suffix}"
+            "path": "test-output-node/{headers.prefix}-{id}-{query.suffix}-{metadata.m2}"
         },
         {
             "type": "http",

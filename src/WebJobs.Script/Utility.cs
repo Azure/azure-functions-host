@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -237,13 +236,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 string json = value as string;
                 if (!string.IsNullOrEmpty(json) && Utility.IsJson(json))
                 {
-                    // parse the object skipping any nested objects (binding data
-                    // only includes top level properties)
+                    // parse the object adding top level properties
                     JObject parsed = JObject.Parse(json);
                     var additionalBindingData = parsed.Children<JProperty>()
-                        .Where(p => p.Value != null &&
-                        (p.Value.Type != JTokenType.Object & p.Value.Type != JTokenType.Array))
-                        .ToDictionary(p => p.Name, p => (string)p);
+                        .Where(p => p.Value != null && (p.Value.Type != JTokenType.Array))
+                        .ToDictionary(p => p.Name, p => ConvertPropertyValue(p));
 
                     if (additionalBindingData != null)
                     {
@@ -262,6 +259,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 // it's not an error if the incoming message isn't JSON
                 // there are cases where there will be output binding parameters
                 // that don't bind to JSON properties
+            }
+        }
+
+        private static object ConvertPropertyValue(JProperty property)
+        {
+            if (property.Value != null && property.Value.Type == JTokenType.Object)
+            {
+                return (JObject)property.Value;
+            }
+            else
+            {
+                return (string)property.Value;
             }
         }
 

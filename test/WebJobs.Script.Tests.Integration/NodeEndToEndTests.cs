@@ -442,10 +442,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add("value", "TestValue");
 
             var id = Guid.NewGuid().ToString();
+            var metadata = new JObject()
+            {
+                { "m1", "AAA" },
+                { "m2", "BBB" }
+            };
             var input = new JObject()
             {
                 { "id", id },
-                { "value", "TestInput" }
+                { "value", "TestInput" },
+                { "metadata", metadata }
             };
             request.Content = new StringContent(input.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -464,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedValue, body);
 
             // verify blob was written
-            string blobName = $"TestPrefix-{id}-TestSuffix";
+            string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
             var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
             Assert.Equal(expectedValue, result);

@@ -10,7 +10,7 @@
             "type": "blob",
             "name": "outBlob",
             "direction": "out",
-            "path": "test-output-csharp/{headers.Prefix}-{Id}-{query.Suffix}-{Metadata.M2}"
+            "path": "test-output-csharp/{Headers.Prefix}-{Id}-{Query.Suffix}-{Metadata.M2}"
         },
         {
             "type": "http",
