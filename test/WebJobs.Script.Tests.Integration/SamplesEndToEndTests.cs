@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute-Get");
 
-            var id = Guid.NewGuid().ToString();
+            var id = "4e2796ae-b865-4071-8a20-2a15cbaf856c";
             string functionKey = "82fprgh77jlbhcma3yr1zen8uv9yb0i7dwze3np2";
             string uri = $"api/node/products/electronics/{id}?code={functionKey}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -310,7 +310,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string json = await response.Content.ReadAsStringAsync();
-            var product = JObject.Parse(json);
+            JArray products = JArray.Parse(json);
+            Assert.Equal(1, products.Count);
+            var product = products[0];
             Assert.Equal("electronics", (string)product["category"]);
             Assert.Equal(id, (string)product["id"]);
 
@@ -321,8 +323,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             json = await response.Content.ReadAsStringAsync();
-            JArray products = JArray.Parse(json);
+            products = JArray.Parse(json);
             Assert.Equal(2, products.Count);
+
+            // test optional route param (category)
+            uri = $"api/node/products?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            json = await response.Content.ReadAsStringAsync();
+            products = JArray.Parse(json);
+            Assert.Equal(3, products.Count);
 
             // test a constraint violation (invalid id)
             uri = $"api/node/products/electronics/notaguid?code={functionKey}";
@@ -427,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("electronics", (string)product["Category"]);
             Assert.Equal(123, (int?)product["Id"]);
 
-            // now try again without specifying optional id parameter
+            // test optional id parameter
             uri = $"api/csharp/products/electronics?code={functionKey}";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             response = await this._fixture.HttpClient.SendAsync(request);
@@ -435,6 +447,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             json = await response.Content.ReadAsStringAsync();
             product = JObject.Parse(json);
             Assert.Equal("electronics", (string)product["Category"]);
+            Assert.Null((int?)product["Id"]);
+
+            // test optional category parameter
+            uri = $"api/csharp/products?code={functionKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            json = await response.Content.ReadAsStringAsync();
+            product = JObject.Parse(json);
+            Assert.Null((string)product["Category"]);
             Assert.Null((int?)product["Id"]);
 
             // test a constraint violation (invalid id)

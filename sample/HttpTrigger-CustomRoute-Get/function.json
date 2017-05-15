@@ -5,7 +5,7 @@
             "name": "req",
             "direction": "in",
             "methods": [ "get" ],
-            "route": "node/products/{category:alpha}/{id:guid?}"
+            "route": "node/products/{category:alpha?}/{id:guid?}"
         },
         {
             "type": "http",

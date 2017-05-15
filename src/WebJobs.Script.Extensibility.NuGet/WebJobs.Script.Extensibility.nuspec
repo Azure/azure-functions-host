@@ -14,7 +14,7 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs Script Extensibility</tags>
     <dependencies>
-      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-10729" />
+      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-10750" />
     </dependencies>
   </metadata>
 </package>
