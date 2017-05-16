@@ -95,14 +95,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Invoke_EmitsExpectedDuration()
+        {
+            var executionContext = new ExecutionContext
+            {
+                InvocationId = Guid.NewGuid()
+            };
+            var parameters1 = new object[] { "Test", _traceWriter, executionContext, new InvocationData { Delay = 2000 } };
+            var parameters2 = new object[] { "Test", _traceWriter, executionContext };
+
+            Task invocation1 = _invoker.Invoke(parameters1);
+            Task invocation2 = _invoker.Invoke(parameters2);
+
+            await Task.WhenAll(invocation1, invocation2);
+
+            Assert.Equal(2, _metricsLogger.MetricEventsBegan.Count);
+            Assert.Equal(2, _metricsLogger.EventsBegan.Count);
+            Assert.Equal(2, _metricsLogger.MetricEventsEnded.Count);
+            Assert.Equal(2, _metricsLogger.EventsEnded.Count);
+
+            var completionEvents = _traceWriter.Traces
+                .Select(e => Regex.Match(e.Message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=(?'duration'[0-9]*)ms\\)"))
+                .Where(m => m.Success)
+                .ToList();
+
+            Assert.Equal(2, completionEvents.Count);
+            int invocation1Duration = (int.Parse(completionEvents[1].Groups["duration"].Value) / 100) * 100;
+            int invocation2Duration = (int.Parse(completionEvents[0].Groups["duration"].Value) / 100) * 100;
+
+            Assert.NotEqual(invocation1Duration, invocation2Duration);
+            Assert.Equal(2000, invocation1Duration);
+            Assert.Equal(500, invocation2Duration);
+        }
+
+        [Fact]
         public async Task Invoke_Failure_EmitsExpectedEvents()
         {
             var executionContext = new ExecutionContext
             {
                 InvocationId = Guid.NewGuid()
             };
-            var parameters = new object[] { "Test", _traceWriter, executionContext };
-            _invoker.Throw = true;
+            var parameters = new object[] { "Test", _traceWriter, executionContext, new InvocationData { Throw = true } };
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 await _invoker.Invoke(parameters);
@@ -136,16 +169,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             }
 
-            public bool Throw { get; set; }
-
             protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
             {
-                if (Throw)
+                InvocationData invocation = parameters.OfType<InvocationData>().FirstOrDefault() ?? new InvocationData();
+
+                if (invocation.Throw)
                 {
                     throw new InvalidOperationException("Kaboom!");
                 }
-                await Task.Delay(500);
+
+                await Task.Delay(invocation.Delay);
             }
+        }
+
+        private class InvocationData
+        {
+            public int Delay { get; set; } = 500;
+
+            public bool Throw { get; set; }
         }
     }
 }

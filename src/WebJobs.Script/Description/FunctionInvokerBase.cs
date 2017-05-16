@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
-        private readonly Stopwatch _stopwatch = new Stopwatch();
         private bool _disposed = false;
         private IMetricsLogger _metrics;
         private IDisposable _fileChangeSubscription;
@@ -126,7 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
             _metrics.BeginEvent(startedEvent);
             var invokeLatencyEvent = LogInvocationMetrics(_metrics, Metadata);
-            _stopwatch.Restart();
+            var invocationStopWatch = new Stopwatch();
+            invocationStopWatch.Start();
 
             try
             {
@@ -144,11 +144,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await InvokeCore(parameters, context);
 
-                _stopwatch.Stop();
-
-                string completeMessage = $"Function completed (Success, Id={invocationId}, Duration={_stopwatch.ElapsedMilliseconds}ms)";
-                TraceWriter.Info(completeMessage);
-                Logger?.LogInformation(completeMessage);
+                invocationStopWatch.Stop();
+                LogFunctionResult(startedEvent, true, invocationId, invocationStopWatch.ElapsedMilliseconds);
             }
             catch (AggregateException ex)
             {
@@ -165,14 +162,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     exInfo = ExceptionDispatchInfo.Capture(ex);
                 }
 
-                _stopwatch.Stop();
-                LogFunctionFailed(startedEvent, "Failure", invocationId, _stopwatch.ElapsedMilliseconds);
+                invocationStopWatch.Stop();
+                LogFunctionResult(startedEvent, false, invocationId, invocationStopWatch.ElapsedMilliseconds);
                 exInfo.Throw();
             }
             catch
             {
-                _stopwatch.Stop();
-                LogFunctionFailed(startedEvent, "Failure", invocationId, _stopwatch.ElapsedMilliseconds);
+                invocationStopWatch.Stop();
+                LogFunctionResult(startedEvent, false, invocationId, invocationStopWatch.ElapsedMilliseconds);
                 throw;
             }
             finally
@@ -202,16 +199,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
-        private void LogFunctionFailed(FunctionStartedEvent startedEvent, string resultString, string invocationId, long elapsedMs)
+        private void LogFunctionResult(FunctionStartedEvent startedEvent, bool success, string invocationId, long elapsedMs)
         {
             if (startedEvent != null)
             {
-                startedEvent.Success = false;
+                startedEvent.Success = success;
             }
 
+            string resultString = success ? "Success" : "Failure";
             string message = $"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)";
-            TraceWriter.Error(message);
-            Logger?.LogError(message);
+
+            TraceLevel traceWriterLevel = success ? TraceLevel.Info : TraceLevel.Error;
+            LogLevel logLevel = success ? LogLevel.Information : LogLevel.Error;
+
+            TraceWriter.Trace(message, traceWriterLevel, null);
+            Logger?.Log(logLevel, new EventId(0), message, null, (s, e) => s);
         }
 
         protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)
