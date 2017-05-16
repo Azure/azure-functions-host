@@ -16,3 +16,4 @@ Publish
 /tools/NuGet.exe
 /node_modules
 /.output
+pkg
