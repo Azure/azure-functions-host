@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Globalization;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -17,6 +17,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
     public class MessagingProvider
     {
         private readonly ServiceBusConfiguration _config;
+
+        /// <summary>
+        /// Cache of <see cref="MessagingFactory"/> instances by connection string.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, MessagingFactory> _messagingFactoryCache = new ConcurrentDictionary<string, MessagingFactory>();
 
         /// <summary>
         /// Constructs a new instance.
@@ -51,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="connectionStringName">Optional connection string name indicating the connection string to use.
         /// If null, the default connection string on the <see cref="ServiceBusConfiguration"/> will be used.</param>
         /// <returns>A <see cref="MessagingFactory"/>.</returns>
+        /// <remarks>For performance reasons, factories are cached per connection string.</remarks>
         public virtual MessagingFactory CreateMessagingFactory(string entityPath, string connectionStringName = null)
         {
             if (string.IsNullOrEmpty(entityPath))
@@ -60,7 +66,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             string connectionString = GetConnectionString(connectionStringName);
 
-            return MessagingFactory.CreateFromConnectionString(connectionString);
+            // We cache messaging factories per connection, in accordance with ServiceBus
+            // performance guidelines.
+            // https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
+            var messagingFactory = _messagingFactoryCache.GetOrAdd(connectionString, (c) =>
+            {
+                return MessagingFactory.CreateFromConnectionString(c);
+            });
+
+            return messagingFactory;
         }
 
         /// <summary>

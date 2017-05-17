@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const int SBTimeout = 60 * 1000;
         private const string QueueNamePrefix = PrefixForAll + "queue-";
         private const string StartQueueName = QueueNamePrefix + "start";
+        private const string BinderQueueName = QueueNamePrefix + "binder";
 
         private const string TopicName = PrefixForAll + "topic";
 
@@ -138,6 +141,24 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
+        public async Task ServiceBusBinderTest()
+        {
+            var hostType = typeof(ServiceBusTestJobs);
+            var host = CreateHost(hostType);
+            var method = typeof(ServiceBusTestJobs).GetMethod("ServiceBusBinderTest");
+
+            int numMessages = 10;
+            var args = new { message = "Test Message", numMessages = numMessages };
+            await host.CallAsync(method, args);
+            await host.CallAsync(method, args);
+            await host.CallAsync(method, args);
+
+            var queueName = ResolveName(BinderQueueName);
+            var queueDescription = await _namespaceManager.GetQueueAsync(queueName);
+            Assert.Equal(numMessages * 3, queueDescription.MessageCount);
+        }
+
+        [Fact]
         public async Task CustomMessageProcessorTest()
         {
             try
@@ -230,6 +251,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 _secondaryNamespaceManager.DeleteQueue(elementName);
             }
+
+            elementName = ResolveName(BinderQueueName);
+            CleanupQueue(elementName);
 
             elementName = ResolveName(QueueNamePrefix + "1");
             CleanupQueue(elementName);
@@ -448,6 +472,26 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 [ServiceBus(TopicName)] out string output)
             {
                 output = input;
+            }
+
+            [NoAutomaticTrigger]
+            public static async Task ServiceBusBinderTest(
+                string message,
+                int numMessages,
+                Binder binder)
+            {
+                var attribute = new ServiceBusAttribute(BinderQueueName)
+                {
+                    EntityType = EntityType.Queue
+                };
+                var collector = await binder.BindAsync<IAsyncCollector<string>>(attribute);
+                
+                for (int i = 0; i < numMessages; i++)
+                {
+                    await collector.AddAsync(message + i);
+                }
+
+                await collector.FlushAsync();
             }
         }
 

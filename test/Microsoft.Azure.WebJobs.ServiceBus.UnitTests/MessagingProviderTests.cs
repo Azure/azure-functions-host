@@ -64,6 +64,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         }
 
         [Fact]
+        public void CreateMessagingFactory_CachesPerConnection()
+        {
+            var factory = _provider.CreateMessagingFactory("test");
+
+            Assert.Same(factory, _provider.CreateMessagingFactory("test"));
+            Assert.Same(factory, _provider.CreateMessagingFactory("test"));
+            Assert.Same(factory, _provider.CreateMessagingFactory("test"));
+
+            var factory2 = _provider.CreateMessagingFactory("test", "ServiceBusOverride");
+            Assert.NotSame(factory, factory2);
+
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
+        }
+
+        [Fact]
         public void GetConnectionString_ThrowsIfConnectionStringNullOrEmpty()
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
