@@ -156,7 +156,8 @@ namespace Microsoft.Azure.WebJobs.Logging
             {
                 if (this.StartTime > this.EndTime)
                 {
-                    throw new InvalidOperationException("End Time must be greater than start time");
+                    // This can happen in rare cases if the clock adjusts while the function is running. 
+                    this.EndTime = this.StartTime.AddMilliseconds(1);                    
                 }
             }
         }
