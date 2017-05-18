@@ -11,13 +11,13 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal class DefaultExtensionRegistry : IExtensionRegistry
     {
-        private readonly JobHostMetadataProvider _tooling;
+        private readonly JobHostMetadataProvider _metadataProvider;
 
         private ConcurrentDictionary<Type, ConcurrentBag<object>> _registry = new ConcurrentDictionary<Type, ConcurrentBag<object>>();
 
-        public DefaultExtensionRegistry(JobHostMetadataProvider tooling = null)
+        public DefaultExtensionRegistry(JobHostMetadataProvider metadataProvider = null)
         {
-            _tooling = tooling;
+            _metadataProvider = metadataProvider;
         }
 
         public void RegisterExtension(Type type, object instance)
@@ -35,12 +35,12 @@ namespace Microsoft.Azure.WebJobs.Host
                 throw new ArgumentOutOfRangeException("instance");
             }
 
-            if (_tooling != null)
+            if (_metadataProvider != null)
             {
                 IExtensionConfigProvider extension = instance as IExtensionConfigProvider;
                 if (extension != null)
                 {
-                    _tooling.AddExtension(extension);
+                    _metadataProvider.AddExtension(extension);
                 }
             }
 

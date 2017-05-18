@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // General rule for binding to input parameters.
     // Can invoke Converter manager. 
     // Can leverage OpenTypes for pattern matchers.
-    internal class BindToInputBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IRuleProvider
+    internal class BindToInputBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IBindingRuleProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
@@ -53,12 +53,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return Task.FromResult<IBinding>(binding);
         }
 
-        public IEnumerable<Rule> GetRules()
+        public IEnumerable<BindingRule> GetRules()
         {
             var cm = (ConverterManager)_converterManager;
             var types = cm.GetPossibleDestinationTypesFromSource(typeof(TAttribute), typeof(TType));
                         
-            yield return new Rule
+            yield return new BindingRule
             {
                 SourceAttribute = typeof(TAttribute),
                 UserType = new ConverterManager.ExactMatch(typeof(TType))
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             foreach (var type in types)
             {
-                yield return new Rule
+                yield return new BindingRule
                 {
                     SourceAttribute = typeof(TAttribute),
                     Converters = converters,

@@ -17,7 +17,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal class BlobAttributeBindingProvider : IBindingProvider, IRuleProvider
+    internal class BlobAttributeBindingProvider : IBindingProvider, IBindingRuleProvider
     {
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
-        public IEnumerable<Rule> GetRules()
+        public IEnumerable<BindingRule> GetRules()
         {
             // Once we have a BindToStream rule, we shouldn't need this. 
             // https://github.com/Azure/azure-webjobs-sdk/issues/1001 
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 typeof(byte[]).MakeByRefType()
             })
             {
-                yield return new Rule
+                yield return new BindingRule
                 {
                     SourceAttribute = typeof(BlobAttribute),
                     UserType = new ConverterManager.ExactMatch(type)

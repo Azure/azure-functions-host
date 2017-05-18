@@ -31,8 +31,7 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostBlobsConfiguration _blobsConfiguration = new JobHostBlobsConfiguration();
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
-
-        private readonly JobHostMetadataProvider _tooling;
+        private readonly JobHostMetadataProvider _metadataProvider;
 
         private string _hostId;
 
@@ -67,8 +66,8 @@ namespace Microsoft.Azure.WebJobs
             Aggregator = new FunctionResultAggregatorConfiguration();
 
             // add our built in services here
-            _tooling = new JobHostMetadataProvider(this);
-            IExtensionRegistry extensions = new DefaultExtensionRegistry(_tooling);
+            _metadataProvider = new JobHostMetadataProvider(this);
+            IExtensionRegistry extensions = new DefaultExtensionRegistry(_metadataProvider);
             ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             IConverterManager converterManager = new ConverterManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
@@ -298,7 +297,7 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// get host-level metadata which the extension may read to do configuration. 
+        /// get host-level metadata which the extension may read to do configuration.
         /// </summary>
         [Obsolete("Not ready for public consumption.")]
         public JObject HostConfigMetadata { get; set; }
@@ -410,19 +409,19 @@ namespace Microsoft.Azure.WebJobs
 
         internal void AddAttributesFromAssembly(Assembly assembly)
         {
-            _tooling.AddAttributesFromAssembly(assembly);
+            _metadataProvider.AddAttributesFromAssembly(assembly);
         }
 
         /// <summary>
-        /// Get a tooling interface for inspecting current extensions. 
+        /// Creates a <see cref="IJobHostMetadataProvider"/> for this configuration.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The <see cref="IJobHostMetadataProvider"/>.</returns>
         public IJobHostMetadataProvider CreateMetadataProvider()
         {
-            var ctx = this.CreateStaticServices();
-            var provider = ctx.GetService<IBindingProvider>();
+            var serviceProvider = this.CreateStaticServices();
+            var bindingProvider = serviceProvider.GetService<IBindingProvider>();
 
-            _tooling.Init(provider);
+            _metadataProvider.Initialize(bindingProvider);
 
             // Ensure all extensions have been called 
 
@@ -430,11 +429,11 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_partialInitServices == null)
                 {
-                    _partialInitServices = ctx;
+                    _partialInitServices = serviceProvider;
                 }
             }
 
-            return _tooling;
+            return _metadataProvider;
         }
 
         internal ServiceProviderWrapper TakeOwnershipOfPartialInitialization()

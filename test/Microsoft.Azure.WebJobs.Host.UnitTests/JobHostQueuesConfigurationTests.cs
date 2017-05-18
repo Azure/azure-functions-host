@@ -4,6 +4,8 @@
 using System;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
@@ -49,6 +51,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             config.VisibilityTimeout = TimeSpan.FromSeconds(30);
             Assert.Equal(TimeSpan.FromSeconds(30), config.VisibilityTimeout);
+        }
+
+        [Fact]
+        public void JsonSerialization()
+        {
+            var jo = new JObject
+            {
+                { "MaxPollingInterval", 5000 }
+            };
+            var config = jo.ToObject<JobHostQueuesConfiguration>();
+            Assert.Equal(TimeSpan.FromMilliseconds(5000), config.MaxPollingInterval);
+            string json = JsonConvert.SerializeObject(config);
+
+            jo = new JObject
+            {
+                { "MaxPollingInterval", "00:00:05" }
+            };
+            config = jo.ToObject<JobHostQueuesConfiguration>();
+            Assert.Equal(TimeSpan.FromMilliseconds(5000), config.MaxPollingInterval);
+            json = JsonConvert.SerializeObject(config);
         }
     }
 }

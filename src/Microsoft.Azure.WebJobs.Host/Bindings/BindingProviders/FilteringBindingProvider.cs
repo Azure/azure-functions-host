@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     // Useful for extension  that need some special case type restriction. 
     // If the user parameter type passes the predicate, then chain to an inner an provider. 
-    internal class FilteringBindingProvider<TAttribute> : IBindingProvider, IRuleProvider
+    internal class FilteringBindingProvider<TAttribute> : IBindingProvider, IBindingRuleProvider
         where TAttribute : Attribute
     {
         private readonly Func<TAttribute, Type, bool> _predicate;
@@ -54,10 +54,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return _inner.TryCreateAsync(context);
         }
 
-        public IEnumerable<Rule> GetRules()
+        public IEnumerable<BindingRule> GetRules()
         {
             var filter = _description;
-            IRuleProvider inner = _inner as IRuleProvider;
+            IBindingRuleProvider inner = _inner as IBindingRuleProvider;
             if (inner != null)
             {
                 foreach (var rule in inner.GetRules())
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             // Must apply filter 
-            IRuleProvider inner = _inner as IRuleProvider;
+            IBindingRuleProvider inner = _inner as IBindingRuleProvider;
             if (inner != null)
             {
                 return inner.GetDefaultType(attribute, access, requestedType);

@@ -32,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 throw new ArgumentNullException(nameof(context));
             }
 
-            var x = new PerHostConfig();
-            x.Initialize(context);
+            var config = new PerHostConfig();
+            config.Initialize(context);
         }
 
         // Multiple JobHost objects may share the same JobHostConfiguration.

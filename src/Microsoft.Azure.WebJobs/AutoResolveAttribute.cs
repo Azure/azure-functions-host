@@ -2,13 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Description;
 
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Place this on binding attributes properties to tell the binders that that the property contains
-    /// {key} or "%setting%" segments that should be automatically resolved.
+    /// Attribute used to indicate that a binding attribute property should have
+    /// automatic resolution of {} and %% binding expressions applied.
     /// </summary>
     [Obsolete("Not ready for public consumption.")]
     [AttributeUsage(AttributeTargets.Property)]

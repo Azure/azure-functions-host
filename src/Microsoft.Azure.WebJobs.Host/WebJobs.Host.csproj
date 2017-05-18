@@ -459,8 +459,8 @@
     <Compile Include="Bindings\BindingFactory.cs" />
     <Compile Include="Bindings\BindingProviders\BindToInputBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\AsyncCollectorBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\IRuleProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\Rule.cs" />
+    <Compile Include="Bindings\BindingProviders\IBindingRuleProvider.cs" />
+    <Compile Include="Bindings\BindingProviders\BindingRule.cs" />
     <Compile Include="Bindings\BindingProviders\FluentBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\FilteringBindingProvider.cs" />
     <Compile Include="Bindings\BindingProviders\FluentBindingProviderExtensions.cs" />

@@ -300,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Host.Config
 
         internal void DebugDumpGraph(TextWriter output)
         {
-            var binding = CreateBinding() as IRuleProvider;
+            var binding = CreateBinding() as IBindingRuleProvider;
             JobHostMetadataProvider.DumpRule(binding, output);
         }
 

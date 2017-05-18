@@ -1,24 +1,18 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Xunit;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Description;
-using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Newtonsoft.Json.Linq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
-    public class ToolingTests
+    public class JobHostMetadataProviderTests
     {
         [Fact]
         public void Test()
@@ -33,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             config.AddExtension(ext);
 
-            IJobHostMetadataProvider tooling =  config.CreateMetadataProvider();
+            IJobHostMetadataProvider metadataProvider = config.CreateMetadataProvider();
             Assert.Equal(1, ext._counter);
 
             // Callable            
@@ -45,32 +39,32 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assembly asm;
             bool resolved;
 
-            resolved = tooling.TryResolveAssembly(typeof(Widget).Assembly.GetName().Name, out asm);
+            resolved = metadataProvider.TryResolveAssembly(typeof(Widget).Assembly.GetName().Name, out asm);
             Assert.True(resolved);
             Assert.Same(asm, typeof(Widget).Assembly);
 
             // check with full name 
-            resolved = tooling.TryResolveAssembly(typeof(Widget).Assembly.GetName().FullName, out asm);
+            resolved = metadataProvider.TryResolveAssembly(typeof(Widget).Assembly.GetName().FullName, out asm);
             Assert.True(resolved);
             Assert.Same(asm, typeof(Widget).Assembly);
 
-            var attrType = tooling.GetAttributeTypeFromName("Test");
+            var attrType = metadataProvider.GetAttributeTypeFromName("Test");
             Assert.Equal(typeof(TestAttribute), attrType);
 
             // JObject --> Attribute 
-            var attr = GetAttr<TestAttribute>(tooling, new { Flag = "xyz" });
+            var attr = GetAttr<TestAttribute>(metadataProvider, new { Flag = "xyz" });
             Assert.Equal("xyz", attr.Flag);
 
             // Getting default type. 
-            var defaultType = tooling.GetDefaultType(attr, FileAccess.Read, null);
+            var defaultType = metadataProvider.GetDefaultType(attr, FileAccess.Read, null);
             Assert.Equal(typeof(JObject), defaultType);
 
-            Assert.Throws<InvalidOperationException>(() => tooling.GetDefaultType(attr, FileAccess.Write, typeof(object)));
+            Assert.Throws<InvalidOperationException>(() => metadataProvider.GetDefaultType(attr, FileAccess.Write, typeof(object)));
         }
 
-        static T GetAttr<T>(IJobHostMetadataProvider tooling, object obj) where T : Attribute
+        static T GetAttr<T>(IJobHostMetadataProvider metadataProvider, object obj) where T : Attribute
         {
-            var attribute = tooling.GetAttribute(typeof(T), JObject.FromObject(obj));            
+            var attribute = metadataProvider.GetAttribute(typeof(T), JObject.FromObject(obj));            
             return (T) attribute;
         }
 
@@ -78,26 +72,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void AttrBuilder()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var tooling = config.CreateMetadataProvider();
+            var metadataProvider = config.CreateMetadataProvider();
 
             // Blob 
-            var blobAttr = GetAttr<BlobAttribute>(tooling, new { path = "x" } );
+            var blobAttr = GetAttr<BlobAttribute>(metadataProvider, new { path = "x" } );
             Assert.Equal("x", blobAttr.BlobPath);
             Assert.Equal(null, blobAttr.Access);
 
-            blobAttr = GetAttr<BlobAttribute>(tooling, new { path = "x", direction="in" });
+            blobAttr = GetAttr<BlobAttribute>(metadataProvider, new { path = "x", direction="in" });
             Assert.Equal("x", blobAttr.BlobPath);
             Assert.Equal(FileAccess.Read, blobAttr.Access);
 
-            blobAttr = GetAttr<BlobAttribute>(tooling, new { Path = "x", Direction="out" });
+            blobAttr = GetAttr<BlobAttribute>(metadataProvider, new { Path = "x", Direction="out" });
             Assert.Equal("x", blobAttr.BlobPath);
             Assert.Equal(FileAccess.Write, blobAttr.Access);
 
-            blobAttr = GetAttr<BlobAttribute>(tooling, new { path = "x", direction = "inout" });
+            blobAttr = GetAttr<BlobAttribute>(metadataProvider, new { path = "x", direction = "inout" });
             Assert.Equal("x", blobAttr.BlobPath);
             Assert.Equal(FileAccess.ReadWrite, blobAttr.Access);
                         
-            blobAttr = GetAttr<BlobAttribute>(tooling, 
+            blobAttr = GetAttr<BlobAttribute>(metadataProvider, 
             new
             {
                 path = "x",
@@ -108,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(FileAccess.Read, blobAttr.Access);
             Assert.Equal("cx1", blobAttr.Connection);
 
-            blobAttr = GetAttr<BlobAttribute>(tooling,
+            blobAttr = GetAttr<BlobAttribute>(metadataProvider,
               new
               {
                   path = "x",
@@ -119,21 +113,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(FileAccess.Read, blobAttr.Access);
             Assert.Equal("", blobAttr.Connection); // empty is passed straight through. 
 
-            var blobTriggerAttr = GetAttr<BlobTriggerAttribute>(tooling, new { path = "x" });
+            var blobTriggerAttr = GetAttr<BlobTriggerAttribute>(metadataProvider, new { path = "x" });
             Assert.Equal("x", blobTriggerAttr.BlobPath);
 
             // Queue 
-            var queueAttr = GetAttr<QueueAttribute>(tooling, new { QueueName = "q1" });
+            var queueAttr = GetAttr<QueueAttribute>(metadataProvider, new { QueueName = "q1" });
             Assert.Equal("q1", queueAttr.QueueName);
 
-            var queueTriggerAttr = GetAttr<QueueTriggerAttribute>(tooling, new { QueueName = "q1" });
+            var queueTriggerAttr = GetAttr<QueueTriggerAttribute>(metadataProvider, new { QueueName = "q1" });
             Assert.Equal("q1", queueTriggerAttr.QueueName);
             
             // Table
-            var tableAttr = GetAttr<TableAttribute>(tooling, new { TableName = "t1" });
+            var tableAttr = GetAttr<TableAttribute>(metadataProvider, new { TableName = "t1" });
             Assert.Equal("t1", tableAttr.TableName);
 
-            tableAttr = GetAttr<TableAttribute>(tooling, new { TableName = "t1", partitionKey ="pk", Filter="f1" });
+            tableAttr = GetAttr<TableAttribute>(metadataProvider, new { TableName = "t1", partitionKey ="pk", Filter="f1" });
             Assert.Equal("t1", tableAttr.TableName);
             Assert.Equal("pk", tableAttr.PartitionKey);
             Assert.Equal(null, tableAttr.RowKey);
@@ -144,15 +138,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void DefaultTypeForTable()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var tooling = config.CreateMetadataProvider();
+            var metadataProvider = config.CreateMetadataProvider();
 
-            var t1 = tooling.GetDefaultType(new TableAttribute("table1"), FileAccess.Read, null);
+            var t1 = metadataProvider.GetDefaultType(new TableAttribute("table1"), FileAccess.Read, null);
             Assert.Equal(typeof(JArray), t1);
 
-            var t2 = tooling.GetDefaultType(new TableAttribute("table1", "pk", "rk"), FileAccess.Read, null);
+            var t2 = metadataProvider.GetDefaultType(new TableAttribute("table1", "pk", "rk"), FileAccess.Read, null);
             Assert.Equal(typeof(JObject), t2);
 
-            var t3 = tooling.GetDefaultType(new TableAttribute("table1"), FileAccess.Write, null);
+            var t3 = metadataProvider.GetDefaultType(new TableAttribute("table1"), FileAccess.Write, null);
             Assert.Equal(typeof(IAsyncCollector<JObject>), t3);
         }
 
@@ -161,15 +155,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void DefaultTypeForQueue()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var tooling = config.CreateMetadataProvider();
+            var metadataProvider = config.CreateMetadataProvider();
 
-            var t1 = tooling.GetDefaultType(new QueueAttribute("q"), FileAccess.Read, typeof(byte[]));
+            var t1 = metadataProvider.GetDefaultType(new QueueAttribute("q"), FileAccess.Read, typeof(byte[]));
             Assert.Equal(typeof(byte[]), t1);
 
-            var t2 = tooling.GetDefaultType(new QueueAttribute("q"), FileAccess.Read, null);
+            var t2 = metadataProvider.GetDefaultType(new QueueAttribute("q"), FileAccess.Read, null);
             Assert.Equal(typeof(string), t2);
                         
-            var t3 = tooling.GetDefaultType(new QueueAttribute("q"), FileAccess.Write, null);
+            var t3 = metadataProvider.GetDefaultType(new QueueAttribute("q"), FileAccess.Write, null);
             Assert.Equal(typeof(IAsyncCollector<byte[]>), t3);
         }
 

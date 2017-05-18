@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     // General rule for binding parameters to an AsyncCollector. 
     // Supports the various flavors like IAsyncCollector, ICollector, out T, out T[]. 
-    internal class AsyncCollectorBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IRuleProvider
+    internal class AsyncCollectorBindingProvider<TAttribute, TType> : FluentBindingProvider<TAttribute>, IBindingProvider, IBindingRuleProvider
         where TAttribute : Attribute
     {
         private readonly INameResolver _nameResolver;
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return types.Where(type => type != null).ToArray();
         }
 
-        private static void AddRulesForType(Type type, List<Rule> rules)
+        private static void AddRulesForType(Type type, List<BindingRule> rules)
         {
             var typeIAC = typeof(IAsyncCollector<>).MakeGenericType(type);
 
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             rules.Add(
-                new Rule
+                new BindingRule
                 {
                     SourceAttribute = typeof(TAttribute),
                     Converters = MakeArray(intermediateType),
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 });
 
             rules.Add(
-                  new Rule
+                  new BindingRule
                   {
                       SourceAttribute = typeof(TAttribute),
                       Converters = MakeArray(intermediateType, typeIAC),                      
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                   });
 
             rules.Add(
-                  new Rule
+                  new BindingRule
                   {
                       SourceAttribute = typeof(TAttribute),
                       Converters = MakeArray(intermediateType, typeIAC),
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                   });
 
             rules.Add(
-                  new Rule
+                  new BindingRule
                   {
                       SourceAttribute = typeof(TAttribute),
                       Converters = MakeArray(intermediateType, typeIAC),
@@ -190,9 +190,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                   });
         }
 
-        public IEnumerable<Rule> GetRules()
+        public IEnumerable<BindingRule> GetRules()
         {
-            var rules = new List<Rule>();
+            var rules = new List<BindingRule>();
             AddRulesForType(typeof(TType), rules);
                         
             var cm = (ConverterManager)_converterManager;

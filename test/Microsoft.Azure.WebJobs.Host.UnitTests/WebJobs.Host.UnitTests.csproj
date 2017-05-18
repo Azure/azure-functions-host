@@ -260,7 +260,7 @@
     <Compile Include="Loggers\ApplicationInsightsLoggerProviderTests.cs" />
     <Compile Include="Loggers\DefaultTelemetryClientFactoryTests.cs" />
     <Compile Include="Loggers\FunctionResultAggregatorConfigurationTests.cs" />
-    <Compile Include="ToolingTests.cs" />
+    <Compile Include="JobHostMetadataProviderTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
     <Compile Include="AttributeClonerTests.cs" />
     <Compile Include="Common\BindingProviderFilterTests.cs" />

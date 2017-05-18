@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    internal class CompositeBindingProvider : IBindingProvider, IRuleProvider
+    internal class CompositeBindingProvider : IBindingProvider, IBindingRuleProvider
     {
         private readonly IEnumerable<IBindingProvider> _providers;
 
@@ -32,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return null;
         }
 
-        public IEnumerable<Rule> GetRules()
+        public IEnumerable<BindingRule> GetRules()
         {
-            foreach (var provider in _providers.OfType<IRuleProvider>())
+            foreach (var provider in _providers.OfType<IBindingRuleProvider>())
             {
                 foreach (var rule in provider.GetRules())
                 {
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
         public Type GetDefaultType(Attribute attribute, FileAccess access, Type requestedType)
         {
-            foreach (var provider in _providers.OfType<IRuleProvider>())
+            foreach (var provider in _providers.OfType<IBindingRuleProvider>())
             {
                 var type = provider.GetDefaultType(attribute, access, requestedType);
                 if (type != null)

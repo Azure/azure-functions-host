@@ -30,9 +30,9 @@ namespace Microsoft.Azure.WebJobs.Host
             _config = config;
         }
 
-        internal void Init(IBindingProvider root)
+        internal void Initialize(IBindingProvider bindingProvider)
         {
-            this._root = root;
+            this._root = bindingProvider;
 
             // Populate assembly resolution from converters.
             var converter = this._config.GetService<IConverterManager>() as ConverterManager;
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host
                 converter.AddAssemblies((type) => this.AddAssembly(type));
             }
 
-            AddTypesFromGraph(root as IRuleProvider);
+            AddTypesFromGraph(bindingProvider as IBindingRuleProvider);
         }
 
         // Resolve an assembly from the given name. 
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }
             var providers = this._root;
 
-            IRuleProvider root = (IRuleProvider)providers;
+            IBindingRuleProvider root = (IBindingRuleProvider)providers;
             var type = root.GetDefaultType(attribute, access, requestedType);
 
             if ((type == null) && (access == FileAccess.Read))
@@ -232,11 +232,11 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             var providers = this._root;
 
-            IRuleProvider root = (IRuleProvider)providers;
+            IBindingRuleProvider root = (IBindingRuleProvider)providers;
             DumpRule(root, output);
         }
 
-        internal static void DumpRule(IRuleProvider root, TextWriter output)
+        internal static void DumpRule(IBindingRuleProvider root, TextWriter output)
         {
             foreach (var rule in root.GetRules())
             {
@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Host
             }          
         }
 
-        private void AddTypesFromGraph(IRuleProvider root)
+        private void AddTypesFromGraph(IBindingRuleProvider root)
         {
             foreach (var rule in root.GetRules())
             {
