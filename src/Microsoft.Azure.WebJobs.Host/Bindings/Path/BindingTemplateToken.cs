@@ -37,14 +37,26 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 
         public static BindingTemplateToken NewExpression(string expression)
         {
+            // BindingData takes precedence over builtins.  
+            BindingParameterResolver builtin;
+            BindingParameterResolver.TryGetResolver(expression, out builtin);
+
+            // check for formatter, which is applied to finale results. 
+            string format = null;
+            if (builtin == null)
+            {
+                int indexColon = expression.IndexOf(':');
+                if (indexColon > 0)
+                {
+                    format = expression.Substring(indexColon + 1);
+                    expression = expression.Substring(0, indexColon);
+                }
+            }
+
             if (!BindingTemplateParser.IsValidIdentifier(expression))
             {
                 throw new FormatException($"Invalid template expression '{expression}");
             }
-
-            // BindingData takes precedence over builtins.  
-            BindingParameterResolver builtin;
-            BindingParameterResolver.TryGetResolver(expression, out builtin);
 
             // Expression is just a series of dot operators like:  a.b.c
             var parts = expression.Split('.');
@@ -66,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                 }
             }
 
-            return new ExpressionToken(parts, builtin);            
+            return new ExpressionToken(parts, format, builtin);            
         }
 
         public abstract string Evaluate(IReadOnlyDictionary<string, object> bindingData);
@@ -134,13 +146,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             // If non-null, then this could be a builtin object. 
             private readonly BindingParameterResolver _builtin;
 
+            private readonly string _format;
+
             // The parts of an expression, like a.b.c.
             private readonly string[] _expressionParts;
 
-            public ExpressionToken(string[] expressionParts, BindingParameterResolver builtin)
+            public ExpressionToken(string[] expressionParts, string format, BindingParameterResolver builtin)
             {
                 _expressionParts = expressionParts;
                 _builtin = builtin;
+                _format = format;
             }
 
             public override string AsLiteral => null;
@@ -198,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                     }
                 }
 
-                var strValue = BindingDataPathHelper.ConvertParameterValueToString(current);
+                var strValue = BindingDataPathHelper.ConvertParameterValueToString(current, _format);
                 return strValue;
             }
 

@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         public const string Name = "sys";
 
         // An internal name for this binding that uses characters that gaurantee it can't be overwritten by a user. 
+        // This is never seen by the user. 
         // This ensures that we can always unambiguously retrieve this later. 
         private const string InternalKeyName = "$sys";
 
@@ -33,6 +34,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// The method name can be override by the <see cref="FunctionNameAttribute"/> 
         /// </summary>
         public string MethodName { get; set; }
+
+        /// <summary>
+        /// Get the current UTC date. 
+        /// </summary>
+        public DateTime UtcNow => DateTime.UtcNow;
+
+        /// <summary>
+        /// Return a new random guid. This create a new guid each time it's called.
+        /// </summary>
+        public Guid RandGuid => Guid.NewGuid();  
 
         // Given a full bindingData, create a binding data with just the system object .
         // This can be used when resolving default contracts that shouldn't be using an instance binding data. 

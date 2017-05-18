@@ -8,6 +8,11 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 {
+    /// <summary>
+    /// Support for adding built-in values to binding data. 
+    /// Don't add new resolvers here. Instead, add it to <see cref="SystemBindingData"/>
+    /// </summary>
+    [Obsolete("Use SystemBindingData instead")]
     internal abstract class BindingParameterResolver
     {
         private static Collection<BindingParameterResolver> _resolvers;
@@ -69,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             return null;
         }
 
+        // This is an alias for 'sys.randguid'
         private class RandGuidResolver : BindingParameterResolver
         {
             public override string Name
@@ -82,18 +88,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             public override string Resolve(string value)
             {
                 string format = GetFormatOrNull(value);
-
-                if (!string.IsNullOrEmpty(format))
-                {
-                    return Guid.NewGuid().ToString(format, CultureInfo.InvariantCulture);
-                }
-                else
-                {
-                    return Guid.NewGuid().ToString();
-                }
+                var val = new SystemBindingData().RandGuid;
+                return BindingDataPathHelper.ConvertParameterValueToString(val, format);                
             }
         }
 
+        // This can't be aliases to 'sys.UtcNow' because
+        // 'sys.UtcNow' always resolves to DateTime.UtcNow. 
+        // But 'datetime' may either resolve to user bidning data or to DateTime.UtcNow.        
         private class DateTimeResolver : BindingParameterResolver
         {
             public override string Name
@@ -107,16 +109,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             public override string Resolve(string value)
             {
                 string format = GetFormatOrNull(value);
-
-                if (!string.IsNullOrEmpty(format))
-                {
-                    return DateTime.UtcNow.ToString(format, CultureInfo.InvariantCulture);
-                }
-                else
-                {
-                    // default to ISO 8601
-                    return DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK", CultureInfo.InvariantCulture);
-                }
+                var val = new SystemBindingData().UtcNow;
+                return BindingDataPathHelper.ConvertParameterValueToString(val, format);
             }
         }
     }

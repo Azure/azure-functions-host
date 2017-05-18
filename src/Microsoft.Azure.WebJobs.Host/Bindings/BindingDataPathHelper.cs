@@ -18,9 +18,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// strings, JToken, and Guid (which is translated in canonical form without curly braces).
         /// </summary>
         /// <param name="parameterValue">The parameter value to convert</param>
+        /// <param name="format">Optional format string</param>
         /// <returns>Path compatible string representation of the given parameter or null if its type is not supported.</returns>
-        public static string ConvertParameterValueToString(object parameterValue)
+        public static string ConvertParameterValueToString(object parameterValue, string format = null)
         {
+            if (string.IsNullOrWhiteSpace(format))
+            {
+                format = null; // normalize. 
+            }
             if (parameterValue != null)
             {
                 switch (Type.GetTypeCode(parameterValue.GetType()))
@@ -45,10 +50,21 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                         return ((Byte)parameterValue).ToString(CultureInfo.InvariantCulture);
                     case TypeCode.SByte:
                         return ((SByte)parameterValue).ToString(CultureInfo.InvariantCulture);
+                    case TypeCode.DateTime:                        
+                        format = format ?? "yyyy-MM-ddTHH-mm-ssK"; // default to ISO 8601
+                        var dateTime = (DateTime)parameterValue;
+                        return dateTime.ToString(format, CultureInfo.InvariantCulture);
                     case TypeCode.Object:
                         if (parameterValue is Guid)
                         {
-                            return parameterValue.ToString();
+                            if (format == null)
+                            {
+                                return parameterValue.ToString();
+                            }
+                            else
+                            {
+                                return ((Guid)parameterValue).ToString(format, CultureInfo.InvariantCulture);
+                            }
                         }
                         if (parameterValue is Newtonsoft.Json.Linq.JToken)
                         {

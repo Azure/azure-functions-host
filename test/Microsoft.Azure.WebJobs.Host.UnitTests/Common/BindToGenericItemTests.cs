@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             public void Test(TestJobHost<ConfigTestDefaultToMethodName> host)
             {
                 host.Call("Func", new { k = 1 });
-                Assert.Equal("1", _log);
+                Assert.NotNull(_log);
 
                 host.Call("Func2", new { k = 1 });
                 Assert.Equal("Func2", _log);
@@ -87,8 +87,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 
             string _log;
 
-            public void Func([Test2(Path = "{k}")] string w)
+            public void Func([Test2(Path = "{k}*{sys.randGuid:N}*{sys.randGuid:B}*{sys.UtcNow:yyyy}")] string w)
             {
+                var parts = w.Split('*');
+                string k = parts[0];
+                Assert.Equal("1", k);
+
+                string guidstr1 = parts[1];
+                var guid1 = Guid.Parse(guidstr1);
+                string guidstr2 = parts[2];
+                var guid2 = Guid.Parse(guidstr2);                
+
+                Assert.Equal(guid1.ToString("N"), guidstr1);
+                Assert.Equal(guid2.ToString("B"), guidstr2);
+                Assert.NotEqual(guid1, guid2); // each sys.RandGuid is a different value 
+
+                string date = parts[3];
+                Assert.Equal(DateTime.UtcNow.Year.ToString(), date);
+
                 _log = w;
             }
 

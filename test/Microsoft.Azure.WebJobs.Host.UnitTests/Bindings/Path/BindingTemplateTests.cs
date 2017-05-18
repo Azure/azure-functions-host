@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -9,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 using Xunit.Extensions;
 using Newtonsoft.Json.Linq;
+using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
 {
@@ -318,6 +320,47 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
 
             result = template.Bind(parameters);
             Assert.Equal("A/TestB/TestC", result);
+        }
+
+
+        [Fact]
+        public void GuidFormats()
+        {
+            var g = Guid.NewGuid();
+            var parameters = new Dictionary<string, object>
+                {
+                    { "g", g }
+                };
+
+            foreach (var format in new string[] { "N", "D", "B", "P", "X", "" })
+            {
+
+                BindingTemplate template = BindingTemplate.FromString(@"{g:" + format + "}");       
+
+                string expected = g.ToString(format, CultureInfo.InvariantCulture);
+                string result = template.Bind(parameters);
+
+                Assert.Equal(expected, result);
+            }
+        }
+
+        [Fact]
+        public void DateTimeFormats()
+        {
+            var dt = DateTime.UtcNow;
+            var parameters = new Dictionary<string, object>
+                {
+                    { "dt",dt }
+                };
+
+
+            var format = "YYYYMMdd";
+            BindingTemplate template = BindingTemplate.FromString(@"{dt:" + format + "}");
+
+            string expected = dt.ToString(format, CultureInfo.InvariantCulture);
+            string result = template.Bind(parameters);
+
+            Assert.Equal(expected, result);            
         }
     }
 }

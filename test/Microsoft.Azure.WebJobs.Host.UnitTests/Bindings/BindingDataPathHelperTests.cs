@@ -70,10 +70,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         public void ConvertParamValueToString_IfUnupportedType_ReturnsNull()
         {
             // Arrange
-            DateTime dateTimeParam = DateTime.Now;
+            var obj = new { value = 12 };  
 
             // Act
-            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(dateTimeParam);
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(obj);
 
             // Assert
             Assert.Null(stringParamValue);
