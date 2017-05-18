@@ -18,10 +18,15 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
-        /// <param name="account">The name of the ServiceBus connection string to use. This should be the name
-        /// of one of the connection strings present in the application settings (or environment variables). The
-        /// connection string name in settings should be prefixed with the standard "AzureWebJobs" prefix, but the
-        /// value you specify here should not include that prefix.</param>
+        /// <param name="account">A string value indicating the Service Bus connection string to use. This
+        /// string should be in one of the following formats. These checks will be applied in order and the
+        /// first match wins.
+        /// - The name of an "AzureWebJobs" prefixed app setting or connection string name. E.g., if your setting
+        ///   name is "AzureWebJobsMyServiceBus", you can specify "MyServiceBus" here.
+        /// - Can be a string containing %% values (e.g. %StagingServiceBus%). The value provided will be passed
+        ///   to any INameResolver registered on the JobHostConfiguration to resolve the actual setting name to use.
+        /// - Can be an app setting or connection string name of your choosing.
+        /// </param>
         public ServiceBusAccountAttribute(string account)
         {
             Account = account;
