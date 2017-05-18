@@ -17,5 +17,6 @@ namespace WebJobs.Script.EndToEndTests
         public const string TargetSitePublishingUserSettingName = "AzureWebJobsTargetSitePublishingUser";
         public const string TargetSitePublishingPasswordSettingName = "AzureWebJobsTargetSitePublishingPassword";
         public const string RuntimeExtensionPackageUrlSettingName = "AzureWebjobsRuntimePrivateExtensionPackageUrl";
+        public const string ServiceBusKey = "AzureWebJobsServiceBus";
     }
 }

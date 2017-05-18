@@ -10,6 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -136,12 +138,69 @@ namespace WebJobs.Script.EndToEndTests
                     {
                         break;
                     }
-                    
+
                     await Task.Delay(3000);
                 }
 
                 _fixture.Assert.True(resultToken != null);
             }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task ServiceBus_Node_DoesNotExhaustConnections()
+        {
+            var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsServiceBus");
+            NamespaceManager manager = NamespaceManager.CreateFromConnectionString(connectionString);
+
+            // Start with an empty queue
+            await manager.DeleteQueueAsync("node");
+
+            // Pre-create the queue as we can end up with 409s if a bunch of requests
+            // try to create the queue at once
+            await manager.CreateQueueAsync("node");
+
+            int i = 0, j = 0, lastConnectionCount = 0, lastConnectionLimit = 0;
+
+            using (var client = CreateClient())
+            {
+                // make this longer as we'll start seeing long timeouts from Service Bus upon failure.
+                client.Timeout = TimeSpan.FromMinutes(5);
+
+                // max connections in dynamic is currently 300
+                for (i = 0; i < 25; i++)
+                {
+                    List<Task<HttpResponseMessage>> requestTasks = new List<Task<HttpResponseMessage>>();
+
+                    for (j = 0; j < 25; j++)
+                    {
+                        requestTasks.Add(client.GetAsync($"api/ServiceBusNode?code={_fixture.FunctionDefaultKey}"));
+                    }
+
+                    await Task.WhenAll(requestTasks);
+
+                    foreach (var requestTask in requestTasks)
+                    {
+                        HttpResponseMessage response = await requestTask;
+                        JObject result = await response.Content.ReadAsAsync<JObject>();
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            // store these off for error details
+                            lastConnectionCount = (int)result["connections"];
+                            lastConnectionLimit = (int)result["connectionLimit"];
+
+                            // make sure we have the correct limit
+                            Assert.Equal(300, lastConnectionLimit);
+                        }
+
+                        Assert.True(response.IsSuccessStatusCode, $"Error: {response.StatusCode}, Last successful response: Connections: {lastConnectionCount}, ConnectionLimit: {lastConnectionLimit}");
+                    }
+                }
+            }
+
+            QueueDescription queueDescription = manager.GetQueue("node");
+            Assert.Equal(i * j, queueDescription.MessageCountDetails.ActiveMessageCount);
         }
 
         // Assumes we have a valid function name.
