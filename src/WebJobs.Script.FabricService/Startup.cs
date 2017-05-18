@@ -13,10 +13,14 @@ namespace WebJobs.Script.FabricService
             HttpConfiguration config = new HttpConfiguration();
 
             config.Routes.MapHttpRoute(
-                name: "DefaultApi",
-                routeTemplate: "api/{controller}/{id}",
-                defaults: new { id = RouteParameter.Optional }
-            );
+                name: "Home",
+                routeTemplate: string.Empty,
+                defaults: new { controller = "Home" });
+
+            config.Routes.MapHttpRoute(
+                name: "Functions",
+                routeTemplate: "{*uri}",
+                defaults: new { controller = "Functions" });
 
             appBuilder.UseWebApi(config);
         }
