@@ -8,9 +8,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.EndToEndTests
@@ -49,6 +52,8 @@ namespace WebJobs.Script.EndToEndTests
             Trace.WriteLine("Initializing environment...");
 
             await StopSite();
+
+            await AddSettings();
 
             _kuduClient = new KuduClient($"https://{Settings.SiteName}.scm.azurewebsites.net", Settings.SitePublishingUser, Settings.SitePublishingPassword);
 
@@ -93,6 +98,13 @@ namespace WebJobs.Script.EndToEndTests
                     requests.ForEach(t => t.Result.EnsureSuccessStatusCode());
                 }
             }
+        }
+
+        private async Task AddSettings()
+        {
+            Trace.WriteLine("Updating app settings...");
+            Telemetry.TrackEvent("SettingsUpdate");
+            await AddAppSetting(Constants.ServiceBusKey, Environment.GetEnvironmentVariable(Constants.ServiceBusKey));
         }
 
         private async Task UpdateSiteContents()
@@ -145,23 +157,51 @@ namespace WebJobs.Script.EndToEndTests
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/start?api-version=2015-08-01");
         }
 
-        private async Task IssueSiteCommand(string commandUri)
+        public async Task AddAppSetting(string name, string value)
+        {
+            string updateUri = $"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/config/appSettings";
+            string listUri = $"{updateUri}/list";
+
+            // We need to roundtrip these settings
+            JObject settings = await IssueSiteCommand($"{listUri}?api-version=2015-08-01", delayInMs: 0);
+
+            // add or overwrite the existing setting
+            settings["properties"][name] = value;
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, $"{updateUri}?api-version=2015-08-01")
+            {
+                Content = new StringContent(settings.ToString(Formatting.None), Encoding.UTF8, "application/json")
+            };
+
+            // Site is stopped; no need to wait.
+            await IssueSiteCommand(request, delayInMs: 0);
+        }
+
+        private async Task<JObject> IssueSiteCommand(string commandUri, int delayInMs = 5000)
+        {
+            return await IssueSiteCommand(new HttpRequestMessage(HttpMethod.Post, commandUri), delayInMs);
+        }
+
+        private async Task<JObject> IssueSiteCommand(HttpRequestMessage request, int delayInMs = 5000)
         {
             string token = await ArmAuthenticationHelpers.AcquireTokenBySPN(Settings.SiteTenantId, Settings.SiteApplicationId, Settings.SiteClientSecret);
 
+            JObject responseContent = null;
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
                 client.BaseAddress = new Uri("https://management.azure.com/");
 
-
-                using (var response = await client.PostAsync(commandUri, null))
+                using (var response = await client.SendAsync(request))
                 {
                     response.EnsureSuccessStatusCode();
+                    responseContent = await response.Content.ReadAsAsync<JObject>();
                 }
             }
 
-            await Task.Delay(5000);
+            await Task.Delay(delayInMs);
+
+            return responseContent;
         }
 
         protected virtual void Dispose(bool disposing)

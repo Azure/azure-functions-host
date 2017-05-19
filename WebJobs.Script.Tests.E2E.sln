@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
-MinimumVisualStudioVersion = 10.0.40219.1
+# Visual Studio 15
+VisualStudioVersion = 15.1.26403.7
+MinimumVisualStudioVersion = 15.0.0.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.E2E", "test\WebJobs.Script.Tests.E2E\WebJobs.Script.Tests.E2E.csproj", "{A782A37B-5738-4250-ADA5-53A0AC441BA8}"
 EndProject
 Global
