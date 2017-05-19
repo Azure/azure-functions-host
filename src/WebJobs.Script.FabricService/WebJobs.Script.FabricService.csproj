@@ -428,11 +428,20 @@
     <Compile Include="..\WebJobs.Script.WebHost\App_Start\WebHostSettings.cs">
       <Link>App_Start\WebHostSettings.cs</Link>
     </Compile>
+    <Compile Include="..\WebJobs.Script.WebHost\Controllers\AdminController.cs">
+      <Link>Controllers\AdminController.cs</Link>
+    </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Controllers\FunctionsController.cs">
       <Link>Controllers\FunctionsController.cs</Link>
     </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Controllers\HomeController.cs">
       <Link>Controllers\HomeController.cs</Link>
+    </Compile>
+    <Compile Include="..\WebJobs.Script.WebHost\Controllers\KeysController.cs">
+      <Link>Controllers\KeysController.cs</Link>
+    </Compile>
+    <Compile Include="..\WebJobs.Script.WebHost\Controllers\SwaggerController.cs">
+      <Link>Controllers\SwaggerController.cs</Link>
     </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Diagnostics\EventGenerator.cs">
       <Link>Diagnostics\EventGenerator.cs</Link>
@@ -659,6 +668,21 @@
     <Compile Include="ServiceRequestActionFilterAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\Test-CSharp\function.json">
+      <Link>Resources\Functions\Test-CSharp\function.json</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\Test-CSharp\run.csx">
+      <Link>Resources\Functions\Test-CSharp\run.csx</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\host.json">
+      <Link>Resources\Functions\host.json</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\Test-FSharp\function.json">
+      <Link>Resources\Functions\Test-FSharp\function.json</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\Test-FSharp\run.fsx">
+      <Link>Resources\Functions\Test-FSharp\run.fsx</Link>
+    </EmbeddedResource>
     <None Include="ApplicationInsights.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
