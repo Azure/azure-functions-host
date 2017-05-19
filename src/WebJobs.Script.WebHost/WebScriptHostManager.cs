@@ -77,10 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
-            if (config.HostConfig.LoggerFactory == null)
-            {
-                config.HostConfig.LoggerFactory = new LoggerFactory();
-            }
 
             _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);

@@ -266,30 +266,38 @@ namespace Microsoft.Azure.WebJobs.Script
                     File.WriteAllText(hostConfigFilePath, "{}");
                 }
 
-                if (ScriptConfig.HostConfig.IsDevelopment || InDebugMode)
+                var hostConfig = ScriptConfig.HostConfig;
+                if (hostConfig.IsDevelopment || InDebugMode)
                 {
                     // If we're in debug/development mode, use optimal debug settings
-                    ScriptConfig.HostConfig.UseDevelopmentSettings();
+                    hostConfig.UseDevelopmentSettings();
+                }
+
+                // Ensure we always have an ILoggerFactory,
+                // regardless of whether AppInsights is registered or not
+                if (hostConfig.LoggerFactory == null)
+                {
+                    hostConfig.LoggerFactory = new LoggerFactory();
                 }
 
                 string json = File.ReadAllText(hostConfigFilePath);
-                JObject hostConfig;
+                JObject hostConfigObject;
                 try
                 {
-                    hostConfig = JObject.Parse(json);
+                    hostConfigObject = JObject.Parse(json);
                 }
                 catch (JsonException ex)
                 {
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
-                ApplyConfiguration(hostConfig, ScriptConfig);
+                ApplyConfiguration(hostConfigObject, ScriptConfig);
 
-                if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
+                if (string.IsNullOrEmpty(hostConfig.HostId))
                 {
-                    ScriptConfig.HostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
+                    hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
                 }
-                if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
+                if (string.IsNullOrEmpty(hostConfig.HostId))
                 {
                     throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
                 }
@@ -299,9 +307,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 var traceMonitor = new TraceMonitor()
                     .Filter(p => { return true; })
                     .Subscribe(HandleHostError);
-                ScriptConfig.HostConfig.Tracing.Tracers.Add(traceMonitor);
+                hostConfig.Tracing.Tracers.Add(traceMonitor);
 
-                TraceLevel hostTraceLevel = ScriptConfig.HostConfig.Tracing.ConsoleLevel;
+                TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
                     // Host file logging is only done conditionally
@@ -321,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (TraceWriter != null)
                 {
-                    ScriptConfig.HostConfig.Tracing.Tracers.Add(TraceWriter);
+                    hostConfig.Tracing.Tracers.Add(TraceWriter);
                 }
                 else
                 {
@@ -333,8 +341,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
                 // for all other logging after startup.
-                _startupLogger = ScriptConfig.HostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-                Logger = ScriptConfig.HostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+                _startupLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                Logger = hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
                 _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName,
                     includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
@@ -346,15 +354,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (storageString == null)
                 {
                     // Disable core storage
-                    ScriptConfig.HostConfig.StorageConnectionString = null;
+                    hostConfig.StorageConnectionString = null;
                     blobManagerCreation = Task.FromResult<BlobLeaseManager>(null);
                 }
                 else
                 {
-                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), ScriptConfig.HostConfig.HostId, InstanceId, TraceWriter, ScriptConfig.HostConfig.LoggerFactory);
+                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), hostConfig.HostId, InstanceId, TraceWriter, hostConfig.LoggerFactory);
                 }
 
-                var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfig, TraceWriter, _startupLogger);
+                var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger);
                 ScriptConfig.BindingProviders = bindingProviders;
 
                 string message = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
@@ -428,7 +436,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 List<Type> types = new List<Type>();
                 types.Add(type);
 
-                ScriptConfig.HostConfig.TypeLocator = new TypeLocator(types);
+                hostConfig.TypeLocator = new TypeLocator(types);
 
                 Functions = functions;
 
@@ -518,12 +526,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig,
             ScriptSettingsManager settingsManager, IMetricsLogger metrics, Func<bool> isFileLoggingEnabled)
         {
-            // We always want an ILoggerFactory, whether app insights is registered or not
-            if (scriptConfig.HostConfig.LoggerFactory == null)
-            {
-                scriptConfig.HostConfig.LoggerFactory = new LoggerFactory();
-            }
-
             // Register a file logger that only logs user logs and only if file logging is enabled
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(scriptConfig,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
