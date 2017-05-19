@@ -3,9 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.Config;
 using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -38,7 +37,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string name = extensionType.Name;
             _customHttpHandlers[name] = handler;
 
-            return AdminController.GetRouteForExtensionHook(name);
+            return GetExtensionWebHookRoute(name);
+        }
+
+        // Provides the URL for accessing the admin extensions WebHook route.
+        internal static Uri GetExtensionWebHookRoute(string name)
+        {
+            var settings = ScriptSettingsManager.Instance;
+            var hostName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            if (hostName == null)
+            {
+                return null;
+            }
+
+            bool isLocalhost = hostName.StartsWith("localhost:", StringComparison.OrdinalIgnoreCase);
+            var scheme = isLocalhost ? "http" : "https";
+
+            return new Uri($"{scheme}://{hostName}/admin/extensions/{name}");
         }
     }
 }
