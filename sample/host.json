@@ -16,5 +16,6 @@
     },
     "swagger": {
         "enabled": true
-    }
+    },
+    "functionTimeout": "00:05:00"
 }
