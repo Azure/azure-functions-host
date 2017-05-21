@@ -678,6 +678,9 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <None Include="..\WebJobs.Script.WebHost\App_Data\secrets\host.json">
+      <Link>App_Data\Secrets\host.json</Link>
+    </None>
     <None Include="ApplicationInsights.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

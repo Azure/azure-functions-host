@@ -18,6 +18,9 @@
         <WorkingFolder>CodePackage</WorkingFolder>
       </ExeHost>
     </EntryPoint>
+    <EnvironmentVariables>
+      <EnvironmentVariable Name="AzureWebJobsScriptRoot" Value="C:\src\ESB\Sandboxes\KW\TestFunctions"/>
+    </EnvironmentVariables>
   </CodePackage>
 
   <!-- Config package is the contents of the Config directoy under PackageRoot that contains an 
