@@ -434,15 +434,6 @@
     <Compile Include="..\WebJobs.Script.WebHost\Controllers\FunctionsController.cs">
       <Link>Controllers\FunctionsController.cs</Link>
     </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Controllers\HomeController.cs">
-      <Link>Controllers\HomeController.cs</Link>
-    </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Controllers\KeysController.cs">
-      <Link>Controllers\KeysController.cs</Link>
-    </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Controllers\SwaggerController.cs">
-      <Link>Controllers\SwaggerController.cs</Link>
-    </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Diagnostics\EventGenerator.cs">
       <Link>Diagnostics\EventGenerator.cs</Link>
     </Compile>
@@ -536,9 +527,6 @@
     <Compile Include="..\WebJobs.Script.WebHost\OperationResult.cs">
       <Link>OperationResult.cs</Link>
     </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Properties\Resources.Designer.cs">
-      <Link>Properties\Resources.Designer.cs</Link>
-    </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Security\BlobStorageSecretsRepository.cs">
       <Link>Security\BlobStorageSecretsRepository.cs</Link>
     </Compile>
@@ -611,9 +599,6 @@
     <Compile Include="..\WebJobs.Script.WebHost\Security\ScriptSecretsType.cs">
       <Link>Security\ScriptSecretsType.cs</Link>
     </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Security\SecretManager.cs">
-      <Link>Security\SecretManager.cs</Link>
-    </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Security\SecretsChangedEventArgs.cs">
       <Link>Security\SecretsChangedEventArgs.cs</Link>
     </Compile>
@@ -622,12 +607,6 @@
     </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\Security\Serialization\ScriptSecretSerializer.cs">
       <Link>Security\Serialization\ScriptSecretSerializer.cs</Link>
-    </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Security\Serialization\ScriptSecretSerializerV0.cs">
-      <Link>Security\Serialization\ScriptSecretSerializerV0.cs</Link>
-    </Compile>
-    <Compile Include="..\WebJobs.Script.WebHost\Security\Serialization\ScriptSecretSerializerV1.cs">
-      <Link>Security\Serialization\ScriptSecretSerializerV1.cs</Link>
     </Compile>
     <Compile Include="..\WebJobs.Script.WebHost\SuspendedSynchronizationContextScope.cs">
       <Link>SuspendedSynchronizationContextScope.cs</Link>
@@ -659,10 +638,21 @@
     <Compile Include="..\WebJobs.Script.WebHost\WebScriptHostRequestManager.cs">
       <Link>WebScriptHostRequestManager.cs</Link>
     </Compile>
+    <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\KeysController.cs" />
+    <Compile Include="Controllers\SwaggerController.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="OwinCommunicationListener.cs" />
     <Compile Include="FabricService.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <DependentUpon>Resources.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Security\SecretManager.cs" />
+    <Compile Include="Security\Serialization\ScriptSecretSerializerV0.cs" />
+    <Compile Include="Security\Serialization\ScriptSecretSerializerV1.cs" />
     <Compile Include="ServiceEventSource.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="ServiceRequestActionFilterAttribute.cs" />
@@ -682,6 +672,11 @@
     </EmbeddedResource>
     <EmbeddedResource Include="..\WebJobs.Script.WebHost\Resources\Functions\Test-FSharp\run.fsx">
       <Link>Resources\Functions\Test-FSharp\run.fsx</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="ApplicationInsights.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -707,11 +702,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\WebJobs.Script.WebHost\Properties\Resources.resx">
-      <Link>Properties\Resources.resx</Link>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Home.html" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
