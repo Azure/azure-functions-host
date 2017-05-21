@@ -99,6 +99,9 @@ namespace WebJobs.Script.FabricService
             {
                 this.eventSource.ServiceMessage(this.serviceContext, "Starting web server on " + this.listeningAddress);
 
+                // TODO: find a better way to pass ServiceContext to Startup
+                Startup.ServiceContext = serviceContext;
+
                 this.webApp = WebApp.Start(this.listeningAddress, appBuilder => this.startup.Invoke(appBuilder));
 
                 this.eventSource.ServiceMessage(this.serviceContext, "Listening on " + this.publishAddress);

@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Microsoft.Azure.WebJobs.Script.FabricService.Properties {
+namespace Microsoft.Azure.WebJobs.Script.FabricHost.Properties {
     using System;
     
     

@@ -6,7 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Web.Http;
-using Microsoft.Azure.WebJobs.Script.FabricService.Properties;
+using Microsoft.Azure.WebJobs.Script.FabricHost.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {

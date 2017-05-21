@@ -638,6 +638,7 @@
     <Compile Include="..\WebJobs.Script.WebHost\WebScriptHostRequestManager.cs">
       <Link>WebScriptHostRequestManager.cs</Link>
     </Compile>
+    <Compile Include="App_Start\FabricServiceSettings.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
     <Compile Include="Controllers\SwaggerController.cs" />
@@ -678,13 +679,14 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <None Include="..\WebJobs.Script.WebHost\App_Data\secrets\host.json">
-      <Link>App_Data\Secrets\host.json</Link>
-    </None>
     <None Include="ApplicationInsights.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="PackageRoot\Config\Settings.xml" />
+    <None Include="PackageRoot\Scripts\HttpTriggerCSharp\function.json" />
+    <None Include="PackageRoot\Scripts\HttpTriggerCSharp\run.csx" />
+    <None Include="PackageRoot\Scripts\local.settings.json" />
+    <None Include="PackageRoot\Secrets\host.json" />
     <None Include="PackageRoot\ServiceManifest.xml" />
     <None Include="App.config" />
     <None Include="packages.config" />
@@ -707,6 +709,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Home.html" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\build\Microsoft.Azure.DocumentDB.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

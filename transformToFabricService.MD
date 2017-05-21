@@ -11,10 +11,4 @@
     - Security\SecretManager.cs
     - Security\Serialization\ScriptSecretSerializerV0.cs
     - Security\Serialization\ScriptSecretSerializerV1.cs    
-
-
-
-
-next step:
-adjust startup environment
-- http://henidak.com/2015/07/blog/
+4. transform WebHosts WebApiConfig.cs into Startup.cs
