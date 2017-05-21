@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -14,8 +13,6 @@ using System.Web.Http;
 using System.Web.Http.Controllers;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -183,35 +180,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [HttpPost]
         [AllowAnonymous]
-        public async Task<HttpResponseMessage> ExtensionHook(string name, CancellationToken token)
+        public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
         {
             var provider = this._scriptHostManager.BindingWebHookProvider;
 
-            var hook = provider.GetHandlerOrNull(name);
-            if (hook != null)
+            var handler = provider.GetHandlerOrNull(name);
+            if (handler != null)
             {
-                var response = await hook.ConvertAsync(this.Request, token);
+                var response = await handler.ConvertAsync(this.Request, token);
                 return response;
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
-
-        // Provides the URL for accessing the admin/hook route.
-        internal static Uri GetRouteForExtensionHook(string name)
-        {
-            var settings = ScriptSettingsManager.Instance;
-
-            var hostName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
-            if (hostName == null)
-            {
-                return null;
-            }
-
-            bool isLocalhost = hostName.StartsWith("localhost:", StringComparison.OrdinalIgnoreCase);
-            var scheme = isLocalhost ? "http" : "https";
-
-            return new Uri($"{scheme}://{hostName}/admin/extensions/{name}");
         }
     }
 }

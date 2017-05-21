@@ -283,7 +283,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
-                ScriptConfig.HostConfig.HostConfigMetadata = hostConfig;
                 ApplyConfiguration(hostConfig, ScriptConfig);
 
                 if (string.IsNullOrEmpty(ScriptConfig.HostConfig.HostId))
@@ -451,13 +450,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return metricsLogger;
         }
 
-        // Scan the extensions directory and Load custom extension.
         private void LoadCustomExtensions()
         {
-            var bindingRoot = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
-            if (!string.IsNullOrWhiteSpace(bindingRoot))
+            string extensionsPath = ScriptConfig.RootExtensionsPath;
+            if (!string.IsNullOrWhiteSpace(extensionsPath))
             {
-                foreach (var dir in Directory.EnumerateDirectories(bindingRoot))
+                foreach (var dir in Directory.EnumerateDirectories(extensionsPath))
                 {
                     foreach (var path in Directory.EnumerateFiles(dir, "*.dll"))
                     {
@@ -506,9 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         // Load a single extension
-        private void LoadExtension(
-            IExtensionConfigProvider instance,
-            string locationHint = null)
+        private void LoadExtension(IExtensionConfigProvider instance, string locationHint = null)
         {
             JobHostConfiguration config = this.ScriptConfig.HostConfig;
 
@@ -1112,7 +1108,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
         {
-            JobHostConfiguration hostConfig = scriptConfig.HostConfig;
+            var hostConfig = scriptConfig.HostConfig;
+
+            hostConfig.HostConfigMetadata = config;
 
             JArray functions = (JArray)config["functions"];
             if (functions != null && functions.Count > 0)
