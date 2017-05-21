@@ -7,8 +7,8 @@
     <ProjectGuid>{A9F57B53-9D54-4760-AC33-60A7E6F578C2}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WebJobs.Script.FabricService</RootNamespace>
-    <AssemblyName>WebJobs.Script.FabricService</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.FabricService</RootNamespace>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.FabricService</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -696,6 +696,15 @@
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
+      <Link>CustomDictionary.xml</Link>
+      <SubType>Designer</SubType>
+    </CodeAnalysisDictionary>
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\WebJobs.Script.WebHost\Properties\Resources.resx">
