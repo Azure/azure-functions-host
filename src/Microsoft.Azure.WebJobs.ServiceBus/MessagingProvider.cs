@@ -66,12 +66,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
             string connectionString = GetConnectionString(connectionStringName);
 
-            // We cache messaging factories per connection, in accordance with ServiceBus
+            // We cache messaging factories per entity/connection, in accordance with ServiceBus
             // performance guidelines.
             // https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
-            var messagingFactory = _messagingFactoryCache.GetOrAdd(connectionString, (c) =>
+            string cacheKey = $"{entityPath}-{connectionString}";
+            var messagingFactory = _messagingFactoryCache.GetOrAdd(cacheKey, (p) =>
             {
-                return MessagingFactory.CreateFromConnectionString(c);
+                return MessagingFactory.CreateFromConnectionString(connectionString);
             });
 
             return messagingFactory;

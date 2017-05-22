@@ -68,16 +68,27 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         {
             var factory = _provider.CreateMessagingFactory("test");
 
+            // same cached factory each time for the same entity/connection
             Assert.Same(factory, _provider.CreateMessagingFactory("test"));
             Assert.Same(factory, _provider.CreateMessagingFactory("test"));
             Assert.Same(factory, _provider.CreateMessagingFactory("test"));
 
-            var factory2 = _provider.CreateMessagingFactory("test", "ServiceBusOverride");
+            // different factory for a different entity
+            var factory2 = _provider.CreateMessagingFactory("test2");
             Assert.NotSame(factory, factory2);
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test2"));
 
-            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
-            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
-            Assert.Same(factory2, _provider.CreateMessagingFactory("test", "ServiceBusOverride"));
+            factory2 = _provider.CreateMessagingFactory("test3", "ServiceBusOverride");
+
+            // same cached factory each time for the same entity/connection
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test3", "ServiceBusOverride"));
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test3", "ServiceBusOverride"));
+            Assert.Same(factory2, _provider.CreateMessagingFactory("test3", "ServiceBusOverride"));
+
+            // different factory for same entity different connection
+            var factory3 = _provider.CreateMessagingFactory("test3", "AzureWebJobsServiceBus");
+            Assert.NotSame(factory2, factory3);
+            Assert.Same(factory3, _provider.CreateMessagingFactory("test3", "AzureWebJobsServiceBus"));
         }
 
         [Fact]
