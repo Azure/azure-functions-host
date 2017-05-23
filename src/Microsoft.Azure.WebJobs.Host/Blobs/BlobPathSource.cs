@@ -18,28 +18,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 throw new FormatException("Blob paths must not be null.");
             }
 
-            string containerNamePattern;
-            string blobNamePattern;
             int slashIndex = pattern.IndexOf('/');
             bool hasBlobName = slashIndex != -1;
 
+            string containerNamePattern = pattern;
+            string blobNamePattern = String.Empty;
             if (hasBlobName)
             {
-                // There must be at least one character before the slash and one character after the slash.
-                bool hasNonEmptyBlobAndContainerNames = slashIndex > 0 && slashIndex < pattern.Length - 1;
-
-                if (!hasNonEmptyBlobAndContainerNames)
-                {
-                    throw new FormatException("Blob paths must be in the format container/blob.");
-                }
-
                 containerNamePattern = pattern.Substring(0, slashIndex);
                 blobNamePattern = pattern.Substring(slashIndex + 1);
             }
-            else
+
+            // There must be at least one character before the slash and one character after the slash.
+            bool hasNonEmptyBlobAndContainerNames = slashIndex > 0 && slashIndex < pattern.Length - 1;
+
+            if ((hasBlobName && !hasNonEmptyBlobAndContainerNames) || containerNamePattern.Contains('\\'))
             {
-                containerNamePattern = pattern;
-                blobNamePattern = String.Empty;
+                throw new FormatException($"Invalid blob trigger path '{pattern}'. Paths must be in the format 'container/blob'.");
+            }
+            else if (containerNamePattern.Contains('{'))
+            {
+                throw new FormatException($"Invalid blob trigger path '{pattern}'. Container paths cannot contain {{resolve}} tokens.");
             }
 
             BindingTemplateSource template = BindingTemplateSource.FromString(pattern);
@@ -55,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             {
                 BlobClient.ValidateBlobName(blobNamePattern);
             }
-
             return new FixedBlobPathSource(new BlobPath(containerNamePattern, blobNamePattern));
         }
     }

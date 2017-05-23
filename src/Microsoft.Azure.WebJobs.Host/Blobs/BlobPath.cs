@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             if (!TryParse(value, isContainerBinding, out path))
             {
-                throw new FormatException("Blob identifiers must be in the format 'container/blob'.");
+                throw new FormatException($"Invalid blob path '{value}'. Paths must be in the format 'container/blob'.");
             }
 
             return path;

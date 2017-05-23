@@ -46,6 +46,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         }
 
         [Fact]
+        public void BlobPathSource_Throws_OnBackslash()
+        {
+            var exc = Assert.Throws<FormatException>(() => BlobPathSource.Create("container\\blob"));
+            Assert.Contains("Paths must be in the format 'container/blob'", exc.Message);
+        }
+
+        [Fact]
+        public void BlobPathSource_Throws_OnEmpty()
+        {
+            var exc = Assert.Throws<FormatException>(() => BlobPathSource.Create("/"));
+            Assert.Contains("Paths must be in the format 'container/blob'", exc.Message);
+        }
+
+        [Fact]
+        public void BlobPathSource_Throws_OnContainerResolves()
+        {
+            var exc = Assert.Throws<FormatException>(() => BlobPathSource.Create("container{resolve}/blob"));
+            Assert.Contains("Container paths cannot contain {resolve} tokens.", exc.Message);
+        }
+
+        [Fact]
         public void TestMethod1()
         {
             var d = Match("container", "container/item");
