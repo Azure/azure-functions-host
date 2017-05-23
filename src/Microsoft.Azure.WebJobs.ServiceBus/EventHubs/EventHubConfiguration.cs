@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 {
                     throw new InvalidOperationException("Batch checkpoint frequency must be larger than 0.");
                 }
-                BatchCheckpointFrequency = value;
+                _batchCheckpointFrequency = value;
             }
         }
 

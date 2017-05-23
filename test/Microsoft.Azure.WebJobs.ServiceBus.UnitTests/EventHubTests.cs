@@ -180,5 +180,25 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             string actual = EventHubConfiguration.GetBlobPrefix(eventHubName, serviceBusNamespace);
             Assert.Equal(expected, actual);
         }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(5)]
+        [InlineData(200)]
+        public void EventHubBatchCheckpointFrequency(int num)
+        {
+            var config = new EventHubConfiguration();
+            config.BatchCheckpointFrequency = num;
+            Assert.Equal(num, config.BatchCheckpointFrequency);
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(0)]
+        public void EventHubBatchCheckpointFrequency_Throws(int num)
+        {
+            var config = new EventHubConfiguration();
+            Assert.Throws<InvalidOperationException>(() => config.BatchCheckpointFrequency = num);
+        }
     }
 }
