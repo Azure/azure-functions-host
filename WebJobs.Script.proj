@@ -29,10 +29,6 @@
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
-    <Build Include="src\WebJobs.Script.Extensibility.NuGet\WebJobs.Script.Extensibility.nuproj">
-      <PublishType>File</PublishType>
-      <PublishPath>$(PublishPath)\Packages</PublishPath>
-    </Build>
     <Build Include="src\WebJobs.Script.WebHost.NuGet\WebJobs.Script.WebHost.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
