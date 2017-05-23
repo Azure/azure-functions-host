@@ -151,6 +151,12 @@
                 "prefetchCount": {
                     "description": "The default PrefetchCount that will be used by the underlying EventProcessorHost.",
                     "type": "integer"
+                },
+
+                "batchCheckpointFrequency": {
+                    "description": "The number of batches to process before creating an EventHub cursor checkpoint",
+                    "type": "integer",
+                    "default": 1
                 }
             }
         },

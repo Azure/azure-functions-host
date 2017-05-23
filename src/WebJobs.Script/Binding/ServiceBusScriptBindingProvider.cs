@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             EventProcessorOptions eventProcessorOptions = EventProcessorOptions.DefaultOptions;
             eventProcessorOptions.MaxBatchSize = 1000;
+            int batchCheckpointFrequency = 1;
             configSection = (JObject)Metadata.GetValue("eventHub", StringComparison.OrdinalIgnoreCase);
             if (configSection != null)
             {
@@ -79,8 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     eventProcessorOptions.PrefetchCount = (int)value;
                 }
+
+                if (configSection.TryGetValue("batchCheckpointFrequency", StringComparison.OrdinalIgnoreCase, out value))
+                {
+                    batchCheckpointFrequency = (int)value;
+                }
             }
             _eventHubConfiguration = new EventHubConfiguration(eventProcessorOptions);
+            _eventHubConfiguration.BatchCheckpointFrequency = batchCheckpointFrequency;
 
             Config.UseServiceBus(serviceBusConfig);
             Config.UseEventHub(_eventHubConfiguration);
