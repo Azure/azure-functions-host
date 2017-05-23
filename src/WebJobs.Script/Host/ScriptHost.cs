@@ -19,7 +19,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Extensions;
-using Microsoft.Azure.WebJobs.Extensions.BotFramework.Bindings;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -410,8 +409,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Load builtin extensions
-                var sendGridExtension = new Extensions.SendGrid.SendGridConfiguration();
-                LoadExtension(sendGridExtension);
+                {
+                    var botExtension = new Extensions.BotFramework.Config.BotFrameworkConfiguration();
+                    LoadExtension(botExtension);
+
+                    var sendGridExtension = new Extensions.SendGrid.SendGridConfiguration();
+                    LoadExtension(sendGridExtension);
+                }
 
                 LoadCustomExtensions();
 
@@ -719,7 +723,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 typeof(MobileAppsScriptBindingProvider),
                 typeof(NotificationHubScriptBindingProvider),
                 typeof(TwilioScriptBindingProvider),
-                typeof(BotFrameworkScriptBindingProvider),
 
                 // General purpose binder that works directly against SDK.
                 // This should eventually replace all other ScriptBindingProvider
