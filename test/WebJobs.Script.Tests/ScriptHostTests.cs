@@ -682,6 +682,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_ClearsFunctionsFilter()
+        {
+            // A previous bug wouldn't properly clear the filter if you removed it.
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.Null(scriptConfig.Functions);
+
+            config["functions"] = new JArray("Function1", "Function2");
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(2, scriptConfig.Functions.Count);
+            Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
+            Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
+
+            config.Remove("functions");
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.Null(scriptConfig.Functions);
+        }
+
+        [Fact]
         public void ApplyConfiguration_AppliesTimeout()
         {
             JObject config = new JObject();

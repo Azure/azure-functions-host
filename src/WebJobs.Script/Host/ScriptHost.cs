@@ -1123,6 +1123,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     scriptConfig.Functions.Add((string)function);
                 }
             }
+            else
+            {
+                scriptConfig.Functions = null;
+            }
 
             // We may already have a host id, but the one from the JSON takes precedence
             JToken hostId = (JToken)config["id"];

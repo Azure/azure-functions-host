@@ -31,14 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
+        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
         {
             DateTime start = DateTime.Now;
             while (!condition())
             {
                 await Task.Delay(pollingInterval);
 
-                if (!Debugger.IsAttached && (DateTime.Now - start).TotalMilliseconds > timeout)
+                bool shouldThrow = !Debugger.IsAttached || (Debugger.IsAttached && throwWhenDebugging);
+                if (shouldThrow && (DateTime.Now - start).TotalMilliseconds > timeout)
                 {
                     throw new ApplicationException("Condition not reached within timeout.");
                 }

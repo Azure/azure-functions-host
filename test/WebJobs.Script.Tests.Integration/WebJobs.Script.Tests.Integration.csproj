@@ -405,6 +405,7 @@
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Host\WebScriptHostManagerTimeoutTests.cs" />
     <Compile Include="NodeContentTests.cs" />
     <Compile Include="Controllers\ControllerScenarioTestFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteHostFunctionKeysScenario.cs" />
@@ -430,6 +431,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="SamplesEndToEndRestartTests.cs" />
     <Compile Include="SamplesEndToEndTests.cs" />
     <Compile Include="Host\ScriptHostManagerTests.cs" />
     <Compile Include="Host\StandbyModeTests.cs" />
