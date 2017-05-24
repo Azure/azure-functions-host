@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> _compilationServiceFactory;
 
         public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-            : this(host, config, new JavaScriptCompilationServiceFactory())
+            : this(host, config, new JavaScriptCompilationServiceFactory(host))
         {
         }
 

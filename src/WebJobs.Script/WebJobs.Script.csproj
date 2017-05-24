@@ -444,11 +444,13 @@
     <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilation.cs" />
     <Compile Include="Description\Node\Compilation\Raw\RawJavaScriptCompilationService.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\CompilationOption.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\ITypeScriptCompiler.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\StringCompilationOption.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilation.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptions.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationService.cs" />
     <Compile Include="Description\Binding\DataType.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompiler.cs" />
     <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />

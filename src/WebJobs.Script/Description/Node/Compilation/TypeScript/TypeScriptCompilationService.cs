@@ -12,16 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
 {
     public class TypeScriptCompilationService : ICompilationService<IJavaScriptCompilation>
     {
-        private const string DefaultToolName = "tsc.exe";
-        private static readonly TypeScriptCompilationOptions DefaultCompilationOptions;
+        private readonly TypeScriptCompilationOptions _compilationOptions;
 
-        static TypeScriptCompilationService()
+        public TypeScriptCompilationService(TypeScriptCompilationOptions compilationOptions)
         {
-            DefaultCompilationOptions = new TypeScriptCompilationOptions
-            {
-                ToolPath = GetToolPath(),
-                OutDir = ".output"
-            };
+            _compilationOptions = compilationOptions;
         }
 
         public string Language => "TypeScript";
@@ -30,31 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
 
         public bool PersistsOutput => true;
 
-        private static string GetToolPath()
-        {
-            string path = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.TypeScriptCompilerPath);
-            if (path == null)
-            {
-                string basePath = Path.Combine(Environment.ExpandEnvironmentVariables("%programfiles(x86)%"), "Microsoft SDKs\\TypeScript");
-                if (Directory.Exists(basePath))
-                {
-                    path = Directory.GetDirectories(basePath)
-                        .OrderByDescending(d => d)
-                        .FirstOrDefault() ?? string.Empty;
-
-                    path = Path.Combine(path, DefaultToolName);
-                }
-            }
-
-            return path ?? DefaultToolName;
-        }
-
         async Task<object> ICompilationService.GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
             => await GetFunctionCompilationAsync(functionMetadata);
 
         public async Task<IJavaScriptCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
         {
-            return await TypeScriptCompilation.CompileAsync(functionMetadata.ScriptFile, DefaultCompilationOptions);
+            return await TypeScriptCompilation.CompileAsync(functionMetadata.ScriptFile, _compilationOptions);
         }
     }
 }

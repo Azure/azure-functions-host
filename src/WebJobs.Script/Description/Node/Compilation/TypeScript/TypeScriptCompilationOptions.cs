@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
 {
+    [DebuggerDisplay("{DebuggerDisplay, nq}")]
     public class TypeScriptCompilationOptions
     {
         private readonly Dictionary<string, CompilationOption> _options = new Dictionary<string, CompilationOption>();
@@ -40,6 +42,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
             get => GetOption<StringCompilationOption>()?.Value;
             internal set => SetOption(value);
         }
+
+        public string RootDir
+        {
+            get => GetOption<StringCompilationOption>()?.Value;
+            internal set => SetOption(value);
+        }
+
+        private string DebuggerDisplay => ToArgumentString("<filename>");
 
         private static string GetOptionName(string name)
         {

@@ -490,6 +490,7 @@
     <Compile Include="Description\Node\Compilation\Raw\RawJavascriptCompilationTests.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptionsTests.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationTests.cs" />
+    <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilerTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Diagnostics\FileLoggerTests.cs" />
     <Compile Include="Eventing\File\FileWatcherEventSourceTests.cs" />
@@ -527,6 +528,7 @@
     <Compile Include="Handlers\ExceptionProcessingHandlerTests.cs" />
     <Compile Include="Handlers\SystemTraceHandlerTests.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcherTests.cs" />
+    <Compile Include="IO\FileUtilityTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
