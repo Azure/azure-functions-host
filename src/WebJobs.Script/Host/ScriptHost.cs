@@ -279,28 +279,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.LoggerFactory = new LoggerFactory();
                 }
 
-                string json = File.ReadAllText(hostConfigFilePath);
-                JObject hostConfigObject;
-                try
-                {
-                    hostConfigObject = JObject.Parse(json);
-                }
-                catch (JsonException ex)
-                {
-                    throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
-                }
-
-                ApplyConfiguration(hostConfigObject, ScriptConfig);
-
-                if (string.IsNullOrEmpty(hostConfig.HostId))
-                {
-                    hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
-                }
-                if (string.IsNullOrEmpty(hostConfig.HostId))
-                {
-                    throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
-                }
-
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
                 var traceMonitor = new TraceMonitor()
@@ -343,6 +321,37 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
                 Logger = hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
+                string message = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
+                TraceWriter.Info(message);
+                _startupLogger?.LogInformation(message);
+
+                string json = File.ReadAllText(hostConfigFilePath);
+
+                message = $"Host configuration file read:{Environment.NewLine}{json}";
+                TraceWriter.Info(message);
+                _startupLogger.LogInformation(message);
+
+                JObject hostConfigObject;
+                try
+                {
+                    hostConfigObject = JObject.Parse(json);
+                }
+                catch (JsonException ex)
+                {
+                    throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
+                }
+
+                ApplyConfiguration(hostConfigObject, ScriptConfig);
+
+                if (string.IsNullOrEmpty(hostConfig.HostId))
+                {
+                    hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
+                }
+                if (string.IsNullOrEmpty(hostConfig.HostId))
+                {
+                    throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
+                }
+
                 _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(hostLogPath, ScriptConstants.DebugSentinelFileName,
                     includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
 
@@ -363,10 +372,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger);
                 ScriptConfig.BindingProviders = bindingProviders;
-
-                string message = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
-                TraceWriter.Info(message);
-                _startupLogger?.LogInformation(message);
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {

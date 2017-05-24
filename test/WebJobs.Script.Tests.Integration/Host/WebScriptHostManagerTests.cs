@@ -293,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string[] expectedPatterns = new string[]
                 {
                     "Info Reading host configuration file",
+                    "Info Host configuration file read",
                     "Info Host lock lease acquired by instance ID '(.+)'",
                     "Info Function 'Excluded' is marked as excluded",
                     @"Info Generating ([0-9]+) job function\(s\)",
