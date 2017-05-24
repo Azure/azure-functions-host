@@ -96,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (!_disposed)
             {
                 _listener.Dispose();
-                _loggerFactory?.Dispose();
 
                 _disposed = true;
             }
