@@ -340,7 +340,7 @@ NormalizeNuGetContent: Normalize NuGetContent items full path and destination fo
     </Task>
   </UsingTask>
 
-  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="C:\Program Files (x86)\MSBuild\15.0\Bin\Microsoft.Build.Tasks.Core.dll">
+  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <OutputFilename ParameterType="System.String" Required="true" />
     </ParameterGroup>
