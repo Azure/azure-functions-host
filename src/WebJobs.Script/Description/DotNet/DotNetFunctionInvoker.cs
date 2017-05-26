@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 _reloadScript();
             }
-            else if (string.Compare(DotNetConstants.ProjectFileName, e.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Compare(DotNetConstants.ProjectFileName, Path.GetFileName(e.Name), StringComparison.OrdinalIgnoreCase) == 0)
             {
                 _restorePackages();
             }
