@@ -1,9 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -40,13 +42,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ResolveNuGetPath_Local_WithNoEnvironmentHint_ReturnsExpectedResult()
+        public void ResolveNuGetPath_WithNoEnvironmentHint_AndNoLocalFile_ReturnsExpectedResult()
         {
             using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
             {
                 string result = PackageManager.ResolveNuGetPath();
 
                 Assert.Equal("nuget.exe", result);
+            }
+        }
+
+        [Fact]
+        public void ResolveNuGetPath_Local_WithNoEnvironmentHint_ReturnsExpectedResult()
+        {
+            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
+            using (var nugetDirectory = new TempDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin\\tools\\")))
+            {
+                string nugetPath = Path.Combine(nugetDirectory.Path, "nuget.exe");
+                File.WriteAllText(nugetPath, string.Empty);
+
+                string result = PackageManager.ResolveNuGetPath();
+
+                Assert.Equal(nugetPath, result);
             }
         }
 
@@ -60,36 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string result = PackageManager.ResolveNuGetPath();
 
                 Assert.Equal(path, result);
-            }
-        }
-
-        [Fact]
-        public void ResolveNuGetPath_WithKuduPath_ReturnsExpectedResult()
-        {
-            string kuduBasePath = Path.Combine(Path.GetTempPath(), @"base\kudu");
-
-            try
-            {
-                string expectedKuduPath = Path.Combine(kuduBasePath, @"kudu2");
-
-                if (Directory.Exists(kuduBasePath))
-                {
-                    Directory.Delete(kuduBasePath, true);
-                }
-
-                Directory.CreateDirectory(expectedKuduPath);
-                Directory.CreateDirectory(Path.Combine(kuduBasePath, @"kudu1"));
-
-                using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
-                {
-                    string result = PackageManager.ResolveNuGetPath(kuduBasePath);
-
-                    Assert.Equal(Path.Combine(expectedKuduPath, "bin\\scripts\\nuget.exe"), result);
-                }
-            }
-            finally
-            {
-                Directory.Delete(kuduBasePath, true);
             }
         }
     }

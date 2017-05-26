@@ -10,6 +10,7 @@
     <SiteExtensionVersion>1.0.$(BuildNumber)</SiteExtensionVersion>
     <SiteExtensionBasePath>$(PublishPath)\Packages\SiteExtension</SiteExtensionBasePath>
     <SiteExtensionPath>$(SiteExtensionBasePath)\$(SiteExtensionVersion)</SiteExtensionPath>
+    <FunctionsSiteExtensionPath>.\src\WebJobs.Script.WebHost\Publish\SiteExtensions\Functions</FunctionsSiteExtensionPath>
     <ExtensionXml>src\SiteExtension\extension.xml</ExtensionXml>
     <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
     <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
@@ -103,7 +104,11 @@
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
 
-  <Target Name="PackageScriptHost" DependsOnTargets="Build">
+  <Target Name="DownloadRuntimeNugetClient">
+    <DownloadNuGet OutputFileName="$(FunctionsSiteExtensionPath)\bin\tools\nuget.exe" MinimumVersion="3.3.0" DownloadUrl="https://azfunc.blob.core.windows.net/public/nuget.exe"  />
+  </Target>
+
+  <Target Name="PackageScriptHost" DependsOnTargets="Build;DownloadRuntimeNugetClient">
     <PropertyGroup>
       <ScriptHostOutput>.\src\WebJobs.Script.Host\bin\$(Configuration)</ScriptHostOutput>
     </PropertyGroup>
@@ -122,7 +127,10 @@
 	/>
   </Target>
 
-  <Target Name="PackageWebHost" DependsOnTargets="Build">
+  <Target Name="PackageWebHost" DependsOnTargets="Build;DownloadRuntimeNugetClient">
+    <ItemGroup>
+        <SiteExtensionSource Include="$(FunctionsSiteExtensionPath)\**\*.*" />
+    </ItemGroup>
     <MSBuild Projects="src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
              Properties="DeployOnBuild=true; PublishProfile=FileSystem">
     </MSBuild>
@@ -133,10 +141,6 @@
     
     <!--Create site extension package  -->
     <MakeDir Directories="@(SiteExtensionPath)"/>
-    
-    <ItemGroup>
-        <SiteExtensionSource Include=".\src\WebJobs.Script.WebHost\Publish\SiteExtensions\Functions\**\*.*" />
-    </ItemGroup>
     
     <Copy SourceFiles="@(SiteExtensionSource)" DestinationFiles="@(SiteExtensionSource->'$(SiteExtensionPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="$(ExtensionXml)" DestinationFolder="$(SiteExtensionBasePath)" />
@@ -213,12 +217,14 @@
     <ParameterGroup>
       <OutputFileName ParameterType="System.String" Required="true" />
       <MinimumVersion ParameterType="System.String" Required="true" />
+      <DownloadUrl ParameterType="System.String" Required="false" />
     </ParameterGroup>
     <Task>
       <Using Namespace="System.Diagnostics" />
       <Using Namespace="System.Net" />
       <Code Type="Fragment" Language="cs">
         <![CDATA[
+                DownloadUrl = DownloadUrl ?? "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe";
                 Version minimumRequiredVersion;
                 
                 if (!Version.TryParse(MinimumVersion, out minimumRequiredVersion))
@@ -265,12 +271,12 @@
                             File.Delete(OutputFileName);
                         }
                     }
-                    
+                    Directory.CreateDirectory(Path.GetDirectoryName(OutputFileName));
                     if (!File.Exists(OutputFileName))
                     {
-                        Log.LogMessage("Downloading latest version of NuGet.exe...");
+                        Log.LogMessage("Downloading NuGet.exe from {0}...", DownloadUrl);
                         WebClient webClient = new WebClient();
-                        webClient.DownloadFile("https://dist.nuget.org/win-x86-commandline/latest/nuget.exe", OutputFileName);
+                        webClient.DownloadFile(DownloadUrl, OutputFileName);
                     }
 
                     return true;

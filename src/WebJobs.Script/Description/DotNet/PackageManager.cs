@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -135,23 +136,19 @@ Lock file hash: {currentLockFileHash}";
             }
         }
 
-        public static string ResolveNuGetPath(string baseKuduPath = null)
+        public static string ResolveNuGetPath()
         {
             // Check if we have the path in the well known environment variable
             string path = ScriptSettingsManager.Instance.GetSetting(NugetPathEnvironmentKey);
 
-            //// If we don't have the path, try to get a fully qualified path to Kudu's NuGet copy.
+            //// If we don't have the path, get the runtime's copy of NuGet
             if (string.IsNullOrEmpty(path))
             {
-                // Get the latest Kudu extension path
-                string kuduFolder = baseKuduPath ?? Environment.ExpandEnvironmentVariables("%programfiles(x86)%\\siteextensions\\kudu");
-                string kuduPath = Directory.Exists(kuduFolder)
-                    ? Directory.GetDirectories(kuduFolder).OrderByDescending(d => d).FirstOrDefault()
-                    : null;
+                string runtimeNugetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin\\tools", NuGetFileName);
 
-                if (!string.IsNullOrEmpty(kuduPath))
+                if (File.Exists(runtimeNugetPath))
                 {
-                    path = Path.Combine(kuduPath, "bin\\scripts", NuGetFileName);
+                    path = runtimeNugetPath;
                 }
             }
 
