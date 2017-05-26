@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -19,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private readonly string _namespaceName;
         private readonly IBindableServiceBusPath _path;
         private readonly IAsyncObjectToTypeConverter<ServiceBusEntity> _converter;
-        private readonly AccessRights _accessRights;
         private readonly EntityType _entityType;
 
         public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding, ServiceBusAccount account, IBindableServiceBusPath path, ServiceBusAttribute attr)
@@ -29,10 +29,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _path = path;
-            _accessRights = attr.Access;
             _entityType = attr.EntityType;
             _converter = new OutputConverter<string>(
-                new StringToServiceBusEntityConverter(account, _path, _accessRights, _entityType));
+                new StringToServiceBusEntityConverter(account, _path, _entityType));
         }
 
         public bool FromAttribute
@@ -51,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Account = _account,
                 MessageSender = messageSender,
-                AccessRights = _accessRights,
                 EntityType = _entityType
             };
 

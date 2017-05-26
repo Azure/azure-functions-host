@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
@@ -16,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         private static readonly IQueueTriggerArgumentBindingProvider InnerProvider =
             new CompositeArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<BrokeredMessage>(
-                    new AsyncConverter<BrokeredMessage, BrokeredMessage>(new IdentityConverter<BrokeredMessage>())),
+                new ConverterArgumentBindingProvider<Message>(
+                    new AsyncConverter<BrokeredMessage, Message>(new IdentityConverter<Message>())),
                 new ConverterArgumentBindingProvider<string>(new BrokeredMessageToStringConverter()),
                 new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
             }
 
-            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = InnerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<Message> argumentBinding = InnerProvider.TryCreate(parameter);
             if (argumentBinding == null)
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBusTrigger to type '{0}'.", parameter.ParameterType));
@@ -81,17 +81,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             ServiceBusAccount account = new ServiceBusAccount
             {
                 MessagingFactory = _config.MessagingProvider.CreateMessagingFactory(entityPath, attribute.Connection),
-                NamespaceManager = _config.MessagingProvider.CreateNamespaceManager(attribute.Connection)
             };
 
             ITriggerBinding binding;
             if (queueName != null)
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, attribute.Access, _config, queueName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, _config, queueName);
             }
             else
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, attribute.Access, _config, topicName, subscriptionName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, _config, topicName, subscriptionName);
             }
 
             return Task.FromResult<ITriggerBinding>(binding);

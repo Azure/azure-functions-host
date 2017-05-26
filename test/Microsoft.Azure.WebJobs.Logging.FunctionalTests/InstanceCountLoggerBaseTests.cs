@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
@@ -149,7 +149,6 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
             l._newTicks = 301;
             await l.StopAsync();
 
-            
             Assert.Equal(2, l._dict[200]); // max was g2, g3
 
             Assert.Equal(3, l._totalActive);
@@ -209,10 +208,11 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
             // For testing conveneince, get _heartbeats in an easily-comparable form
             public string GetHeartbeatSummary()
             {
-                return string.Join(";",
-                    from kv in _heartbeats
-                    orderby kv.Key
-                    select string.Format("{0}={1}", kv.Key, kv.Value));
+                var values = from kv in _heartbeats
+                             orderby kv.Key
+                             select string.Format("{0}={1}", kv.Key, kv.Value);
+
+                return string.Join(";", values);
             }
 
             // Callback from background Poller thread. 
@@ -228,7 +228,6 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
 
                 return Task.FromResult(0);
             }
-                       
 
             // Callback from poller thread. 
             protected override async Task<long> WaitOnPoll(CancellationToken token)

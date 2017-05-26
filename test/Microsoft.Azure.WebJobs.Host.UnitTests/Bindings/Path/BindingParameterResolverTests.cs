@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
                 resolver.Resolve("datetime:mm-dd-yyyy");
             });
 
-            Assert.Equal("The value specified is not a 'rand-guid' binding parameter.\r\nParameter name: value", ex.Message);
+            Assert.Equal($"The value specified is not a 'rand-guid' binding parameter.{Environment.NewLine}Parameter name: value", ex.Message);
         }
 
         [Fact]

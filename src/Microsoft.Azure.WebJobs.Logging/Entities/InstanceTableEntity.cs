@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             return new FunctionInstanceLogItem
             {
                 FunctionInstanceId = ((IFunctionInstanceBaseEntry) this).FunctionInstanceId,
-                ParentId =  this.ParentId,
+                ParentId = this.ParentId,
                 FunctionName = this.FunctionName,
                 TriggerReason = this.TriggerReason,
                 StartTime = this.StartTime,

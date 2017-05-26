@@ -8,13 +8,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
-    internal class BrokeredMessageToStringConverter : IAsyncConverter<BrokeredMessage, string>
+    internal class BrokeredMessageToStringConverter : IAsyncConverter<Message, string>
     {
-        public async Task<string> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
+        public async Task<string> ConvertAsync(Message input, CancellationToken cancellationToken)
         {
             if (input == null)
             {
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 // provide a decent error.
 
                 // Create a clone as you cannot call GetBody twice on the same BrokeredMessage.
-                BrokeredMessage clonedMessage = input.Clone();
+                Message clonedMessage = input.Clone();
                 try
                 {
                     return clonedMessage.GetBody<string>();

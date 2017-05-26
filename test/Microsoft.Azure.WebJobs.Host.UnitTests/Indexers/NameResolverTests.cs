@@ -57,13 +57,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
             // rogue exceptions are caught and wrapped. 
             Assert.Throws<InvalidOperationException>(() => resolver.ResolveWholeString("%abc%"));
-            
         }
     }
 
     class DictNameResolver : INameResolver
     {
-        public Dictionary<string, string> _dict = new Dictionary<string,string>();
+        public Dictionary<string, string> _dict = new Dictionary<string, string>();
 
         public void Add(string name, string value)
         {

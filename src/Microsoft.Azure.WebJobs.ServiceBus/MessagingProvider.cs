@@ -5,8 +5,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -34,19 +34,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("config");
             }
             _config = config;
-        }
-
-        /// <summary>
-        /// Creates a <see cref="NamespaceManager"/>.
-        /// </summary>
-        /// <param name="connectionStringName">Optional connection string name indicating the connection string to use.
-        /// If null, the default connection string on the <see cref="ServiceBusConfiguration"/> will be used.</param>
-        /// <returns>The <see cref="NamespaceManager"/>.</returns>
-        public virtual NamespaceManager CreateNamespaceManager(string connectionStringName = null)
-        {
-            string connectionString = GetConnectionString(connectionStringName);
-
-            return NamespaceManager.CreateFromConnectionString(connectionString);
         }
 
         /// <summary>
@@ -101,20 +88,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="factory">The <see cref="MessagingFactory"/> to use.</param>
         /// <param name="entityPath">The ServiceBus entity to create a <see cref="MessageReceiver"/> for.</param>
         /// <returns></returns>
-        public virtual MessageReceiver CreateMessageReceiver(MessagingFactory factory, string entityPath)
+        public virtual MessageReceiver CreateMessageReceiver(string entityPath)
         {
-            if (factory == null)
-            {
-                throw new ArgumentNullException("factory");
-            }
             if (string.IsNullOrEmpty(entityPath))
             {
                 throw new ArgumentNullException("entityPath");
             }
 
-            MessageReceiver receiver = factory.CreateMessageReceiver(entityPath);
-            receiver.PrefetchCount = _config.PrefetchCount;
-            return receiver;
+            // TODO: FACAVAL - Create receiver, can't rely on the factory anymore
+            //MessageReceiver receiver =  factory.CreateMessageReceiver(entityPath);
+            //receiver.PrefetchCount = _config.PrefetchCount;
+            //return receiver;
+
+            return null;
         }
 
         /// <summary>

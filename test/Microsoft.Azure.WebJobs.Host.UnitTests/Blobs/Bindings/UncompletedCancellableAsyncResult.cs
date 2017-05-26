@@ -7,7 +7,7 @@ using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
 {
-    internal sealed class UncompletedCancellableAsyncResult : ICancellableAsyncResult, IDisposable
+    internal sealed class UncompletedCancellableAsyncResult : IAsyncResult, IDisposable
     {
         private readonly object _state;
 

@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public string DefaultSetting { get; set; }
         }
 
-        public class Attr3: Attribute
+        public class Attr3 : Attribute
         {
             [AppSetting]
             public string Required { get; set; }
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public string Default { get; set; }
         }
 
-        public class Attr4: Attribute
+        public class Attr4 : Attribute
         {
             [AppSetting]
             public string AppSetting { get; set; }
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public string AutoResolve { get; set; }
         }
 
-        public class InvalidAnnotation: Attribute
+        public class InvalidAnnotation : Attribute
         {
             // only one of appsetting/autoresolve allowed
             [AppSetting]
@@ -148,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             [RegularExpression("a+")]
             [AutoResolve]
             public string Value { get; set; }
-
         }
 
         // Validation with AppSetting
@@ -167,7 +166,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // Allow  { } that look like token substitution, but it's not since this isn't AutoResolve
             [RegularExpression("^.{1,3}$")] 
             public string Value { get; set; }
-
         }
 
         // Helper to easily generate a fixed binding contract.
@@ -191,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             return d;
         }
 
-        private static IReadOnlyDictionary<string, Type> EmptyContract = new Dictionary<string, Type>();
+        private static IReadOnlyDictionary<string, Type> emptyContract = new Dictionary<string, Type>();
 
         // Enforce binding contracts statically.
         [Fact]
@@ -201,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             try
             {
-                var cloner = new AttributeCloner<Attr1>(a1, EmptyContract);
+                var cloner = new AttributeCloner<Attr1>(a1, emptyContract);
                 Assert.True(false, "Should have caught binding contract mismatch");
             }
             catch (InvalidOperationException e)
@@ -222,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var nameResolver = new FakeNameResolver();
             nameResolver._dict["test"] = "ABC";
 
-            var cloner = new AttributeCloner<Attr1>(a1, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr1>(a1, emptyContract, nameResolver);
             Attr1 attr2 = cloner.ResolveFromInvokeString("xy");
 
             Assert.Equal("xy", attr2.Path);
@@ -325,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
 
             var nameResolver = new FakeNameResolver().Add("appsetting", "ABC");
-            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr2>(a2, emptyContract, nameResolver);
 
             var a2Cloned = cloner.GetNameResolvedAttribute();
             Assert.Equal("ABC", a2Cloned.ResolvedSetting);
@@ -335,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void Setting_WithNoValueInResolver_ThrowsIfNoDefault()
         {
             Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
-            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, EmptyContract));
+            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, emptyContract));
             Assert.Equal($"Unable to resolve app setting for property 'Attr2.ResolvedSetting'. Make sure the app setting exists and has a valid value.", exc.Message);
         }
 
@@ -344,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
             var nameResolver = new FakeNameResolver().Add("appsetting", "ABC").Add("default", "default");
-            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr2>(a2, emptyContract, nameResolver);
 
             var a2Cloned = cloner.GetNameResolvedAttribute();
             Assert.Equal("default", a2Cloned.DefaultSetting);
@@ -355,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr3 a3 = new Attr3() { Required = "req", Default = "env" };
             var nameResolver = new FakeNameResolver().Add("env", "envval").Add("req", "reqval");
-            var cloner = new AttributeCloner<Attr3>(a3, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr3>(a3, emptyContract, nameResolver);
             var cloned = cloner.GetNameResolvedAttribute();
             Assert.Equal("reqval", cloned.Required);
             Assert.Equal("envval", cloned.Default);
@@ -366,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr3 a3 = new Attr3() { Required = "req" };
             var nameResolver = new FakeNameResolver().Add("default", "defaultval").Add("req", "reqval");
-            var cloner = new AttributeCloner<Attr3>(a3, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr3>(a3, emptyContract, nameResolver);
             var cloned = cloner.GetNameResolvedAttribute();
             Assert.Equal("reqval", cloned.Required);
             Assert.Equal("defaultval", cloned.Default);
@@ -376,7 +374,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void AppSettingAttribute_Throws_IfDefaultUnmatched()
         {
             Attr3 a3 = new Attr3() { Required = "req" };
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr3>(a3, EmptyContract));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr3>(a3, emptyContract));
         }
 
         [Fact]
@@ -384,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr2 a2 = new Attr2(string.Empty, string.Empty);
 
-            var cloner = new AttributeCloner<Attr2>(a2, EmptyContract);
+            var cloner = new AttributeCloner<Attr2>(a2, emptyContract);
 
             Attr2 a2Clone = cloner.ResolveFromBindingData(GetCtx(null));
 
@@ -417,7 +415,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             a4.AppSetting = null;
 
             var nameResolver = new FakeNameResolver();
-            var cloner = new AttributeCloner<Attr4>(a4, EmptyContract, nameResolver);
+            var cloner = new AttributeCloner<Attr4>(a4, emptyContract, nameResolver);
             var cloned = cloner.GetNameResolvedAttribute();
             Assert.Equal("auto", cloned.AutoResolve);
             Assert.Equal(null, cloned.AppSetting);
@@ -427,7 +425,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void AttributeCloner_Throws_IfAppSettingAndAutoResolve()
         {
             InvalidAnnotation a = new InvalidAnnotation();
-            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<InvalidAnnotation>(a, EmptyContract));
+            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<InvalidAnnotation>(a, emptyContract));
             Assert.Equal("Property 'Required' cannot be annotated with both AppSetting and AutoResolve.", exc.Message);
         }
 
@@ -435,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void AttributeCloner_Throws_IfAutoResolveIsNotString()
         {
             var a = new InvalidNonStringAutoResolve();
-            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<InvalidNonStringAutoResolve>(a, EmptyContract));
+            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<InvalidNonStringAutoResolve>(a, emptyContract));
             Assert.Equal("AutoResolve or AppSetting property 'Required' must be of type string.", exc.Message);
         }
         
@@ -548,7 +546,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr1 attr = new Attr1 { Path = "%bad" };
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, emptyContract));
         }
 
         [Fact]
@@ -556,7 +554,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             var attr = new Attr2("%bad", "constant");
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr, EmptyContract));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(attr, emptyContract));
         }
 
         // Malformed %% fail in ctor.
@@ -567,10 +565,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             Attr1 attr = new Attr1 { Path = "%missing%" };
 
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
+            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, emptyContract));
         }
 
-        static Action<object> SkipValidation = (_) => { };
+        static Action<object> skipValidation = (_) => { };
 
         [Fact]
         public void TryAutoResolveValue_UnresolvedValue_ThrowsExpectedException()
@@ -584,7 +582,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var attr = prop.GetCustomAttribute<AppSettingAttribute>();
             string resolvedValue = "MySetting";
 
-            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop, SkipValidation));
+            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop, skipValidation));
             Assert.Contains("Unable to resolve app setting for property 'Attr2.ResolvedSetting'.", ex.Message);
         }
 
@@ -743,7 +741,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 new AttributeCloner<ValidationWithAppSettingAttribute>(attr, GetBindingContract("name"));
                 Assert.False(true, "Validation should have failed");
             } 
-            catch(InvalidOperationException e)
+            catch (InvalidOperationException e)
             {
                 // Since this is [AppSetting], don't include the illegal value in the message. It could be secret. 
                 Assert.False(e.Message.Contains(IllegalValue));

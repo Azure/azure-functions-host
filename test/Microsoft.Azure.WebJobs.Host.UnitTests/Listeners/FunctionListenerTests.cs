@@ -18,15 +18,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
 {
     public class FunctionListenerTests
     {
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly TestLoggerProvider _loggerProvider;
+
         CancellationToken ct = default(CancellationToken);
 
         FunctionDescriptor fd = new FunctionDescriptor()
         {
             ShortName = "testfunc"
         };
-
-        private readonly ILoggerFactory _loggerFactory;
-        private readonly TestLoggerProvider _loggerProvider;
 
         public FunctionListenerTests()
         {

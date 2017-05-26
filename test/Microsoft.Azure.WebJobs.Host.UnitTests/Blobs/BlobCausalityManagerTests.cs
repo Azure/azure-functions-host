@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             
             if (isFetchSuccess.HasValue)
             {
-                var fetchAttributesSetup = blobMock.Setup(s => s.FetchAttributesAsync(It.IsAny<CancellationToken>()));
+                var fetchAttributesSetup = blobMock.Setup(s => s.FetchAttributesAsync());
                 if (isFetchSuccess.Value)
                 {
                     fetchAttributesSetup.Returns(Task.FromResult(0));

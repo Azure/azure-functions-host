@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 {
                     if (!_committed)
                     {
-                        Commit();
+                        CommitAsync();
                     }
 
                     _buffer.Dispose();
@@ -67,32 +69,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             base.Dispose(disposing);
         }
 
-        public override void Commit()
+        public override Task CommitAsync()
         {
             ThrowIfDisposed();
             ThrowIfCommitted();
 
             _commitAction.Invoke(_buffer.ToArray());
             _committed = true;
-        }
 
-        public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
-        {
-            Commit();
-
-            ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
-
-            if (callback != null)
-            {
-                callback.Invoke(result);
-            }
-
-            return result;
-        }
-
-        public override void EndCommit(IAsyncResult asyncResult)
-        {
-            // Always completes synchronously
+            return Task.CompletedTask;
         }
 
         public override void Flush()
@@ -100,23 +85,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _buffer.Flush();
         }
 
-        public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
+        public override Task FlushAsync(CancellationToken cancellationToken)
         {
-            Flush();
-
-            ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
-
-            if (callback != null)
-            {
-                callback.Invoke(result);
-            }
-
-            return result;
-        }
-
-        public override void EndFlush(IAsyncResult asyncResult)
-        {
-            // Always completes synchronously
+            return _buffer.FlushAsync();
         }
 
         public override int Read(byte[] buffer, int offset, int count)

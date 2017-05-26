@@ -2,6 +2,7 @@ bin
 obj
 csx
 .vs
+.DS_Store
 
 *.user
 *.suo

@@ -85,16 +85,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
                 if (targetType == typeof(Stream))
                 {
-                    converted = await blob.OpenReadAsync();
+                    converted = await blob.OpenReadAsync(null, null, null);
                 }
                 else if (targetType == typeof(TextReader))
                 {
-                    Stream stream = await blob.OpenReadAsync();
+                    Stream stream = await blob.OpenReadAsync(null, null, null);
                     converted = new StreamReader(stream);
                 }
                 else if (targetType == typeof(string))
                 {
-                    Stream stream = await blob.OpenReadAsync();
+                    Stream stream = await blob.OpenReadAsync(null, null, null);
                     using (StreamReader reader = new StreamReader(stream))
                     {
                         converted = await reader.ReadToEndAsync();

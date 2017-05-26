@@ -20,11 +20,10 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Xunit;
+using SingletonLockHandle = Microsoft.Azure.WebJobs.Host.BlobLeaseDistributedLockManager.SingletonLockHandle;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
-    using SingletonLockHandle = BlobLeaseDistributedLockManager.SingletonLockHandle;
-
     internal static class Ext
     {
         // Wrapper to get the internal class. 
@@ -526,7 +525,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
                 SingletonManager.ValidateSingletonAttribute(attribute, SingletonMode.Listener);
             });
             Assert.Equal("Scope 'Host' cannot be used when the mode is set to 'Listener'.", exception.Message);
-
         }
         [Fact]
         public void GetLockPeriod_ReturnsExpectedValue()

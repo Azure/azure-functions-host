@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                     .AddConverter<byte[], IStorageQueueMessage>(ConvertByteArrayToCloudQueueMessage)
                     .AddConverter<string, IStorageQueueMessage>(ConvertStringToCloudQueueMessage);
 
-                context   // global converters, apply to multiple attributes. 
+                context // global converters, apply to multiple attributes. 
                      .AddConverter<IStorageQueueMessage, byte[]>(ConvertCloudQueueMessageToByteArray)
                      .AddConverter<IStorageQueueMessage, string>(ConvertCloudQueueMessageToString)
                      .AddConverter<CloudQueueMessage, IStorageQueueMessage>(ConvertToStorageQueueMessage);

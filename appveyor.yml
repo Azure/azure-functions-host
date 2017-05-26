@@ -1,90 +1,52 @@
-version: '{build}'
-pull_requests:
-  do_not_increment_build_number: true
+version: 1.0.{build}
 branches:
   only:
-  - dev
-  - master
-  - next
-image: Visual Studio 2015
-configuration: Release
-platform: x86
-clone_folder: c:\projects\azure-webjobs-sdk
-environment:
-  IncludeBuildNumberInVersion: 1
+  - core2
+image: Visual Studio 2017
 install:
 - ps: >-
-    $isPr = Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER
+    # Download .NET Core 2.0 Preview 2 SDK and add to PATH
 
+    $urlCurrent = "https://download.microsoft.com/download/F/A/A/FAAE9280-F410-458E-8819-279C5A68EDCF/dotnet-sdk-2.0.0-preview2-006497-win-x64.zip"
 
-    if (-not $isPr) {
-        $ctx = New-AzureStorageContext $env:FILES_ACCOUNT_NAME $env:FILES_ACCOUNT_KEY
-        $queue = Get-AzureStorageQueue "jenkins" -Context $ctx
+    $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "true"
 
-        $messageBody = "$env:APPVEYOR_BUILD_VERSION;$env:APPVEYOR_REPO_COMMIT;$env:IncludeBuildNumberInVersion"
-        $message = New-Object -TypeName Microsoft.WindowsAzure.Storage.Queue.CloudQueueMessage -ArgumentList $messageBody
-        $queue.CloudQueue.AddMessage($message)
+    $env:DOTNET_CLI_TELEMETRY_OPTOUT = "true"
 
-        "jenkins signed build:   https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/' build #appveyor $env:APPVEYOR_BUILD_VERSION"
-        "artifacts azure files:  https://$env:FILES_ACCOUNT_NAME.file.core.windows.net/jenkins/builds/$env:APPVEYOR_BUILD_VERSION"
-        "signed build onenote:   https://microsoft.sharepoint.com/teams/AzureWebjobs/_layouts/OneNote.aspx?id=%2Fteams%2FAzureWebjobs%2FSiteAssets%2FAzureWebjobs%20Notebook&wd=target%28Signed%20Sdk%20Build.one%7C0C569AE2-E052-428D-B3C1-8421ED9B1CF8%2F%29"
-    }
+    $env:DOTNET_INSTALL_DIR = "$pwd\.dotnetsdk"
+
+    mkdir $env:DOTNET_INSTALL_DIR -Force | Out-Null
+
+    $tempFileCurrent = [System.IO.Path]::GetTempFileName()
+
+    (New-Object System.Net.WebClient).DownloadFile($urlCurrent, $tempFileCurrent)
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($tempFileCurrent, $env:DOTNET_INSTALL_DIR)
+
+    $env:Path = "$env:DOTNET_INSTALL_DIR;$env:Path"
+cache: '%USERPROFILE%\.nuget\packages'
 build_script:
-- cmd: msbuild "WebJobs.proj" /t:BuildTestBinaries /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Configuration=Release;Platform=AnyCPU;OutputPath=%APPVEYOR_BUILD_FOLDER%\bin
+- ps: >
+    dotnet --version
+
+    dotnet build -v q
+
+    dotnet pack src\Microsoft.Azure.WebJobs\WebJobs.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+
+    dotnet pack src\Microsoft.Azure.WebJobs.Host\WebJobs.Host.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+
+    dotnet pack src\Microsoft.Azure.WebJobs.Logging\WebJobs.Logging.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+
+    dotnet pack src\Microsoft.Azure.WebJobs.Logging.ApplicationInsights\WebJobs.Logging.ApplicationInsights.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
 test_script:
-- cmd: "vstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.FunctionalTests.dll bin/Microsoft.Azure.WebJobs.ServiceBus.UnitTests.dll bin/Dashboard.UnitTests.dll \n\nvstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.EndToEndTests.dll"
-artifacts:
-- path: bin\Binaries\*.*
-  name: Binaries
-on_finish:
 - ps: >-
-    $isPr = Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER
+    dotnet test .\test\Microsoft.Azure.WebJobs.Host.UnitTests\ -v q --no-build
 
+    dotnet test .\test\Microsoft.Azure.WebJobs.Host.FunctionalTests\ -v q --no-build
 
-    if (-not $isPr) {
-        Disable-NetFirewallRule -DisplayName 'File and Printer Sharing (SMB-Out)'
-        net use J: \\$env:FILES_ACCOUNT_NAME.file.core.windows.net\jenkins /u:AZURE\$env:FILES_ACCOUNT_NAME $env:FILES_ACCOUNT_KEY
-        $timeout = new-timespan -Minutes 2
-        $sw = [diagnostics.stopwatch]::StartNew();
-        $polling = $true;
-        while ($sw.elapsed -lt $timeout -and $polling) {
-            "Polling..."
-            if (test-path "J:/builds/$env:APPVEYOR_BUILD_VERSION/done.txt") {
-                "Jenkins artifacts found"
-                $polling = $false;
-            }
-            Start-Sleep -Seconds 5
-        }
+    dotnet test .\test\Microsoft.Azure.WebJobs.Logging.FunctionalTests\ -v q --no-build
 
-        if ($polling) {
-            "No jenkins artifacts found, investigate job at https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/"
-            exit(1);
-        }
-
-        $success = $true;
-        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION/Packages" | % {
-            Push-AppveyorArtifact $_.FullName
-        }
-
-        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION/SiteExtensions" | % {
-            Push-AppveyorArtifact $_.FullName
-        }
-
-        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION" | % {
-            if (-not $_.PSIsContainer -and $_.Name -ne "done.txt") {
-                Push-AppveyorArtifact $_.FullName
-                $success = $false;
-                if ($_.Extension -eq ".err") {
-                    Get-Content $_.FullName | % { Write-Output $_ }
-                }
-            }
-        }
-
-        "jenkins signed build:   https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/' build #'appveyor $env:APPVEYOR_BUILD_VERSION'"
-        "artifacts azure files:  https://$env:FILES_ACCOUNT_NAME.file.core.windows.net/jenkins/builds/$env:APPVEYOR_BUILD_VERSION"
-        "signed build onenote:   https://microsoft.sharepoint.com/teams/AzureWebjobs/_layouts/OneNote.aspx?id=%2Fteams%2FAzureWebjobs%2FSiteAssets%2FAzureWebjobs%20Notebook&wd=target%28Signed%20Sdk%20Build.one%7C0C569AE2-E052-428D-B3C1-8421ED9B1CF8%2F%29"
-
-        if (-not $success) {
-        exit(1)
-        }
-    }
+    dotnet test .\test\Microsoft.Azure.WebJobs.Host.EndToEndTests\ -v q --no-build
+artifacts:
+- path: buildoutput\*.nupkg
+  name: Binaries

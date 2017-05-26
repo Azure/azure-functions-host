@@ -291,65 +291,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 properties, "PocoProperty", (p) => p.StringValue);
         }
 
-        [Fact]
-        public void Table_IfBoundToIQueryableDynamicTableEntityAndDoesNotExist_BindsAndDoesNotCreateTable()
-        {
-            // Arrange
-            IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
-            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
-
-            // Act
-            IQueryable<DynamicTableEntity> result = RunTrigger<IQueryable<DynamicTableEntity>>(account,
-                typeof(BindToIQueryableDynamicTableEntityProgram),
-                (s) => BindToIQueryableDynamicTableEntityProgram.TaskSource = s);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            Assert.False(table.Exists());
-        }
-
-        [Fact]
-        public void Table_IfBoundToIQueryableDynamicTableEntityAndExists_Binds()
-        {
-            // Arrange
-            Guid expectedValue = Guid.NewGuid();
-            IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
-            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
-            IStorageTableClient client = account.CreateTableClient();
-            IStorageTable table = client.GetTableReference(TableName);
-            table.CreateIfNotExists();
-            Dictionary<string, EntityProperty> properties = new Dictionary<string, EntityProperty>
-            {
-                { PropertyName, new EntityProperty(expectedValue) }
-            };
-            table.Insert(new DynamicTableEntity(PartitionKey, RowKey, etag: null, properties: properties));
-
-            // Act
-            IQueryable<DynamicTableEntity> result = RunTrigger<IQueryable<DynamicTableEntity>>(account,
-                typeof(BindToIQueryableDynamicTableEntityProgram),
-                (s) => BindToIQueryableDynamicTableEntityProgram.TaskSource = s);
-
-            // Assert
-            Assert.NotNull(result);
-            DynamicTableEntity[] entities = result.ToArray();
-            Assert.Equal(1, entities.Length);
-            DynamicTableEntity entity = entities[0];
-            Assert.NotNull(entity);
-            Assert.Equal(PartitionKey, entity.PartitionKey);
-            Assert.Equal(RowKey, entity.RowKey);
-            Assert.NotNull(entity.Properties);
-            Assert.True(entity.Properties.ContainsKey(PropertyName));
-            EntityProperty property = entity.Properties[PropertyName];
-            Assert.NotNull(property);
-            Assert.Equal(EdmType.Guid, property.PropertyType);
-            Assert.Equal(expectedValue, property.GuidValue);
-        }
-
         private static void AssertNullablePropertyEqual<T>(T expected,
             EdmType expectedType,
             IDictionary<string, EntityProperty> properties,
@@ -535,17 +476,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 PocoWithAllTypes entity = JsonConvert.DeserializeObject<PocoWithAllTypes>(message.AsString);
                 table.Add(entity);
-            }
-        }
-
-        private class BindToIQueryableDynamicTableEntityProgram
-        {
-            public static TaskCompletionSource<IQueryable<DynamicTableEntity>> TaskSource { get; set; }
-
-            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
-                [Table(TableName)] IQueryable<DynamicTableEntity> table)
-            {
-                TaskSource.TrySetResult(table);
             }
         }
 

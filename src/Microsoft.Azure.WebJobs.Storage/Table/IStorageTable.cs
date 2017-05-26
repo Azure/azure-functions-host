@@ -47,11 +47,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <returns>An operation to insert or replace an entity.</returns>
         IStorageTableOperation CreateInsertOrReplaceOperation(ITableEntity entity);
 
-        /// <summary>Creates a LINQ query.</summary>
-        /// <typeparam name="TElement">The type of entity to query.</typeparam>
-        /// <returns>A LINQ query.</returns>
-        IQueryable<TElement> CreateQuery<TElement>() where TElement : ITableEntity, new();
-
         /// <summary>Creates an operation to replace an entity.</summary>
         /// <param name="entity">The entity to replace.</param>
         /// <returns>An operation to replace an entity.</returns>

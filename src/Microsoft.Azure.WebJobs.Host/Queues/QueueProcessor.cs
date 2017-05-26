@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             try
             {
                 // We couldn't process the message. Let someone else try.
-                await _queue.UpdateMessageAsync(message, visibilityTimeout, MessageUpdateFields.Visibility, cancellationToken);
+                await _queue.UpdateMessageAsync(message, visibilityTimeout, MessageUpdateFields.Visibility, null, null, cancellationToken);
             }
             catch (StorageException exception)
             {

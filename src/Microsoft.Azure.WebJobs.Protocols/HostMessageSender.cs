@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
@@ -15,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
         /// <summary>Initializes a new instance of the <see cref="HostMessageSender"/> class.</summary>
         /// <param name="client">A queue client for the storage account where the host listens.</param>
-        
         public HostMessageSender(CloudQueueClient client)
         {
             if (client == null)
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
         }
 
         /// <inheritdoc />
-        public void Enqueue(string queueName, HostMessage message)
+        public async Task EnqueueAsync(string queueName, HostMessage message)
         {
             if (message == null)
             {
@@ -36,11 +36,11 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
             CloudQueue queue = _client.GetQueueReference(queueName);
             Debug.Assert(queue != null);
-            queue.CreateIfNotExists();
+            await queue.CreateIfNotExistsAsync();
             string content = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
             Debug.Assert(content != null);
             CloudQueueMessage queueMessage = new CloudQueueMessage(content);
-            queue.AddMessage(queueMessage);
+            await queue.AddMessageAsync(queueMessage);
         }
     }
 }

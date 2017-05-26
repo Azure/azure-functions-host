@@ -1,1088 +1,144 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props" Condition="Exists('..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0E095CB2-3030-49FF-966C-785F1A55F0C1}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.WebJobs.Host</RootNamespace>
-    <AssemblyName>Microsoft.Azure.WebJobs.Host</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
-    <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Microsoft.Azure.WebJobs.Host.xml</DocumentationFile>
-    <LangVersion>default</LangVersion>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\Microsoft.Azure.WebJobs.Host.xml</DocumentationFile>
-    <LangVersion>default</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DelaySign>true</DelaySign>
-  </PropertyGroup>
-  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>True</DelaySign>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <Copyright>© .NET Foundation.  All rights reserved.</Copyright>
+    <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the WebJobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
+    <Product>WebJobs</Product>
+    <Company>Microsoft</Company>
+    <Authors>Microsoft</Authors>
+    <Version>3.0.0-beta1$(VersionSuffix)</Version>
+    <PackageId>Microsoft.Azure.WebJobs</PackageId>
+    <RepositoryUrl>https://github.com/azure/azure-webjobs-sdk</RepositoryUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
+    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
+    <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
+    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Edm.5.8.2\lib\net40\Microsoft.Data.Edm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.OData, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.OData.5.8.2\lib\net40\Microsoft.Data.OData.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Services.Client, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.2\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=1.1.1.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Extensions.Logging.Abstractions.1.1.1\lib\netstandard1.1\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.3.2.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Storage, Version=7.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\WindowsAzure.Storage.7.2.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.AppContext.4.3.0\lib\net46\System.AppContext.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Console, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Console.4.3.0\lib\net46\System.Console.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Core" />
-    <Reference Include="System.Diagnostics.DiagnosticSource, Version=4.0.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Diagnostics.DiagnosticSource.4.3.0\lib\net46\System.Diagnostics.DiagnosticSource.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Globalization.Calendars, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Globalization.Calendars.4.3.0\lib\net46\System.Globalization.Calendars.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.IO.Compression, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.IO.Compression.4.3.0\lib\net46\System.IO.Compression.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.IO.Compression.FileSystem" />
-    <Reference Include="System.IO.Compression.ZipFile, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.IO.Compression.ZipFile.4.3.0\lib\net46\System.IO.Compression.ZipFile.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.IO.FileSystem, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.IO.FileSystem.4.3.0\lib\net46\System.IO.FileSystem.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.IO.FileSystem.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.3.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Net.Http, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Net.Http.4.3.1\lib\net46\System.Net.Http.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Net.Sockets, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Net.Sockets.4.3.0\lib\net46\System.Net.Sockets.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Security.Cryptography.Algorithms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Security.Cryptography.Algorithms.4.3.0\lib\net46\System.Security.Cryptography.Algorithms.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.Encoding, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Security.Cryptography.Encoding.4.3.0\lib\net46\System.Security.Cryptography.Encoding.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Security.Cryptography.Primitives.4.3.0\lib\net46\System.Security.Cryptography.Primitives.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.X509Certificates, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Security.Cryptography.X509Certificates.4.3.0\lib\net46\System.Security.Cryptography.X509Certificates.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.ServiceModel" />
-    <Reference Include="System.Spatial, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Spatial.5.8.2\lib\net40\System.Spatial.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Threading.Tasks.Dataflow, Version=4.5.24.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.ReaderWriter, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Xml.ReaderWriter.4.3.0\lib\net46\System.Xml.ReaderWriter.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
+    <AdditionalFiles Include="..\..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="..\Common\CommonAssemblyInfo.cs">
-      <Link>Properties\CommonAssemblyInfo.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\AbortHostInstanceMessage.cs">
-      <Link>Protocols\AbortHostInstanceMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterDescriptor.cs">
-      <Link>Protocols\BinderParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterLog.cs">
-      <Link>Protocols\BinderParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterLogItem.cs">
-      <Link>Protocols\BinderParameterLogItem.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BindingDataParameterDescriptor.cs">
-      <Link>Protocols\BindingDataParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobMetadataKeys.cs">
-      <Link>Protocols\BlobMetadataKeys.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobNames.cs">
-      <Link>Protocols\BlobNames.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobParameterDescriptor.cs">
-      <Link>Protocols\BlobParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobTriggerParameterDescriptor.cs">
-      <Link>Protocols\BlobTriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CallAndOverrideMessage.cs">
-      <Link>Protocols\CallAndOverrideMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CallerSuppliedParameterDescriptor.cs">
-      <Link>Protocols\CallerSuppliedParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CancellationTokenParameterDescriptor.cs">
-      <Link>Protocols\CancellationTokenParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CloudStorageAccountParameterDescriptor.cs">
-      <Link>Protocols\CloudStorageAccountParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ConsoleOutputParameterDescriptor.cs">
-      <Link>Protocols\ConsoleOutputParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ContainerNames.cs">
-      <Link>Protocols\ContainerNames.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ExecutionReason.cs">
-      <Link>Protocols\ExecutionReason.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionCompletedMessage.cs">
-      <Link>Protocols\FunctionCompletedMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionDescriptor.cs">
-      <Link>Protocols\FunctionDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionFailure.cs">
-      <Link>Protocols\FunctionFailure.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStartedMessage.cs">
-      <Link>Protocols\FunctionStartedMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStartedMessageExtensions.cs">
-      <Link>Protocols\FunctionStartedMessageExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStatusMessage.cs">
-      <Link>Protocols\FunctionStatusMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HeartbeatCommand.cs">
-      <Link>Protocols\HeartbeatCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HeartbeatDescriptor.cs">
-      <Link>Protocols\HeartbeatDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostMessage.cs">
-      <Link>Protocols\HostMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostOutputMessage.cs">
-      <Link>Protocols\HostOutputMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostStartedMessage.cs">
-      <Link>Protocols\HostStartedMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\IHeartbeatCommand.cs">
-      <Link>Protocols\IHeartbeatCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\IPersistentQueueWriter.cs">
-      <Link>Protocols\IPersistentQueueWriter.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JsonSerialization.cs">
-      <Link>Protocols\JsonSerialization.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JsonTypeNameAttribute.cs">
-      <Link>Protocols\JsonTypeNameAttribute.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JTokenExtensions.cs">
-      <Link>Protocols\JTokenExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\LocalBlobDescriptor.cs">
-      <Link>Protocols\LocalBlobDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\NullHeartbeatCommand.cs">
-      <Link>Protocols\NullHeartbeatCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterDescriptor.cs">
-      <Link>Protocols\ParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\SingletonParameterLog.cs">
-      <Link>Protocols\SingletonParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TriggerParameterDescriptor.cs">
-      <Link>Protocols\TriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterDisplayHints.cs">
-      <Link>Protocols\ParameterDisplayHints.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterLog.cs">
-      <Link>Protocols\ParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PersistentQueueMessage.cs">
-      <Link>Protocols\PersistentQueueMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PersistentQueueWriter.cs">
-      <Link>Protocols\PersistentQueueWriter.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PolymorphicJsonConverter.cs">
-      <Link>Protocols\PolymorphicJsonConverter.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\QueueParameterDescriptor.cs">
-      <Link>Protocols\QueueParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\QueueTriggerParameterDescriptor.cs">
-      <Link>Protocols\QueueTriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ReadBlobParameterLog.cs">
-      <Link>Protocols\ReadBlobParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ServiceBusParameterDescriptor.cs">
-      <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ServiceBusTriggerParameterDescriptor.cs">
-      <Link>Protocols\ServiceBusTriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableEntityParameterDescriptor.cs">
-      <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableParameterDescriptor.cs">
-      <Link>Protocols\TableParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableParameterLog.cs">
-      <Link>Protocols\TableParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TextParameterLog.cs">
-      <Link>Protocols\TextParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobRunIdentifier.cs">
-      <Link>Protocols\WebJobRunIdentifier.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobTypes.cs">
-      <Link>Protocols\WebJobTypes.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebSitesKnownKeyNames.cs">
-      <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WriteBlobParameterLog.cs">
-      <Link>Protocols\WriteBlobParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageAppendBlob.cs">
-      <Link>Storage\Blob\IStorageAppendBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlob.cs">
-      <Link>Storage\Blob\IStorageBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobClient.cs">
-      <Link>Storage\Blob\IStorageBlobClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobContainer.cs">
-      <Link>Storage\Blob\IStorageBlobContainer.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobDirectory.cs">
-      <Link>Storage\Blob\IStorageBlobDirectory.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobProperties.cs">
-      <Link>Storage\Blob\IStorageBlobProperties.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobResultSegment.cs">
-      <Link>Storage\Blob\IStorageBlobResultSegment.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlockBlob.cs">
-      <Link>Storage\Blob\IStorageBlockBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageListBlobItem.cs">
-      <Link>Storage\Blob\IStorageListBlobItem.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStoragePageBlob.cs">
-      <Link>Storage\Blob\IStoragePageBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageAppendBlob.cs">
-      <Link>Storage\Blob\StorageAppendBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobClient.cs">
-      <Link>Storage\Blob\StorageBlobClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobContainer.cs">
-      <Link>Storage\Blob\StorageBlobContainer.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobDirectory.cs">
-      <Link>Storage\Blob\StorageBlobDirectory.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobProperties.cs">
-      <Link>Storage\Blob\StorageBlobProperties.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobResultSegment.cs">
-      <Link>Storage\Blob\StorageBlobResultSegment.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobType.cs">
-      <Link>Storage\Blob\StorageBlobType.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlockBlob.cs">
-      <Link>Storage\Blob\StorageBlockBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StoragePageBlob.cs">
-      <Link>Storage\Blob\StoragePageBlob.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueue.cs">
-      <Link>Storage\Queue\IStorageQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueClient.cs">
-      <Link>Storage\Queue\IStorageQueueClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueMessage.cs">
-      <Link>Storage\Queue\IStorageQueueMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueue.cs">
-      <Link>Storage\Queue\StorageQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueClient.cs">
-      <Link>Storage\Queue\StorageQueueClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueMessage.cs">
-      <Link>Storage\Queue\StorageQueueMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
-      <Link>Storage\StorageExceptionExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IEntityResolver.cs">
-      <Link>Storage\Table\IEntityResolver.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTable.cs">
-      <Link>Storage\Table\IStorageTable.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableBatchOperation.cs">
-      <Link>Storage\Table\IStorageTableBatchOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableClient.cs">
-      <Link>Storage\Table\IStorageTableClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableOperation.cs">
-      <Link>Storage\Table\IStorageTableOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTable.cs">
-      <Link>Storage\Table\StorageTable.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableBatchOperation.cs">
-      <Link>Storage\Table\StorageTableBatchOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableClient.cs">
-      <Link>Storage\Table\StorageTableClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableOperation.cs">
-      <Link>Storage\Table\StorageTableOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\TypeEntityResolver.cs">
-      <Link>Storage\Table\TypeEntityResolver.cs</Link>
-    </Compile>
-    <Compile Include="AzureStorageDeploymentValidator.cs" />
-    <Compile Include="Bindings\AmbientBindingContext.cs" />
-    <Compile Include="Bindings\AttributeCloner.cs" />
-    <Compile Include="Bindings\AttributeConverter.cs" />
-    <Compile Include="Bindings\BindingBase.cs" />
-    <Compile Include="Bindings\BindingFactory.cs" />
-    <Compile Include="Bindings\BindingProviders\BindToInputBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\AsyncCollectorBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\IBindingRuleProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\BindingRule.cs" />
-    <Compile Include="Bindings\BindingProviders\FluentBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\FilteringBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\FluentBindingProviderExtensions.cs" />
-    <Compile Include="Bindings\BindingProviders\GenericCompositeBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\ItemBindingProvider.cs" />
-    <Compile Include="Bindings\BindingProviders\ValidatingWrapperBindingProvider.cs" />
-    <Compile Include="Bindings\SystemBindingData.cs" />
-    <Compile Include="Bindings\DefaultAttributeInvokerDescriptor.cs" />
-    <Compile Include="Bindings\FuncArgumentBuilder.cs" />
-    <Compile Include="Bindings\IArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\Logger\LoggerBinding.cs" />
-    <Compile Include="Bindings\Logger\LoggerBindingProvider.cs" />
-    <Compile Include="Bindings\OpenType.cs" />
-    <Compile Include="Bindings\Path\BindingParameterResolver.cs" />
-    <Compile Include="Bindings\PatternMatcher.cs" />
-    <Compile Include="Bindings\DefaultResolutionPolicy.cs" />
-    <Compile Include="Bindings\IResolutionPolicy.cs" />
-    <Compile Include="Bindings\Runtime\Binder.cs" />
-    <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
-    <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
-    <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
-    <Compile Include="Config\IWebhookProvider.cs" />
-    <Compile Include="Config\FluentConverterRules.cs" />
-    <Compile Include="Config\FluentBindingRule.cs" />
-    <Compile Include="Config\ServiceProviderWrapper.cs" />
-    <Compile Include="DefaultNameResolver.cs" />
-    <Compile Include="Diagnostics\ExceptionFormatter.cs" />
-    <Compile Include="Executors\CompositeFunctionEventCollector.cs" />
-    <Compile Include="Executors\FunctionInstanceFactoryContext.cs" />
-    <Compile Include="Executors\FunctionInstanceFactoryContextOfT.cs" />
-    <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
-    <Compile Include="Extensions\CloudQueueMessageExtensions.cs" />
-    <Compile Include="Extensions\IJobHostMetadataProvider.cs" />
-    <Compile Include="Extensions\JobHostMetadataProvider.cs" />
-    <Compile Include="FuncConverter.cs" />
-    <Compile Include="FunctionTimeoutException.cs" />
-    <Compile Include="Exceptions\RecoverableException.cs" />
-    <Compile Include="JobHostBlobsConfiguration.cs" />
-    <Compile Include="Listeners\FunctionListener.cs" />
-    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorConfiguration.cs" />
-    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregate.cs" />
-    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregator.cs" />
-    <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorFactory.cs" />
-    <Compile Include="Loggers\Logger\Aggregator\IFunctionResultAggregatorFactory.cs" />
-    <Compile Include="Loggers\Logger\Constants\LogCategories.cs" />
-    <Compile Include="Loggers\Logger\Constants\LoggingKeys.cs" />
-    <Compile Include="Loggers\Logger\Constants\ScopeKeys.cs" />
-    <Compile Include="Loggers\Logger\LoggerExtensions.cs" />
-    <Compile Include="Loggers\Logger\LogCategoryFilter.cs" />
-    <Compile Include="Loggers\Logger\FormattedLogValuesCollection.cs" />
-    <Compile Include="Loggers\Logger\TraceWriter\LoggerTraceWriter.cs" />
-    <Compile Include="Loggers\TraceEventExtensions.cs" />
-    <Compile Include="Exceptions\FunctionException.cs" />
-    <Compile Include="Queues\Bindings\QueueBindingProvider.cs" />
-    <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
-    <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
-    <Compile Include="Bindings\TraceWriter\TraceWriterBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\BlobContainerBinding.cs" />
-    <Compile Include="Blobs\Bindings\BlobValueBindingContext.cs" />
-    <Compile Include="Blobs\Bindings\CloudBlobContainerArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\CloudBlobDirectoryArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\CloudBlobEnumerableArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\OutByteArrayArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\BlobContainerOutputConverter.cs" />
-    <Compile Include="Blobs\ByteArrayArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\CompositeBlobContainerArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\IBlobContainerArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Listeners\BlobQueueRegistration.cs" />
-    <Compile Include="Blobs\Listeners\ContainerScanInfo.cs" />
-    <Compile Include="Blobs\Listeners\ScanBlobScanLogHybridPollingStrategy.cs" />
-    <Compile Include="Config\ExtensionConfigContextExtensions.cs" />
-    <Compile Include="Singleton\RenewableLockHandle.cs" />
-    <Compile Include="Singleton\IDistributedLock.cs" />
-    <Compile Include="Singleton\BlobLeaseDistributedLockManager.cs" />
-    <Compile Include="Singleton\IDistributedLockManager.cs" />
-    <Compile Include="Storage\IStorageAccountExtensions.cs" />
-    <Compile Include="Storage\StorageAccountType.cs" />
-    <Compile Include="Queues\PoisonQueueMessageEventArgs.cs" />
-    <Compile Include="Bindings\ODataFilterResolutionPolicy.cs" />
-    <Compile Include="Tables\TableExtension.cs" />
-    <Compile Include="Storage\StorageAccountTypeExtensions.cs" />
-    <Compile Include="Tables\TableFilterFormatter.cs" />
-    <Compile Include="Listeners\FunctionListenerException.cs" />
-    <Compile Include="Triggers\StrategyTriggerBinding.cs" />
-    <Compile Include="Bindings\ConstantValueProvider.cs" />
-    <Compile Include="Bindings\ConverterManager.cs" />
-    <Compile Include="Bindings\BindingFactoryHelpers.cs" />
-    <Compile Include="IConverterManager.cs" />
-    <Compile Include="Triggers\ITriggerBindingStrategy.cs" />
-    <Compile Include="Bindings\AsyncCollector\AsyncCollectorValueProvider.cs" />
-    <Compile Include="Bindings\AsyncCollector\OutArrayValueProvider.cs" />
-    <Compile Include="Bindings\AsyncCollector\OutValueProvider.cs" />
-    <Compile Include="Bindings\AsyncCollector\SyncAsyncCollectorAdapter.cs" />
-    <Compile Include="Triggers\TriggerArgumentBinding\ArraryTriggerArgumentBinding.cs" />
-    <Compile Include="Triggers\TriggerArgumentBinding\CustomTriggerArgumentBinding.cs" />
-    <Compile Include="Triggers\TriggerArgumentBinding\PocoTriggerArgumentBinding.cs" />
-    <Compile Include="Triggers\TriggerArgumentBinding\SimpleTriggerArgumentBinding.cs" />
-    <Compile Include="Triggers\TriggerArgumentBinding\StringTriggerArgumentBinding.cs" />
-    <Compile Include="Bindings\AsyncCollector\TypedAsyncCollectorAdapter.cs" />
-    <Compile Include="CompositeTraceWriter.cs" />
-    <Compile Include="ConfigurationUtility.cs" />
-    <Compile Include="Config\ExtensionConfigContext.cs" />
-    <Compile Include="Config\IExtensionConfigProvider.cs" />
-    <Compile Include="ConsoleTraceWriter.cs" />
-    <Compile Include="Constants.cs" />
-    <Compile Include="ContextAccessor.cs" />
-    <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\IBindingDataProvider.cs" />
-    <Compile Include="DefaultExtensionRegistry.cs" />
-    <Compile Include="Executors\DefaultJobActivator.cs" />
-    <Compile Include="Executors\FunctionInvoker.cs" />
-    <Compile Include="Executors\FunctionInvokerFactory.cs" />
-    <Compile Include="Executors\FunctionResult.cs" />
-    <Compile Include="Executors\IFunctionInvoker.cs" />
-    <Compile Include="Executors\ActivatorInstanceFactory.cs" />
-    <Compile Include="Executors\ITriggeredFunctionExecutor.cs" />
-    <Compile Include="Executors\NullInstanceFactory.cs" />
-    <Compile Include="Executors\TriggeredFunctionData.cs" />
-    <Compile Include="Executors\TriggeredFunctionExecutor.cs" />
-    <Compile Include="Extensions\IExtensionRegistryExtensions.cs" />
-    <Compile Include="GlobalSuppressions.cs" />
-    <Compile Include="IContextSetter.cs" />
-    <Compile Include="IContextGetter.cs" />
-    <Compile Include="Bindings\ObjectToTypeConverterFactory.cs" />
-    <Compile Include="Bindings\Path\BindingTemplateSource.cs" />
-    <Compile Include="Bindings\Path\BindingTemplateParser.cs" />
-    <Compile Include="Bindings\Path\BindingTemplate.cs" />
-    <Compile Include="Bindings\Path\BindingTemplateToken.cs" />
-    <Compile Include="Bindings\StringConverterObjectToTypeConverter.cs" />
-    <Compile Include="Bindings\ValueBindingContext.cs" />
-    <Compile Include="Bindings\IWatcher.cs" />
-    <Compile Include="Bindings\Runtime\AttributeBindingSource.cs" />
-    <Compile Include="Bindings\BindingDataPathHelper.cs" />
-    <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
-    <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
-    <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
-    <Compile Include="Bindings\Cancellation\CancellationTokenValueProvider.cs" />
-    <Compile Include="Bindings\Data\StructDataBindingProvider.cs" />
-    <Compile Include="Bindings\Data\ClassDataBindingProvider.cs" />
-    <Compile Include="Bindings\Data\CompositeArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\Data\ConverterArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\Data\ClassDataBinding.cs" />
-    <Compile Include="Bindings\Data\IDataArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\Data\StringToTArgumentBindingProvider.cs" />
-    <Compile Include="Bindings\Data\StructDataBinding.cs" />
-    <Compile Include="Bindings\Data\DataBindingProvider.cs" />
-    <Compile Include="Bindings\BindingTemplateExtensions.cs" />
-    <Compile Include="Bindings\IBindablePath.cs" />
-    <Compile Include="Bindings\IFunctionBinding.cs" />
-    <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
-    <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
-    <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
-    <Compile Include="Blobs\CloudBlobToStorageBlobConverter.cs" />
-    <Compile Include="Blobs\Bindings\WriteBlobArgumentBinding.cs" />
-    <Compile Include="Blobs\Bindings\CancellableTaskFactory.cs" />
-    <Compile Include="Blobs\Bindings\TaskCancellableAsyncResult.cs" />
-    <Compile Include="Blobs\BlobCausalityReader.cs" />
-    <Compile Include="Blobs\Listeners\StorageBlobContainerExtensions.cs" />
-    <Compile Include="Blobs\Listeners\StorageBlobClientExtensions.cs" />
-    <Compile Include="Blobs\Listeners\IBlobListenerStrategy.cs" />
-    <Compile Include="Blobs\StorageBlobExtensions.cs" />
-    <Compile Include="Blobs\IBlobCausalityReader.cs" />
-    <Compile Include="Blobs\Listeners\BlobListener.cs" />
-    <Compile Include="Blobs\Listeners\BlobListenerFactory.cs" />
-    <Compile Include="Blobs\Listeners\BlobQueueTriggerExecutor.cs" />
-    <Compile Include="Blobs\Listeners\BlobReceipt.cs" />
-    <Compile Include="Blobs\Listeners\BlobTriggerExecutor.cs" />
-    <Compile Include="Blobs\Listeners\BlobTriggerQueueWriter.cs" />
-    <Compile Include="Blobs\Listeners\BlobReceiptManager.cs" />
-    <Compile Include="Blobs\Listeners\IBlobTriggerQueueWriter.cs" />
-    <Compile Include="Blobs\Listeners\IBlobNotificationStrategy.cs" />
-    <Compile Include="Blobs\Listeners\BlobETagReader.cs" />
-    <Compile Include="Blobs\Listeners\IBlobETagReader.cs" />
-    <Compile Include="Blobs\Listeners\IBlobReceiptManager.cs" />
-    <Compile Include="Blobs\Listeners\PollLogsStrategy.cs" />
-    <Compile Include="Blobs\Listeners\ScanContainersStrategy.cs" />
-    <Compile Include="Blobs\Listeners\SharedBlobQueueListenerFactory.cs" />
-    <Compile Include="Blobs\Listeners\SharedBlobQueueListener.cs" />
-    <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
-    <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
-    <Compile Include="Blobs\Listeners\StorageAnalyticsLogParser.cs" />
-    <Compile Include="Blobs\StorageBlobToCloudBlobConverter.cs" />
-    <Compile Include="Blobs\TaskAsyncResultOfTResult.cs" />
-    <Compile Include="Blobs\TaskAsyncResult.cs" />
-    <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
-    <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
-    <Compile Include="ClassPropertySetter.cs" />
-    <Compile Include="Executors\IStorageAccountParser.cs" />
-    <Compile Include="Executors\StorageAccountProviderExtensions.cs" />
-    <Compile Include="IExtensionRegistry.cs" />
-    <Compile Include="IJobActivator.cs" />
-    <Compile Include="Indexers\ExtensionTypeLocator.cs" />
-    <Compile Include="Indexers\FunctionIndexProvider.cs" />
-    <Compile Include="Indexers\IExtensionTypeLocator.cs" />
-    <Compile Include="Indexers\IFunctionIndexCollector.cs" />
-    <Compile Include="Indexers\IFunctionIndexProvider.cs" />
-    <Compile Include="JobHostTraceConfiguration.cs" />
-    <Compile Include="Listeners\CompositeListenerFactory.cs" />
-    <Compile Include="Listeners\ISharedContextProvider.cs" />
-    <Compile Include="Listeners\ListenerFactoryContext.cs" />
-    <Compile Include="Loggers\FunctionInstanceLogEntry.cs" />
-    <Compile Include="Loggers\FastTableLoggerProvider.cs" />
-    <Compile Include="Loggers\DefaultConsoleProvider.cs" />
-    <Compile Include="Loggers\DefaultLoggerProvider.cs" />
-    <Compile Include="Loggers\IFunctionOutputLoggerProvider.cs" />
-    <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
-    <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
-    <Compile Include="Loggers\IConsoleProvider.cs" />
-    <Compile Include="Loggers\TraceWriterFunctionInstanceLogger.cs" />
-    <Compile Include="Queues\IQueueProcessorFactory.cs" />
-    <Compile Include="Singleton\SingletonListener.cs" />
-    <Compile Include="Queues\QueueProcessor.cs" />
-    <Compile Include="Queues\DefaultQueueProcessorFactory.cs" />
-    <Compile Include="Queues\QueueProcessorFactoryContext.cs" />
-    <Compile Include="Singleton\SingletonConfiguration.cs" />
-    <Compile Include="Singleton\SingletonLock.cs" />
-    <Compile Include="Singleton\SingletonManager.cs" />
-    <Compile Include="Singleton\SingletonValueProvider.cs" />
-    <Compile Include="StorageClientFactory.cs" />
-    <Compile Include="StorageClientFactoryContext.cs" />
-    <Compile Include="Storage\IStorageAccount.cs" />
-    <Compile Include="Storage\StorageAccount.cs" />
-    <Compile Include="StructPropertySetter.cs" />
-    <Compile Include="StructPropertyAccessorFactory.cs" />
-    <Compile Include="ClassPropertyAccessorFactory.cs" />
-    <Compile Include="IPropertyAccessorFactory.cs" />
-    <Compile Include="IPropertySetter.cs" />
-    <Compile Include="IPropertyGetter.cs" />
-    <Compile Include="PropertyAccessorFactory.cs" />
-    <Compile Include="StructPropertyGetter.cs" />
-    <Compile Include="ClassPropertyGetter.cs" />
-    <Compile Include="Converters\KnownTypesParseToStringConverterFactory.cs" />
-    <Compile Include="Converters\StringToTimeSpanConverter.cs" />
-    <Compile Include="Converters\StringToDateTimeOffsetConverter.cs" />
-    <Compile Include="Converters\StringToDecimalConverter.cs" />
-    <Compile Include="Converters\StringToBigIntegerConverter.cs" />
-    <Compile Include="Converters\StringToDoubleConverter.cs" />
-    <Compile Include="Converters\StringToDateTimeConverter.cs" />
-    <Compile Include="Converters\StringToGuidConverter.cs" />
-    <Compile Include="Converters\StringToSingleConverter.cs" />
-    <Compile Include="Converters\StringToInt64Converter.cs" />
-    <Compile Include="Converters\StringToInt32Converter.cs" />
-    <Compile Include="Converters\StringToUInt64Converter.cs" />
-    <Compile Include="Converters\StringToUInt32Converter.cs" />
-    <Compile Include="Converters\StringToUInt16Converter.cs" />
-    <Compile Include="Converters\StringToInt16Converter.cs" />
-    <Compile Include="Converters\StringToSByteConverter.cs" />
-    <Compile Include="Converters\StringToByteConverter.cs" />
-    <Compile Include="Converters\CompositeStringToTConverterFactory.cs" />
-    <Compile Include="Converters\IdentityStringToTConverterFactory.cs" />
-    <Compile Include="Converters\IStringToTConverterFactory.cs" />
-    <Compile Include="Converters\StringToTConverterFactory.cs" />
-    <Compile Include="Converters\TryParseDelegate.cs" />
-    <Compile Include="Converters\TryParseStringToTConverter.cs" />
-    <Compile Include="Converters\TypeConverterStringToTConverter.cs" />
-    <Compile Include="Converters\TypeConverterStringToTConverterFactory.cs" />
-    <Compile Include="Converters\TryParseStringToTConverterFactory.cs" />
-    <Compile Include="Converters\UInt64ToStringConverter.cs" />
-    <Compile Include="Converters\Int64ToStringConverter.cs" />
-    <Compile Include="Converters\UInt32ToStringConverter.cs" />
-    <Compile Include="Converters\Int32ToStringConverter.cs" />
-    <Compile Include="Converters\UInt16ToStringConverter.cs" />
-    <Compile Include="Converters\Int16ToStringConverter.cs" />
-    <Compile Include="Converters\SByteToStringConverter.cs" />
-    <Compile Include="Converters\CharToStringConverter.cs" />
-    <Compile Include="Converters\GuidToStringConverter.cs" />
-    <Compile Include="Converters\ByteToStringConverter.cs" />
-    <Compile Include="Converters\TToStringConverterFactory.cs" />
-    <Compile Include="Executors\FixedHostIdProvider.cs" />
-    <Compile Include="Executors\HostIdValidator.cs" />
-    <Compile Include="Executors\IHostIdProvider.cs" />
-    <Compile Include="Executors\DynamicHostIdProvider.cs" />
-    <Compile Include="Executors\TaskMethodInvoker.cs" />
-    <Compile Include="Executors\VoidMethodInvoker.cs" />
-    <Compile Include="ConnectionStringNames.cs" />
-    <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
-    <Compile Include="Converters\IAsyncConverter.cs" />
-    <Compile Include="Converters\AsyncConverter.cs" />
-    <Compile Include="Converters\ConversionResult.cs" />
-    <Compile Include="Converters\IAsyncObjectToTypeConverter.cs" />
-    <Compile Include="Executors\FunctionInstanceFactory.cs" />
-    <Compile Include="Executors\FunctionOutputIntervals.cs" />
-    <Compile Include="Executors\FunctionParameterLogIntervals.cs" />
-    <Compile Include="Executors\AbortListenerFunctionExecutor.cs" />
-    <Compile Include="Executors\StorageAccountParseResult.cs" />
-    <Compile Include="Executors\StorageAccountParser.cs" />
-    <Compile Include="Executors\IMethodInvoker.cs" />
-    <Compile Include="Executors\MethodInvokerFactory.cs" />
-    <Compile Include="JobHostQueuesConfiguration.cs" />
-    <Compile Include="Listeners\HeartbeatListener.cs" />
-    <Compile Include="Listeners\ShutdownListener.cs" />
-    <Compile Include="Listeners\ListenerFactoryListener.cs" />
-    <Compile Include="Executors\ShutdownFunctionExecutor.cs" />
-    <Compile Include="Executors\HeartbeatFunctionExecutor.cs" />
-    <Compile Include="Executors\IStorageAccountProvider.cs" />
-    <Compile Include="Executors\IFunctionInstanceFactory.cs" />
-    <Compile Include="Executors\DefaultStorageCredentialsValidator.cs" />
-    <Compile Include="Executors\IStorageCredentialsValidator.cs" />
-    <Compile Include="Executors\JobHostContext.cs" />
-    <Compile Include="Executors\JobHostConfigurationExtensions.cs" />
-    <Compile Include="Indexers\IFunctionIndex.cs" />
-    <Compile Include="Indexers\IFunctionIndexLookup.cs" />
-    <Compile Include="Indexers\FunctionIndex.cs" />
-    <Compile Include="Listeners\HostListenerFactory.cs" />
-    <Compile Include="IFactory.cs" />
-    <Compile Include="Blobs\IBlobWrittenWatcher.cs" />
-    <Compile Include="Listeners\ISharedListener.cs" />
-    <Compile Include="Listeners\NullListener.cs" />
-    <Compile Include="Listeners\NullListenerFactory.cs" />
-    <Compile Include="Listeners\SharedContextProvider.cs" />
-    <Compile Include="Loggers\IHostInstanceLogger.cs" />
-    <Compile Include="Loggers\NullHostInstanceLogger.cs" />
-    <Compile Include="Loggers\UpdateOutputLogCommand.cs" />
-    <Compile Include="Loggers\UpdateParameterLogCommand.cs" />
-    <Compile Include="Loggers\ConsoleFunctionOutputDefinition.cs" />
-    <Compile Include="Loggers\IFunctionOutputDefinition.cs" />
-    <Compile Include="Loggers\IFunctionParameterLog.cs" />
-    <Compile Include="Loggers\IFunctionOutput.cs" />
-    <Compile Include="Queues\StorageQueueExtensions.cs" />
-    <Compile Include="Queues\IQueueConfiguration.cs" />
-    <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
-    <Compile Include="Queues\Listeners\INotificationCommand.cs" />
-    <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />
-    <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
-    <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
-    <Compile Include="Queues\StorageQueueMessageExtensions.cs" />
-    <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
-    <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
-    <Compile Include="Tables\ITableEntityArgumentBindingProvider.cs" />
-    <Compile Include="Tables\ConverterPropertyGetter.cs" />
-    <Compile Include="Tables\ConverterPropertySetter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableEnumConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToEnumConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToPocoConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToStringConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToInt64Converter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToInt32Converter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToGuidConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToDoubleConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToDateTimeOffsetConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableInt64Converter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableInt32Converter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableGuidConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableDoubleConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableDateTimeOffsetConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableDateTimeConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToDateTimeConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToByteArrayConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToNullableBooleanConverter.cs" />
-    <Compile Include="Tables\Converters\EntityPropertyToBooleanConverter.cs" />
-    <Compile Include="Tables\Converters\NullableEnumToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\EnumToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\PocoToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\StringToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\Int64ToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableInt64ToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableInt32ToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\Int32ToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableGuidToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\GuidToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableDoubleToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\DoubleToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableDateTimeOffsetToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\DateTimeOffsetToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableDateTimeToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\DateTimeToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\ByteArrayToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\NullableBooleanToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\Converters\BooleanToEntityPropertyConverter.cs" />
-    <Compile Include="Tables\EntityPropertyToTConverterFactory.cs" />
-    <Compile Include="Tables\PocoEntityValueBinder.cs" />
-    <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
-    <Compile Include="Tables\PocoEntityCollectorBinder.cs" />
-    <Compile Include="Tables\PocoEntityWriter.cs" />
-    <Compile Include="Tables\PocoToTableEntityConverter.cs" />
-    <Compile Include="Tables\PropertyInfoExtensions.cs" />
-    <Compile Include="Tables\TableEntityArgumentBindingProvider.cs" />
-    <Compile Include="Tables\TableEntityCollectorBinder.cs" />
-    <Compile Include="Tables\TableEntityToPocoConverter.cs" />
-    <Compile Include="Tables\TableEntityValueBinder.cs" />
-    <Compile Include="Tables\TableEntityArgumentBinding.cs" />
-    <Compile Include="Tables\TableEntityWriter.cs" />
-    <Compile Include="Tables\TToEntityPropertyConverterFactory.cs" />
-    <Compile Include="Timers\FixedDelayStrategy.cs" />
-    <Compile Include="Timers\RandomizedExponentialBackoffStrategy.cs" />
-    <Compile Include="Timers\WebJobsExceptionHandler.cs" />
-    <Compile Include="Timers\IWebJobsExceptionHandler.cs" />
-    <Compile Include="Timers\IDelayStrategy.cs" />
-    <Compile Include="Timers\IRecurrentCommand.cs" />
-    <Compile Include="Timers\ITaskSeriesCommand.cs" />
-    <Compile Include="Timers\ITaskSeriesTimer.cs" />
-    <Compile Include="Timers\NullRecurrentCommand.cs" />
-    <Compile Include="Timers\RandomExtensions.cs" />
-    <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
-    <Compile Include="Timers\TaskSeriesCommandResult.cs" />
-    <Compile Include="TraceEvent.cs" />
-    <Compile Include="TraceSource.cs" />
-    <Compile Include="TraceWriter.cs" />
-    <Compile Include="Triggers\ITriggerDataArgumentBinding.cs" />
-    <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
-    <Compile Include="Executors\HostMessageExecutor.cs" />
-    <Compile Include="Executors\IBindingSource.cs" />
-    <Compile Include="Executors\FunctionInstance.cs" />
-    <Compile Include="Executors\IFunctionInstance.cs" />
-    <Compile Include="Triggers\ITriggeredFunctionInstanceFactory.cs" />
-    <Compile Include="Listeners\CompositeListener.cs" />
-    <Compile Include="Queues\Listeners\HostMessageListenerFactory.cs" />
-    <Compile Include="Queues\Listeners\QueueTriggerExecutor.cs" />
-    <Compile Include="Triggers\TriggerBindingSource.cs" />
-    <Compile Include="Queues\Listeners\QueueListenerFactory.cs" />
-    <Compile Include="Triggers\TriggeredFunctionBinding.cs" />
-    <Compile Include="Bindings\FunctionBinding.cs" />
-    <Compile Include="Blobs\BindableBlobPath.cs" />
-    <Compile Include="Blobs\BoundBlobPath.cs" />
-    <Compile Include="Blobs\IBindableBlobPath.cs" />
-    <Compile Include="Blobs\IBlobArgumentBinding.cs" />
-    <Compile Include="Blobs\ParameterizedBlobPath.cs" />
-    <Compile Include="Blobs\BlobPath.cs" />
-    <Compile Include="Blobs\BlobPathSource.cs" />
-    <Compile Include="Blobs\BlobPathSourceExtensions.cs" />
-    <Compile Include="Blobs\FixedBlobPathSource.cs" />
-    <Compile Include="Blobs\IBlobPathSource.cs" />
-    <Compile Include="Blobs\ParameterizedBlobPathSource.cs" />
-    <Compile Include="HostDirectoryNames.cs" />
-    <Compile Include="Indexers\IFunctionDefinition.cs" />
-    <Compile Include="Listeners\IListener.cs" />
-    <Compile Include="Listeners\IListenerFactory.cs" />
-    <Compile Include="Queues\Listeners\QueueListener.cs" />
-    <Compile Include="Listeners\TimerListener.cs" />
-    <Compile Include="Extensions\ExceptionExtensions.cs" />
-    <Compile Include="Executors\IFunctionExecutor.cs" />
-    <Compile Include="StorageClient.cs" />
-    <Compile Include="Bindings\StructOutputConverter.cs" />
-    <Compile Include="Bindings\Invoke\StructInvokeBinding.cs" />
-    <Compile Include="Bindings\ObjectValueProvider.cs" />
-    <Compile Include="Bindings\ClassOutputConverter.cs" />
-    <Compile Include="Bindings\Runtime\RuntimeBindingWatcher.cs" />
-    <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
-    <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
-    <Compile Include="Bindings\StorageAccount\StringToCloudStorageAccountConverter.cs" />
-    <Compile Include="Bindings\StorageAccount\OutputConverter.cs" />
-    <Compile Include="Bindings\StorageAccount\CloudStorageAccountBinding.cs" />
-    <Compile Include="Bindings\StorageAccount\CloudStorageAccountBindingProvider.cs" />
-    <Compile Include="Bindings\Runtime\IAttributeBindingSource.cs" />
-    <Compile Include="Bindings\FunctionBindingContext.cs" />
-    <Compile Include="Bindings\BindingContext.cs" />
-    <Compile Include="Bindings\BindingDataProvider.cs" />
-    <Compile Include="Bindings\BindingProviderContext.cs" />
-    <Compile Include="Bindings\BindingProviders\CompositeBindingProvider.cs" />
-    <Compile Include="Bindings\IArgumentBinding.cs" />
-    <Compile Include="Bindings\IBinding.cs" />
-    <Compile Include="Bindings\IBindingProvider.cs" />
-    <Compile Include="Bindings\IOrderedValueBinder.cs" />
-    <Compile Include="Bindings\IValueBinder.cs" />
-    <Compile Include="Bindings\IValueProvider.cs" />
-    <Compile Include="Bindings\IWatchable.cs" />
-    <Compile Include="Bindings\Runtime\RuntimeBinding.cs" />
-    <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
-    <Compile Include="Bindings\ImmutableWatcher.cs" />
-    <Compile Include="Bindings\BindStepOrder.cs" />
-    <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\BlobBinding.cs" />
-    <Compile Include="Blobs\Bindings\BlobCommittedAction.cs" />
-    <Compile Include="Blobs\Bindings\StorageBlobContainerExtensions.cs" />
-    <Compile Include="Blobs\Bindings\CloudBlobStreamArgumentBinderProvider.cs" />
-    <Compile Include="Blobs\Bindings\DelegatingCloudBlobStream.cs" />
-    <Compile Include="Blobs\Bindings\IBlobCommitedAction.cs" />
-    <Compile Include="Blobs\Bindings\WatchableCloudBlobStream.cs" />
-    <Compile Include="Blobs\Bindings\TextWriterArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\OutStringArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\BlobValueProvider.cs" />
-    <Compile Include="Blobs\BlobWatchableValueProvider.cs" />
-    <Compile Include="Blobs\BlobWatchableDisposableValueProvider.cs" />
-    <Compile Include="Blobs\CloudBlobStreamObjectBinder.cs" />
-    <Compile Include="Blobs\CompositeBlobArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\ConverterArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Bindings\OutObjectArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\ObjectArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\StorageBlobToCloudPageBlobConverter.cs" />
-    <Compile Include="Blobs\StorageBlobToCloudBlockBlobConverter.cs" />
-    <Compile Include="Blobs\IBlobArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Triggers\BlobTriggerAttributeBindingProvider.cs" />
-    <Compile Include="Blobs\CloudBlobExtensions.cs" />
-    <Compile Include="Blobs\StringArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\TextReaderArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\StreamArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\Triggers\BlobTriggerBinding.cs" />
-    <Compile Include="Blobs\BlobOutputConverter.cs" />
-    <Compile Include="Blobs\Bindings\StringToStorageBlobConverter.cs" />
-    <Compile Include="Blobs\WatchableReadStream.cs" />
-    <Compile Include="Blobs\Triggers\StringToStorageBlobConverter.cs" />
-    <Compile Include="Converters\IConverter.cs" />
-    <Compile Include="Converters\IdentityConverter.cs" />
-    <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />
-    <Compile Include="Converters\IObjectToTypeConverter.cs" />
-    <Compile Include="Indexers\DefaultBindingProvider.cs" />
-    <Compile Include="Indexers\DefaultTriggerBindingProvider.cs" />
-    <Compile Include="Indexers\MethodInfoExtensions.cs" />
-    <Compile Include="ObjectDictionaryConverter.cs" />
-    <Compile Include="PropertyHelper.cs" />
-    <Compile Include="HostQueueNames.cs" />
-    <Compile Include="Queues\Triggers\UserTypeArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Triggers\CompositeArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Triggers\ConverterArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Triggers\IQueueTriggerArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Triggers\OutputConverter.cs" />
-    <Compile Include="Queues\Triggers\StorageQueueMessageToByteArrayConverter.cs" />
-    <Compile Include="Queues\Triggers\StorageQueueMessageToStringConverter.cs" />
-    <Compile Include="Queues\Triggers\QueueMessageValueProvider.cs" />
-    <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
-    <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
-    <Compile Include="Executors\DelayedException.cs" />
-    <Compile Include="Executors\ExceptionDispatchInfoDelayedException.cs" />
-    <Compile Include="Executors\HeartbeatIntervals.cs" />
-    <Compile Include="Executors\IDelayedException.cs" />
-    <Compile Include="Executors\BindingSource.cs" />
-    <Compile Include="Queues\Triggers\StringToStorageQueueMessageConverter.cs" />
-    <Compile Include="Tables\EntityOutputConverter.cs" />
-    <Compile Include="Tables\IBindableTableEntityPath.cs" />
-    <Compile Include="Tables\NullEntityValueProvider.cs" />
-    <Compile Include="Tables\OutputConverter.cs" />
-    <Compile Include="Tables\ParameterizedTableEntityPath.cs" />
-    <Compile Include="Tables\StringToTableEntityContextConverter.cs" />
-    <Compile Include="Tables\PocoEntityArgumentBindingProvider.cs" />
-    <Compile Include="Tables\TableEntityBinding.cs" />
-    <Compile Include="Tables\CompositeEntityArgumentBindingProvider.cs" />
-    <Compile Include="Tables\TableEntityContext.cs" />
-    <Compile Include="Tables\BindableTableEntityPath.cs" />
-    <Compile Include="Tables\BoundTableEntityPath.cs" />
-    <Compile Include="Tables\TableAttributeBindingProvider.cs" />
-    <Compile Include="Triggers\CompositeTriggerBindingProvider.cs" />
-    <Compile Include="Triggers\ITriggerBinding.cs" />
-    <Compile Include="Triggers\ITriggerBindingProvider.cs" />
-    <Compile Include="Triggers\ITriggerData.cs" />
-    <Compile Include="Triggers\ITriggeredFunctionBinding.cs" />
-    <Compile Include="Listeners\ITriggerExecutor.cs" />
-    <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
-    <Compile Include="Triggers\TriggerData.cs" />
-    <Compile Include="NameResolverExtensions.cs" />
-    <Compile Include="FunctionInvocationException.cs" />
-    <Compile Include="TypeUtility.cs" />
-    <Compile Include="WebJobsShutdownWatcher.cs" />
-    <Compile Include="Tables\TableEntityPath.cs" />
-    <Compile Include="HostContainerNames.cs" />
-    <Compile Include="INameResolver.cs" />
-    <Compile Include="JobHostConfiguration.cs" />
-    <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
-    <Compile Include="AmbientConnectionStringProvider.cs" />
-    <Compile Include="ServiceProviderExtensions.cs" />
-    <Compile Include="Loggers\PersistentQueueLogger.cs" />
-    <Compile Include="NativeMethods.cs" />
-    <Compile Include="Executors\DefaultStorageAccountProvider.cs" />
-    <Compile Include="Indexers\FunctionIndexer.cs" />
-    <Compile Include="IConnectionStringProvider.cs" />
-    <Compile Include="Timers\LinearSpeedupStrategy.cs" />
-    <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
-    <Compile Include="StorageExceptionExtensions.cs" />
-    <Compile Include="Executors\UpdateHostHeartbeatCommand.cs" />
-    <Compile Include="Blobs\DelegatingStream.cs" />
-    <Compile Include="Timers\TaskSeriesTimer.cs" />
-    <Compile Include="JobHost.cs" />
-    <Compile Include="Loggers\ConsoleFunctionOutputLogger.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Blobs\BlobClient.cs" />
-    <Compile Include="Blobs\Listeners\StorageBlobContainerComparer.cs" />
-    <Compile Include="Indexers\DefaultTypeLocator.cs" />
-    <Compile Include="ITypeLocator.cs" />
-    <Compile Include="Loggers\IFunctionOutputLogger.cs" />
-    <Compile Include="Loggers\BlobFunctionOutputDefinition.cs" />
-    <Compile Include="Loggers\BlobFunctionOutputLogger.cs" />
-    <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
-    <Compile Include="Indexers\FunctionDefinition.cs" />
-    <Compile Include="Indexers\FunctionIndexingException.cs" />
-    <Compile Include="Blobs\BlobCausalityManager.cs" />
-    <Compile Include="Queues\QueueCausalityManager.cs" />
-    <Compile Include="Queues\QueueClient.cs" />
-    <Compile Include="Tables\TableClient.cs" />
-    <Compile Include="Executors\FunctionExecutor.cs" />
-    <Compile Include="Blobs\Listeners\StorageServiceType.cs" />
-    <Compile Include="Blobs\Listeners\StorageAnalyticsLogEntry.cs" />
-    <Compile Include="Blobs\Listeners\StorageServiceOperationType.cs" />
-    <Compile Include="Blobs\Listeners\StorageAnalyticsLogColumnId.cs" />
-    <Compile Include="Blobs\Listeners\BlobLogListener.cs" />
-    <Compile Include="Blobs\Listeners\StorageBlobClientComparer.cs" />
-    <Compile Include="WebSitesKnownKeyNames.cs" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.0-preview2-final" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.0.0-preview2-final" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="2.0.0-preview2-final" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0-preview2-final" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.0.0-preview2-final" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.8.0-preview2-25405-01" />
+    <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.WebJobs\WebJobs.csproj">
-      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
-      <Name>WebJobs</Name>
-    </ProjectReference>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\AbortHostInstanceMessage.cs" Link="Protocols\AbortHostInstanceMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterDescriptor.cs" Link="Protocols\BinderParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterLog.cs" Link="Protocols\BinderParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BinderParameterLogItem.cs" Link="Protocols\BinderParameterLogItem.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BindingDataParameterDescriptor.cs" Link="Protocols\BindingDataParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobMetadataKeys.cs" Link="Protocols\BlobMetadataKeys.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobNames.cs" Link="Protocols\BlobNames.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobParameterDescriptor.cs" Link="Protocols\BlobParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\BlobTriggerParameterDescriptor.cs" Link="Protocols\BlobTriggerParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CallAndOverrideMessage.cs" Link="Protocols\CallAndOverrideMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CallerSuppliedParameterDescriptor.cs" Link="Protocols\CallerSuppliedParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CancellationTokenParameterDescriptor.cs" Link="Protocols\CancellationTokenParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\CloudStorageAccountParameterDescriptor.cs" Link="Protocols\CloudStorageAccountParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ConsoleOutputParameterDescriptor.cs" Link="Protocols\ConsoleOutputParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ContainerNames.cs" Link="Protocols\ContainerNames.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\DictionaryExtensions.cs" Link="Protocols\DictionaryExtensions.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ExecutionReason.cs" Link="Protocols\ExecutionReason.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionCompletedMessage.cs" Link="Protocols\FunctionCompletedMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionDescriptor.cs" Link="Protocols\FunctionDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionFailure.cs" Link="Protocols\FunctionFailure.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStartedMessage.cs" Link="Protocols\FunctionStartedMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStartedMessageExtensions.cs" Link="Protocols\FunctionStartedMessageExtensions.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\FunctionStatusMessage.cs" Link="Protocols\FunctionStatusMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HeartbeatCommand.cs" Link="Protocols\HeartbeatCommand.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HeartbeatDescriptor.cs" Link="Protocols\HeartbeatDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostMessage.cs" Link="Protocols\HostMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostOutputMessage.cs" Link="Protocols\HostOutputMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\HostStartedMessage.cs" Link="Protocols\HostStartedMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\IHeartbeatCommand.cs" Link="Protocols\IHeartbeatCommand.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\IPersistentQueueReader.cs" Link="Protocols\IPersistentQueueReader.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\IPersistentQueueWriter.cs" Link="Protocols\IPersistentQueueWriter.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JsonSerialization.cs" Link="Protocols\JsonSerialization.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JsonTypeNameAttribute.cs" Link="Protocols\JsonTypeNameAttribute.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JTokenExtensions.cs" Link="Protocols\JTokenExtensions.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\LocalBlobDescriptor.cs" Link="Protocols\LocalBlobDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\NullHeartbeatCommand.cs" Link="Protocols\NullHeartbeatCommand.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterDescriptor.cs" Link="Protocols\ParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterDisplayHints.cs" Link="Protocols\ParameterDisplayHints.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterLog.cs" Link="Protocols\ParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PersistentQueueMessage.cs" Link="Protocols\PersistentQueueMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PersistentQueueReader.cs" Link="Protocols\PersistentQueueReader.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PersistentQueueWriter.cs" Link="Protocols\PersistentQueueWriter.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\PolymorphicJsonConverter.cs" Link="Protocols\PolymorphicJsonConverter.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\QueueParameterDescriptor.cs" Link="Protocols\QueueParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\QueueTriggerParameterDescriptor.cs" Link="Protocols\QueueTriggerParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ReadBlobParameterLog.cs" Link="Protocols\ReadBlobParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ServiceBusParameterDescriptor.cs" Link="Protocols\ServiceBusParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ServiceBusTriggerParameterDescriptor.cs" Link="Protocols\ServiceBusTriggerParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\SingletonParameterLog.cs" Link="Protocols\SingletonParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableEntityParameterDescriptor.cs" Link="Protocols\TableEntityParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableParameterDescriptor.cs" Link="Protocols\TableParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TableParameterLog.cs" Link="Protocols\TableParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TextParameterLog.cs" Link="Protocols\TextParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TriggerParameterDescriptor.cs" Link="Protocols\TriggerParameterDescriptor.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobRunIdentifier.cs" Link="Protocols\WebJobRunIdentifier.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobTypes.cs" Link="Protocols\WebJobTypes.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WebSitesKnownKeyNames.cs" Link="Protocols\WebSitesKnownKeyNames.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WriteBlobParameterLog.cs" Link="Protocols\WriteBlobParameterLog.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageAppendBlob.cs" Link="Storage\Blob\IStorageAppendBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlob.cs" Link="Storage\Blob\IStorageBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobClient.cs" Link="Storage\Blob\IStorageBlobClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobContainer.cs" Link="Storage\Blob\IStorageBlobContainer.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobDirectory.cs" Link="Storage\Blob\IStorageBlobDirectory.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobProperties.cs" Link="Storage\Blob\IStorageBlobProperties.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobResultSegment.cs" Link="Storage\Blob\IStorageBlobResultSegment.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlockBlob.cs" Link="Storage\Blob\IStorageBlockBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageListBlobItem.cs" Link="Storage\Blob\IStorageListBlobItem.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStoragePageBlob.cs" Link="Storage\Blob\IStoragePageBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageAppendBlob.cs" Link="Storage\Blob\StorageAppendBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobClient.cs" Link="Storage\Blob\StorageBlobClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobContainer.cs" Link="Storage\Blob\StorageBlobContainer.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobDirectory.cs" Link="Storage\Blob\StorageBlobDirectory.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobProperties.cs" Link="Storage\Blob\StorageBlobProperties.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobResultSegment.cs" Link="Storage\Blob\StorageBlobResultSegment.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobType.cs" Link="Storage\Blob\StorageBlobType.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlockBlob.cs" Link="Storage\Blob\StorageBlockBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StoragePageBlob.cs" Link="Storage\Blob\StoragePageBlob.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueue.cs" Link="Storage\Queue\IStorageQueue.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueClient.cs" Link="Storage\Queue\IStorageQueueClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueMessage.cs" Link="Storage\Queue\IStorageQueueMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueue.cs" Link="Storage\Queue\StorageQueue.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueClient.cs" Link="Storage\Queue\StorageQueueClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueMessage.cs" Link="Storage\Queue\StorageQueueMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs" Link="Storage\StorageExceptionExtensions.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IEntityResolver.cs" Link="Storage\Table\IEntityResolver.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTable.cs" Link="Storage\Table\IStorageTable.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableBatchOperation.cs" Link="Storage\Table\IStorageTableBatchOperation.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableClient.cs" Link="Storage\Table\IStorageTableClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableOperation.cs" Link="Storage\Table\IStorageTableOperation.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTable.cs" Link="Storage\Table\StorageTable.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableBatchOperation.cs" Link="Storage\Table\StorageTableBatchOperation.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableClient.cs" Link="Storage\Table\StorageTableClient.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableOperation.cs" Link="Storage\Table\StorageTableOperation.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\TypeEntityResolver.cs" Link="Storage\Table\TypeEntityResolver.cs" />
   </ItemGroup>
+
   <ItemGroup>
-    <None Include="..\Common\PublicKey.snk">
-      <Link>Properties\PublicKey.snk</Link>
-    </None>
-    <None Include="app.config" />
-    <None Include="packages.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="..\Common\PublicKey.snk" Link="PublicKey.snk" />
   </ItemGroup>
+
   <ItemGroup>
-    <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
-      <Link>CustomDictionary.xml</Link>
-      <SubType>Designer</SubType>
-    </CodeAnalysisDictionary>
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs\WebJobs.csproj" />
   </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props'))" />
-    <Error Condition="!Exists('..\..\packages\StyleCop.MSBuild.4.7.55.0\build\StyleCop.MSBuild.Targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\StyleCop.MSBuild.4.7.55.0\build\StyleCop.MSBuild.Targets'))" />
-  </Target>
-  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.55.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.55.0\build\StyleCop.MSBuild.Targets')" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

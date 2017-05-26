@@ -24,10 +24,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
             var names = GetAssemblyReferences(typeof(QueueTriggerAttribute).Assembly);
 
-            Assert.Equal(3, names.Count);
-            Assert.Equal("mscorlib", names[0]);
-            Assert.Equal("System", names[1]);
-            Assert.Equal("System.ComponentModel.DataAnnotations", names[2]);
+            Assert.Equal(2, names.Count);
+            Assert.Equal("netstandard", names[0]);
+            Assert.Equal("System.ComponentModel.Annotations", names[1]);
         }
 
         [Fact]
@@ -76,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             AssertPublicTypes(expected, assembly);
         }
 
-
+#if SERVICE_BUS
         [Fact]
         public void ServiceBusPublicSurface_LimitedToSpecificTypes()
         {
@@ -101,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             AssertPublicTypes(expected, assembly);
         }
+#endif
 
         [Fact]
         public void WebJobsPublicSurface_LimitedToSpecificTypes()

@@ -5,14 +5,14 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
-    internal class ByteArrayToBrokeredMessageConverter : IConverter<byte[], BrokeredMessage>
+    internal class ByteArrayToBrokeredMessageConverter : IConverter<byte[], Message>
     {
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public BrokeredMessage Convert(byte[] input)
+        public Message Convert(byte[] input)
         {
             if (input == null)
             {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             MemoryStream stream = new MemoryStream(input, writable: false);
 
-            return new BrokeredMessage(stream)
+            return new Message(stream)
             {
                 ContentType = ContentTypes.ApplicationOctetStream
             };

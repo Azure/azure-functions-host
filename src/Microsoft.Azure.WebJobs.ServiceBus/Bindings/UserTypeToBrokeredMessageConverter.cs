@@ -4,21 +4,19 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
-    internal class UserTypeToBrokeredMessageConverter<TInput> : IConverter<TInput, BrokeredMessage>
+    internal class UserTypeToBrokeredMessageConverter<TInput> : IConverter<TInput, Message>
     {
-        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public BrokeredMessage Convert(TInput input)
+        public Message Convert(TInput input)
         {
             string text = JsonConvert.SerializeObject(input, Constants.JsonSerializerSettings);
             byte[] bytes = StrictEncodings.Utf8.GetBytes(text);
-            MemoryStream stream = new MemoryStream(bytes, writable: false);
 
-            return new BrokeredMessage(stream)
+            return new Message(bytes)
             {
                 ContentType = ContentTypes.ApplicationJson
             };

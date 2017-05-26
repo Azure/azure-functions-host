@@ -5,7 +5,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -13,14 +14,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     {
         private readonly ServiceBusAccount _account;
         private readonly IBindableServiceBusPath _defaultPath;
-        private readonly AccessRights _accessRights;
         private readonly EntityType _entityType;
 
-        public StringToServiceBusEntityConverter(ServiceBusAccount account, IBindableServiceBusPath defaultPath, AccessRights accessRights, EntityType entityType)
+        public StringToServiceBusEntityConverter(ServiceBusAccount account, IBindableServiceBusPath defaultPath, EntityType entityType)
         {
             _account = account;
             _defaultPath = defaultPath;
-            _accessRights = accessRights;
             _entityType = entityType;
         }
 
@@ -45,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Account = _account,
                 MessageSender = messageSender,
-                AccessRights = _accessRights,
                 EntityType = _entityType
             };
         }

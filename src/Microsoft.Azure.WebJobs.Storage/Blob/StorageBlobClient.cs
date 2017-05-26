@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <inheritdoc />
         public Task<ServiceProperties> GetServicePropertiesAsync(CancellationToken cancellationToken)
         {
-            return _sdk.GetServicePropertiesAsync(cancellationToken);
+            return _sdk.GetServicePropertiesAsync(options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
             BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
         {
             Task<BlobResultSegment> sdkTask = _sdk.ListBlobsSegmentedAsync(prefix, useFlatBlobListing,
-                blobListingDetails, maxResults, currentToken, options, operationContext, cancellationToken);
+                blobListingDetails, maxResults, currentToken, options, operationContext);
             return ListBlobsSegmentedAsyncCore(sdkTask);
         }
 
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <inheritdoc />
         public Task SetServicePropertiesAsync(ServiceProperties properties, CancellationToken cancellationToken)
         {
-            return _sdk.SetServicePropertiesAsync(properties, cancellationToken);
+            return _sdk.SetServicePropertiesAsync(properties, requestOptions: null, operationContext: null, cancellationToken: cancellationToken);
         }
     }
 }

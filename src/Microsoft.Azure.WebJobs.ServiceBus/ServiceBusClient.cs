@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -15,17 +15,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 return null;
             }
 
-            return GetNamespaceName(account.MessagingFactory);
-        }
-
-        public static string GetNamespaceName(MessagingFactory factory)
-        {
-            if (factory == null)
-            {
-                return null;
-            }
-
-            return GetNamespaceName(factory.Address);
+            // TODO: FACAVAL - This needs to be refactored
+            return string.Empty;
         }
 
         internal static string GetNamespaceName(Uri address)

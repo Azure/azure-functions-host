@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Protocols
 {
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
         /// The time at which a valid shared heartbeat expires, if there is a valid shared heartbeat; otherwise
         /// <see langword="null"/>.
         /// </returns>
-        DateTimeOffset? GetSharedHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+        Task<DateTimeOffset?> GetSharedHeartbeatExpirationAsync(string sharedContainerName, string sharedDirectoryName,
             int expirationInSeconds);
 
         /// <summary>
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
         /// The time at which a valid instance heartbeat expires, if there is a valid instance heartbeat; otherwise
         /// <see langword="null"/>.
         /// </returns>
-        DateTimeOffset? GetInstanceHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+        Task<DateTimeOffset?> GetInstanceHeartbeatExpirationAsync(string sharedContainerName, string sharedDirectoryName,
             string instanceBlobName, int expirationInSeconds);
     }
 }

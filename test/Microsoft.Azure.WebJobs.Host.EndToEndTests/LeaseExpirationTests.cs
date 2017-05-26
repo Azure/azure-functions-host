@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -38,13 +39,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _queueClient = storageAccount.CreateCloudQueueClient();
 
             _queue = _queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
-            _queue.CreateIfNotExists();
+            _queue.CreateIfNotExistsAsync().Wait();
         }
 
         /// <summary>
         /// The function used to test the renewal. Whenever it is invoked, a counter increases
         /// </summary>
-        public static void QueueMessageLeaseRenewFunction([QueueTrigger(TestQueueName)] string message,
+        public async static Task QueueMessageLeaseRenewFunction([QueueTrigger(TestQueueName)] string message,
             [Queue("queueleaserenew")]CloudQueue queueleaserenew)
         {
             // The time when the function will stop if the message is not found again
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             while (DateTime.Now < endTime)
             {
-                CloudQueueMessage queueMessage = queueleaserenew.GetMessage();
+                CloudQueueMessage queueMessage = await queueleaserenew.GetMessageAsync();
                 if (queueMessage != null)
                 {
                     _messageFoundAgain = true;
@@ -71,11 +72,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         /// <remarks>Ignored because it takes a long time. Can be enabled on demand</remarks>
         // Uncomment the Fact attribute to run
         //[Fact(Timeout = 20 * 60 * 1000)]
-        public void QueueMessageLeaseRenew()
+        public async Task QueueMessageLeaseRenew()
         {
             _messageFoundAgain = false;
 
-            _queue.AddMessage(new CloudQueueMessage("Test"));
+            await _queue.AddMessageAsync(new CloudQueueMessage("Test"));
 
             _tokenSource = new CancellationTokenSource();
             JobHost host = new JobHost(_config);
@@ -88,9 +89,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public void Dispose()
         {
-            foreach (var testqueue in _queueClient.ListQueues(TestArtifactPrefix))
+            foreach (var testqueue in _queueClient.ListQueuesSegmentedAsync(TestArtifactPrefix, null).Result.Results)
             {
-                testqueue.Delete();
+                testqueue.DeleteAsync().Wait();
             }
         }
     }

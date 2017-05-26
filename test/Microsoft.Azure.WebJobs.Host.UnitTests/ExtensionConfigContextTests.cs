@@ -134,6 +134,4 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public int Value { get; set; }
         }
     }
-
-    
 }

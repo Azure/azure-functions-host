@@ -94,6 +94,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 return _lockAcquisitionTimeout;
             }
+
             set
             {
                 if (value != null && value <= 0)

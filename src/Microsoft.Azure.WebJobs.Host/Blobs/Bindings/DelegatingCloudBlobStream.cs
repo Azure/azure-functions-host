@@ -62,26 +62,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             set { _inner.WriteTimeout = value; }
         }
 
-        public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
-        {
-            return _inner.BeginCommit(callback, state);
-        }
-
-        public override void EndCommit(IAsyncResult asyncResult)
-        {
-            _inner.EndCommit(asyncResult);
-        }
-
-        public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
-        {
-            return _inner.BeginFlush(callback, state);
-        }
-
-        public override void EndFlush(IAsyncResult asyncResult)
-        {
-            _inner.EndFlush(asyncResult);
-        }
-
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback,
             object state)
         {
@@ -109,11 +89,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             _inner.Close();
         }
 
-        public override void Commit()
-        {
-            _inner.Commit();
-        }
-
         public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
         {
             return _inner.CopyToAsync(destination, bufferSize, cancellationToken);
@@ -126,9 +101,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
         public override Task FlushAsync(CancellationToken cancellationToken)
         {
-            // The Storage NuGet package for .NET 4.0 can't implement FlushAsync, since that is a .NET 4.5-only method.
-            // Rely on BeginFlush/EndFlush instead of FlushAsync.
-            return CancellableTaskFactory.FromAsync(_inner.BeginFlush, _inner.EndFlush, cancellationToken);
+            return _inner.FlushAsync(cancellationToken);
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -169,6 +142,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public override void WriteByte(byte value)
         {
             _inner.WriteByte(value);
+        }
+
+        public override Task CommitAsync()
+        {
+            return _inner.CommitAsync();
         }
     }
 }

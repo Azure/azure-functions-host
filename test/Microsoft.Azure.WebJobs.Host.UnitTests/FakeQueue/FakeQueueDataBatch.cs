@@ -11,5 +11,4 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     {
         public FakeQueueData[] Events;
     }
-
 }

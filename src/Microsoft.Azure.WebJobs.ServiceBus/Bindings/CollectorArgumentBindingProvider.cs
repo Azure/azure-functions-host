@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -53,9 +53,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         private class CollectorArgumentBinding<TItem> : IArgumentBinding<ServiceBusEntity>
         {
-            private readonly IConverter<TItem, BrokeredMessage> _converter;
+            private readonly IConverter<TItem, Message> _converter;
 
-            public CollectorArgumentBinding(IConverter<TItem, BrokeredMessage> converter)
+            public CollectorArgumentBinding(IConverter<TItem, Message> converter)
             {
                 _converter = converter;
             }

@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
@@ -10,15 +10,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
     {
         private const string ParentGuidFieldName = "$AzureWebJobsParentId";
 
-        public static void EncodePayload(Guid functionOwner, BrokeredMessage msg)
+        public static void EncodePayload(Guid functionOwner, Message msg)
         {
-            msg.Properties[ParentGuidFieldName] = functionOwner.ToString();
+            msg.UserProperties[ParentGuidFieldName] = functionOwner.ToString();
         }
 
-        public static Guid? GetOwner(BrokeredMessage msg)
+        public static Guid? GetOwner(Message msg)
         {
             object parent;
-            if (msg.Properties.TryGetValue(ParentGuidFieldName, out parent))
+            if (msg.UserProperties.TryGetValue(ParentGuidFieldName, out parent))
             {
                 var parentString = parent as string;
                 if (parentString != null)

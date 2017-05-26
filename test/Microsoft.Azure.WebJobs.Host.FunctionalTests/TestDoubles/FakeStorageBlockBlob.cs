@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             {
                 byte[] buffer = Encoding.UTF8.GetBytes(content);
                 stream.Write(buffer, 0, buffer.Length);
-                stream.Commit();
+                stream.CommitAsync().Wait();
             }
 
             return Task.FromResult(0);

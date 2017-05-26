@@ -610,12 +610,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
         [JsonTypeName("TypeNameInAttribute")]
         private class TypeWithNameInAttribute
         {
-
         }
 
         private class TypeWithTwoDerivedTypes
         {
-
         }
 
         private class ChildTypeWithoutCustomName : TypeWithTwoDerivedTypes

@@ -23,8 +23,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     /// </remarks>
     internal class StorageAnalyticsLogParser
     {
-        private readonly Version supportedVersion = new Version(1, 0);
-
         private const string FieldPattern =
             // x - ignore whitespace and comments.
             // n - do not capture unnamed groups. 
@@ -48,6 +46,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             @"(?=;|$)";
 
         private const int ColumnCount = (int)StorageAnalyticsLogColumnId.LastColumn + 1;
+
+        private readonly Version supportedVersion = new Version(1, 0);
 
         private readonly Regex _compiledRegex;
 
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             using (TextReader tr = new StreamReader(await blob.OpenReadAsync(cancellationToken)))
             {
-                for (int lineNumber = 1;; lineNumber++)
+                for (int lineNumber = 1; ; lineNumber++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     string line = await tr.ReadLineAsync();

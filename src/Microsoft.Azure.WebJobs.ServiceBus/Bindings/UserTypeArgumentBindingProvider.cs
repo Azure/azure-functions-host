@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                     throw new ArgumentNullException("context");
                 }
 
-                IConverter<TInput, BrokeredMessage> converter = new UserTypeToBrokeredMessageConverter<TInput>();
+                IConverter<TInput, Message> converter = new UserTypeToBrokeredMessageConverter<TInput>();
                 IValueProvider provider = new ConverterValueBinder<TInput>(value, converter,
                     context.FunctionInstanceId);
 

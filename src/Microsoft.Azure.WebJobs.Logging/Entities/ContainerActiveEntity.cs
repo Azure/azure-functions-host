@@ -116,5 +116,4 @@ namespace Microsoft.Azure.WebJobs.Logging
             return containerName;
         }
     }
-
 }

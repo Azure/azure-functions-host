@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
     internal static class ReturnsThrowsOfCloudBlobStreamICancellableAsyncResultExtensions
     {
         public static IReturnsResult<CloudBlobStream> ReturnsCompletedSynchronously(
-            this IReturnsThrows<CloudBlobStream, ICancellableAsyncResult> returnsThrows)
+            this IReturnsThrows<CloudBlobStream, IAsyncResult> returnsThrows)
         {
             if (returnsThrows == null)
             {
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
 
             return returnsThrows.Returns<AsyncCallback, object>((callback, state) =>
             {
-                ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
+                IAsyncResult result = new CompletedCancellableAsyncResult(state);
                 InvokeCallback(callback, result);
                 return result;
             });

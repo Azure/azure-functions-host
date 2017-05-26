@@ -1,30 +1,31 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon.AzureSdk
 {
     public static class CloudQueueClientExtensions
     {
-        public static void CreateQueueOrClearIfExists(this CloudQueueClient queueClient, string queueName)
+        public async static Task CreateQueueOrClearIfExists(this CloudQueueClient queueClient, string queueName)
         {
             CloudQueue queue = queueClient.GetQueueReference(queueName);
 
-            bool wasCreatedNow = queue.CreateIfNotExists();
+            bool wasCreatedNow = await queue.CreateIfNotExistsAsync();
             if (!wasCreatedNow)
             {
-                queue.Clear();
+                await queue.ClearAsync();
             }
         }
 
-        public static void DeleteQueueIfExists(this CloudQueueClient queueClient, string queueName)
+        public async static Task DeleteQueueIfExists(this CloudQueueClient queueClient, string queueName)
         {
             CloudQueue queue = queueClient.GetQueueReference(queueName);
 
-            if (queue.Exists())
+            if (await queue.ExistsAsync())
             {
-                queue.Delete();
+                await queue.DeleteAsync();
             }
         }
     }

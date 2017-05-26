@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Use minutes since a baseline.  
     internal static class TimeBucket
     {
-        static DateTime _baselineTime = new DateTime(2000, 1, 1, 0,0,0, DateTimeKind.Utc);
+        static DateTime _baselineTime = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         public static DateTime ConvertToDateTime(long bucket)
         {
@@ -89,6 +89,5 @@ namespace Microsoft.Azure.WebJobs.Logging
             var time = ConvertToDateTime(timeBucket);
             return tableLookup.GetTableForDateTime(time);
         }
-
     }
 }

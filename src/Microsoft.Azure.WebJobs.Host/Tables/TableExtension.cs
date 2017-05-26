@@ -46,8 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             binding
                 .AddConverter<JObject, ITableEntity>(JObjectToTableEntityConverterFunc)
-                .AddConverter<object, ITableEntity>(typeof(ObjectToITableEntityConverter<>))
-                .AddConverter<IStorageTable, IQueryable<OpenType>>(typeof(TableToIQueryableConverter<>));
+                .AddConverter<object, ITableEntity>(typeof(ObjectToITableEntityConverter<>));
 
             binding.WhenIsNull(RowKeyProperty)
                     .SetPostResolveHook(ToParameterDescriptorForCollector)
@@ -303,43 +302,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 while (token != null);
 
                 return entityArray;
-            }
-        }
-
-        // IStorageTable --> IQueryable<T>
-        // ConverterManager's pattern matcher will figure out TElement. 
-        private class TableToIQueryableConverter<TElement> :
-            IAsyncConverter<IStorageTable, IQueryable<TElement>>
-            where TElement : ITableEntity, new()
-        {
-            public TableToIQueryableConverter()
-            {
-                // We're now commited to an IQueryable. Verify other constraints. 
-                Type entityType = typeof(TElement);
-
-                if (!TableClient.ImplementsITableEntity(entityType))
-                {
-                    throw new InvalidOperationException("IQueryable is only supported on types that implement ITableEntity.");
-                }
-
-                TableClient.VerifyDefaultConstructor(entityType);
-            }
-
-            public async Task<IQueryable<TElement>> ConvertAsync(IStorageTable value, CancellationToken cancellation)
-            {
-                // If Table does not exist, treat it like have zero rows. 
-                // This means return an non-null but empty enumerable.
-                // SDK doesn't do that, so we need to explicitly check. 
-                bool exists = await value.ExistsAsync(CancellationToken.None);
-
-                if (!exists)
-                {
-                    return Enumerable.Empty<TElement>().AsQueryable();
-                }
-                else
-                {
-                    return value.CreateQuery<TElement>();
-                }
             }
         }
 

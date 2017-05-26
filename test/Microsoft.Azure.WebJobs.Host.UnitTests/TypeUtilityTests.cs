@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(expected, attribute.Connection);
         }
 
+#if SERVICE_BUS
         [Theory]
         [InlineData(typeof(TestServiceBusAccount_NoOverride), null)]
         [InlineData(typeof(TestServiceBusAccount_ClassOverride), "SecondaryServiceBus")]
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var attribute = TypeUtility.GetResolvedAttribute<ServiceBusTriggerAttribute>(parameterInfo);
             Assert.Equal(expected, attribute.Connection);
         }
-
+#endif
         public static void VoidMethod() { }
         public static async void AsyncVoidMethod() { await Task.FromResult(0); }
         public static async Task AsyncTaskMethod() { await Task.FromResult(0); }
@@ -87,11 +88,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public static void Test([QueueTrigger("test")] string message) { }
         }
 
-        #region StorageAccount
+#region StorageAccount
                 [StorageAccount("SecondaryStorage")]
                 public class TestStorageAccount_ClassOverride
                 {
-                    [ServiceBusAccount("SecondaryServiceBus")]  // expect this to be ignored
+#if SERVICE_BUS
+            [ServiceBusAccount("SecondaryServiceBus")]  // expect this to be ignored
+#endif
                     public static void Test([QueueTrigger("test")] string message) {}
                 }
 
@@ -110,9 +113,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 {
                     public static void Test([QueueTrigger("test", Connection = "SecondaryStorage")] string message) { }
                 }
-        #endregion
+#endregion
+#if SERVICE_BUS
+#region ServiceBusAccount
 
-        #region ServiceBusAccount
+
         public class TestServiceBusAccount_NoOverride
         {
             public static void Test([ServiceBusTrigger("test")] string message) { }
@@ -140,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             public static void Test([ServiceBusTrigger("test", Connection = "SecondaryServiceBus")] string message) { }
         }
-        #endregion
-
+#endregion
+#endif
     }
 }

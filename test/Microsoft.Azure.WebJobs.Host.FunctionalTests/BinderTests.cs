@@ -61,6 +61,5 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 TaskSource.TrySetResult(binder.Bind<string>(new QueueTriggerAttribute(QueueName)));
             }
         }
-
     }
 }

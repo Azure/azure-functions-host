@@ -3,11 +3,16 @@
 
 using System;
 using System.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ConfigurationUtility
     {
+        private static Lazy<IConfigurationRoot> _configuration = new Lazy<IConfigurationRoot>(BuildConfiguration);
+
+        private static IConfigurationRoot Configuration => _configuration.Value;
+
         public static string GetSettingFromConfigOrEnvironment(string settingName)
         {
             if (string.IsNullOrEmpty(settingName))
@@ -15,32 +20,26 @@ namespace Microsoft.Azure.WebJobs.Host
                 return null;
             }
 
-            string configValue = ConfigurationManager.AppSettings[settingName];
-            if (!string.IsNullOrEmpty(configValue))
-            {
-                // config values take precedence over environment values
-                return configValue;
-            }
-
-            return Environment.GetEnvironmentVariable(settingName) ?? configValue;
+            return Configuration[settingName];
         }
 
+        // The fallback to reading the connection string from the configuration/app setting
+        // is here to maintain legacy behavior. Should we keep this?
         public static string GetConnectionFromConfigOrEnvironment(string connectionName)
+            => Configuration.GetConnectionString(connectionName) ?? Configuration[connectionName];
+
+        private static IConfigurationRoot BuildConfiguration()
         {
-            string configValue = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionName];
-            if (connectionStringEntry != null)
-            {
-                configValue = connectionStringEntry.ConnectionString;
-            }
+            var configurationBuilder = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .AddJsonFile("appsettings.json", optional: true);
 
-            if (!string.IsNullOrEmpty(configValue))
-            {
-                // config values take precedence over environment values
-                return configValue;
-            }
+            return configurationBuilder.Build();
+        }
 
-            return Environment.GetEnvironmentVariable(connectionName) ?? configValue;
+        internal static void Reset()
+        {
+            _configuration = new Lazy<IConfigurationRoot>(BuildConfiguration);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Storage
             accountMock = new Mock<IStorageAccount>();
             account = accountMock.Object;
             accountMock.SetupGet(acc => acc.Credentials)
-                .Returns(new StorageCredentials("name", new byte[0], "key"));
+                .Returns(new StorageCredentials("name", string.Empty, "key"));
         }
 
         [Fact]

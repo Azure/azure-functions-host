@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 cancellationToken.ThrowIfCancellationRequested();
                 string jsonString = await reader.ReadToEndAsync();
                 return JsonConvert.DeserializeObject<CustomObject>(jsonString);
-            };
+            }
         }
 
         public async Task WriteToStreamAsync(CustomObject value, Stream output, CancellationToken cancellationToken)
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 string jsonString = JsonConvert.SerializeObject(value);
                 await writer.WriteAsync(jsonString);
                 await writer.FlushAsync();
-            };
+            }
         }
     }
 }

@@ -1,196 +1,34 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props" Condition="Exists('..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{9781D898-5E08-45F1-ACD9-7EA106353AC4}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.WebJobs.Protocols</RootNamespace>
-    <AssemblyName>Microsoft.Azure.WebJobs.Protocols</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;PUBLICPROTOCOL</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Microsoft.Azure.WebJobs.Protocols.xml</DocumentationFile>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>default</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;PUBLICPROTOCOL</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\Microsoft.Azure.WebJobs.Protocols.xml</DocumentationFile>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>default</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DelaySign>true</DelaySign>
-  </PropertyGroup>
-  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>True</DelaySign>
+    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+
   <ItemGroup>
-    <Compile Include="..\Common\CommonAssemblyInfo.cs">
-      <Link>Properties\CommonAssemblyInfo.cs</Link>
-    </Compile>
-    <Compile Include="BlobMetadataKeys.cs" />
-    <Compile Include="FunctionStatusMessage.cs" />
-    <Compile Include="JTokenExtensions.cs" />
-    <Compile Include="ParameterDisplayHints.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SingletonParameterLog.cs" />
-    <Compile Include="TriggerParameterDescriptor.cs" />
-    <Compile Include="WriteBlobParameterLog.cs" />
-    <Compile Include="ReadBlobParameterLog.cs" />
-    <Compile Include="BlobNames.cs" />
-    <Compile Include="TableParameterLog.cs" />
-    <Compile Include="BinderParameterLogItem.cs" />
-    <Compile Include="BlobTriggerParameterDescriptor.cs" />
-    <Compile Include="ConsoleOutputParameterDescriptor.cs" />
-    <Compile Include="DictionaryExtensions.cs" />
-    <Compile Include="FunctionFailure.cs" />
-    <Compile Include="FunctionStartedMessageExtensions.cs" />
-    <Compile Include="IHeartbeatMonitor.cs" />
-    <Compile Include="IPersistentQueueReader.cs" />
-    <Compile Include="JsonSerialization.cs" />
-    <Compile Include="HeartbeatCommand.cs" />
-    <Compile Include="HeartbeatDescriptor.cs" />
-    <Compile Include="HostMessageSender.cs" />
-    <Compile Include="HostOutputMessage.cs" />
-    <Compile Include="HeartbeatMonitor.cs" />
-    <Compile Include="CallerSuppliedParameterDescriptor.cs" />
-    <Compile Include="LocalBlobDescriptor.cs" />
-    <Compile Include="PersistentQueueReader.cs" />
-    <Compile Include="BinderParameterLog.cs" />
-    <Compile Include="TextParameterLog.cs" />
-    <Compile Include="ParameterLog.cs" />
-    <Compile Include="QueueTriggerParameterDescriptor.cs" />
-    <Compile Include="BindingDataParameterDescriptor.cs" />
-    <Compile Include="BinderParameterDescriptor.cs" />
-    <Compile Include="BlobParameterDescriptor.cs" />
-    <Compile Include="CancellationTokenParameterDescriptor.cs" />
-    <Compile Include="CloudStorageAccountParameterDescriptor.cs" />
-    <Compile Include="ContainerNames.cs" />
-    <Compile Include="FunctionCompletedMessage.cs" />
-    <Compile Include="FunctionDescriptor.cs" />
-    <Compile Include="FunctionStartedMessage.cs" />
-    <Compile Include="HostMessage.cs" />
-    <Compile Include="HostStartedMessage.cs" />
-    <Compile Include="IHostMessageSender.cs" />
-    <Compile Include="IPersistentQueueWriter.cs" />
-    <Compile Include="IHeartbeatCommand.cs" />
-    <Compile Include="JsonTypeNameAttribute.cs" />
-    <Compile Include="NullHeartbeatCommand.cs" />
-    <Compile Include="ParameterDescriptor.cs" />
-    <Compile Include="PersistentQueueWriter.cs" />
-    <Compile Include="PersistentQueueMessage.cs" />
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
-      <Link>Storage\StorageExceptionExtensions.cs</Link>
-    </Compile>
-    <Compile Include="PolymorphicJsonConverter.cs" />
-    <Compile Include="QueueParameterDescriptor.cs" />
-    <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />
-    <Compile Include="ServiceBusParameterDescriptor.cs" />
-    <Compile Include="TableEntityParameterDescriptor.cs" />
-    <Compile Include="TableParameterDescriptor.cs" />
-    <Compile Include="AbortHostInstanceMessage.cs" />
-    <Compile Include="CallAndOverrideMessage.cs" />
-    <Compile Include="ExecutionReason.cs" />
-    <Compile Include="WebJobRunIdentifier.cs" />
-    <Compile Include="WebJobTypes.cs" />
-    <Compile Include="WebSitesKnownKeyNames.cs" />
+    <AdditionalFiles Include="..\..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG;NETSTANDARD2_0;PUBLICPROTOCOL</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
-    <None Include="..\Common\PublicKey.snk">
-      <Link>Properties\PublicKey.snk</Link>
-    </None>
-    <None Include="app.config" />
-    <None Include="packages.config" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
+    <PackageReference Include="System.Diagnostics.TraceSource" Version="4.3.0" />
+    <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
   </ItemGroup>
+
   <ItemGroup>
-    <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Edm.5.8.2\lib\net40\Microsoft.Data.Edm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.OData, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.OData.5.8.2\lib\net40\Microsoft.Data.OData.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Services.Client, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.8.2\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.3.2.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Storage, Version=7.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\WindowsAzure.Storage.7.2.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.Services.Client" />
-    <Reference Include="System.Spatial, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Spatial.5.8.2\lib\net40\System.Spatial.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Storage\WebJobs.Storage.csproj" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Storage\WebJobs.Storage.csproj">
-      <Project>{543edc53-3b68-49a8-9c3f-fc2ed27515aa}</Project>
-      <Name>WebJobs.Storage</Name>
-    </ProjectReference>
+    <Folder Include="Properties\" />
   </ItemGroup>
-  <ItemGroup>
-    <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
-      <Link>CustomDictionary.xml</Link>
-      <SubType>Designer</SubType>
-    </CodeAnalysisDictionary>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props'))" />
-  </Target>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

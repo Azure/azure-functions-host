@@ -3,15 +3,15 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class StringToBrokeredMessageConverterFactory
     {
-        public static IConverter<string, BrokeredMessage> Create(Type parameterType)
+        public static IConverter<string, Message> Create(Type parameterType)
         {
-            if (parameterType == typeof(BrokeredMessage) || parameterType == typeof(string))
+            if (parameterType == typeof(Message) || parameterType == typeof(string))
             {
                 return new StringToTextBrokeredMessageConverter();
             }

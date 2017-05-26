@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
         [InlineData(typeof(Functions2), "DisabledAtClassLevel")]
         public async Task CreateAsync_SkipsDisabledFunctions(Type jobType, string methodName)
         {
+            ConfigurationUtility.Reset();
+
             Environment.SetEnvironmentVariable("EnvironmentSettingTrue", "True");
 
             Mock<IFunctionDefinition> mockFunctionDefinition = new Mock<IFunctionDefinition>();
@@ -115,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
         [InlineData("Disable_TestJob_Blah", false)]
         public void IsDisabledBySetting_BindsSettingName(string settingName, bool disabled)
         {
+            ConfigurationUtility.Reset();
             Environment.SetEnvironmentVariable("Disable_Functions1.TestJob_TestValue", "1");
             Environment.SetEnvironmentVariable("Disable_TestJob_TestValue", "1");
             Environment.SetEnvironmentVariable("Disable_TestJob", "False");

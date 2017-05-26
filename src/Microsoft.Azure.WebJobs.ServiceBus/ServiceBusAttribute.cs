@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -38,18 +38,6 @@ namespace Microsoft.Azure.WebJobs
         public ServiceBusAttribute(string queueOrTopicName)
         {
             QueueOrTopicName = queueOrTopicName;
-            Access = AccessRights.Manage;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
-        /// </summary>
-        /// <param name="queueOrTopicName">The name of the queue or topic to bind to.</param>
-        /// <param name="access">The <see cref="AccessRights"/> the client has to the queue or topic.</param>
-        public ServiceBusAttribute(string queueOrTopicName, AccessRights access)
-        {
-            QueueOrTopicName = queueOrTopicName;
-            Access = access;
         }
 
         /// <summary>
@@ -66,11 +54,5 @@ namespace Microsoft.Azure.WebJobs
         /// Value indicating the type of the entity to bind to.
         /// </summary>
         public EntityType EntityType { get; set; } = EntityType.Queue;
-
-        /// <summary>
-        /// Gets the <see cref="AccessRights"/> the client has to the queue or topic.
-        /// The default is "Manage".
-        /// </summary>
-        public AccessRights Access { get; private set; }
     }
 }

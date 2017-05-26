@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             try
             {
-                await blob.FetchAttributesAsync(cancellationToken);
+                await blob.FetchAttributesAsync();
                 return true;
             }
             catch (StorageException exception)

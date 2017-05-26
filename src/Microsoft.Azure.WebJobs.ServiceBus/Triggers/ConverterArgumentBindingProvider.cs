@@ -8,20 +8,20 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class ConverterArgumentBindingProvider<T> : IQueueTriggerArgumentBindingProvider
     {
-        private readonly IAsyncConverter<BrokeredMessage, T> _converter;
+        private readonly IAsyncConverter<Message, T> _converter;
 
-        public ConverterArgumentBindingProvider(IAsyncConverter<BrokeredMessage, T> converter)
+        public ConverterArgumentBindingProvider(IAsyncConverter<Message, T> converter)
         {
             _converter = converter;
         }
 
-        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<Message> TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(T))
             {
@@ -31,11 +31,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             return new ConverterArgumentBinding(_converter);
         }
 
-        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<BrokeredMessage>
+        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<Message>
         {
-            private readonly IAsyncConverter<BrokeredMessage, T> _converter;
+            private readonly IAsyncConverter<Message, T> _converter;
 
-            public ConverterArgumentBinding(IAsyncConverter<BrokeredMessage, T> converter)
+            public ConverterArgumentBinding(IAsyncConverter<Message, T> converter)
             {
                 _converter = converter;
             }
@@ -50,9 +50,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 get { return null; }
             }
 
-            public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
+            public async Task<ITriggerData> BindAsync(Message value, ValueBindingContext context)
             {
-                BrokeredMessage clone = value.Clone();
+                Message clone = value.Clone();
                 object converted = await _converter.ConvertAsync(value, context.CancellationToken);
                 IValueProvider provider = await BrokeredMessageValueProvider.CreateAsync(clone, converted, typeof(T),
                     context.CancellationToken);

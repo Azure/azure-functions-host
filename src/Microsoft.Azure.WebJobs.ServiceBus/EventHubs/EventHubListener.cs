@@ -8,7 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.EventHubs.Processor;
+using Microsoft.Azure.EventHubs;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -113,6 +115,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 return Task.FromResult(0);
             }
 
+            public Task ProcessErrorAsync(PartitionContext context, Exception error)
+            {
+                throw new NotImplementedException();
+            }
+
             public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
             {
                 EventHubTriggerInput value = new EventHubTriggerInput
@@ -171,7 +178,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 foreach (var message in messages)
                 {
                     hasEvents = true;
-                    message.Dispose();
                 }
 
                 // Don't checkpoint if no events. This can reset the sequence counter to 0. 

@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -36,12 +35,15 @@ namespace Microsoft.Azure.WebJobs.Host
 
         private static void VerifyTableServiceAssemblyLoad()
         {
+
+#if !NETSTANDARD2_0
             // this forces the relevant assemblies to load so we can catch issues early
 #pragma warning disable 618
             using (var ignore = new TableServiceContext(new CloudTableClient(new Uri("http://test.core.windows.net"), null)))
             {
             }
 #pragma warning restore 618
+#endif
         }
     }
 }

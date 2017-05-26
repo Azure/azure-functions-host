@@ -350,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Path
             var dt = DateTime.UtcNow;
             var parameters = new Dictionary<string, object>
                 {
-                    { "dt",dt }
+                    { "dt", dt }
                 };
 
 

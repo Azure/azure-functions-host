@@ -5,9 +5,9 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -53,9 +53,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         private class AsyncCollectorArgumentBinding<TItem> : IArgumentBinding<ServiceBusEntity>
         {
-            private readonly IConverter<TItem, BrokeredMessage> _converter;
+            private readonly IConverter<TItem, Message> _converter;
 
-            public AsyncCollectorArgumentBinding(IConverter<TItem, BrokeredMessage> converter)
+            public AsyncCollectorArgumentBinding(IConverter<TItem, Message> converter)
             {
                 _converter = converter;
             }

@@ -357,8 +357,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             TaskCompletionSource<Exception> failureTaskSource = new TaskCompletionSource<Exception>();
             var serviceProvider = CreateConfigurationForInstanceFailure(account, programType, failureTaskSource);
             TaskCompletionSource<TResult> successTaskSource = new TaskCompletionSource<TResult>();
+            
             // The task for failed function invocation (should complete successfully with an exception).
             Task<Exception> failureTask = failureTaskSource.Task;
+            
             // The task for successful function invocation (should not complete).
             Task<TResult> successTask = successTaskSource.Task;
             setTaskSource.Invoke(successTaskSource);

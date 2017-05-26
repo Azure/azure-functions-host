@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Net;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -26,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             var queueMock = new Mock<IStorageQueue>();
 
             storageMock.Setup(s => s.Credentials)
-                .Returns(new StorageCredentials("name", new byte[] { }));
+                .Returns(new StorageCredentials("name", string.Empty));
 
             storageMock.Setup(s => s.CreateBlobClient(null))
                 .Returns(blobClientMock.Object)

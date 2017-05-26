@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <inheritdoc />
         public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.CreateIfNotExistsAsync(cancellationToken);
+            return _sdk.CreateIfNotExistsAsync(requestOptions: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
@@ -66,12 +66,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         public IStorageTableOperation CreateInsertOrReplaceOperation(ITableEntity entity)
         {
             return StorageTableOperation.InsertOrReplace(entity);
-        }
-
-        /// <inheritdoc />
-        public IQueryable<TElement> CreateQuery<TElement>() where TElement : ITableEntity, new()
-        {
-            return _sdk.CreateQuery<TElement>();
         }
 
         /// <inheritdoc />
@@ -91,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         public Task<TableResult> ExecuteAsync(IStorageTableOperation operation, CancellationToken cancellationToken)
         {
             TableOperation sdkOperation = ((StorageTableOperation)operation).SdkObject;
-            return _sdk.ExecuteAsync(sdkOperation, cancellationToken);
+            return _sdk.ExecuteAsync(sdkOperation, requestOptions: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
@@ -99,13 +93,13 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
             CancellationToken cancellationToken)
         {
             TableBatchOperation sdkBatch = ((StorageTableBatchOperation)batch).SdkObject;
-            return _sdk.ExecuteBatchAsync(sdkBatch, cancellationToken);
+            return _sdk.ExecuteBatchAsync(sdkBatch, requestOptions: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.ExistsAsync(cancellationToken);
+            return _sdk.ExistsAsync(requestOptions: null, operationContext: null, cancellationToken: cancellationToken);
         }
     }
 }

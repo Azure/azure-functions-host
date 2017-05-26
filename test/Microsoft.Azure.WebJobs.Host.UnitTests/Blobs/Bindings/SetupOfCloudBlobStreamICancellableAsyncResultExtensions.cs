@@ -11,23 +11,23 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
     internal static class SetupOfCloudBlobStreamICancellableAsyncResultExtensions
     {
         public static IReturnsResult<CloudBlobStream> ReturnsCompletedSynchronously(
-            this ISetup<CloudBlobStream, ICancellableAsyncResult> setup)
+            this ISetup<CloudBlobStream, IAsyncResult> setup)
         {
             if (setup == null)
             {
                 throw new ArgumentNullException("setup");
             }
 
-            return setup.Returns<AsyncCallback, object>((callback, state) =>
+            return setup.Returns<byte[], int, int, AsyncCallback, object>((a1, a2, a3, callback, state) =>
             {
-                ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
+                IAsyncResult result = new CompletedCancellableAsyncResult(state);
                 InvokeCallback(callback, result);
                 return result;
             });
         }
 
         public static IReturnsResult<CloudBlobStream> ReturnsCompletedSynchronously(
-            this ISetup<CloudBlobStream, ICancellableAsyncResult> setup, CompletedCancellationSpy spy)
+            this ISetup<CloudBlobStream, IAsyncResult> setup, CompletedCancellationSpy spy)
         {
             if (setup == null)
             {
@@ -43,32 +43,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             });
         }
 
-        public static IReturnsResult<CloudBlobStream> ReturnsCompletingAsynchronously(
-            this ISetup<CloudBlobStream, ICancellableAsyncResult> setup,
-            CancellableAsyncCompletionSource completionSource)
-        {
-            if (setup == null)
-            {
-                throw new ArgumentNullException("setup");
-            }
-
-            return setup.Returns<AsyncCallback, object>((callback, state) =>
-            {
-                CompletingCancellableAsyncResult result = new CompletingCancellableAsyncResult(callback, state);
-                completionSource.SetAsyncResult(result);
-                return result;
-            });
-        }
-
         public static IReturnsResult<CloudBlobStream> ReturnsUncompleted(
-            this ISetup<CloudBlobStream, ICancellableAsyncResult> setup)
+            this ISetup<CloudBlobStream, IAsyncResult> setup)
         {
             if (setup == null)
             {
                 throw new ArgumentNullException("setup");
             }
 
-            return setup.Returns<AsyncCallback, object>((i4, state) => new UncompletedCancellableAsyncResult(state));
+            return setup.Returns<byte[], int, int, AsyncCallback, object>((a1, a2, a3, a4, state) => new UncompletedCancellableAsyncResult(state));
         }
 
         private static void InvokeCallback(AsyncCallback callback, IAsyncResult result)

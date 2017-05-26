@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             using (CloudBlobStream stream = blob.OpenWriteAsync(512, CancellationToken.None).GetAwaiter().GetResult())
             {
-                stream.Commit();
+                stream.CommitAsync().Wait();
             }
         }
     }

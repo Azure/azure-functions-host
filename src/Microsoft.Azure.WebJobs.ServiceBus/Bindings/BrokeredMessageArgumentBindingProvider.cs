@@ -3,7 +3,7 @@
 
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.ServiceBus.Messaging;
+
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     {
         public IArgumentBinding<ServiceBusEntity> TryCreate(ParameterInfo parameter)
         {
-            if (!parameter.IsOut || parameter.ParameterType != typeof(BrokeredMessage).MakeByRefType())
+            if (!parameter.IsOut || parameter.ParameterType != typeof(Message).MakeByRefType())
             {
                 return null;
             }

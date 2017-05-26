@@ -41,86 +41,28 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             get { return _committed; }
         }
 
-        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
-        {
-            CancellationTokenSource cancellationSource = new CancellationTokenSource();
-            Task baseTask = CancellableTaskFactory.FromAsync(base.BeginFlush, base.EndFlush, cancellationSource.Token);
-            return new TaskCancellableAsyncResult(FlushAsyncCore(baseTask), cancellationSource, callback, state);
-        }
+        public override Task CommitAsync() => CommitAsync(CancellationToken.None);
 
-        public override void EndFlush(IAsyncResult asyncResult)
+        public async Task CommitAsync(CancellationToken cancellationToken)
         {
-            TaskCancellableAsyncResult result = (TaskCancellableAsyncResult)asyncResult;
-            result.End();
-        }
-
-        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            Task baseTask = new TaskFactory().FromAsync(base.BeginWrite, base.EndWrite, buffer, offset, count, state: null);
-            return new TaskAsyncResult(WriteAsyncCore(baseTask, count), callback, state);
-        }
-
-        public override void EndWrite(IAsyncResult asyncResult)
-        {
-            TaskAsyncResult result = (TaskAsyncResult)asyncResult;
-            result.End();
-        }
-
-        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
-        {
-            CancellationTokenSource cancellationSource = new CancellationTokenSource();
             _committed = true;
-            Task baseTask = CancellableTaskFactory.FromAsync(base.BeginCommit, base.EndCommit,
-                cancellationSource.Token);
-            return new TaskCancellableAsyncResult(CommitAsyncCore(baseTask, cancellationSource.Token),
-                cancellationSource, callback, state);
-        }
 
-        public override void EndCommit(IAsyncResult asyncResult)
-        {
-            TaskCancellableAsyncResult result = (TaskCancellableAsyncResult)asyncResult;
-            result.End();
+            await base.CommitAsync();
+
+            if (_committedAction != null)
+            {
+                await _committedAction.ExecuteAsync(cancellationToken);
+            }
         }
 
         public override void Close()
         {
             if (!_committed)
             {
-                Commit();
+                CommitAsync().GetAwaiter().GetResult();
             }
 
             base.Close();
-        }
-
-        public override void Commit()
-        {
-            _committed = true;
-            base.Commit();
-
-            if (_committedAction != null)
-            {
-                _committedAction.ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
-            }
-        }
-
-        public Task CommitAsync(CancellationToken cancellationToken)
-        {
-            _committed = true;
-            Task baseTask = CancellableTaskFactory.FromAsync(base.BeginCommit, base.EndCommit, cancellationToken);
-            return CommitAsyncCore(baseTask, cancellationToken);
-        }
-
-        private async Task CommitAsyncCore(Task task, CancellationToken cancellationToken)
-        {
-            await task;
-
-            if (_committedAction != null)
-            {
-                await _committedAction.ExecuteAsync(cancellationToken);
-            }
         }
 
         public override void Flush()
@@ -163,6 +105,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             base.WriteByte(value);
             _countWritten++;
+        }
+
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            Task baseTask = new TaskFactory().FromAsync(base.BeginWrite, base.EndWrite, buffer, offset, count, state: null);
+            return new TaskAsyncResult(WriteAsyncCore(baseTask, count), callback, state);
+        }
+
+        public override void EndWrite(IAsyncResult asyncResult)
+        {
+            TaskAsyncResult result = (TaskAsyncResult)asyncResult;
+            result.End();
         }
 
         /// <summary>Commits the stream as appropriate (when written to or flushed) and finalizes status.</summary>

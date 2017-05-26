@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             CloudQueueMessage message = new CloudQueueMessage("Test Message");
             await _queue.AddMessageAsync(message, CancellationToken.None);
 
-            message = _queue.GetMessage();
+            message = await _queue.GetMessageAsync();
 
             FunctionResult result = new FunctionResult(true);
             await _processor.CompleteProcessingMessageAsync(message, result, CancellationToken.None);
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             CloudQueueMessage message = new CloudQueueMessage("Test Message");
             await _queue.AddMessageAsync(message, CancellationToken.None);
 
-            message = _queue.GetMessage();
+            message = await _queue.GetMessageAsync();
             string id = message.Id;
 
             FunctionResult result = new FunctionResult(false);
@@ -194,10 +195,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             public void Dispose()
             {
-                foreach (var queue in QueueClient.ListQueues(TestQueuePrefix))
+                var result = QueueClient.ListQueuesSegmentedAsync(TestQueuePrefix, null).Result;
+                var tasks = new List<Task>();
+
+                foreach (var queue in result.Results)
                 {
-                    queue.Delete();
+                    tasks.Add(queue.DeleteAsync());
                 }
+
+                Task.WaitAll(tasks.ToArray());
             }
         }
     }

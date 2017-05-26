@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if SERVICE_BUS
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -623,3 +624,4 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
     }
 }
+#endif

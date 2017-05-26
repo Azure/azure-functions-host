@@ -44,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// the deserialized type. This ensures that we don't lose any
         /// data provided by extension bindings.
         /// </summary>
-        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly"), JsonExtensionData]
+        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        [JsonExtensionData]
         public Dictionary<string, JToken> ExtendedProperties { get; set; }
 
         private class ParameterDescriptorConverter : PolymorphicJsonConverter

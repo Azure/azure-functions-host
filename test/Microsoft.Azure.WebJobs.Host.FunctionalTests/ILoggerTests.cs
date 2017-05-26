@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -37,12 +40,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(2, functionLogger.LogMessages.Count);
             var infoMessage = functionLogger.LogMessages[0];
             var errorMessage = functionLogger.LogMessages[1];
+            
             // These get the {OriginalFormat} property as well as the 3 from TraceWriter
             Assert.Equal(3, infoMessage.State.Count());
             Assert.Equal(3, errorMessage.State.Count());
 
             Assert.Equal(1, resultsLogger.LogMessages.Count);
-            //TODO: beef these verifications up
+           
+            // TODO: beef these verifications up
         }
 
         [Fact]

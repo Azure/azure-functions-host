@@ -9,16 +9,17 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings.Path;
+using BindingData = System.Collections.Generic.IReadOnlyDictionary<string, object>;
+using BindingDataContract = System.Collections.Generic.IReadOnlyDictionary<string, System.Type>;
+// Func to transform Attribute,BindingData into value for cloned attribute property/constructor arg
+// Attribute is the new cloned attribute - null if constructor arg (new cloned attr not created yet)
+using BindingDataResolver = System.Func<System.Attribute, System.Collections.Generic.IReadOnlyDictionary<string, object>, object>;
+
+using Validator = System.Action<object>;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {    
-    using BindingData = IReadOnlyDictionary<string, object>;
-    using BindingDataContract = IReadOnlyDictionary<string, System.Type>;
-    // Func to transform Attribute,BindingData into value for cloned attribute property/constructor arg
-    // Attribute is the new cloned attribute - null if constructor arg (new cloned attr not created yet)
-    using BindingDataResolver = Func<Attribute, IReadOnlyDictionary<string, object>, object>;
-
-    using Validator = Action<object>;
+   
 
     // Clone an attribute and resolve it.
     // This can be tricky since some read-only properties are set via the constructor.

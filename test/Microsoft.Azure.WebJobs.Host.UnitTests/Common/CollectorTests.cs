@@ -60,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 Assert.Equal("ErrorProgram.Func", e.MethodName);
             }
-
         }
 
         // Various flavors that all bind down to an IAsyncCollector 

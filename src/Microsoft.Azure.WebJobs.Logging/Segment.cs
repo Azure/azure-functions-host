@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -55,9 +56,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <typeparam name="T2"></typeparam>
         internal Segment<T2> As<T2>() 
         {
-            T2[] array = Array.ConvertAll(this.Results, x => (T2) (object)x);
+            T2[] array = this.Results.Select( x => (T2) (object)x).ToArray();
             return new Segment<T2>(array, this.ContinuationToken); 
-
         }
     }
 }

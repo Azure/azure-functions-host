@@ -5,17 +5,16 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
     internal sealed class ServiceBusListener : IListener
     {
         private readonly MessagingProvider _messagingProvider;
-        private readonly MessagingFactory _messagingFactory;
         private readonly string _entityPath;
         private readonly ServiceBusTriggerExecutor _triggerExecutor;
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -24,9 +23,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private MessageReceiver _receiver;
         private bool _disposed;
 
-        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor, ServiceBusConfiguration config)
+        public ServiceBusListener(string entityPath, ServiceBusTriggerExecutor triggerExecutor, ServiceBusConfiguration config)
         {
-            _messagingFactory = messagingFactory;
             _entityPath = entityPath;
             _triggerExecutor = triggerExecutor;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -50,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _receiver = _messagingProvider.CreateMessageReceiver(_messagingFactory, _entityPath);
-            _receiver.OnMessageAsync(ProcessMessageAsync, _messageProcessor.MessageOptions);
+            _receiver = _messagingProvider.CreateMessageReceiver(_entityPath);
+            _receiver.RegisterMessageHandler(ProcessMessageAsync, _messageProcessor.MessageOptions);
 
             return Task.FromResult(0);
         }
@@ -98,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 
                 if (_receiver != null)
                 {
-                    _receiver.Abort();
+                    _receiver.CloseAsync().Wait();
                     _receiver = null;
                 }
 
@@ -106,12 +104,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             }
         }
 
-        private Task ProcessMessageAsync(BrokeredMessage message)
+        private Task ProcessMessageAsync(Message message)
         {
             return ProcessMessageAsync(message, _cancellationTokenSource.Token);
         }
 
-        internal async Task ProcessMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
+        internal async Task ProcessMessageAsync(Message message, CancellationToken cancellationToken)
         {
             if (!await _messageProcessor.BeginProcessingMessageAsync(message, cancellationToken))
             {

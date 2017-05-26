@@ -39,14 +39,14 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public static TableQuery<TElement> GetRowsWithPrefixAsync<TElement>(
             string partitionKey,
-            string rowKeyPrefix) 
+            string rowKeyPrefix) where TElement : ITableEntity, new()
         {
             string rowKeyEnd = NextRowKey(rowKeyPrefix);
             return GetRowsInRange<TElement>(partitionKey, rowKeyPrefix, rowKeyEnd);
         }
 
         // Read entire partition
-        internal static TableQuery<TElement> GetRowsInPartition<TElement>(string partitionKey)
+        internal static TableQuery<TElement> GetRowsInPartition<TElement>(string partitionKey) where TElement : ITableEntity, new()
         {
             var query = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey);
             TableQuery<TElement> rangeQuery = new TableQuery<TElement>().Where(query);
@@ -54,14 +54,14 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
 
         // Read rows in the following range
-        internal static TableQuery<TElement> GetRowsInRange<TElement>(string partitionKey, string rowKeyStart, string rowKeyEnd)
+        internal static TableQuery<TElement> GetRowsInRange<TElement>(string partitionKey, string rowKeyStart, string rowKeyEnd) where TElement : ITableEntity, new()
         {
             return GetRowsInRange<TElement>(partitionKey, rowKeyStart, rowKeyEnd, QueryComparisons.LessThan);
         }                          
         
         private static TableQuery<TElement> GetRowsInRange<TElement>(
             string partitionKey, string rowKeyStart, string rowKeyEnd,
-            string endOperator)
+            string endOperator) where TElement : ITableEntity, new()
         {
             var rowQuery = TableQuery.CombineFilters(
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThanOrEqual, rowKeyStart),

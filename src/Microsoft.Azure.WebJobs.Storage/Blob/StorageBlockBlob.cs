@@ -90,43 +90,43 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         public Task<string> AcquireLeaseAsync(TimeSpan? leaseTime, string proposedLeaseId,
             CancellationToken cancellationToken)
         {
-            return _sdk.AcquireLeaseAsync(leaseTime, proposedLeaseId, cancellationToken);
+            return _sdk.AcquireLeaseAsync(leaseTime, proposedLeaseId, accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task DeleteAsync(CancellationToken cancellationToken)
         {
-            return _sdk.DeleteAsync(cancellationToken);
+            return _sdk.DeleteAsync(DeleteSnapshotsOption.None, accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<string> DownloadTextAsync(CancellationToken cancellationToken)
         {
-            return _sdk.DownloadTextAsync(cancellationToken);
+            return _sdk.DownloadTextAsync(encoding: null, accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.ExistsAsync(cancellationToken);
+            return _sdk.ExistsAsync(options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task FetchAttributesAsync(CancellationToken cancellationToken)
         {
-            return _sdk.FetchAttributesAsync(cancellationToken);
+            return _sdk.FetchAttributesAsync(accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
         {
-            return _sdk.OpenReadAsync(cancellationToken);
+            return _sdk.OpenReadAsync(accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<CloudBlobStream> OpenWriteAsync(CancellationToken cancellationToken)
         {
-            return _sdk.OpenWriteAsync(cancellationToken);
+            return _sdk.OpenWriteAsync(accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />

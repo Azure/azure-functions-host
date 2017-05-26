@@ -72,28 +72,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             set { _inner.WriteTimeout = value; }
         }
 
-        public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
+        public override Task CommitAsync()
         {
             ThrowIfCommitted();
-            return CompleteSynchronously(callback, state);
+            _committed = true;
+
+            return Task.CompletedTask;
         }
 
-        public override void EndCommit(IAsyncResult asyncResult)
-        {
-        }
-
-        public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
-        {
-            ThrowIfCommitted();
-            CancellationTokenSource cancellationSource = new CancellationTokenSource();
-            Task task = FlushAsync(cancellationSource.Token);
-            return new TaskCancellableAsyncResult(task, cancellationSource, callback, state);
-        }
-
-        public override void EndFlush(IAsyncResult asyncResult)
-        {
-        }
-
+        
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback,
             object state)
         {
@@ -120,12 +107,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         public override void Close()
         {
             _inner.Close();
-        }
-
-        public override void Commit()
-        {
-            ThrowIfCommitted();
-            _committed = true;
         }
 
         public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
@@ -188,21 +169,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         {
             ThrowIfCommitted();
             _inner.WriteByte(value);
-        }
-
-        private static ICancellableAsyncResult CompleteSynchronously(AsyncCallback callback, object state)
-        {
-            ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
-            InvokeCallback(callback, result);
-            return result;
-        }
-
-        private static void InvokeCallback(AsyncCallback callback, IAsyncResult result)
-        {
-            if (callback != null)
-            {
-                callback.Invoke(result);
-            }
         }
 
         private void ThrowIfCommitted()

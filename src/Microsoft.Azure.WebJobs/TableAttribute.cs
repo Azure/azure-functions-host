@@ -37,14 +37,14 @@ namespace Microsoft.Azure.WebJobs
     [Binding]
     public class TableAttribute : Attribute, IConnectionProvider
     {
-        private readonly string _tableName;
-        private readonly string _partitionKey;
-        private readonly string _rowKey;
-
         // Table Name Rules are summerized in this page https://msdn.microsoft.com/en-us/library/azure/dd179338.aspx
         // Table names may contain only alphanumeric characters, can not start with a numeric character and must be 
         // 3 to 63 characters long
         private const string TableNameRegex = "^[A-Za-z][A-Za-z0-9]{2,62}$";
+
+        private readonly string _tableName;
+        private readonly string _partitionKey;
+        private readonly string _rowKey;
 
         /// <summary>Initializes a new instance of the <see cref="TableAttribute"/> class.</summary>
         /// <param name="tableName">The name of the table to which to bind.</param>
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs
                 }
                 else
                 {
-                    return String.Format(CultureInfo.InvariantCulture, "{0}(PK={1}, RK={2})",
+                    return string.Format(CultureInfo.InvariantCulture, "{0}(PK={1}, RK={2})",
                         _tableName, _partitionKey, _rowKey);
                 }
             }

@@ -10,13 +10,13 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
 using Xunit;
+using SingletonLockHandle = Microsoft.Azure.WebJobs.Host.BlobLeaseDistributedLockManager.SingletonLockHandle;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
-    using SingletonLockHandle = BlobLeaseDistributedLockManager.SingletonLockHandle;
     public class SingletonListenerTests
     {
-        private readonly string TestHostId = "testhostid";
+        private readonly string testHostId = "testhostid";
         private readonly SingletonConfiguration _config;
         private readonly Mock<SingletonManager> _mockSingletonManager;
         private readonly Mock<IListener> _mockInnerListener;
@@ -32,13 +32,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             {
                 LockPeriod = TimeSpan.FromSeconds(20)
             };
-            _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, null, new FixedHostIdProvider(TestHostId), null);
+            _mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict, null, null, null, null, null, new FixedHostIdProvider(testHostId), null);
             _mockSingletonManager.SetupGet(p => p.Config).Returns(_config);
             _mockInnerListener = new Mock<IListener>(MockBehavior.Strict);
 
             _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object,
                 new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose), null);
-            _lockId = SingletonManager.FormatLockId(methodInfo, SingletonScope.Function, TestHostId, _attribute.ScopeId) + ".Listener";
+            _lockId = SingletonManager.FormatLockId(methodInfo, SingletonScope.Function, testHostId, _attribute.ScopeId) + ".Listener";
         }
 
         [Fact]

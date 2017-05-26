@@ -4,6 +4,7 @@
 using System;
 using System.Configuration;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
     public class StorageAccountTests
     {
         [Fact]
-        public void CloudQueueCreate_IfNotExist_CreatesQueue()
+        public async Task CloudQueueCreate_IfNotExist_CreatesQueue()
         {
             // Arrange
             CloudStorageAccount sdkAccount = CreateSdkAccount();
@@ -35,29 +36,29 @@ namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
                 Assert.NotNull(queue); // Guard
 
                 // Act
-                queue.CreateIfNotExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
+                await queue.CreateIfNotExistsAsync(CancellationToken.None);
 
                 // Assert
-                Assert.True(sdkQueue.Exists());
+                Assert.True(await sdkQueue.ExistsAsync());
             }
             finally
             {
-                if (sdkQueue.Exists())
+                if (await sdkQueue.ExistsAsync())
                 {
-                    sdkQueue.Delete();
+                    await sdkQueue.DeleteAsync();
                 }
             }
         }
 
         [Fact]
-        public void CloudQueueAddMessage_AddsMessage()
+        public async Task CloudQueueAddMessage_AddsMessage()
         {
             // Arrange
             CloudStorageAccount sdkAccount = CreateSdkAccount();
             string queueName = GetQueueName("add-message");
 
             CloudQueue sdkQueue = CreateSdkQueue(sdkAccount, queueName);
-            sdkQueue.CreateIfNotExists();
+            await sdkQueue.CreateIfNotExistsAsync();
 
             try
             {
@@ -76,13 +77,13 @@ namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
                 queue.AddMessageAsync(message, CancellationToken.None).GetAwaiter().GetResult();
 
                 // Assert
-                CloudQueueMessage sdkMessage = sdkQueue.GetMessage();
+                CloudQueueMessage sdkMessage = await sdkQueue.GetMessageAsync();
                 Assert.NotNull(sdkMessage);
                 Assert.Equal(expectedContent, sdkMessage.AsString);
             }
             finally
             {
-                sdkQueue.Delete();
+                await sdkQueue.DeleteAsync();
             }
         }
 
@@ -123,21 +124,7 @@ namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
         }
 
         private static string GetConnectionString(string connectionStringName)
-        {
-            string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
-            if (connectionStringEntry != null)
-            {
-                connectionStringInConfig = connectionStringEntry.ConnectionString;
-            }
-
-            if (!String.IsNullOrEmpty(connectionStringInConfig))
-            {
-                return connectionStringInConfig;
-            }
-
-            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
-        }
+            => ConfigurationUtility.GetConnectionFromConfigOrEnvironment(connectionStringName);
 
         private static string GetQueueName(string infix)
         {

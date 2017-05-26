@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         // HostId in the rowKey is additional salt in case multiple hosts are writing in the same timeline. It is ignored during read.
         const string PartitionKeyFormat = TableScheme.TimelineAggregatePK;
         const string RowKeyPrefixFormat = "{0}-{1:D20}-"; 
-        const string RowKeyFormat       = "{0}-{1:D20}-{2}"; // hostname-functionName-timeBucket-hostId
+        const string RowKeyFormat = "{0}-{1:D20}-{2}"; // hostname-functionName-timeBucket-hostId
 
         public static TimelineAggregateEntity New(string containerName, FunctionId functionId, DateTime time, string salt)
         {

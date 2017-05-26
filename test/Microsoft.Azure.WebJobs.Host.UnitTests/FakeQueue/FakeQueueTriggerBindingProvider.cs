@@ -12,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal class FakeQueueTriggerBindingProvider : ITriggerBindingProvider
     {
-        FakeQueueClient _client;
         private readonly IConverterManager _converterManager;
+        FakeQueueClient _client;
 
         public FakeQueueTriggerBindingProvider(FakeQueueClient client, IConverterManager converterManager)
         {
@@ -44,8 +44,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 hooks, parameter, _converterManager, createListener);
 
             return Task.FromResult<ITriggerBinding>(binding);
-
         }
     }
-
 }

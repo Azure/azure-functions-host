@@ -268,8 +268,8 @@ namespace Microsoft.Azure.WebJobs.Logging
             var itemsSnapshot = Update();
 
             // Write entries
-            var instances = Array.ConvertAll(itemsSnapshot, item => InstanceTableEntity.New(item));
-            var recentInvokes = Array.ConvertAll(itemsSnapshot, item => RecentPerFuncEntity.New(_machineName, item));
+            var instances = itemsSnapshot.Select(item => InstanceTableEntity.New(item));
+            var recentInvokes = itemsSnapshot.Select(item => RecentPerFuncEntity.New(_machineName, item));
 
             FunctionDefinitionEntity[] functionDefinitions;
 

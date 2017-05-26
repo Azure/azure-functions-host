@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
     [Trait("SecretsRequired", "true")]
     public class LoggerTest : IDisposable, ILogTableProvider
     {
-        static string DefaultHost = "host";
-        static string CommonFuncName1 = "gamma";
-        static FunctionId CommonFuncId1 = FunctionId.Build(DefaultHost, CommonFuncName1); // default values
+        static string defaultHost = "host";
+        static string commonFuncName1 = "gamma";
+        static FunctionId commonFuncId1 = FunctionId.Build(defaultHost, commonFuncName1); // default values
 
         private List<CloudTable> _tables = new List<CloudTable>();
 
@@ -30,10 +30,13 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         // Delete any tables we created. 
         public void Dispose()
         {
+            var tasks = new List<Task>();
             foreach (var table in _tables)
             {
-                table.DeleteIfExists();
+                tasks.Add(table.DeleteIfExistsAsync());
             }
+
+            Task.WaitAll(tasks.ToArray());
         }
 
         // Test abandonded status
@@ -48,8 +51,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 RowKey = Guid.NewGuid().ToString(),
                 StartTime = t1,
                 FunctionInstanceHeartbeatExpiry = t1, // stale heartbeat
-
             };
+
             var item = entity.ToFunctionLogItem();
 
             Assert.Equal(FunctionInstanceStatus.Abandoned, item.GetStatus());
@@ -141,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task TimeRange()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Time that functios are called. 
@@ -158,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             var logs = Array.ConvertAll(times, time => new FunctionInstanceLogItem
             {
                 FunctionInstanceId = Guid.NewGuid(),
-                FunctionName = CommonFuncName1,
+                FunctionName = commonFuncName1,
                 StartTime = time
             });
 
@@ -198,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task TimeRangeAcrossEpochs()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Time that functios are called. 
@@ -217,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             var logs = Array.ConvertAll(times, time => new FunctionInstanceLogItem
             {
                 FunctionInstanceId = Guid.NewGuid(),
-                FunctionName = CommonFuncName1,
+                FunctionName = commonFuncName1,
                 StartTime = time,
             });
 
@@ -251,8 +254,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             // Now... delete the middle table; and verify the other data is still there. 
             ILogTableProvider provider = this;
             var table = provider.GetTable("201204");
-            Assert.True(table.Exists());
-            table.Delete();
+            Assert.True(await table.ExistsAsync());
+            await table.DeleteAsync();
 
             await Verify(reader, DateTime.MinValue, DateTime.MaxValue, logs[3], logs[1], logs[0]); // Infinite range, includes all.
 
@@ -265,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         // logs should be sorted in reverse chronological order. 
         private async Task Verify(ILogReader reader, DateTime start, DateTime end, params FunctionInstanceLogItem[] expected)
         {
-            var recent = await GetRecentAsync(reader, CommonFuncId1, start, end);
+            var recent = await GetRecentAsync(reader, commonFuncId1, start, end);
             Assert.Equal(expected.Length, recent.Length);
 
             for (int i = 0; i < expected.Length; i++)
@@ -370,14 +373,13 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 Assert.NotNull(entry);
                 Assert.Equal(entry.FunctionName, Func1);
             }
-
         }
 
         [Fact]
         public async Task LogStart()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string Func1 = "alpha";
@@ -420,7 +422,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task Casing()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string FuncOriginal = "UPPER-lower";
@@ -462,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         [Fact]
         public async Task LargeWritesAreTruncated()
         {
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             List<Guid> functionIds = new List<Guid>();
@@ -526,7 +528,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         [Fact]
         public async Task LargeWritesWithParametersAreTruncated()
         {
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             // Max table request size is 4mb. That gives roughly 40kb per row. 
@@ -576,7 +578,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
         public async Task LogExactWriteAndRead()
         {
             // Make some very precise writes and verify we read exactly what we'd expect.
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "c1", this);
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "c1", this);
             ILogReader reader = LogFactory.NewReader(this);
 
             string Func1 = "alpha";
@@ -671,8 +673,8 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
             Mock<CloudTable> mockTable = new Mock<CloudTable>(MockBehavior.Strict, new Uri("https://fakeaccount.table.core.windows.net/sometable"));
             mockTable
-                .Setup(t => t.Execute(It.IsAny<TableOperation>(), null, null))
-                .Returns(new TableResult());
+                .Setup(t => t.ExecuteAsync(It.IsAny<TableOperation>(), null, null))
+                .ReturnsAsync(new TableResult());
             mockTable
                 .Setup(t => t.ExecuteAsync(It.IsAny<TableOperation>()))
                 .ReturnsAsync(new TableResult());
@@ -686,7 +688,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 .Returns(mockTable.Object);
 
             Exception caughtException = null;
-            ILogWriter writer = LogFactory.NewWriter(DefaultHost, "exceptions", mockProvider.Object, (ex) =>
+            ILogWriter writer = LogFactory.NewWriter(defaultHost, "exceptions", mockProvider.Object, (ex) =>
             {
                 caughtException = ex;
             });
@@ -749,11 +751,11 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
 
 
         // List all tables that we may have handed out. 
-        Task<CloudTable[]> ILogTableProvider.ListTablesAsync()
+        async Task<CloudTable[]> ILogTableProvider.ListTablesAsync()
         {
             var tableClient = GetTableClient();
-            var tables = tableClient.ListTables(_tableNamePrefix).ToArray();
-            return Task.FromResult<CloudTable[]>(tables);
+            var tables = (await tableClient.ListTablesSegmentedAsync(_tableNamePrefix, null)).ToArray();
+            return tables;
         }
 
         private CloudTableClient GetTableClient()

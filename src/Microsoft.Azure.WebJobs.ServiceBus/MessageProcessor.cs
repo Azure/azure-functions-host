@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// Constructs a new instance.
         /// </summary>
         /// <param name="messageOptions">The <see cref="OnMessageOptions"/> to use.</param>
-        public MessageProcessor(OnMessageOptions messageOptions)
+        public MessageProcessor(MessageHandlerOptions messageOptions)
         {
             if (messageOptions == null)
             {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <summary>
         /// Gets the <see cref="OnMessageOptions"/> that will be used by the <see cref="MessageReceiver"/>.
         /// </summary>
-        public OnMessageOptions MessageOptions { get; protected set; }
+        public MessageHandlerOptions MessageOptions { get; protected set; }
 
         /// <summary>
         /// This method is called when there is a new message to process, before the job function is invoked.
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="message">The message to process.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use.</param>
         /// <returns>A <see cref="Task"/> that returns true if the message processing should continue, false otherwise.</returns>
-        public virtual async Task<bool> BeginProcessingMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
+        public virtual async Task<bool> BeginProcessingMessageAsync(Message message, CancellationToken cancellationToken)
         {
             return await Task.FromResult<bool>(true);
         }
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// <param name="result">The <see cref="FunctionResult"/> from the job invocation.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use</param>
         /// <returns>A <see cref="Task"/> that will complete the message processing.</returns>
-        public virtual async Task CompleteProcessingMessageAsync(BrokeredMessage message, FunctionResult result, CancellationToken cancellationToken)
+        public virtual async Task CompleteProcessingMessageAsync(Message message, FunctionResult result, CancellationToken cancellationToken)
         {
             if (result.Succeeded)
             {

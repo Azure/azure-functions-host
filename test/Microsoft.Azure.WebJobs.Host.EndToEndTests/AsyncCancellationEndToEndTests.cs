@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 NameResolver = _resolver,
                 TypeLocator = new FakeTypeLocator(typeof(AsyncCancellationEndToEndTests))
             };
-
+            _hostConfiguration.AddService<IWebJobsExceptionHandler>(new TestExceptionHandler());
             _storageAccount = CloudStorageAccount.Parse(_hostConfiguration.StorageConnectionString);
 
             _invokeInFunction = () => { };
@@ -53,13 +54,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             if (_storageAccount != null)
             {
                 CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-                foreach (var testQueue in queueClient.ListQueues(TestArtifactPrefix))
+                foreach (var testQueue in queueClient.ListQueuesSegmentedAsync(TestArtifactPrefix, null).Result.Results)
                 {
-                    testQueue.Delete();
+                    testQueue.DeleteAsync().Wait();
                 }
             }
         }
-
 
         [NoAutomaticTrigger]
         public static void InfiniteRunningFunctionUnlessCancelledManual(

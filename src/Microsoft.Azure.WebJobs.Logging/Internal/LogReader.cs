@@ -100,13 +100,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         {
             var tables = await _tableLookup.ListTablesAsync();
 
-            Task<FunctionInstanceLogItem>[] taskLookups = Array.ConvertAll(tables, async instanceTable =>
+            var taskLookups = tables.Select(async instanceTable =>
             {
                 // Create a retrieve operation that takes a customer entity.
                 TableOperation retrieveOperation = InstanceTableEntity.GetRetrieveOperation(id);
 
                 // Execute the retrieve operation.
-                TableResult retrievedResult = await instanceTable.SafeExecuteAsync(retrieveOperation);
+                var retrievedResult = await instanceTable.SafeExecuteAsync(retrieveOperation);
 
                 var entity = (InstanceTableEntity)retrievedResult.Result;
 
@@ -116,6 +116,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 }
                 return entity.ToFunctionLogItem();
             });
+        
 
             FunctionInstanceLogItem[] results = await Task.WhenAll(taskLookups);
             foreach (var result in results)
@@ -326,7 +327,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                             // Move down to the next table. 
                             segment = null;
                         }
-
                     }
                 }
                 else

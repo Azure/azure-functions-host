@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             TableContinuationToken continuationToken = null;
             do
             {
-                var segment = await _tableClient.ListTablesSegmentedAsync(_tableNamePrefix, continuationToken, CancellationToken.None);
+                var segment = await _tableClient.ListTablesSegmentedAsync(_tableNamePrefix, null, continuationToken, null, null, CancellationToken.None);
                 list.AddRange(segment.Results);
                 continuationToken = segment.ContinuationToken;
             }

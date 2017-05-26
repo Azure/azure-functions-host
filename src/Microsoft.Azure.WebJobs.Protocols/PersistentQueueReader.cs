@@ -17,6 +17,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -64,17 +65,16 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public T Dequeue()
+        public async Task<T> DequeueAsync()
         {
             ICloudBlob possibleNextItem;
             T nextItem = null;
-            DateTimeOffset createdOn;
-
+            
             if (_outputBlobs.Count == 0 && Interlocked.CompareExchange(ref _updating, 1, 0) == 0)
             {
                 try
                 {
-                    EnqueueNextVisibleItems(_outputBlobs);
+                    await EnqueueNextVisibleItemsAsync(_outputBlobs);
                 }
                 finally
                 {
@@ -89,8 +89,8 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 // 1. We tried to mark the item as invisible, and failed (409, someone else won the race)
                 // 2. We then tried to download the item and failed (404, someone else finished processing an item, even
                 // though we owned it).
-                if (TryMakeItemInvisible(possibleNextItem, out createdOn) && TryDownloadItem(possibleNextItem,
-                    createdOn, out nextItem))
+                (bool makeInvisibleResult, DateTimeOffset createdOn) = await TryMakeItemInvisible(possibleNextItem);
+                if ( makeInvisibleResult && TryDownloadItem(possibleNextItem, createdOn, out nextItem))
                 {
                     break;
                 }
@@ -100,9 +100,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public void TryMakeItemVisible(T message)
+        public async Task TryMakeItemVisible(T message)
         {
-            TryMakeItemVisible(message.Blob);
+            await TryMakeItemVisible(message.Blob);
         }
 
         /// <summary>
@@ -122,14 +122,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             {
                 do
                 {
-                    results = _outputContainer.ListBlobsSegmented(
+                    results = _outputContainer.ListBlobsSegmentedAsync(
                         prefix: null,
                         useFlatBlobListing: true,
                         blobListingDetails: BlobListingDetails.None,
                         currentToken: continuationToken,
                         maxResults: limit,
                         options: null,
-                        operationContext: null);
+                        operationContext: null).GetAwaiter().GetResult();
 
                     blobCount += results.Results.Count();
                     continuationToken = results.ContinuationToken;
@@ -148,14 +148,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             return blobCount;
         }
 
-        private void EnqueueNextVisibleItems(ConcurrentQueue<ICloudBlob> results)
+        private async Task EnqueueNextVisibleItemsAsync(ConcurrentQueue<ICloudBlob> results)
         {
             BlobContinuationToken currentToken = null;
             BlobResultSegment segment;
 
             do
             {
-                segment = GetSegment(currentToken);
+                segment = await GetSegmentAsync(currentToken);
 
                 if (segment == null)
                 {
@@ -179,13 +179,13 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             } while (results.Count == 0 && currentToken != null);
         }
 
-        private BlobResultSegment GetSegment(BlobContinuationToken currentToken)
+        private async Task<BlobResultSegment> GetSegmentAsync(BlobContinuationToken currentToken)
         {
             const int batchSize = 100;
 
             try
             {
-                return _outputContainer.ListBlobsSegmented(prefix: null,
+                return await _outputContainer.ListBlobsSegmentedAsync(prefix: null,
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.Metadata,
                     maxResults: batchSize,
@@ -220,13 +220,13 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             return DateTimeOffset.UtcNow > nextVisibleTime;
         }
 
-        private static bool TryMakeItemVisible(ICloudBlob item)
+        private async static Task<bool> TryMakeItemVisible(ICloudBlob item)
         {
             item.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
 
             try
             {
-                item.SetMetadata(new AccessCondition { IfMatchETag = item.Properties.ETag });
+                await item.SetMetadataAsync(new AccessCondition { IfMatchETag = item.Properties.ETag }, options: null, operationContext: null);
                 return true;
             }
             catch (StorageException exception)
@@ -242,13 +242,15 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             }
         }
 
-        private static bool TryMakeItemInvisible(ICloudBlob item, out DateTimeOffset createdOn)
+        private async static Task<(bool, DateTimeOffset createdOn)> TryMakeItemInvisible(ICloudBlob item)
         {
             // After this window expires, others may attempt to process the item.
             const double processingWindowInMinutes = 5;
 
             item.Metadata[NextVisibleTimeKey] =
                 DateTimeOffset.UtcNow.AddMinutes(processingWindowInMinutes).ToString("o", CultureInfo.InvariantCulture);
+
+            DateTimeOffset createdOn = default(DateTimeOffset);
 
             if (item.Metadata.ContainsKey(CreatedKey))
             {
@@ -262,14 +264,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             try
             {
-                item.SetMetadata(new AccessCondition { IfMatchETag = item.Properties.ETag });
-                return true;
+                await item.SetMetadataAsync(new AccessCondition { IfMatchETag = item.Properties.ETag }, options: null, operationContext: null);
+                return (true, createdOn);
             }
             catch (StorageException exception)
             {
                 if (exception.IsPreconditionFailed() || exception.IsNotFoundBlobNotFound())
                 {
-                    return false;
+                    return (false, createdOn);
                 }
                 else
                 {
@@ -284,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             try
             {
-                using (Stream stream = possibleNextItem.OpenRead())
+                using (Stream stream = possibleNextItem.OpenReadAsync(null, null, null).GetAwaiter().GetResult())
                 {
                     using (TextReader reader = new StreamReader(stream))
                     {
@@ -356,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public void Delete(T message)
+        public async Task DeleteAsync(T message)
         {
             ICloudBlob outputBlob = message.Blob;
 
@@ -371,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             try
             {
-                archiveBlob.UploadText(blobText);
+                await archiveBlob.UploadTextAsync(blobText);
             }
             catch (StorageException exception)
             {
@@ -381,12 +383,12 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 }
                 else
                 {
-                    _archiveContainer.CreateIfNotExists();
-                    archiveBlob.UploadText(blobText);
+                    await _archiveContainer.CreateIfNotExistsAsync();
+                    await archiveBlob.UploadTextAsync(blobText);
                 }
             }
 
-            outputBlob.DeleteIfExists();
+            await outputBlob.DeleteIfExistsAsync();
         }
 
         private static void CopyProperties(ICloudBlob source, ICloudBlob destination)

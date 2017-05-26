@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageQueueMessage CreateMessage(byte[] content)
         {
-            return new FakeStorageQueueMessage(new CloudQueueMessage(content));
+            return new FakeStorageQueueMessage(CloudQueueMessage.CreateCloudQueueMessageFromByteArray(content));
         }
 
         public IStorageQueueMessage CreateMessage(string content)

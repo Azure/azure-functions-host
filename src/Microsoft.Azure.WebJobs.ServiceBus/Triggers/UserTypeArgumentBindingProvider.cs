@@ -8,27 +8,27 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class UserTypeArgumentBindingProvider : IQueueTriggerArgumentBindingProvider
     {
-        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<Message> TryCreate(ParameterInfo parameter)
         {
             // At indexing time, attempt to bind all types.
             // (Whether or not actual binding is possible depends on the message shape at runtime.)
             return CreateBinding(parameter.ParameterType);
         }
 
-        private static ITriggerDataArgumentBinding<BrokeredMessage> CreateBinding(Type itemType)
+        private static ITriggerDataArgumentBinding<Message> CreateBinding(Type itemType)
         {
             Type genericType = typeof(UserTypeArgumentBinding<>).MakeGenericType(itemType);
-            return (ITriggerDataArgumentBinding<BrokeredMessage>)Activator.CreateInstance(genericType);
+            return (ITriggerDataArgumentBinding<Message>)Activator.CreateInstance(genericType);
         }
 
-        private class UserTypeArgumentBinding<TInput> : ITriggerDataArgumentBinding<BrokeredMessage>
+        private class UserTypeArgumentBinding<TInput> : ITriggerDataArgumentBinding<Message>
         {
             private readonly IBindingDataProvider _bindingDataProvider;
 
@@ -47,10 +47,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 get { return _bindingDataProvider != null ? _bindingDataProvider.Contract : null; }
             }
 
-            public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
+            public async Task<ITriggerData> BindAsync(Message value, ValueBindingContext context)
             {
                 IValueProvider provider;
-                BrokeredMessage clone = value.Clone();
+                Message clone = value.Clone();
 
                 TInput contents = await GetBody(value, context);
 
@@ -70,25 +70,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 return new TriggerData(provider, bindingData);
             }
 
-            private static async Task<TInput> GetBody(BrokeredMessage message, ValueBindingContext context)
+            private static async Task<TInput> GetBody(Message message, ValueBindingContext context)
             {
                 if (message.ContentType == ContentTypes.ApplicationJson)
                 {
                     string contents;
 
-                    using (Stream stream = message.GetBody<Stream>())
-                    {
-                        if (stream == null)
-                        {
-                            return default(TInput);
-                        }
-
-                        using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
-                        {
-                            context.CancellationToken.ThrowIfCancellationRequested();
-                            contents = await reader.ReadToEndAsync();
-                        }
-                    }
+                    contents = StrictEncodings.Utf8.GetString(message.Body);
 
                     try
                     {

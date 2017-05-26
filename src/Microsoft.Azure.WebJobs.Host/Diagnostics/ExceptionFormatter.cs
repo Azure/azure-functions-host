@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 // Adapted from code here: https://github.com/dotnet/roslyn/blob/master/src/VisualStudio/Core/Def/Implementation/Workspace/VisualStudioErrorReportingService.ExceptionFormatting.cs
 
 using System;

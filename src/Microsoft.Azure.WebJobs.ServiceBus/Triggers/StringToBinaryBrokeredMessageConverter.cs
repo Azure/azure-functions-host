@@ -4,18 +4,17 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
-    internal class StringToBinaryBrokeredMessageConverter : IConverter<string, BrokeredMessage>
+    internal class StringToBinaryBrokeredMessageConverter : IConverter<string, Message>
     {
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-        public BrokeredMessage Convert(string input)
+        public Message Convert(string input)
         {
             byte[] contents = System.Convert.FromBase64String(input);
-
-            BrokeredMessage message = new BrokeredMessage(new MemoryStream(contents, writable: false));
+            Message message = new Message(contents);
             message.ContentType = ContentTypes.ApplicationOctetStream;
             return message;
         }

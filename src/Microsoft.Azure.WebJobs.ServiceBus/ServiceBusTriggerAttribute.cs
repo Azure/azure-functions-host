@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Description;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -38,18 +38,6 @@ namespace Microsoft.Azure.WebJobs
         public ServiceBusTriggerAttribute(string queueName)
         {
             _queueName = queueName;
-            Access = AccessRights.Manage;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceBusTriggerAttribute"/> class.
-        /// </summary>
-        /// <param name="queueName">The name of the queue to which to bind.</param>
-        /// <param name="access">The <see cref="AccessRights"/> the client has to the queue.</param>
-        public ServiceBusTriggerAttribute(string queueName, AccessRights access)
-        {
-            _queueName = queueName;
-            Access = access;
         }
 
         /// <summary>
@@ -61,20 +49,6 @@ namespace Microsoft.Azure.WebJobs
         {
             _topicName = topicName;
             _subscriptionName = subscriptionName;
-            Access = AccessRights.Manage;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceBusTriggerAttribute"/> class.
-        /// </summary>
-        /// <param name="topicName">The name of the topic to bind to.</param>
-        /// <param name="subscriptionName">The name of the subscription in <paramref name="topicName"/> to bind to.</param>
-        /// <param name="access">The <see cref="AccessRights"/> the client has to the subscription in the topic.</param>
-        public ServiceBusTriggerAttribute(string topicName, string subscriptionName, AccessRights access)
-        {
-            _topicName = topicName;
-            _subscriptionName = subscriptionName;
-            Access = access;
         }
 
         /// <summary>
@@ -108,11 +82,6 @@ namespace Microsoft.Azure.WebJobs
         {
             get { return _subscriptionName; }
         }
-
-        /// <summary>
-        /// Gets the <see cref="AccessRights"/> the client has to the queue or topic subscription.
-        /// </summary>
-        public AccessRights Access { get; private set; }
 
         private string DebuggerDisplay
         {

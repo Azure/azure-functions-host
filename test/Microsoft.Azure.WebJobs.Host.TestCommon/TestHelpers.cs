@@ -18,10 +18,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public static class TestHelpers
     {
-        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
+        public static async Task Await(Func<Task<bool>> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
         {
             DateTime start = DateTime.Now;
-            while (!condition())
+            while (!await condition())
             {
                 await Task.Delay(pollingInterval);
 
@@ -30,6 +30,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     throw new ApplicationException("Condition not reached within timeout.");
                 }
             }
+        }
+
+        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000)
+        {
+            await Await(() => Task.FromResult(condition()), timeout, pollingInterval);
         }
 
         public static void WaitOne(WaitHandle handle, int timeout = 60 * 1000)
@@ -78,9 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             return host;
         }
 
-        public static JobHostConfiguration NewConfig<TProgram>(          
-          params object[] services
-          )
+        public static JobHostConfiguration NewConfig<TProgram>(params object[] services)
         {
             return NewConfig(typeof(TProgram), services);
         }
@@ -88,19 +91,14 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         // Helper to create a JobHostConfiguraiton from a set of services. 
         // Default config, pure-in-memory
         // Default is pure-in-memory, good for unit testing. 
-        public static JobHostConfiguration NewConfig(
-            Type functions,
-            params object[] services
-            )
+        public static JobHostConfiguration NewConfig(Type functions, params object[] services)
         {
             var config = NewConfig(services);
             config.AddServices(new FakeTypeLocator(functions));
             return config;
         }
 
-        public static JobHostConfiguration NewConfig(
-            params object[] services
-        )
+        public static JobHostConfiguration NewConfig(params object[] services)
         {
             JobHostConfiguration config = new JobHostConfiguration()
             {

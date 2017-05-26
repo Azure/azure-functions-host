@@ -4,8 +4,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     {
         public Type ValueType
         {
-            get { return typeof(BrokeredMessage); }
+            get { return typeof(Message); }
         }
 
         public Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             public Type Type
             {
-                get { return typeof(BrokeredMessage); }
+                get { return typeof(Message); }
             }
 
             public Task<object> GetValueAsync()

@@ -17,7 +17,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         public void TestIncrementalWriter()
         {
             string content = null;
-            Func<string, CancellationToken, Task> fp = (x, _) => { content = x; return Task.FromResult(0); };
+            Func<string, CancellationToken, Task> fp = (x, _) =>
+            {
+                content = x;
+                return Task.FromResult(0);
+            };
+
             UpdateOutputLogCommand writer = UpdateOutputLogCommand.Create(new Mock<IStorageBlockBlob>().Object, fp);
 
             var tw = writer.Output;

@@ -5,10 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
@@ -202,10 +205,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             ApplyFunctionResultProperties(requestTelemetry, values);
 
             // Functions attaches the HttpRequest, which allows us to log richer request details.
-            object request;
-            if (scopeProps.TryGetValue(ApplicationInsightsScopeKeys.HttpRequest, out request))
+            if (scopeProps.TryGetValue(ApplicationInsightsScopeKeys.HttpRequest, out object request))
             {
-                ApplyHttpRequestProperties(requestTelemetry, request as HttpRequestMessage);
+                ApplyHttpRequestProperties(requestTelemetry, request as HttpRequest);
             }
 
             // log associated exception details
@@ -217,26 +219,41 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             _telemetryClient.TrackRequest(requestTelemetry);
         }
 
-        private static void ApplyHttpRequestProperties(RequestTelemetry requestTelemetry, HttpRequestMessage request)
+        private static void ApplyHttpRequestProperties(RequestTelemetry requestTelemetry, HttpRequest request)
         {
             if (request == null)
             {
                 return;
             }
 
-            requestTelemetry.Url = new Uri(request.RequestUri.GetLeftPart(UriPartial.Path));
-            requestTelemetry.Properties[LoggingKeys.HttpMethod] = request.Method.ToString();
+            var uriBuilder = new UriBuilder
+            {
+                Scheme = request.Scheme,
+                Host = request.Host.Host,
+                Path = request.Path
+            };
+
+            if (request.Host.Port.HasValue)
+            {
+                uriBuilder.Port = request.Host.Port.Value;
+            }
+
+            requestTelemetry.Url = uriBuilder.Uri;
+            requestTelemetry.Properties[LoggingKeys.HttpMethod] = request.Method;
 
             requestTelemetry.Context.Location.Ip = GetIpAddress(request);
-            requestTelemetry.Context.User.UserAgent = request.Headers.UserAgent?.ToString();
+            if (request.Headers.TryGetValue(HeaderNames.UserAgent, out StringValues userAgentHeader))
+            {
+                requestTelemetry.Context.User.UserAgent = userAgentHeader.FirstOrDefault();
+            }
 
-            HttpResponseMessage response = GetResponse(request);
+            HttpResponse response = GetResponse(request);
 
             // If a function throws an exception, we don't get a response attached to the request.
             // In that case, we'll consider it a 500.
             if (response?.StatusCode != null)
             {
-                requestTelemetry.ResponseCode = ((int)response.StatusCode).ToString();
+                requestTelemetry.ResponseCode = response.StatusCode.ToString();
             }
             else
             {
@@ -304,21 +321,19 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             return DictionaryLoggerScope.Push(state);
         }
 
-        internal static string GetIpAddress(HttpRequestMessage httpRequest)
+        internal static string GetIpAddress(HttpRequest httpRequest)
         {
             // first check for X-Forwarded-For; used by load balancers
-            IEnumerable<string> headers;
-            if (httpRequest.Headers.TryGetValues(ApplicationInsightsScopeKeys.ForwardedForHeaderName, out headers))
+            if (httpRequest.Headers?.TryGetValue(ApplicationInsightsScopeKeys.ForwardedForHeaderName, out StringValues headerValues) ?? false)
             {
-                string ip = headers.FirstOrDefault();
+                string ip = headerValues.FirstOrDefault();
                 if (!string.IsNullOrWhiteSpace(ip))
                 {
                     return RemovePort(ip);
                 }
             }
 
-            HttpContextBase context = httpRequest.Properties.GetValueOrDefault<HttpContextBase>(ApplicationInsightsScopeKeys.HttpContext);
-            return context?.Request?.UserHostAddress ?? LoggingConstants.ZeroIpAddress;
+            return httpRequest.HttpContext?.Connection.RemoteIpAddress.ToString() ?? LoggingConstants.ZeroIpAddress;
         }
 
         private static string RemovePort(string address)
@@ -334,10 +349,13 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             return address;
         }
 
-        internal static HttpResponseMessage GetResponse(HttpRequestMessage httpRequest)
+        internal static HttpResponse GetResponse(HttpRequest httpRequest)
         {
             // Grab the response stored by functions
-            return httpRequest.Properties.GetValueOrDefault<HttpResponseMessage>(ApplicationInsightsScopeKeys.FunctionsHttpResponse);
+            object value = null;
+            httpRequest.HttpContext?.Items?.TryGetValue(ApplicationInsightsScopeKeys.FunctionsHttpResponse, out value);
+
+            return value as HttpResponse;
         }
     }
 }

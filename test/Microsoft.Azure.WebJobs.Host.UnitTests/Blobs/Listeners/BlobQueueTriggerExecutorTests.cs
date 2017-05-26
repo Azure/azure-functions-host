@@ -113,7 +113,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                 ContainerName = expectedContainerName,
                 BlobName = expectedBlobName,
                 ETag = "OriginalETag"
-
             };
             IStorageQueueMessage message = CreateMessage(triggerMessage);
 

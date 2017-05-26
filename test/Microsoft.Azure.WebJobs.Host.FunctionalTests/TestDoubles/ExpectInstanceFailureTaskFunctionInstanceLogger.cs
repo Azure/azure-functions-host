@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            return Task.FromResult(String.Empty);
+            return Task.FromResult(string.Empty);
         }
 
         public Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)

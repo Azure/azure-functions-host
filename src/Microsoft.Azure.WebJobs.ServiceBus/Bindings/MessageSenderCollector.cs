@@ -4,17 +4,17 @@
 using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class MessageSenderCollector<T> : ICollector<T>
     {
         private readonly ServiceBusEntity _entity;
-        private readonly IConverter<T, BrokeredMessage> _converter;
+        private readonly IConverter<T, Message> _converter;
         private readonly Guid _functionInstanceId;
 
-        public MessageSenderCollector(ServiceBusEntity entity, IConverter<T, BrokeredMessage> converter,
+        public MessageSenderCollector(ServiceBusEntity entity, IConverter<T, Message> converter,
             Guid functionInstanceId)
         {
             if (entity == null)

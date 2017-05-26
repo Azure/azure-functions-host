@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,14 +17,13 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
         /// <summary>Initializes a new instance of the <see cref="HeartbeatMonitor"/> class.</summary>
         /// <param name="client">A blob client for the storage account in which to monitor heartbeats.</param>
-        
         public HeartbeatMonitor(CloudBlobClient client)
         {
             _client = client;
         }
 
         /// <inheritdoc />
-        public DateTimeOffset? GetSharedHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+        public async Task<DateTimeOffset?> GetSharedHeartbeatExpirationAsync(string sharedContainerName, string sharedDirectoryName,
             int expirationInSeconds)
         {
             CloudBlobContainer container = _client.GetContainerReference(sharedContainerName);
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
             do
             {
-                BlobResultSegment segment = GetNextHeartbeats(directory, currentToken);
+                BlobResultSegment segment = await GetNextHeartbeatsAsync(directory, currentToken);
 
                 if (segment == null)
                 {
@@ -41,19 +41,19 @@ namespace Microsoft.Azure.WebJobs.Protocols
                 }
 
                 currentToken = segment.ContinuationToken;
-                heartbeatExpiration = GetFirstValidHeartbeatExpiration(segment.Results, expirationInSeconds);
+                heartbeatExpiration = await GetFirstValidHeartbeatExpirationAsync(segment.Results, expirationInSeconds);
             } while (heartbeatExpiration == null && currentToken != null);
 
             return heartbeatExpiration;
         }
 
-        private BlobResultSegment GetNextHeartbeats(CloudBlobDirectory directory, BlobContinuationToken currentToken)
+        private async Task<BlobResultSegment> GetNextHeartbeatsAsync(CloudBlobDirectory directory, BlobContinuationToken currentToken)
         {
             const int batchSize = 100;
 
             try
             {
-                return directory.ListBlobsSegmented(useFlatBlobListing: true,
+                return await directory.ListBlobsSegmentedAsync(useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.None,
                     maxResults: batchSize,
                     currentToken: currentToken,
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
             }
         }
 
-        private static DateTimeOffset? GetFirstValidHeartbeatExpiration(IEnumerable<IListBlobItem> heartbeats,
+        private static async Task<DateTimeOffset?> GetFirstValidHeartbeatExpirationAsync(IEnumerable<IListBlobItem> heartbeats,
             int expirationInSeconds)
         {
             // We're using the flat blob listing, so the more specific ICloudBlob type here is guaranteed.
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
                 {
                     // Remove any expired heartbeats so that we can answer more efficiently in the future.
                     // If the host instance wakes back up, it will just re-create the heartbeat anyway.
-                    blob.DeleteIfExists();
+                    await blob.DeleteIfExistsAsync();
                 }
             }
 
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
         }
 
         /// <inheritdoc />
-        public DateTimeOffset? GetInstanceHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+        public async Task<DateTimeOffset?> GetInstanceHeartbeatExpirationAsync(string sharedContainerName, string sharedDirectoryName,
             string instanceBlobName, int expirationInSeconds)
         {
             CloudBlobContainer container = _client.GetContainerReference(sharedContainerName);
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
             try
             {
-                blob.FetchAttributes();
+                await blob.FetchAttributesAsync();
             }
             catch (StorageException exception)
             {
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
             {
                 // Remove any expired heartbeats so that we can answer more efficiently in the future.
                 // If the host instance wakes back up, it will just re-create the heartbeat anyway.
-                blob.DeleteIfExists();
+                await blob.DeleteIfExistsAsync();
                 return null;
             }
         }

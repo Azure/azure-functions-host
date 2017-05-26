@@ -3,12 +3,12 @@
 
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal interface IQueueTriggerArgumentBindingProvider
     {
-        ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter);
+        ITriggerDataArgumentBinding<Message> TryCreate(ParameterInfo parameter);
     }
 }

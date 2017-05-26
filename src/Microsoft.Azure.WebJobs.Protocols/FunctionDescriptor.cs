@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// Gets the <see cref="System.Diagnostics.TraceLevel"/> for this function
         /// </summary>
         [JsonIgnore]
-        internal TraceLevel TraceLevel { get; set; }
+        internal System.Diagnostics.TraceLevel TraceLevel { get; set; }
 
         /// <summary>
         /// Gets the <see cref="WebJobs.TimeoutAttribute"/> for this function

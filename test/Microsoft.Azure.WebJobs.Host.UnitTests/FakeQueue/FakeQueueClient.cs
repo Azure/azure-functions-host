@@ -84,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 _parent = this,
                 _prefix = attr.Prefix
             };
-
         }
 
         public IAsyncCollector<FakeQueueData> GetQueue()

@@ -1,8 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
 
             string messageContent = Guid.NewGuid().ToString();
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
-            await queue.AddMessageAsync(message, CancellationToken.None);
+            await queue.AddMessageAsync(message, null, null, null, null, CancellationToken.None);
             CloudQueueMessage messageFromCloud = await queue.GetMessageAsync();
 
             QueueListener listener = new QueueListener(storageQueue, storagePoisonQueue, mockTriggerExecutor.Object, new WebJobsExceptionHandler(), trace,
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
 
             string messageContent = Guid.NewGuid().ToString();
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
-            await queue.AddMessageAsync(message, CancellationToken.None);
+            await queue.AddMessageAsync(message, null, null, null, null, CancellationToken.None);
             CloudQueueMessage messageFromCloud = await queue.GetMessageAsync();
 
             QueueListener listener = new QueueListener(storageQueue, null, mockTriggerExecutor.Object, new WebJobsExceptionHandler(), trace,
@@ -130,11 +130,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
 
                 string queueName = string.Format("{0}-{1}", TestQueuePrefix, Guid.NewGuid());
                 Queue = client.GetQueueReference(queueName).SdkObject;
-                Queue.CreateIfNotExistsAsync(CancellationToken.None).Wait();
+                Queue.CreateIfNotExistsAsync(null, null, CancellationToken.None).Wait();
 
                 string poisonQueueName = string.Format("{0}-poison", queueName);
                 PoisonQueue = client.GetQueueReference(poisonQueueName).SdkObject;
-                PoisonQueue.CreateIfNotExistsAsync(CancellationToken.None).Wait();
+                PoisonQueue.CreateIfNotExistsAsync(null, null, CancellationToken.None).Wait();
             }
 
             public CloudQueue Queue
@@ -159,18 +159,23 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
             {
                 string queueName = string.Format("{0}-{1}", TestQueuePrefix, Guid.NewGuid());
                 var queue = QueueClient.GetQueueReference(queueName);
-                queue.CreateIfNotExistsAsync(CancellationToken.None).Wait();
+                queue.CreateIfNotExistsAsync(null, null, CancellationToken.None).Wait();
                 return queue;
             }
 
             public void Dispose()
             {
-                foreach (var queue in QueueClient.ListQueues(TestQueuePrefix))
+
+                var result = QueueClient.ListQueuesSegmentedAsync(TestQueuePrefix, null).Result;
+                var tasks = new List<Task>();
+
+                foreach (var queue in result.Results)
                 {
-                    queue.Delete();
+                    tasks.Add(queue.DeleteAsync());
                 }
+
+                Task.WaitAll(tasks.ToArray());
             }
         }
-
     }
 }

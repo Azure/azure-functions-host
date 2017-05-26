@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         [Fact]
         public void ConnectionStringProvider_NoDashboardConnectionString_Throws()
         {
+            ConfigurationUtility.Reset();
+
             const string DashboardConnectionEnvironmentVariable = "AzureWebJobsDashboard";
             string previousConnectionString = Environment.GetEnvironmentVariable(DashboardConnectionEnvironmentVariable);
 
@@ -32,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 Mock<IServiceProvider> mockServices = new Mock<IServiceProvider>(MockBehavior.Strict);
                 IStorageAccountProvider product = new DefaultStorageAccountProvider(mockServices.Object)
                 {
-                    StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", new byte[0], "key"), true).ToString(exportSecrets: true)
+                    StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", string.Empty, "key"), true).ToString(exportSecrets: true)
                 };
 
                 // Act & Assert
@@ -216,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             var connectionStringProvider = connStringMock.Object;
             var accountMock = new Mock<IStorageAccount>();
             accountMock.SetupGet(s => s.Type).Returns(StorageAccountType.BlobOnly);
-            accountMock.SetupGet(s => s.Credentials).Returns(new StorageCredentials("name", new byte[] { }));
+            accountMock.SetupGet(s => s.Credentials).Returns(new StorageCredentials("name", string.Empty));
             var parsedAccount = accountMock.Object;
             IServiceProvider services = CreateServices();
             IStorageAccountParser parser = CreateParser(services, ConnectionStringNames.Storage, connectionString, parsedAccount);
@@ -236,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             var connectionStringProvider = connStringMock.Object;
             var accountMock = new Mock<IStorageAccount>();
             accountMock.SetupGet(s => s.Type).Returns(StorageAccountType.Premium);
-            accountMock.SetupGet(s => s.Credentials).Returns(new StorageCredentials("name", new byte[] { }));
+            accountMock.SetupGet(s => s.Credentials).Returns(new StorageCredentials("name", string.Empty));
             var parsedAccount = accountMock.Object;
             IServiceProvider services = CreateServices();
             IStorageAccountParser parser = CreateParser(services, ConnectionStringNames.Dashboard, connectionString, parsedAccount);

@@ -1,9 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
 #else
+
 namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
@@ -18,15 +20,15 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Dequeues the next message in the queue, if any.</summary>
         /// <returns>The dequeued message, if any.</returns>
         /// <remarks>Dequeuing marks the message as temorarly invisible.</remarks>
-        T Dequeue();
+        Task<T> DequeueAsync();
 
         /// <summary>Deletes a message from the queue.</summary>
         /// <param name="message">The message to delete.</param>
-        void Delete(T message);
+        Task DeleteAsync(T message);
 
         /// <summary>Tries to makes an item's blob visible.</summary>
         /// <param name="message">The item to make visible.</param>
-        void TryMakeItemVisible(T message);
+        Task TryMakeItemVisible(T message);
 
         /// <summary>
         /// Gets the number of messages in the queue

@@ -1,4 +1,7 @@
-﻿using Microsoft.Azure.WebJobs.Host;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Newtonsoft.Json;
@@ -176,7 +179,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             var d = (FakeQueueData) (items[0]);
             Assert.Equal("x123", d.ExtraPropertery);
             Assert.Equal("abc", d.Message);
-            
         }
 
         // Queue 2 native events to a single-dispatch trigger and ensure they both fire. 

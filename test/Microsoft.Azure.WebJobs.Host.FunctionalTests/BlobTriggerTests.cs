@@ -63,19 +63,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             host.Call("Run", new { blob = blob });
 
-            Assert.True(app.success);
+            Assert.True(app.Success);
         }
 
         private class BindToCloudBlob2Program
         {
-            public bool success;
+            public bool Success;
             public void Run(
                 [BlobTrigger(BlobPath)] ICloudBlob blob,
                 [Blob("container/{metadata.m1}")] ICloudBlob blob1
                 )
             {
                 Assert.Equal("v1", blob1.Name);
-                this.success = true;
+                this.Success = true;
             }
         }
 

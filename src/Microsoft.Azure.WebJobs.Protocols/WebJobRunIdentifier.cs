@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <returns>A key containing the full web job identifier.</returns>
         public string GetKey()
         {
-            return String.Format(CultureInfo.InvariantCulture, "{0}${1}${2}${3}",
+            return string.Format(CultureInfo.InvariantCulture, "{0}${1}${2}${3}",
                 WebSiteName, JobType, JobName, RunId).ToLowerInvariant();
         }
     }

@@ -55,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             var container = CreateContainer(account, "azure-webjobs-hosts");
 
             return account;
-
         }
 
         private static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,

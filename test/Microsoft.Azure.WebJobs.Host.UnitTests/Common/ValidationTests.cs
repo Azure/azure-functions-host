@@ -177,7 +177,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             TestHelpers.AssertIndexingError(
                 () => host.Call("WithValidation"),
                 "LocalFunction2.WithValidation", TestAttribute.ErrorMessage);
-            
         }
     }
 }

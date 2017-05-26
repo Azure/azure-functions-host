@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal
         /// <returns></returns>
         public Task StopAsync()
         {
-            lock(_lock)
+            lock (_lock)
             {
                 if (_worker != null)
                 {

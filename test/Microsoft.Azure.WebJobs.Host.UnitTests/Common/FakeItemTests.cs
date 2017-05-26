@@ -26,14 +26,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         public class Item
         {
-            public int value;
+            public int Value;
         }
 
         public class Functions
         {
             public void ModifyInPlace([FakeItem(Index = "ModifyInPlace")] Item x)
             {
-                x.value++;
+                x.Value++;
             }
 
             public void SetToNull([FakeItem(Index = "SetToNull")] out Item x)
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var client = new FakeItemClient();
             client._dict["ModifyInPlace"] = new Item
             {
-                value = 123
+                Value = 123
             };
 
             var host = TestHelpers.NewJobHost<Functions>(nr, client);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 host.Call("ModifyInPlace");
 
                 var item = (Item)client._dict["ModifyInPlace"];
-                Assert.Equal(124, item.value);
+                Assert.Equal(124, item.Value);
             }
         }
     }

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             {
                 // need to create a new instance so other queues handling this message aren't updated
                 DateTimeOffset now = DateTimeOffset.Now;
-                var newMessage = new FakeStorageQueueMessage(new CloudQueueMessage(message.AsBytes))
+                var newMessage = new FakeStorageQueueMessage(CloudQueueMessage.CreateCloudQueueMessageFromByteArray(message.AsBytes))
                 {
                     Id = Guid.NewGuid().ToString(),
                     InsertionTime = now,

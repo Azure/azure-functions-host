@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
@@ -164,16 +166,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             DateTime now = DateTime.UtcNow;
             var result = CreateDefaultInstanceLogEntry();
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://someuri/api/path");
-            request.Headers.Add("User-Agent", "my custom user agent");
-            var response = new HttpResponseMessage();
-            request.Properties[ApplicationInsightsScopeKeys.FunctionsHttpResponse] = response;
+            var request = new Mock<HttpRequest>();
+            request.SetupGet(r => r.Scheme).Returns("http");
+            request.SetupGet(r => r.Path).Returns("/api/path");
+            request.SetupGet(r => r.Host).Returns(new HostString("someuri"));
+            request.SetupGet(r => r.Method).Returns("POST");
 
-            MockIpAddress(request, "1.2.3.4");
+            var headers = new HeaderDictionary();
+            headers.Add("User-Agent", "my custom user agent");
+            request.SetupGet(r => r.Headers).Returns(headers);
+
+            var response = new Mock<HttpResponse>();
+            response.SetupGet(r => r.StatusCode).Returns(200);
+            var items = new Dictionary<object, object> { { ApplicationInsightsScopeKeys.FunctionsHttpResponse, response.Object } };
+
+            MockHttpRequest(request, "1.2.3.4", items);
 
             ILogger logger = CreateLogger(LogCategories.Results);
             var scopeProps = CreateScopeDictionary(_invocationId, _functionShortName);
-            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request;
+            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request.Object;
 
             using (logger.BeginScope(scopeProps))
             {
@@ -204,16 +215,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             DateTime now = DateTime.UtcNow;
             var result = CreateDefaultInstanceLogEntry();
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://someuri/api/path");
-            request.Headers.Add("User-Agent", "my custom user agent");
+            var request = new Mock<HttpRequest>();
+            request.SetupGet(r => r.Scheme).Returns("http");
+            request.SetupGet(r => r.Path).Returns("/api/path");
+            request.SetupGet(r => r.Host).Returns(new HostString("someuri"));
+            request.SetupGet(r => r.Method).Returns("POST");
+
+            var headers = new HeaderDictionary();
+            headers.Add("User-Agent", "my custom user agent");
+
+            request.SetupGet(r => r.Headers).Returns(headers);
 
             // In the case of an exception being thrown, no response is attached
 
-            MockIpAddress(request, "1.2.3.4");
+            MockHttpRequest(request, "1.2.3.4");
 
             ILogger logger = CreateLogger(LogCategories.Results);
             var scopeProps = CreateScopeDictionary(_invocationId, _functionShortName);
-            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request;
+            scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request.Object;
 
             Exception fex = new Exception("Boom");
             using (logger.BeginScope(scopeProps))
@@ -342,11 +361,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         [InlineData("1.2.3.4")]
         public void GetIpAddress_ChecksHeaderFirst(string headerIp)
         {
-            HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(ApplicationInsightsScopeKeys.ForwardedForHeaderName, headerIp);
-            MockIpAddress(request, "5.6.7.8");
+            var request = new Mock<HttpRequest>();
+            var headers = new HeaderDictionary
+            {
+                { ApplicationInsightsScopeKeys.ForwardedForHeaderName, headerIp }
+            };
+            request.SetupGet(r => r.Headers).Returns(headers);
 
-            string ip = ApplicationInsightsLogger.GetIpAddress(request);
+            MockHttpRequest(request, "5.6.7.8");
+
+            string ip = ApplicationInsightsLogger.GetIpAddress(request.Object);
 
             Assert.Equal("1.2.3.4", ip);
         }
@@ -354,10 +378,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         [Fact]
         public void GetIpAddress_ChecksContextSecond()
         {
-            HttpRequestMessage request = new HttpRequestMessage();
-            MockIpAddress(request, "5.6.7.8");
+            var request = new Mock<HttpRequest>();
 
-            string ip = ApplicationInsightsLogger.GetIpAddress(request);
+            MockHttpRequest(request, "5.6.7.8");
+
+            string ip = ApplicationInsightsLogger.GetIpAddress(request.Object);
 
             Assert.Equal("5.6.7.8", ip);
         }
@@ -459,13 +484,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             }
         }
 
-        private static void MockIpAddress(HttpRequestMessage request, string ipAddress)
+        private static void MockHttpRequest(Mock<HttpRequest> request, string ipAddress, IDictionary<object, object> items = null)
         {
-            Mock<HttpContextBase> mockContext = new Mock<HttpContextBase>(MockBehavior.Strict);
-            Mock<HttpRequestBase> mockRequest = new Mock<HttpRequestBase>(MockBehavior.Strict);
-            mockRequest.Setup(r => r.UserHostAddress).Returns(ipAddress);
-            mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
-            request.Properties[ApplicationInsightsScopeKeys.HttpContext] = mockContext.Object;
+            var connectionInfoMock = new Mock<ConnectionInfo>();
+            connectionInfoMock.SetupGet(c => c.RemoteIpAddress).Returns(IPAddress.Parse(ipAddress));
+
+            var contextMock = new Mock<HttpContext>();
+            contextMock.SetupGet(c => c.Connection).Returns(connectionInfoMock.Object);
+
+            request.SetupGet(r => r.HttpContext).Returns(contextMock.Object);
+
+            items = items ?? new Dictionary<object, object>();
+            contextMock.SetupGet(c => c.Items).Returns(items);
         }
 
         private ILogger CreateLogger(string category)
@@ -522,6 +552,5 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Arguments = _arguments
             };
         }
-
     }
 }

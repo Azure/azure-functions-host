@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 // map the queue names from the context to fake queues
                 IStorageQueueClient client = storageAccount.CreateQueueClient();
                 _queue = client.GetQueueReference(context.Queue.Name);
-                if(context.PoisonQueue != null)
+                if (context.PoisonQueue != null)
                 {
                     _poisonQueue = client.GetQueueReference(context.PoisonQueue.Name);
                 }

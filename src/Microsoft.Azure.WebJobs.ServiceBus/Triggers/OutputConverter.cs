@@ -2,21 +2,21 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<BrokeredMessage>
+    internal class OutputConverter<TInput> : IObjectToTypeConverter<Message>
         where TInput : class
     {
-        private readonly IConverter<TInput, BrokeredMessage> _innerConverter;
+        private readonly IConverter<TInput, Message> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, BrokeredMessage> innerConverter)
+        public OutputConverter(IConverter<TInput, Message> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out BrokeredMessage output)
+        public bool TryConvert(object input, out Message output)
         {
             TInput typedInput = input as TInput;
 

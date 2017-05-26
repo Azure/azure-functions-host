@@ -3,7 +3,9 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         // Odd and even values
         [InlineData(2, 3)]
         [InlineData(3, 3)]
-        public void MaxDegreeOfParallelism_Queues(int batchSize, int maxExpectedParallelism)
+        public async Task MaxDegreeOfParallelism_Queues(int batchSize, int maxExpectedParallelism)
         {
             _receivedMessages = 0;
             _currentSimultaneouslyRunningFunctions = 0;
@@ -69,18 +71,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 NameResolver = nameResolver,
                 TypeLocator = new FakeTypeLocator(typeof(ParallelExecutionTests)),
             };
+            hostConfiguration.AddService<IWebJobsExceptionHandler>(new TestExceptionHandler());
             hostConfiguration.Queues.BatchSize = batchSize;
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
             _queueClient = storageAccount.CreateCloudQueueClient();
             CloudQueue queue = _queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
 
-            queue.CreateIfNotExists();
+            await queue.CreateIfNotExistsAsync();
 
             for (int i = 0; i < _numberOfQueueMessages; i++)
             {
                 int sleepTimeInSeconds = i % 2 == 0 ? 5 : 1;
-                queue.AddMessage(new CloudQueueMessage(sleepTimeInSeconds.ToString()));
+                await queue.AddMessageAsync(new CloudQueueMessage(sleepTimeInSeconds.ToString()));
             }
 
             using (_allMessagesProcessed = new ManualResetEvent(initialState: false))
@@ -104,9 +107,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             if (_queueClient != null)
             {
-                foreach (var testQueue in _queueClient.ListQueues(TestArtifactPrefix))
+                foreach (var testQueue in _queueClient.ListQueuesSegmentedAsync(TestArtifactPrefix, null).Result.Results)
                 {
-                    testQueue.Delete();
+                    testQueue.DeleteAsync().Wait();
                 }
             }
         }

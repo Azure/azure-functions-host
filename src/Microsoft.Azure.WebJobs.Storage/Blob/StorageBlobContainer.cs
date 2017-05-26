@@ -66,19 +66,19 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <inheritdoc />
         public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.CreateIfNotExistsAsync(cancellationToken);
+            return _sdk.CreateIfNotExistsAsync(BlobContainerPublicAccessType.Off, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.ExistsAsync(cancellationToken);
+            return _sdk.ExistsAsync(options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<IStorageBlob> GetBlobReferenceFromServerAsync(string blobName, CancellationToken cancellationToken)
         {
-            Task<ICloudBlob> sdkTask = _sdk.GetBlobReferenceFromServerAsync(blobName, cancellationToken);
+            Task<ICloudBlob> sdkTask = _sdk.GetBlobReferenceFromServerAsync(blobName, accessCondition: null, options: null, operationContext: null, cancellationToken: cancellationToken);
             return GetBlobReferenceFromServerAsyncCore(sdkTask);
         }
 

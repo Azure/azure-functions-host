@@ -57,19 +57,19 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         public Task AddMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
         {
             CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-            return _sdk.AddMessageAsync(sdkMessage, cancellationToken);
+            return _sdk.AddMessageAsync(sdkMessage, timeToLive: null, initialVisibilityDelay: null, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.CreateIfNotExistsAsync(cancellationToken);
+            return _sdk.CreateIfNotExistsAsync(options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public IStorageQueueMessage CreateMessage(byte[] content)
         {
-            return new StorageQueueMessage(new CloudQueueMessage(content));
+            return new StorageQueueMessage(CloudQueueMessage.CreateCloudQueueMessageFromByteArray(content));
         }
 
         /// <inheritdoc />
@@ -82,13 +82,13 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         public Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
         {
             CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-            return _sdk.DeleteMessageAsync(sdkMessage, cancellationToken);
+            return _sdk.DeleteMessageAsync(sdkMessage.Id, sdkMessage.PopReceipt, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)
         {
-            return _sdk.ExistsAsync(cancellationToken);
+            return _sdk.ExistsAsync(options: null, operationContext: null, cancellationToken: cancellationToken);
         }
 
         /// <inheritdoc />
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
             MessageUpdateFields updateFields, CancellationToken cancellationToken)
         {
             CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-            return _sdk.UpdateMessageAsync(sdkMessage, visibilityTimeout, updateFields, cancellationToken);
+            return _sdk.UpdateMessageAsync(sdkMessage, visibilityTimeout, updateFields, options: null, operationContext: null, cancellationToken: cancellationToken);
         }
     }
 }

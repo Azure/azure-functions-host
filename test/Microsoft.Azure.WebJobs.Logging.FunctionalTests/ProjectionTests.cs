@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
 
             var f2b = Work(rows, t1, t5, 1); // long bucket , half
             Assert.Equal(1, f2b.Length);
-            Assert.Equal(StdArea/2, f2b[0].Item2);
+            Assert.Equal(StdArea / 2, f2b[0].Item2);
         }
 
         // Project into more granular buckets. Proportionately distribute
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
             var f8 = Work(rows, t0, t5, 2); // split buckets. 
             Assert.Equal(2, f8.Length);
             Assert.Equal(96, f8[0].Item2);
-            Assert.Equal((t2+t3)/2, f8[1].Item1);
+            Assert.Equal((t2 + t3) / 2, f8[1].Item1);
             Assert.Equal(0, f8[1].Item2);
         }
 
@@ -186,13 +186,13 @@ namespace Microsoft.Azure.WebJobs.Logging.Internal.FunctionalTests
         static double Sum(Tuple<long, double>[] results, long startTicks, long endTicks)
         {
             int buckets = results.Length;
-            double bucketWidth = ((double) endTicks - startTicks) / buckets;
+            double bucketWidth = ((double)endTicks - startTicks) / buckets;
 
             double total = 0;
             foreach (var tuple in results)
             {
                 var value = tuple.Item2;
-                total += (value * bucketWidth);
+                total += value * bucketWidth;
             }
             return total;
         }

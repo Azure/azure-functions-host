@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
@@ -18,11 +18,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _providers = providers;
         }
 
-        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<Message> TryCreate(ParameterInfo parameter)
         {
             foreach (IQueueTriggerArgumentBindingProvider provider in _providers)
             {
-                ITriggerDataArgumentBinding<BrokeredMessage> binding = provider.TryCreate(parameter);
+                ITriggerDataArgumentBinding<Message> binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {

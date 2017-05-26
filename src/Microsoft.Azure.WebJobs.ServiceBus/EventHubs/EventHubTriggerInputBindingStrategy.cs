@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.EventHubs.Processor;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {

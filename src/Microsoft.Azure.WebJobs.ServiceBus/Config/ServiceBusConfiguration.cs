@@ -3,7 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus
 {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         /// </summary>
         public ServiceBusConfiguration()
         {
-            MessageOptions = new OnMessageOptions
+            MessageOptions = new MessageHandlerOptions
             {
                 MaxConcurrentCalls = 16
             };
@@ -50,10 +50,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         }
 
         /// <summary>
-        /// Gets or sets the default <see cref="OnMessageOptions"/> that will be used by
+        /// Gets or sets the default <see cref="MessageHandlerOptions"/> that will be used by
         /// <see cref="MessageReceiver"/>s.
         /// </summary>
-        public OnMessageOptions MessageOptions { get; set; }
+        public MessageHandlerOptions MessageOptions { get; set; }
 
         /// <summary>
         /// Gets or sets the default PrefetchCount that will be used by <see cref="MessageReceiver"/>s.

@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         }
         public void Decrement(Guid instanceId)
         {
-            lock(_lock)
+            lock (_lock)
             {
                 _outstandingCount.Remove(instanceId);
             }

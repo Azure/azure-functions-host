@@ -25,5 +25,4 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// </summary>
         string DisplayName { get; }     
     }
-
 }

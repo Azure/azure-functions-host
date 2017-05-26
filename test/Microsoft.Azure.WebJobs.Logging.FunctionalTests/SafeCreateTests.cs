@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
             catch (StorageException e)
             {
-                Assert.True(Object.ReferenceEquals(e, exception));
+                Assert.True(object.ReferenceEquals(e, exception));
             }
         }
 
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
             }
             catch (Exception e)
             {
-                Assert.True(Object.ReferenceEquals(e, exception));
+                Assert.True(object.ReferenceEquals(e, exception));
             }
         }
 
@@ -168,6 +168,5 @@ namespace Microsoft.Azure.WebJobs.Logging.FunctionalTests
                 return func;
             }
         }
-
     } // end SafeCreateTests
 }

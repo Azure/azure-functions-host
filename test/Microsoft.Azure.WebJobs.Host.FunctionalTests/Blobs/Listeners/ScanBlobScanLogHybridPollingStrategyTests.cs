@@ -396,10 +396,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
             private Action<IStorageBlobResultSegment> _onListBlobsSegmented;
 
             public SkewableFakeStorageBlobContainer(MemoryBlobStore store, string containerName,
-                IStorageBlobClient parent, Action<IStorageBlobResultSegment> OnListBlobsSegmented)
+                IStorageBlobClient parent, Action<IStorageBlobResultSegment> onListBlobsSegmented)
                 : base(store, containerName, parent)
             {
-                _onListBlobsSegmented = OnListBlobsSegmented;
+                _onListBlobsSegmented = onListBlobsSegmented;
             }
 
             public override async Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing, BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken, BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
