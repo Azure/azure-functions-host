@@ -1,15 +1,13 @@
-﻿using System.Web.Http;
-using Owin;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Autofac;
-using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+﻿using Autofac;
 using Autofac.Integration.WebApi;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.FabricHost;
-using System.Fabric;
-using Microsoft.ServiceFabric.Services.Communication.Client;
-using System;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
+using Owin;
+using System.Fabric;
+using System.Web.Http;
 
 namespace WebJobs.Script.FabricService
 {
