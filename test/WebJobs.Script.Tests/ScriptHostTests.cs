@@ -10,7 +10,6 @@ using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -682,6 +681,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_ClearsFunctionsFilter()
+        {
+            // A previous bug wouldn't properly clear the filter if you removed it.
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.Null(scriptConfig.Functions);
+
+            config["functions"] = new JArray("Function1", "Function2");
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(2, scriptConfig.Functions.Count);
+            Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
+            Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
+
+            config.Remove("functions");
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.Null(scriptConfig.Functions);
+        }
+
+        [Fact]
         public void ApplyConfiguration_AppliesTimeout()
         {
             JObject config = new JObject();
@@ -926,6 +949,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ConfigureLoggerFactory_Default()
         {
             var config = new ScriptHostConfiguration();
+            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
             var loggerFactory = new TestLoggerFactory();
             config.HostConfig.LoggerFactory = loggerFactory;
 
@@ -935,7 +959,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metricsLogger = new TestMetricsLogger();
 
-            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, metricsLogger, () => true);
 
             Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
             Assert.Empty(metricsLogger.LoggedEvents);
@@ -945,6 +969,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ConfigureLoggerFactory_ApplicationInsights()
         {
             var config = new ScriptHostConfiguration();
+            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
             var loggerFactory = new TestLoggerFactory();
             config.HostConfig.LoggerFactory = loggerFactory;
 
@@ -954,7 +979,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metricsLogger = new TestMetricsLogger();
 
-            ScriptHost.ConfigureLoggerFactory(config, settingsManager, metricsLogger, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, metricsLogger, () => true);
 
             Assert.Equal(2, loggerFactory.Providers.Count);
 

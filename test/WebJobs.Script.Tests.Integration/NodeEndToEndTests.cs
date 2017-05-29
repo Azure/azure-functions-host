@@ -239,6 +239,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Scenario_Logging()
         {
+            // Sleep to make sure all logs from other "Scenarios" tests have flushed before
+            // we delete the file.
+            await Task.Delay(1000);
             TestHelpers.ClearFunctionLogs("Scenarios");
 
             string testData = Guid.NewGuid().ToString();
@@ -253,7 +256,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("Scenarios", arguments);
 
-            var logs = await TestHelpers.GetFunctionLogsAsync("Scenarios");
+            IList<string> logs = null;
+            await TestHelpers.Await(() =>
+            {
+                logs = TestHelpers.GetFunctionLogsAsync("Scenarios", throwOnNoLogs: false).Result;
+                return logs.Count > 0;
+            });
 
             // verify use of context.log to log complex objects
             TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
@@ -263,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("v6.5.0", (string)logEntry["version"]);
             Assert.Equal(testData, logEntry["input"]);
 
-            // verify log levels
+            // verify log levels in traces
             TraceEvent[] traces = Fixture.TraceWriter.Traces.Where(t => t.Message.Contains("loglevel")).ToArray();
             Assert.Equal(TraceLevel.Info, traces[0].Level);
             Assert.Equal("loglevel default", traces[0].Message);
@@ -275,6 +283,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("loglevel warn", traces[3].Message);
             Assert.Equal(TraceLevel.Error, traces[4].Level);
             Assert.Equal("loglevel error", traces[4].Message);
+
+            // verify logs made it to file logs
+            Assert.True(logs.Count == 15, string.Join(Environment.NewLine, logs));
+
+            // verify most of the logs look correct
+            Assert.EndsWith("Mathew Charles", logs[5]);
+            Assert.EndsWith("null", logs[6]);
+            Assert.EndsWith("1234", logs[7]);
+            Assert.EndsWith("true", logs[8]);
+            Assert.EndsWith("loglevel default", logs[9]);
+            Assert.EndsWith("loglevel info", logs[10]);
+            Assert.EndsWith("loglevel verbose", logs[11]);
+            Assert.EndsWith("loglevel warn", logs[12]);
+            Assert.EndsWith("loglevel error", logs[13]);
         }
 
         private async Task<CloudBlobContainer> GetEmptyContainer(string containerName)

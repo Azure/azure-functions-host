@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             sw.Start();
             await Utility.DelayWithBackoffAsync(20, tokenSource.Token);
             sw.Stop();
-            Assert.True(sw.ElapsedMilliseconds < 1000);
+            Assert.True(sw.ElapsedMilliseconds < 1000, $"Expected sw.ElapsedMilliseconds < 1000; Actual: {sw.ElapsedMilliseconds}");
         }
 
         [Fact]
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             sw.Start();
             await Utility.DelayWithBackoffAsync(2, CancellationToken.None);
             sw.Stop();
-            Assert.True(sw.ElapsedMilliseconds >= 2000, $"Expected >= 2000; Actual: {sw.ElapsedMilliseconds}");
+            Assert.True(sw.ElapsedMilliseconds >= 2000, $"Expected sw.ElapsedMilliseconds >= 2000; Actual: {sw.ElapsedMilliseconds}");
         }
 
         [Theory]

@@ -93,6 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task FileLogging_Succeeds()
+        {
+            await FileLogging_SucceedsTest();
+        }
+
+        [Fact]
         public async Task MultipleOutputs()
         {
             string id1 = Guid.NewGuid().ToString();
@@ -475,15 +481,6 @@ namespace SecondaryDependency
         public class TestInput
         {
             public int Id { get; set; }
-
-            public string Value { get; set; }
-        }
-
-        public class ScenarioInput
-        {
-            public string Scenario { get; set; }
-
-            public string Container { get; set; }
 
             public string Value { get; set; }
         }

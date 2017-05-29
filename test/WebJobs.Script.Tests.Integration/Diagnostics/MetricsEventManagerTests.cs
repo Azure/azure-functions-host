@@ -394,7 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // here we're just verifying that we're called
             // multiple times
-            Assert.True(numFlushes >= 5);
+            Assert.True(numFlushes >= 5, $"Expected numFlushes >= 5; Actual: {numFlushes}");
 
             mockEventManager.VerifyAll();
         }

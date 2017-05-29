@@ -27,15 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private IMetricsLogger _metrics;
         private IDisposable _fileChangeSubscription;
 
-        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory = null)
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
         {
             Host = host;
             Metadata = functionMetadata;
             _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             // Function file logging is only done conditionally
-            traceWriterFactory = traceWriterFactory ?? new FunctionTraceWriterFactory(functionMetadata.Name, Host.ScriptConfig);
-            TraceWriter traceWriter = traceWriterFactory.Create();
+            TraceWriter traceWriter = host.FunctionTraceWriterFactory.Create(functionMetadata.Name);
             FileTraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || Host.IsPrimary));
 
             // The global trace writer used by the invoker will write all traces to both
@@ -67,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public FunctionMetadata Metadata { get; }
 
-        private TraceWriter FileTraceWriter { get; set; }
+        internal TraceWriter FileTraceWriter { get; set; }
 
         public TraceWriter TraceWriter { get; }
 

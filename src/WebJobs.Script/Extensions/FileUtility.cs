@@ -74,5 +74,40 @@ namespace Microsoft.Azure.WebJobs.Script
                 return await reader.ReadToEndAsync();
             }
         }
+
+        public static string GetRelativePath(string path1, string path2)
+        {
+            if (path1 == null)
+            {
+                throw new ArgumentNullException(nameof(path1));
+            }
+
+            if (path2 == null)
+            {
+                throw new ArgumentNullException(nameof(path2));
+            }
+
+            string EnsureTrailingSeparator(string path)
+            {
+                if (!Path.HasExtension(path) && !path.EndsWith(Path.DirectorySeparatorChar.ToString()))
+                {
+                    path = path + Path.DirectorySeparatorChar;
+                }
+
+                return path;
+            }
+
+            path1 = EnsureTrailingSeparator(path1);
+            path2 = EnsureTrailingSeparator(path2);
+
+            var uri1 = new Uri(path1);
+            var uri2 = new Uri(path2);
+
+            Uri relativeUri = uri1.MakeRelativeUri(uri2);
+            string relativePath = Uri.UnescapeDataString(relativeUri.ToString())
+                .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+            return relativePath;
+        }
     }
 }

@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal static void Initialize(ScriptSettingsManager settingsManager, ContainerBuilder builder, WebHostSettings settings)
         {
             builder.RegisterInstance(settingsManager);
+            builder.RegisterInstance(settings);
 
             builder.RegisterType<WebHostResolver>().SingleInstance();
-
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
 
@@ -30,8 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
             builder.Register<HostPerformanceManager>(ct => ct.Resolve<WebHostResolver>().GetPerformanceManager(settings)).ExternallyOwned();
-            builder.Register<ILoggerFactory>(ct => ct.ResolveOptional<WebScriptHostManager>()?.Instance.ScriptConfig.HostConfig.LoggerFactory).ExternallyOwned();
-            builder.RegisterInstance(settings);
+            builder.Register<ILoggerFactory>(ct => ct.Resolve<WebHostResolver>().GetScriptHostConfiguration(settings).HostConfig.LoggerFactory).ExternallyOwned();
         }
     }
 }

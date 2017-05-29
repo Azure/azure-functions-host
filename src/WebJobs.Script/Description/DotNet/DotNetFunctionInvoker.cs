@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
         private Func<Task> _reloadScript;
-        private Action _shutdown;
+        private Action _onReferencesChanged;
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private string[] _watchedFileTypes;
@@ -48,9 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IFunctionEntryPointResolver functionEntryPointResolver,
             FunctionAssemblyLoader assemblyLoader,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
-            ITraceWriterFactory traceWriterFactory = null,
             IFunctionMetadataResolver metadataResolver = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            : base(host, functionMetadata)
         {
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
@@ -70,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _reloadScript = ReloadScriptAsync;
             _reloadScript = _reloadScript.Debounce();
 
-            _shutdown = () => Host.Shutdown();
-            _shutdown = _shutdown.Debounce();
+            _onReferencesChanged = OnReferencesChanged;
+            _onReferencesChanged = _onReferencesChanged.Debounce();
 
             _restorePackages = RestorePackages;
             _restorePackages = _restorePackages.Debounce();
@@ -100,21 +99,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string fileExtension = Path.GetExtension(e.Name);
             if (ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
             {
-                string message = "Assembly changes detected. Restarting host...";
-                TraceWriter.Info(message);
-                Logger?.LogInformation(message);
-
                 // As a result of an assembly change, we initiate a full host shutdown
-                _shutdown();
+                _onReferencesChanged();
             }
             else if (_watchedFileTypes.Contains(fileExtension))
             {
                 _reloadScript();
             }
-            else if (string.Compare(DotNetConstants.ProjectFileName, e.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Compare(DotNetConstants.ProjectFileName, Path.GetFileName(e.Name), StringComparison.OrdinalIgnoreCase) == 0)
             {
                 _restorePackages();
             }
+        }
+
+        private void OnReferencesChanged()
+        {
+            string message = "Assembly reference changes detected. Restarting host...";
+            TraceWriter.Info(message);
+            Logger?.LogInformation(message);
+
+            Host.Shutdown();
         }
 
         public override void OnError(Exception ex)
@@ -209,12 +213,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     if (!result.IsInitialInstall && result.ReferencesChanged)
                     {
-                        TraceOnPrimaryHost("Package references have changed. Restarting host...", TraceLevel.Info);
+                        TraceOnPrimaryHost("Package references have changed.", TraceLevel.Info);
 
                         // If this is not the initial package install and references changed,
                         // shutdown the host, which will cause it to have a clean start and load the new
                         // assembly references
-                        _shutdown();
+                        _onReferencesChanged();
                     }
                     else
                     {

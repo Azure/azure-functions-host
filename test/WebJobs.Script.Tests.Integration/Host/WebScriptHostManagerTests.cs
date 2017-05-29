@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -31,9 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private WebScriptHostManagerTests.Fixture _fixture;
 
-        // Some tests need their own manager that differs from the fixture.
-        private WebScriptHostManager _manager;
-
         public WebScriptHostManagerTests(WebScriptHostManagerTests.Fixture fixture)
         {
             _fixture = fixture;
@@ -53,11 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await host.CallAsync("ManualTrigger", parameters);
 
+            // it's possible that the TimerTrigger fires during this so filter them out.
+
+            string[] events = _fixture.EventGenerator.Events.Where(e => !e.Contains("TimerTrigger")).ToArray();
+            Assert.True(events.Length == 4, $"Expected 4 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
             Assert.Equal(4, _fixture.EventGenerator.Events.Count);
-            Assert.True(_fixture.EventGenerator.Events[0].StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id="));
-            Assert.True(_fixture.EventGenerator.Events[1].StartsWith("Info ManualTrigger Function started (Id="));
-            Assert.True(_fixture.EventGenerator.Events[2].StartsWith("Info ManualTrigger Function completed (Success, Id="));
-            Assert.True(_fixture.EventGenerator.Events[3].StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id="));
+            Assert.StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[0]);
+            Assert.StartsWith("Info ManualTrigger Function started (Id=", events[1]);
+            Assert.StartsWith("Info ManualTrigger Function completed (Success, Id=", events[2]);
+            Assert.StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id=", events[3]);
 
             // make sure the user log wasn't traced
             Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             webHostSettings.SecretsPath = _secretsDirectory.Path;
             var mockEventManager = new Mock<IScriptEventManager>();
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,  _settingsManager, webHostSettings);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -187,33 +187,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task OnTimeoutException_IgnoreToken_StopsManager()
-        {
-            var trace = new TestTraceWriter(TraceLevel.Info);
-
-            await RunTimeoutExceptionTest(trace, handleCancellation: false);
-
-            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
-            Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
-        }
-
-        [Fact]
-        public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
-        {
-            var trace = new TestTraceWriter(TraceLevel.Info);
-
-            await RunTimeoutExceptionTest(trace, handleCancellation: true);
-
-            // wait a few seconds to make sure the manager doesn't die
-            await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), timeout: 3000));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
-        }
-
-        [Fact]
         public void AddRouteDataToRequest_DoesNotAddRequestProperty_WhenRouteDataNull()
         {
             var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
@@ -249,50 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(result["p4"], null);
         }
 
-        private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)
-        {
-            TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
-            _manager = await CreateAndStartWebScriptHostManager(trace);
-
-            string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
-
-            var args = new Dictionary<string, object>
-            {
-                { "input", scenarioName }
-            };
-
-            await Assert.ThrowsAsync<FunctionTimeoutException>(() => _manager.Instance.CallAsync("TimeoutToken", args));
-        }
-
-        private async Task<WebScriptHostManager> CreateAndStartWebScriptHostManager(TraceWriter traceWriter)
-        {
-            var functions = new Collection<string> { "TimeoutToken" };
-
-            ScriptHostConfiguration config = new ScriptHostConfiguration()
-            {
-                RootScriptPath = $@"TestScripts\CSharp",
-                TraceWriter = traceWriter,
-                FileLoggingMode = FileLoggingMode.Always,
-                Functions = functions,
-                FunctionTimeout = TimeSpan.FromSeconds(3)
-            };
-
-            var mockEventManager = new Mock<IScriptEventManager>();
-            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
-            Task task = Task.Run(() => { manager.RunAndBlock(); });
-            await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
-
-            return manager;
-        }
-
         public void Dispose()
         {
-            if (_manager != null)
-            {
-                _manager.Stop();
-                _manager.Dispose();
-            }
-
             _secretsDirectory.Dispose();
         }
 
@@ -362,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string[] expectedPatterns = new string[]
                 {
                     "Info Reading host configuration file",
+                    "Info Host configuration file read",
                     "Info Host lock lease acquired by instance ID '(.+)'",
                     "Info Function 'Excluded' is marked as excluded",
                     @"Info Generating ([0-9]+) job function\(s\)",

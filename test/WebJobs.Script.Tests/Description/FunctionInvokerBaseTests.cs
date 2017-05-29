@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
             var eventManager = new Mock<IScriptEventManager>();
             var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), eventManager.Object, config, null });
+            hostMock.SetupGet(h => h.FunctionTraceWriterFactory).Returns(new FunctionTraceWriterFactory(config));
             hostMock.Object.TraceWriter = _traceWriter;
 
             var metadata = new FunctionMetadata
@@ -165,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class MockInvoker : FunctionInvokerBase
         {
-            public MockInvoker(ScriptHost host, FunctionMetadata metadata, ITraceWriterFactory traceWriterFactory = null) : base(host, metadata, traceWriterFactory)
+            public MockInvoker(ScriptHost host, FunctionMetadata metadata) : base(host, metadata)
             {
             }
 

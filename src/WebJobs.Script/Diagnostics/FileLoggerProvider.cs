@@ -8,16 +8,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     internal class FileLoggerProvider : ILoggerProvider
     {
-        private ScriptHostConfiguration _config;
+        private IFunctionTraceWriterFactory _traceWriterFactory;
         private Func<string, LogLevel, bool> _filter;
 
-        public FileLoggerProvider(ScriptHostConfiguration config, Func<string, LogLevel, bool> filter)
+        public FileLoggerProvider(IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
         {
-            _config = config;
+            _traceWriterFactory = traceWriterFactory;
             _filter = filter;
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _config, _filter);
+        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _traceWriterFactory, _filter);
 
         public void Dispose()
         {

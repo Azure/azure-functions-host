@@ -57,8 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal NodeFunctionInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            ICompilationService<IJavaScriptCompilation> compilationService, ITraceWriterFactory traceWriterFactory = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            ICompilationService<IJavaScriptCompilation> compilationService)
+            : base(host, functionMetadata)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;

@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
                 new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty),
-                dependencies.CompilationServiceFactory.Object, dependencies.TraceWriterFactory.Object);
+                dependencies.CompilationServiceFactory.Object);
 
             // Send file change notification to trigger a reload
             var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
 
             await invoker.GetFunctionTargetAsync();
 
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object);
+                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
 
             await invoker.GetFunctionTargetAsync();
 
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), dependencies.TraceWriterFactory.Object, metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null), metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
@@ -255,7 +255,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
             var eventManager = new ScriptEventManager();
             var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager, scriptHostConfiguration, null);
+
+            var traceWriterFactory = new Mock<IFunctionTraceWriterFactory>();
+            traceWriterFactory.Setup(f => f.Create(It.IsAny<string>()))
+                .Returns(functionTraceWriter);
+
             host.SetupGet(h => h.IsPrimary).Returns(true);
+            host.SetupGet(h => h.FunctionTraceWriterFactory).Returns(traceWriterFactory.Object);
 
             var entrypointResolver = new Mock<IFunctionEntryPointResolver>();
 
@@ -272,10 +278,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var compilationServiceFactory = new Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>>();
             compilationServiceFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>()))
                 .Returns(compilationService.Object);
-
-            var traceWriterFactory = new Mock<ITraceWriterFactory>();
-            traceWriterFactory.Setup(f => f.Create())
-                .Returns(functionTraceWriter);
 
             var metricsLogger = new MetricsLogger();
             scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
@@ -304,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>> CompilationServiceFactory { get; set; }
 
-            public Mock<ITraceWriterFactory> TraceWriterFactory { get; set; }
+            public Mock<IFunctionTraceWriterFactory> TraceWriterFactory { get; set; }
 
             public TestTraceWriter TraceWriter { get; set; }
         }

@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -17,16 +16,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// </summary>
     internal class FileLogger : ILogger
     {
-        private static readonly ConcurrentDictionary<string, TraceWriter> _writerCache = new ConcurrentDictionary<string, TraceWriter>();
         private readonly Func<string, LogLevel, bool> _filter;
         private readonly string _categoryName;
-        private readonly ScriptHostConfiguration _config;
+        private readonly IFunctionTraceWriterFactory _traceWriterFactory;
 
-        public FileLogger(string categoryName, ScriptHostConfiguration config, Func<string, LogLevel, bool> filter)
+        public FileLogger(string categoryName, IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
         {
             _categoryName = categoryName;
-            _config = config;
             _filter = filter;
+            _traceWriterFactory = traceWriterFactory;
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
@@ -53,12 +51,27 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 return;
             }
 
+            TraceLevel traceLevel = GetTraceLevel(logLevel);
+            TraceEvent traceEvent = new TraceEvent(traceLevel, formattedMessage, _categoryName, exception);
+            string functionName = GetFunctionName();
+
+            // If we don't have a function name, we have no way to create a TraceWriter
+            if (functionName == null)
+            {
+                return;
+            }
+
+            TraceWriter traceWriter = _traceWriterFactory.Create(functionName);
+            traceWriter.Trace(traceEvent);
+        }
+
+        private static string GetFunctionName()
+        {
             IDictionary<string, object> scopeProperties = DictionaryLoggerScope.GetMergedStateDictionary();
 
             if (!scopeProperties.TryGetValue(ScriptConstants.LoggerFunctionNameKey, out string functionName))
             {
-                // We have nowhere to write the file if we don't know the function name
-                return;
+                return null;
             }
 
             // this function name starts with "Functions.", but file paths do not include this
@@ -68,20 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 functionName = functionName.Substring(functionsPrefix.Length);
             }
 
-            TraceWriter traceWriter = _writerCache.GetOrAdd(functionName, (n) => CreateFileTraceWriter(n, _config));
-            TraceLevel traceLevel = GetTraceLevel(logLevel);
-            TraceEvent traceEvent = new TraceEvent(traceLevel, formattedMessage, _categoryName, exception);
-
-            traceWriter.Trace(traceEvent);
-        }
-
-        // For testing
-        internal static void FlushAllTraceWriters()
-        {
-            foreach (TraceWriter writer in _writerCache.Values)
-            {
-                writer.Flush();
-            }
+            return functionName;
         }
 
         private static TraceLevel GetTraceLevel(LogLevel logLevel)
@@ -108,12 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private static bool IsFromTraceWriter(IEnumerable<KeyValuePair<string, object>> properties)
         {
             return properties.Any(kvp => kvp.Key == ScriptConstants.TracePropertyIsUserTraceKey);
-        }
-
-        private static TraceWriter CreateFileTraceWriter(string functionName, ScriptHostConfiguration scriptHostConfig)
-        {
-            ITraceWriterFactory factory = new FunctionTraceWriterFactory(functionName, scriptHostConfig);
-            return factory.Create();
         }
     }
 }

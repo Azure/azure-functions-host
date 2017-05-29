@@ -2,44 +2,40 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Collections.Immutable;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation.TypeScript
+namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
 {
     public class TypeScriptCompilationTests
     {
         [Fact]
-        public void TryParseDiagnostics_ReturnsExpectedResult()
+        public async Task Emit_ReturnsExpectedPath()
         {
-            string filename = "index.ts";
-            int line = 8;
-            int column = 5;
-            string level = "error";
-            string code = "TS2304";
-            string message = "Cannot find name 'something'";
-            string input = $"{filename}({line},{column}): {level} {code}: {message}";
-            bool parsed = TypeScriptCompilation.TryParseDiagnostic(input, out Diagnostic diagnostic);
+            var options = new TypeScriptCompilationOptions
+            {
+                OutDir = "outdir",
+                RootDir = @"c:\root\directory",
+                Target = "test.ts"
+            };
 
-            Assert.True(parsed);
-            Assert.Equal(code, diagnostic.Id);
-            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Equal(filename, diagnostic.Location.GetLineSpan().Path);
-            Assert.Equal(input, diagnostic.ToString());
+            string inputFile = @"c:\root\directory\functionname\inputfile.ts";
+            var compilation = await TypeScriptCompilation.CompileAsync(inputFile, options, new TestCompiler());
+
+            string result = compilation.Emit(CancellationToken.None);
+
+            Assert.Equal(@"c:\root\directory\functionname\outdir\functionname\inputfile.js", result);
         }
 
-        [Fact]
-        public void TryParseDiagnostics_WithInvalidData_ReturnsExpectedResult()
+        private class TestCompiler : ITypeScriptCompiler
         {
-            string input = $"abcde(8,4) : test : test";
-            bool parsed = TypeScriptCompilation.TryParseDiagnostic(input, out Diagnostic diagnostic);
-
-            Assert.False(parsed);
+            public Task<ImmutableArray<Diagnostic>> CompileAsync(string inputFile, TypeScriptCompilationOptions options)
+            {
+                return Task.FromResult(ImmutableArray<Diagnostic>.Empty);
+            }
         }
     }
 }

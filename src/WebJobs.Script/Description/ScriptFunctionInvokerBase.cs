@@ -17,8 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class ScriptFunctionInvokerBase : FunctionInvokerBase
     {
-        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ITraceWriterFactory traceWriterFactory)
-            : base(host, functionMetadata, traceWriterFactory)
+        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
+            : base(host, functionMetadata)
         {
         }
 
