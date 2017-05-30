@@ -5,7 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public static class RpcConstants
     {
-        public const string ZeroMQ = "ZeroMQ";
         public const string GoogleRpc = "grpc";
         public const int DotNetRpcWorkerPort = 50052;
         public const int NodeRpcWorkerPort = 50051;

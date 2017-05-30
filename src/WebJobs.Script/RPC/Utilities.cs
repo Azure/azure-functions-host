@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public static void StartGoogleRpcServer(string googleRpcServerHost, string googleRpcServerPort)
+        public static void StartGoogleRpcServer(string googleRpcServerHost, string googleRpcServerPort, RpcRequestStreamEventSource rpcMessageEventSource)
         {
             // string port = Utility.GetSettingFromConfigOrEnvironment(RpcConstants.GoogleRpcServerPort);
             // string hostAddress = Utility.GetSettingFromConfigOrEnvironment(RpcConstants.GoogleRpcServerHost);
@@ -135,7 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             Server server = new Server
             {
-                Services = { FunctionRpc.BindService(new GoogleRpcServer()) },
+                // TODO initiliaze rpcMessageEventSource in LanguageInvokerBase
+                Services = { FunctionRpc.BindService(new GoogleRpcServer(rpcMessageEventSource)) },
                 Ports = { new ServerPort(googleRpcServerHost, int.Parse(googleRpcServerPort), ServerCredentials.Insecure) }
             };
             Console.WriteLine($"Starting grpc service on port: {googleRpcServerPort}");

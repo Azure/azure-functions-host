@@ -19,14 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Process _dotnetRpcWorker;
 
         private Process _nodeRpcWorker;
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1823:AvoidUnusedPrivateFields")]
-        private GoogleRpcClient _googleRpcDotNetClient;
-
+        
         private Channel _googleRpcDotNetClientChannel;
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1823:AvoidUnusedPrivateFields")]
-        private GoogleRpcClient _googleRpcNodeClient;
 
         private Channel _googleRpcNodeClientChannel;
 
@@ -34,11 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             // DotNet
             _googleRpcDotNetClientChannel = new Channel($"{RpcConstants.RpcWorkerHost}:{RpcConstants.DotNetRpcWorkerPort}", ChannelCredentials.Insecure);
-            _googleRpcDotNetClient = new GoogleRpcClient(new FunctionRpc.FunctionRpcClient(_googleRpcDotNetClientChannel));
 
             // node
             _googleRpcNodeClientChannel = new Channel($"{RpcConstants.RpcWorkerHost}:{RpcConstants.NodeRpcWorkerPort}", ChannelCredentials.Insecure);
-            _googleRpcNodeClient = new GoogleRpcClient(new FunctionRpc.FunctionRpcClient(_googleRpcNodeClientChannel));
         }
 
         public string GetRpcProvider()

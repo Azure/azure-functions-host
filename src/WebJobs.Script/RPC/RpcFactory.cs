@@ -12,8 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             switch (rpcProvider)
             {
-                case RpcConstants.ZeroMQ:
-                    return new ZeroMQ();
                 case RpcConstants.GoogleRpc:
                     return new GoogleRpc();
                 default:

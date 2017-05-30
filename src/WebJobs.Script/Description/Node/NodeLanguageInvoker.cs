@@ -12,10 +12,13 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -31,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private string scriptFilePath;
         private Func<object, Task<object>> _scriptFunc;
         private static bool _initialized = false;
+        private IDisposable _invocationResponseSubscription;
 
         internal NodeLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
@@ -44,6 +48,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _entryPoint = functionMetadata.EntryPoint;
 
             InitializeFileWatcherIfEnabled();
+        }
+
+        protected void InitializeRpcStreamWatcher()
+        {
+          _invocationResponseSubscription = Host.EventManager.OfType<RpcMessageEvent>()
+                    .Where(rpcMessageEvent => rpcMessageEvent.RpcMessageArguments.Message.Type == StreamingMessage.Types.Type.InvocationResponse)
+          .Subscribe(rpcMessageEvent => OnInvocationMessageReceived(null, rpcMessageEvent.RpcMessageArguments));
+        }
+
+        private object OnInvocationMessageReceived(object p, object rpcMessageArguments)
+        {
+            // TODO Handle output bindings
+            throw new NotImplementedException();
         }
 
         // TODO dup form script function invoker

@@ -11,6 +11,7 @@ using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -21,39 +22,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class GoogleRpcServer : FunctionRpc.FunctionRpcBase
     {
+        private RpcRequestStreamEventSource _rpcRequestStreamEventSource;
+
+        public GoogleRpcServer(RpcRequestStreamEventSource rpcRequestStreamEventSource)
+        {
+            this._rpcRequestStreamEventSource = rpcRequestStreamEventSource;
+        }
+
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             while (await requestStream.MoveNext(CancellationToken.None))
             {
-                var incomingMessage = requestStream.Current;
-                switch (incomingMessage.Type)
-                {
-                    case RpcMessageType.StartStream:
-                        // TODO initialize Request/Response streams in GoogleRPC.cs
-                        break;
-                    case RpcMessageType.WorkerInitResponse:
-                        break;
-                    case RpcMessageType.WorkerHeartbeat:
-                        break;
-                    case RpcMessageType.WorkerStatusResponse:
-                        break;
-                    case RpcMessageType.FileChangeEventResponse:
-                        break;
-                    case RpcMessageType.FunctionLoadResponse:
-                        break;
-                    case RpcMessageType.InvocationResponse:
-                        await InvocationResponseHandler(incomingMessage.Content.Unpack<InvocationResponse>());
-                        break;
-                    case RpcMessageType.Log:
-                        LogHandler(incomingMessage.Content.Unpack<Log>());
-                        break;
-                    default:
+                // Raise RpcMessageEvent
+                RpcMessageReceivedEventArgs args = new RpcMessageReceivedEventArgs();
+                args.Message = requestStream.Current;
+                this._rpcRequestStreamEventSource.RpcMessageHandler(this, args);
 
-                        // TODO bette exception
-                        throw new System.Exception("Invalid RpcMessageType");
-                }
-
-                // TODO send invocationRequest
+                // TODO send WorkerInitRequest
             }
         }
 
