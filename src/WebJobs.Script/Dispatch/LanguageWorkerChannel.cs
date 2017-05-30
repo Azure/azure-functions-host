@@ -4,84 +4,115 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        public ChannelState State { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        private readonly LanguageWorkerConfig _config;
+        private Process _process;
 
-        public Task<object> Invoke(object[] parameters)
+        public LanguageWorkerChannel(LanguageWorkerConfig config)
         {
-            throw new NotImplementedException();
+            _config = config;
         }
 
-        public Task Load(FunctionMetadata functionMetadata)
+        public Task<object> InvokeAsync(object[] parameters)
         {
-            throw new NotImplementedException();
+            // TODO
+            return Task.FromResult<object>(null);
         }
 
-        public Task Start()
+        public Task HandleFileEventAsync(FileSystemEventArgs fileEvent)
         {
-            return Task.Run(() => StartProcess(@"node.exe", ".\nodejsWorker.js", "."));
+            // TODO
+            return Task.CompletedTask;
         }
 
-        /* public Task<LanguageInvokerInitializationResult> SetupNodeRpcWorker(TraceWriter systemTraceWriter)
-        // {
-        //    // Any setup needed for GRPC
-        //    // systemTraceWriter.Info("SetupNodeRpcWorker...");
-        //    StartProcess(@"node.exe", ".\nodejsWorker.js", ".");
-        //    bool tcpEndpointAvailable = Utilities.IsTcpEndpointAvailable(RpcConstants.RpcWorkerHost, RpcConstants.NodeRpcWorkerPort, systemTraceWriter);
-        //    if (!tcpEndpointAvailable)
-        //    {
-        //        // string fileName = @"C:\Program Files (x86)\nodejs\node.exe";
-        //        // on Azure
-        //        string fileName = @"node.exe";
-
-        //        // string arguments = @" E:\FuncLang\grpc\examples\node\dynamic_codegen\route_guide\nodeRpcWorker.js";
-        //        // on Azure
-        //        string arguments = @"D:\home\SiteExtensions\Functions\bin\nodejsWorker.js";
-        //        _nodeRpcWorker = Utilities.StartProcess(fileName, arguments, Path.GetDirectoryName(arguments), systemTraceWriter);
-        //    }
-        //    tcpEndpointAvailable = Utilities.IsTcpEndpointAvailable(RpcConstants.RpcWorkerHost, RpcConstants.NodeRpcWorkerPort, systemTraceWriter);
-        //    if (!tcpEndpointAvailable)
-        //    {
-        //        throw new InvalidOperationException($"Unable to start NodeRpcWorker");
-        //    }
-        //    LanguageInvokerInitializationResult initResult = new LanguageInvokerInitializationResult();
-        //    initResult.LanguageServiceCapability = new Dictionary<string, string>();
-        //    initResult.LanguageServiceCapability.Add("Lang", "node");
-
-        //    return Task.FromResult(initResult);
-        // } */
-
-        private static Process StartProcess(string fileName, string arguments, string workingDirectory)
+        public Task LoadAsync(FunctionMetadata functionMetadata)
         {
+            // TODO
+            return Task.CompletedTask;
+        }
+
+        public async Task StartAsync()
+        {
+            await StopAsync();
+
+            string requestId = Guid.NewGuid().ToString();
+            Task<IEnumerable<string>> startWorkerTask = StartWorkerAsync(_config, requestId);
+            Task timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+
+            // TODO: subscribe to rx with request id, handle timeout, etc
+            await Task.WhenAny(startWorkerTask, timeoutTask);
+        }
+
+        public Task StopAsync()
+        {
+            // TODO: send cancellation warning
+
+            _process?.Kill();
+            _process = null;
+            return Task.CompletedTask;
+        }
+
+        internal Task<IEnumerable<string>> StartWorkerAsync(LanguageWorkerConfig config, string requestId)
+        {
+            var tcs = new TaskCompletionSource<IEnumerable<string>>();
+
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.UseShellExecute = false;   // This is important
-                psi.CreateNoWindow = true;     // This is what hides the command window.
-                psi.FileName = fileName;
-                psi.Arguments = arguments;
-                psi.WorkingDirectory = workingDirectory;
-                psi.RedirectStandardError = true;
-                psi.RedirectStandardOutput = true;
+                List<string> output = new List<string>();
+                string workerDirectory = Path.GetDirectoryName(config.WorkerPath);
 
-                var serviceProcess = Process.Start(psi);
-                System.Threading.Thread.Sleep(new TimeSpan(0, 0, 5));
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = config.ExecutablePath,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    ErrorDialog = false,
+                    WorkingDirectory = workerDirectory,
+                    Arguments = config.ToArgumentString(requestId)
+                };
 
-                serviceProcess.WaitForExit();
-                return serviceProcess;
+                void ProcessDataReceived(object sender, DataReceivedEventArgs e)
+                {
+                    if (e.Data != null)
+                    {
+                        output.Add(e.Data);
+                    }
+                }
+
+                _process = new Process { StartInfo = startInfo };
+                _process.ErrorDataReceived += ProcessDataReceived;
+                _process.OutputDataReceived += ProcessDataReceived;
+                _process.EnableRaisingEvents = true;
+                _process.Exited += (s, e) =>
+                {
+                    _process.WaitForExit();
+                    _process.Close();
+                    tcs.SetResult(output);
+                };
+
+                _process.Start();
+
+                _process.BeginErrorReadLine();
+                _process.BeginOutputReadLine();
             }
-            catch (Exception)
+            catch (Exception exc)
             {
-                return null;
+                tcs.SetException(exc);
             }
+
+            return tcs.Task;
         }
     }
 }

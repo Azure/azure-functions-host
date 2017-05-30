@@ -17,7 +17,7 @@ using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Rpc.Messages.TypedData.Types.Type;
 using RpcMessageType = Microsoft.Azure.WebJobs.Script.Rpc.Messages.StreamingMessage.Types.Type;
 
-namespace WebJobs.Script.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class GoogleRpcServer : FunctionRpc.FunctionRpcBase
     {

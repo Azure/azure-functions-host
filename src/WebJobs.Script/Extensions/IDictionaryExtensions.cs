@@ -51,5 +51,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return false;
         }
+
+        public static TValue GetOrAdd<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, Func<TKey, TValue> factoryFunction)
+        {
+            if (dict.ContainsKey(key))
+            {
+                return dict[key];
+            }
+            else
+            {
+                var obj = factoryFunction(key);
+                dict[key] = obj;
+                return obj;
+            }
+        }
     }
 }

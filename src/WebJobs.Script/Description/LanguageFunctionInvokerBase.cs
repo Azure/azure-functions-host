@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _rpcFactory = new RpcFactory();
             this.rpc = _rpcFactory.CreateRpcClient(RpcConstants.GoogleRpc);
+            Host.FunctionDispatcher.LoadAsync(Metadata);
         }
 
         // public event EventHandler<LanguageInvokerMessagesEventArgs> LanguageInvokerMessagesUpdated;

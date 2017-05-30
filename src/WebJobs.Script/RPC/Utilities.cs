@@ -8,7 +8,6 @@ using System.Net.Sockets;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
-using WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {

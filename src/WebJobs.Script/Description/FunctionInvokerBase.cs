@@ -50,8 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter = TraceWriter.Apply(functionTraceProperties);
 
             Logger = host.ScriptConfig.HostConfig.LoggerFactory?.CreateLogger(LogCategories.Executor);
-
-            Host.FunctionDispatcher.Register(Metadata);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }

@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // send message to Node RPC worker
             // TODO: move dispatcher.invoke to FunctionInvokerBase
-            object functionResult = await Host.FunctionDispatcher.Invoke(Metadata, parameters);
+            object functionResult = await Host.FunctionDispatcher.InvokeAsync(Metadata, parameters);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
         }

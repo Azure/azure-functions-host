@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,21 +11,17 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    internal enum ChannelState
-    {
-        Stopped,
-        Started
-    }
-
     // wrapper around proc.start & grpc channel with some state management
     internal interface ILanguageWorkerChannel
     {
-        ChannelState State { get; set; }
+        Task StartAsync();
 
-        Task Start();
+        Task StopAsync();
 
-        Task Load(FunctionMetadata functionMetadata);
+        Task HandleFileEventAsync(FileSystemEventArgs fileEvent);
 
-        Task<object> Invoke(object[] parameters);
+        Task LoadAsync(FunctionMetadata functionMetadata);
+
+        Task<object> InvokeAsync(object[] parameters);
     }
 }
