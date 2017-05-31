@@ -18,9 +18,6 @@
         <WorkingFolder>CodePackage</WorkingFolder>
       </ExeHost>
     </EntryPoint>
-    <EnvironmentVariables>
-      <EnvironmentVariable Name="AzureWebJobsScriptRoot" Value="C:\src\ESB\Sandboxes\KW\TestFunctions"/>
-    </EnvironmentVariables>
   </CodePackage>
 
   <ConfigPackage Name="Config" Version="1.0.0" />
