@@ -305,7 +305,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void Setting_WithNoValueInResolver_ThrowsIfNoDefault()
         {
             Attr2 a2 = new Attr2(string.Empty, string.Empty) { ResolvedSetting = "appsetting" };
-            Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, EmptyContract));
+            var exc = Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr2>(a2, EmptyContract));
+            Assert.Equal($"Unable to resolve app setting for property 'Attr2.ResolvedSetting'. Make sure the app setting exists and has a valid value.", exc.Message);
         }
 
         [Fact]
@@ -552,7 +553,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string resolvedValue = "MySetting";
 
             var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop));
-            Assert.Equal("Unable to resolve value for property 'Attr2.ResolvedSetting'.", ex.Message);
+            Assert.Contains("Unable to resolve app setting for property 'Attr2.ResolvedSetting'.", ex.Message);
         }
 
         [Fact]

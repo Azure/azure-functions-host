@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 // It's important that we only log the attribute property name, not the actual value to ensure
                 // that in cases where users accidentally use a secret key *value* rather than indirect setting name
                 // that value doesn't get written to logs.
-                throw new InvalidOperationException($"Unable to resolve value for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'.");
+                throw new InvalidOperationException($"Unable to resolve app setting for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'. Make sure the app setting exists and has a valid value.");
             }
             return (newAttr, bindingData) => resolvedValue;
         }
