@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             switch (rpcProvider)
             {
                 case RpcConstants.GoogleRpc:
-                    return new GoogleRpc();
+                    return null;
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture,
                         "The Rpc provider {0} is not supported.", rpcProvider));

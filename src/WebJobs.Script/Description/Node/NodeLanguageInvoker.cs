@@ -40,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, ITraceWriterFactory traceWriterFactory = null)
             : base(host, functionMetadata, traceWriterFactory)
         {
-            this.GetRpcClient().SetupNodeRpcWorker(this.TraceWriter);
             _trigger = trigger;
             scriptFilePath = functionMetadata.ScriptFile.Replace('\\', '/');
             _inputBindings = inputBindings;

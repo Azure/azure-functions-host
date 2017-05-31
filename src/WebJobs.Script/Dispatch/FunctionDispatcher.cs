@@ -2,14 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.RPC.Grpc;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     internal class FunctionDispatcher : IFunctionDispatcher
     {
         private readonly ScriptHostConfiguration _scriptConfig;
+        private readonly IScriptEventManager _eventManager;
+        private readonly TraceWriter _logger;
 
         // TODO: support user defined ScriptType definitions
         private readonly IDictionary<ScriptType, WorkerPool> _workerMapping = new Dictionary<ScriptType, WorkerPool>();
@@ -28,10 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         // TODO: handle dead connections https://news.ycombinator.com/item?id=12345223
         private GrpcServer _server;
 
-        public FunctionDispatcher(ScriptHostConfiguration scriptConfig)
+        public FunctionDispatcher(ScriptHostConfiguration scriptConfig, IScriptEventManager manager, TraceWriter logger)
         {
             _scriptConfig = scriptConfig;
+            _eventManager = manager;
+            _logger = logger;
+
             _server = new GrpcServer();
+
             AddWorkers(new List<LanguageWorkerConfig>()
             {
                 new NodeLanguageWorkerConfig()
@@ -42,22 +48,28 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             AddWorkers(workers);
             _server.Start();
+
+            // TODO: how to handle async subscriptions? post 'handlefileevent' completed back to event stream?
+            _eventManager.OfType<FileEvent>()
+                .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
+                .Subscribe(OnFileEventReceived);
+
             var workerStartTasks = _workers.Select(worker => worker.StartAsync());
             return Task.WhenAll(workerStartTasks);
         }
 
-        public Task HandleFileEventAsync(FileSystemEventArgs fileEvent)
+        public void OnFileEventReceived(FileEvent fileEvent)
         {
-            var workerFileChangeTasks = _workers.Select(worker => worker.HandleFileEventAsync(fileEvent));
-            return Task.WhenAll();
+            var workerFileChangeTasks = _workers.Select(worker => worker.HandleFileEventAsync(fileEvent.FileChangeArguments));
+            Task.WhenAll(workerFileChangeTasks).GetAwaiter().GetResult();
         }
 
-        public Task LoadAsync(FunctionMetadata functionMetadata)
+        public Task LoadAsync(Description.FunctionMetadata functionMetadata)
         {
             return GetWorker(functionMetadata).LoadAsync(functionMetadata);
         }
 
-        public Task<object> InvokeAsync(FunctionMetadata functionMetadata, object[] parameters)
+        public Task<object> InvokeAsync(Description.FunctionMetadata functionMetadata, object[] parameters)
         {
             return GetWorker(functionMetadata).InvokeAsync(parameters);
         }
@@ -69,16 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             await _server.ShutdownAsync();
         }
 
-        private void AddWorkers(IEnumerable<LanguageWorkerConfig> configs)
+        private void AddWorkers(IEnumerable<LanguageWorkerConfig> workerConfigs)
         {
-            if (configs != null)
+            if (workerConfigs != null)
             {
-                foreach (var config in configs)
+                foreach (var workerConfig in workerConfigs)
                 {
-                    var worker = new LanguageWorkerChannel(config);
+                    var worker = new LanguageWorkerChannel(_scriptConfig, workerConfig, _logger, _server.Connections);
                     _workers.Add(worker);
 
-                    foreach (var scriptType in config.SupportedScriptTypes)
+                    foreach (var scriptType in workerConfig.SupportedScriptTypes)
                     {
                         WorkerPool workerPool = _workerMapping.GetOrAdd(scriptType, key => new List<ILanguageWorkerChannel>());
                         workerPool.Add(worker);
@@ -87,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             }
         }
 
-        private ILanguageWorkerChannel GetWorker(FunctionMetadata functionMetadata)
+        private ILanguageWorkerChannel GetWorker(Description.FunctionMetadata functionMetadata)
         {
             var pool = _workerMapping[functionMetadata.ScriptType];
             return SchedulingStrategy(pool);

@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             Server server = new Server
             {
                 // TODO initiliaze rpcMessageEventSource in LanguageInvokerBase
-                Services = { FunctionRpc.BindService(new GoogleRpcServer(rpcMessageEventSource)) },
+                Services = { FunctionRpc.BindService(null) },
                 Ports = { new ServerPort(googleRpcServerHost, int.Parse(googleRpcServerPort), ServerCredentials.Insecure) }
             };
             Console.WriteLine($"Starting grpc service on port: {googleRpcServerPort}");

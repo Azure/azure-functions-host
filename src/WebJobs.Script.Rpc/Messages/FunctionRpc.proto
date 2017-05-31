@@ -63,6 +63,7 @@ message StreamingMessage{
     }
     Type type = 1;
     google.protobuf.Any content = 2;
+	string request_id = 3;
 }
 
 // Process.Start required info
@@ -71,12 +72,10 @@ message StreamingMessage{
 //   protocol version 
 
 message StartStream {
-  string request_id = 1;
   string worker_id = 2;
 }
 
 message WorkerInitRequest {
-  string request_id = 4;
   string host_version = 1;
 
   // A map of host supported features/capabilities
@@ -88,7 +87,6 @@ message WorkerInitRequest {
 }
 
 message WorkerInitResponse {
-  string request_id = 4;
   string worker_version = 1;
   // A map of worker supported features/capabilities
   map<string, string> capabilites = 2;
@@ -129,7 +127,6 @@ message FileChangeEventRequest {
     All = 15;
   }
 
-  string request_id = 4;
   Type type = 1;
   string full_path = 2;
   string name = 3;
@@ -142,29 +139,24 @@ message FileChangeEventResponse {
     Reload = 2;
   }
 
-  string request_id = 4;
   Action action = 1;
   // functions to reload
   repeated string function_ids = 2;
 }
 
 message WorkerStatusRequest{
-  string request_id = 1;
 }
 
 message WorkerStatusResponse {
-  string request_id = 1;
 }
 
 message FunctionLoadRequest {
-  string request_id = 3;
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
   FunctionMetadata metadata = 2;
 }
 
 message FunctionLoadResponse {
-  string request_id = 3;
   string function_id = 1;
   StatusResult result = 2;
 }
@@ -181,7 +173,6 @@ message FunctionMetadata {
 }
 
 message InvocationRequest {
-  string request_id = 5;
   string invocation_id = 1;
   string function_id = 2;
   repeated ParameterBinding input_data = 3;
@@ -194,7 +185,6 @@ message InvocationCancel {
 }
 
 message InvocationResponse {
-  string request_id = 4;
   string invocation_id = 1;
   repeated ParameterBinding output_data = 2; // $return is added as a parameter binding for the function result
   StatusResult result = 3;

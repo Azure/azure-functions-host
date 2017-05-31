@@ -6,39 +6,50 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
+    // TODO: move to RPC project?
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly LanguageWorkerConfig _config;
+        private readonly LanguageWorkerConfig _workerConfig;
+        private readonly ScriptHostConfiguration _scriptConfig;
+        private readonly TraceWriter _logger;
         private Process _process;
+        private IObservable<ChannelContext> _connections;
+        private ChannelContext _context;
 
-        public LanguageWorkerChannel(LanguageWorkerConfig config)
+        public LanguageWorkerChannel(ScriptHostConfiguration scriptConfig, LanguageWorkerConfig workerConfig, TraceWriter logger, IObservable<ChannelContext> connections)
         {
-            _config = config;
+            _workerConfig = workerConfig;
+            _scriptConfig = scriptConfig;
+            _logger = logger;
+            _connections = connections;
         }
 
-        public Task<object> InvokeAsync(object[] parameters)
+        public async Task<object> InvokeAsync(object[] parameters)
         {
-            // TODO
-            return Task.FromResult<object>(null);
+            InvocationRequest request = new InvocationRequest();
+            InvocationResponse response = await _context.SendAsync<InvocationRequest, InvocationResponse>(request);
+            return null;
         }
 
-        public Task HandleFileEventAsync(FileSystemEventArgs fileEvent)
+        public async Task HandleFileEventAsync(FileSystemEventArgs fileEvent)
         {
-            // TODO
-            return Task.CompletedTask;
+            FileChangeEventRequest request = new FileChangeEventRequest();
+            FileChangeEventResponse response = await _context.SendAsync<FileChangeEventRequest, FileChangeEventResponse>(request);
         }
 
-        public Task LoadAsync(FunctionMetadata functionMetadata)
+        public async Task LoadAsync(Description.FunctionMetadata functionMetadata)
         {
-            // TODO
-            return Task.CompletedTask;
+            FunctionLoadRequest request = new FunctionLoadRequest();
+            FunctionLoadResponse response = await _context.SendAsync<FunctionLoadRequest, FunctionLoadResponse>(request);
         }
 
         public async Task StartAsync()
@@ -46,11 +57,26 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             await StopAsync();
 
             string requestId = Guid.NewGuid().ToString();
-            Task<IEnumerable<string>> startWorkerTask = StartWorkerAsync(_config, requestId);
-            Task timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
 
-            // TODO: subscribe to rx with request id, handle timeout, etc
-            await Task.WhenAny(startWorkerTask, timeoutTask);
+            TaskCompletionSource<bool> connectionSource = new TaskCompletionSource<bool>();
+            IDisposable subscription = null;
+            subscription = _connections
+                .Where(msg => msg.RequestId == requestId)
+                .Timeout(TimeSpan.FromSeconds(10))
+                .Subscribe(msg =>
+                {
+                    _context = msg;
+                    connectionSource.SetResult(true);
+                    subscription?.Dispose();
+                }, exc =>
+                {
+                    connectionSource.SetException(exc);
+                    subscription?.Dispose();
+                });
+
+            Task startWorkerTask = StartWorkerAsync(_workerConfig, requestId);
+
+            await Task.WhenAny(startWorkerTask, connectionSource.Task);
         }
 
         public Task StopAsync()
@@ -62,14 +88,13 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             return Task.CompletedTask;
         }
 
-        internal Task<IEnumerable<string>> StartWorkerAsync(LanguageWorkerConfig config, string requestId)
+        internal Task StartWorkerAsync(LanguageWorkerConfig config, string requestId)
         {
-            var tcs = new TaskCompletionSource<IEnumerable<string>>();
+            var tcs = new TaskCompletionSource<bool>();
 
             try
             {
                 List<string> output = new List<string>();
-                string workerDirectory = Path.GetDirectoryName(config.WorkerPath);
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -79,27 +104,19 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     ErrorDialog = false,
-                    WorkingDirectory = workerDirectory,
+                    WorkingDirectory = _scriptConfig.RootScriptPath,
                     Arguments = config.ToArgumentString(requestId)
                 };
 
-                void ProcessDataReceived(object sender, DataReceivedEventArgs e)
-                {
-                    if (e.Data != null)
-                    {
-                        output.Add(e.Data);
-                    }
-                }
-
                 _process = new Process { StartInfo = startInfo };
-                _process.ErrorDataReceived += ProcessDataReceived;
-                _process.OutputDataReceived += ProcessDataReceived;
+                _process.ErrorDataReceived += (sender, e) => _logger.Error(e?.Data);
+                _process.OutputDataReceived += (sender, e) => _logger.Info(e?.Data);
                 _process.EnableRaisingEvents = true;
                 _process.Exited += (s, e) =>
                 {
                     _process.WaitForExit();
                     _process.Close();
-                    tcs.SetResult(output);
+                    tcs.SetResult(true);
                 };
 
                 _process.Start();
@@ -109,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             }
             catch (Exception exc)
             {
+                _logger.Error("Error starting LanguageWorkerChannel", exc);
                 tcs.SetException(exc);
             }
 

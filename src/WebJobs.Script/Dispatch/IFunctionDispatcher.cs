@@ -16,8 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         // start workers?
         Task InitializeAsync(IEnumerable<LanguageWorkerConfig> workerConfigs);
 
-        Task HandleFileEventAsync(FileSystemEventArgs fileEvent);
-
         // assign functions to worker pools based on language type
         // load functions?
         Task LoadAsync(FunctionMetadata functionMetadata);
