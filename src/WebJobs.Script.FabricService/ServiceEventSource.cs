@@ -9,7 +9,7 @@ using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace WebJobs.Script.FabricService
 {
-    [EventSource(Name = "MyCompany-WebJobs.Script.FabricHost-FabricService")]
+    [EventSource(Name = "Microsoft-WebJobs.Script.FabricHost-FabricService")]
     internal sealed class ServiceEventSource : EventSource
     {
         public static readonly ServiceEventSource Current = new ServiceEventSource();
