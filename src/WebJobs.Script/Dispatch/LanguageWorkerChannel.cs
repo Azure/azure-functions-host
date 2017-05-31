@@ -9,9 +9,9 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             FileChangeEventResponse response = await _context.SendAsync<FileChangeEventRequest, FileChangeEventResponse>(request);
         }
 
-        public async Task LoadAsync(Description.FunctionMetadata functionMetadata)
+        public async Task LoadAsync(FunctionMetadata functionMetadata)
         {
             FunctionLoadRequest request = new FunctionLoadRequest();
             FunctionLoadResponse response = await _context.SendAsync<FunctionLoadRequest, FunctionLoadResponse>(request);

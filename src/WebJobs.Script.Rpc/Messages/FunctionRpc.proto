@@ -59,7 +59,7 @@ message StreamingMessage{
       InvocationCancel = 15;
 
       //// MISC
-      Log = 19;
+      RpcLog = 19;
     }
     Type type = 1;
     google.protobuf.Any content = 2;
@@ -83,7 +83,7 @@ message WorkerInitRequest {
 
   // inform worker of supported categories and their levels
   // i.e. Worker = Verbose, Function.MyFunc = None
-  map<string, Log.Level> log_categories = 3;
+  map<string, RpcLog.Level> log_categories = 3;
 }
 
 message WorkerInitResponse {
@@ -103,7 +103,7 @@ message StatusResult {
   string result = 1;
   RpcException exception = 2;
   // Captured logs or relevant details can use the logs property
-  repeated Log logs = 3;
+  repeated RpcLog logs = 3;
 }
 
 // TODO: investigate grpc heartbeat - don't limit to grpc implemention
@@ -153,7 +153,7 @@ message WorkerStatusResponse {
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
-  FunctionMetadata metadata = 2;
+  RpcFunctionMetadata metadata = 2;
 }
 
 message FunctionLoadResponse {
@@ -161,7 +161,7 @@ message FunctionLoadResponse {
   StatusResult result = 2;
 }
 
-message FunctionMetadata {
+message RpcFunctionMetadata {
   // TODO: do we want the host's name - the language worker might do a better job of assignment than the host
   string name = 4;
 
@@ -209,7 +209,7 @@ message ParameterBinding {
   TypedData data = 2;
 }
 
-message Log {
+message RpcLog {
   // Matching ILogger semantics
   // https://github.com/aspnet/Logging/blob/9506ccc3f3491488fe88010ef8b9eb64594abf95/src/Microsoft.Extensions.Logging/Logger.cs
   enum Level {

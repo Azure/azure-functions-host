@@ -64,12 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             Task.WhenAll(workerFileChangeTasks).GetAwaiter().GetResult();
         }
 
-        public Task LoadAsync(Description.FunctionMetadata functionMetadata)
+        public Task LoadAsync(FunctionMetadata functionMetadata)
         {
             return GetWorker(functionMetadata).LoadAsync(functionMetadata);
         }
 
-        public Task<object> InvokeAsync(Description.FunctionMetadata functionMetadata, object[] parameters)
+        public Task<object> InvokeAsync(FunctionMetadata functionMetadata, object[] parameters)
         {
             return GetWorker(functionMetadata).InvokeAsync(parameters);
         }
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             }
         }
 
-        private ILanguageWorkerChannel GetWorker(Description.FunctionMetadata functionMetadata)
+        private ILanguageWorkerChannel GetWorker(FunctionMetadata functionMetadata)
         {
             var pool = _workerMapping[functionMetadata.ScriptType];
             return SchedulingStrategy(pool);

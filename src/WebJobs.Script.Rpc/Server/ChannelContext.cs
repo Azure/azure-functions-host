@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             [typeof(InvocationRequest)] = StreamTypes.InvocationRequest,
             [typeof(InvocationResponse)] = StreamTypes.InvocationResponse,
             [typeof(InvocationCancel)] = StreamTypes.InvocationCancel,
-            [typeof(Log)] = StreamTypes.Log
+            [typeof(RpcLog)] = StreamTypes.RpcLog
         };
     }
 }

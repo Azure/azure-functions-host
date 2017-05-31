@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected void InitializeRpcStreamLogWatcher()
         {
             _logSubscription = Host.EventManager.OfType<RpcMessageEvent>()
-                      .Where(rpcMessageEvent => rpcMessageEvent.RpcMessageArguments.Message.Type == StreamingMessage.Types.Type.Log)
+                      .Where(rpcMessageEvent => rpcMessageEvent.RpcMessageArguments.Message.Type == StreamingMessage.Types.Type.RpcLog)
             .Subscribe(rpcMessageEvent => OnLogMessageReceived(null, rpcMessageEvent.RpcMessageArguments));
         }
 
