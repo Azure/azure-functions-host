@@ -16,9 +16,6 @@
     }
   ],
   "outputs": [
-    {
-      "type": "StdOutput"
-    }
     // Please update the instrumentationKey.
     //{
     //  "type": "ApplicationInsights",
