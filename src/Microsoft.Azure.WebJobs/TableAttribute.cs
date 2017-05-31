@@ -132,7 +132,9 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets or sets the app setting name that contains the Azure Storage connection string.
+        /// </summary>
         public string Connection { get; set; }
     }
 }

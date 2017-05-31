@@ -77,7 +77,9 @@ namespace Microsoft.Azure.WebJobs
             Access = access;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets or sets the app setting name that contains the Service Bus connection string.
+        /// </summary>
         public string Connection { get; set; }
 
         /// <summary>

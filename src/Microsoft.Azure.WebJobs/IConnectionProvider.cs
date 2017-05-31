@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs
     public interface IConnectionProvider
     {
         /// <summary>
-        /// Gets the name of the connection string to use.
+        /// Gets or sets the app setting name that contains the connection string.
         /// </summary>
         string Connection { get; set; }
     }

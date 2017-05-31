@@ -57,7 +57,9 @@ namespace Microsoft.Azure.WebJobs
         /// </summary>
         public string QueueOrTopicName { get; private set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets or sets the app setting name that contains the Service Bus connection string.
+        /// </summary>
         public string Connection { get; set; }
 
         /// <summary>

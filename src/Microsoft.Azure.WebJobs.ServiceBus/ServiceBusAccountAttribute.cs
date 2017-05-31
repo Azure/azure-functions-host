@@ -33,11 +33,13 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets the name of the ServiceBus connection string to use.
+        /// Gets or sets the name of the app setting that contains the Service Bus connection string.
         /// </summary>
         public string Account { get; private set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets or sets the app setting name that contains the Service Bus connection string.
+        /// </summary>
         string IConnectionProvider.Connection
         {
             get

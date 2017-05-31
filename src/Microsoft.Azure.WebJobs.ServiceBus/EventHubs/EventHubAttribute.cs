@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         public string EventHubName { get; private set; }
 
         /// <summary>
-        /// Optional connection name. If missing, tries to use a registered event hub sender.
+        /// Gets or sets the optional app setting name that contains the Event Hub connection string. If missing, tries to use a registered event hub sender.
         /// </summary>
         [AppSetting]
         public string Connection { get; set; }

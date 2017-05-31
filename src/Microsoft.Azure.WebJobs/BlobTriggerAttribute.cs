@@ -46,7 +46,9 @@ namespace Microsoft.Azure.WebJobs
             _blobPath = blobPath;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets or sets the app setting name that contains the Azure Storage connection string.
+        /// </summary>
         public string Connection { get; set; }
 
         /// <summary>Gets the path of the blob to which to bind.</summary>

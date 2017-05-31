@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
         public string ConsumerGroup { get; set; }
 
         /// <summary>
-        /// Optional connection name. If missing, tries to use a registered event hub receiver.
+        /// Gets or sets the optional app setting name that contains the Event Hub connection string. If missing, tries to use a registered event hub receiver.
         /// </summary>
         [AppSetting]
         public string Connection { get; set; }
