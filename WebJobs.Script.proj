@@ -105,6 +105,7 @@
   </Target>
 
   <Target Name="DownloadRuntimeNugetClient">
+    <Message Text="Downloading runtime NuGet client..." Importance="Normal" />
     <DownloadNuGet OutputFileName="$(FunctionsSiteExtensionPath)\bin\tools\nuget.exe" MinimumVersion="3.3.0" DownloadUrl="https://azfunc.blob.core.windows.net/public/nuget.exe"  />
   </Target>
 
@@ -128,9 +129,6 @@
   </Target>
 
   <Target Name="PackageWebHost" DependsOnTargets="Build;DownloadRuntimeNugetClient">
-    <ItemGroup>
-        <SiteExtensionSource Include="$(FunctionsSiteExtensionPath)\**\*.*" />
-    </ItemGroup>
     <MSBuild Projects="src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
              Properties="DeployOnBuild=true; PublishProfile=FileSystem">
     </MSBuild>
@@ -142,6 +140,10 @@
     <!--Create site extension package  -->
     <MakeDir Directories="@(SiteExtensionPath)"/>
     
+    <ItemGroup>
+        <SiteExtensionSource Include="$(FunctionsSiteExtensionPath)\**\*.*" />
+    </ItemGroup>
+
     <Copy SourceFiles="@(SiteExtensionSource)" DestinationFiles="@(SiteExtensionSource->'$(SiteExtensionPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="$(ExtensionXml)" DestinationFolder="$(SiteExtensionBasePath)" />
     
