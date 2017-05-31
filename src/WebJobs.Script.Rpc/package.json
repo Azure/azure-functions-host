@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "name": "webjobs.script.rpc",
+  "private": true,
+  "devDependencies": {
+    "grpc-tools": "1.3.7"
+  }
+}

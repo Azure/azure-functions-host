@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Server _server;
         private FunctionRpcImpl _serverImpl;
 
+        // TODO: start in a new thread?
         public GrpcServer()
         {
             _serverImpl = new FunctionRpcImpl();
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 Services = { FunctionRpc.BindService(_serverImpl) },
 
                 // TODO: port selection, encryption
-                Ports = { new ServerPort("localhost", 0, ServerCredentials.Insecure) }
+                Ports = { new ServerPort("localhost", 50051, ServerCredentials.Insecure) }
             };
         }
 

@@ -31,13 +31,23 @@
 
 setlocal
 
-@rem enter this/Messages directory
-cd /d %~dp0/Messages
+@rem enter Script.Rpc directory
+cd /d %~dp0
 
-set TOOLS_PATH=..\..\..\packages\Grpc.Tools.1.3.0\tools\windows_x86
+set NUGET_PATH=..\..\packages\Grpc.Tools.1.3.6\tools\windows_x86
+set MODULE_PATH=.\node_modules\grpc-tools\bin
+set PROTO=.\Proto\FunctionRpc.proto
+set MSGDIR=.\Messages
 
-if exist *.cs del *.cs
+if exist %MSGDIR% rmdir /s /q %MSGDIR%
+mkdir %MSGDIR%
 
-%TOOLS_PATH%\protoc.exe -I. --csharp_out . FunctionRpc.proto --grpc_out . --plugin=protoc-gen-grpc=%TOOLS_PATH%\grpc_csharp_plugin.exe
+set OUTDIR=%MSGDIR%\DotNet
+mkdir %OUTDIR%
+%MODULE_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%NUGET_PATH%\grpc_csharp_plugin.exe
+
+set OUTDIR=%MSGDIR%\Node
+mkdir %OUTDIR%
+%MODULE_PATH%\protoc.exe %PROTO% --js_out=import_style=commonjs,binary:%OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%MODULE_PATH%\grpc_node_plugin.exe
 
 endlocal
