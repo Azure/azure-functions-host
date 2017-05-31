@@ -13,3 +13,10 @@
     - Security\Serialization\ScriptSecretSerializerV0.cs
     - Security\Serialization\ScriptSecretSerializerV1.cs    
 5. transform WebHosts WebApiConfig.cs into Startup.cs
+
+# get FabricService/Host running
+
+1. open solution elevated
+2. create AppInsights instance and/or get Instrumentation key
+3. untrack eventFlowConfig: git update-index --assume-unchanged .\src\WebJobs.Script.FabricService\PackageRoot\Config\eventFlowConfig.json
+4. set Instrumentation key in .\src\WebJobs.Script.FabricService\PackageRoot\Config\eventFlowConfig.json, remove StdOutput 
