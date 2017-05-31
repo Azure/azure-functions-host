@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.FabricHost
             // set to Service Fabric specific values
             settings.IsSelfHost = true;
             settings.ScriptPath = scriptsPackage.Path;
-            settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+            settings.LogPath = Path.Combine(serviceContext.CodePackageActivationContext.LogDirectory, @"Functions");
             settings.SecretsPath = secretsPackage.Path;
 
             if (string.IsNullOrEmpty(settings.ScriptPath))

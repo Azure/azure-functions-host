@@ -5,8 +5,12 @@ using Microsoft.Azure.WebJobs.Script.FabricHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
+using Microsoft.Diagnostics.EventFlow;
+using Microsoft.Diagnostics.EventFlow.Inputs;
+using Microsoft.Extensions.Logging;
 using Owin;
 using System.Fabric;
+using System.IO;
 using System.Web.Http;
 
 namespace WebJobs.Script.FabricService
@@ -48,12 +52,18 @@ namespace WebJobs.Script.FabricService
 
             // TODO: add Initialize WebHook Receivers
 
-
             var scriptHostManager = config.DependencyResolver.GetService<WebScriptHostManager>();
             if (scriptHostManager != null && !scriptHostManager.Initialized)
             {
                 scriptHostManager.Initialize();
             }
+
+            // TODO: add EventFlow pipeline to Logger
+            var configPackage = ServiceContext.CodePackageActivationContext.GetConfigurationPackageObject("Config");
+            var pipeline = DiagnosticPipelineFactory.CreatePipeline(Path.Combine(configPackage.Path, "eventFlowConfig.json"));
+            //ILoggerFactory loggerFactory = config.DependencyResolver.GetService<ILoggerFactory>();
+            //loggerFactory.AddEventFlow(pipeline);
+
 
         }
 
