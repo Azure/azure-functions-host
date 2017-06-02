@@ -78,11 +78,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        public static void ClearHostLogs()
+        {
+            DirectoryInfo directory = GetHostLogFileDirectory();
+            if (directory.Exists)
+            {
+                foreach (var file in directory.GetFiles())
+                {
+                    file.Delete();
+                }
+            }
+        }
+
         public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
         {
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
             DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
+            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+
+            if (lastLogFile != null)
+            {
+                string[] logs = File.ReadAllLines(lastLogFile.FullName);
+                return new Collection<string>(logs.ToList());
+            }
+            else if (throwOnNoLogs)
+            {
+                throw new InvalidOperationException("No logs written!");
+            }
+
+            return new Collection<string>();
+        }
+
+        public static async Task<IList<string>> GetHostLogsAsync(bool throwOnNoLogs = true)
+        {
+            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+
+            DirectoryInfo directory = GetHostLogFileDirectory();
             FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
 
             if (lastLogFile != null)
@@ -114,8 +146,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static DirectoryInfo GetFunctionLogFileDirectory(string functionName)
         {
-            string functionLogsPath = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
-            return new DirectoryInfo(functionLogsPath);
+            string path = Path.Combine(Path.GetTempPath(), "Functions", "Function", functionName);
+            return new DirectoryInfo(path);
+        }
+
+        public static DirectoryInfo GetHostLogFileDirectory()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "Functions", "Host");
+            return new DirectoryInfo(path);
         }
 
         public static FunctionBinding CreateTestBinding(JObject json)

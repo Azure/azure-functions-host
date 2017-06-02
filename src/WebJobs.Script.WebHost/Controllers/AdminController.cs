@@ -148,6 +148,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpPost]
+        [Route("admin/host/log")]
+        [AllowAnonymous]
+        public IHttpActionResult Log(IEnumerable<HostLogEntry> logEntries)
+        {
+            var authorizationLevel = Request.GetAuthorizationLevel();
+            if (Request.IsAuthDisabled() ||
+                authorizationLevel == AuthorizationLevel.Admin ||
+                Request.IsAntaresInternalRequest())
+            {
+                foreach (var logEntry in logEntries)
+                {
+                    var traceEvent = new TraceEvent(logEntry.Level, logEntry.Message, logEntry.Source);
+                    if (!string.IsNullOrEmpty(logEntry.FunctionName))
+                    {
+                        traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, logEntry.FunctionName);
+                    }
+                    _traceWriter.Trace(traceEvent);
+
+                    var logLevel = Utility.ToLogLevel(traceEvent.Level);
+                    var logData = new Dictionary<string, object>
+                    {
+                        ["Source"] = logEntry.Source,
+                        ["FunctionName"] = logEntry.FunctionName
+                    };
+                    _logger.Log(logLevel, 0, logData, null, (s, e) => logEntry.Message);
+                }
+
+                return Ok();
+            }
+            else
+            {
+                return Unauthorized();
+            }
+        }
+
+        [HttpPost]
         [Route("admin/host/debug")]
         public HttpResponseMessage LaunchDebugger()
         {

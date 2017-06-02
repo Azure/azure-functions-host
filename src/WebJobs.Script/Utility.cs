@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -346,6 +348,23 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static bool IsNullable(Type type)
         {
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
+        internal static LogLevel ToLogLevel(TraceLevel traceLevel)
+        {
+            switch (traceLevel)
+            {
+                case TraceLevel.Verbose:
+                    return LogLevel.Trace;
+                case TraceLevel.Info:
+                    return LogLevel.Information;
+                case TraceLevel.Warning:
+                    return LogLevel.Warning;
+                case TraceLevel.Error:
+                    return LogLevel.Error;
+                default:
+                    return LogLevel.None;
+            }
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

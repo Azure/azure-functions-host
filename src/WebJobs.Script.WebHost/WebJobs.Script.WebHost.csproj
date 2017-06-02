@@ -506,6 +506,7 @@
     <Compile Include="Models\ApiErrorModel.cs" />
     <Compile Include="Models\ApiModel.cs" />
     <Compile Include="Models\ApiModelUtility.cs" />
+    <Compile Include="Models\HostLogEntry.cs" />
     <Compile Include="Models\Swagger\HttpOperationInfo.cs" />
     <Compile Include="Models\Swagger\HttpOperationParameterInfo.cs" />
     <Compile Include="Models\Link.cs" />
