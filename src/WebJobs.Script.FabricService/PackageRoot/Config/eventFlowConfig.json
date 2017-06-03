@@ -1,0 +1,41 @@
+{
+  "inputs": [
+    {
+      "type": "EventSource",
+      "sources": [
+        { "providerName": "Microsoft-ServiceFabric-Services" },
+        { "providerName": "Microsoft-ServiceFabric-Actors" },
+        { "providerName": "Microsoft-WebJobs.Script.FabricHost-FabricService" }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "type": "drop",
+      "include": "Level == Verbose"
+    }
+  ],
+  "outputs": [
+    // Please update the instrumentationKey.
+    //{
+    //  "type": "ApplicationInsights",
+    //  "instrumentationKey": "00000000-0000-0000-0000-000000000000"
+    //}
+  ],
+  "schemaVersion": "2016-08-11",
+  // "healthReporter": {
+  //   "type": "CsvHealthReporter",
+  //   "logFileFolder": ".",
+  //   "logFilePrefix": "HealthReport",
+  //   "minReportLevel": "Warning",
+  //   "throttlingPeriodMsec": "1000"
+  // },
+  // "settings": {
+  //    "pipelineBufferSize": "1000",
+  //    "maxEventBatchSize": "100",
+  //    "maxBatchDelayMsec": "500",
+  //    "maxConcurrency": "8",
+  //    "pipelineCompletionTimeoutMsec": "30000"
+  // },
+  "extensions": []
+}
