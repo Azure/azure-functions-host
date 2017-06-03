@@ -23,10 +23,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _rpcFactory = new RpcFactory();
             this.rpc = _rpcFactory.CreateRpcClient(RpcConstants.GoogleRpc);
             InitializeRpcStreamLogWatcher();
-            Host.FunctionDispatcher.LoadAsync(Metadata);
-        }
 
-        // public event EventHandler<LanguageInvokerMessagesEventArgs> LanguageInvokerMessagesUpdated;
+            // TODO make sure worker is initialized before sending load message
+            // Need to wait for this call to complete before calling invocation
+            // TODO store function_id of the loaded functions
+            // Host.FunctionDispatcher.LoadAsync(Metadata);
+        }
 
         protected IRpc GetRpcClient()
         {

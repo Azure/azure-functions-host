@@ -4,7 +4,7 @@
       "type": "queueTrigger",
       "name": "workItem",
       "direction": "in",
-      "queueName": "samples-workitems"
+      "queueName": "samples-workitems-oop"
     },
     {
       "type": "blob",

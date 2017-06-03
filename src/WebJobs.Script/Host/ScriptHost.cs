@@ -400,6 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter.Info(message);
                 _startupLogger?.LogInformation(message);
 
+                // TODO hide behind a flag
                 _functionDispatcher = new FunctionDispatcher(ScriptConfig, EventManager, TraceWriter);
                 _functionDispatcher.InitializeAsync(null);
 

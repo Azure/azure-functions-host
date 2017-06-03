@@ -20,8 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         Task HandleFileEventAsync(FileSystemEventArgs fileEvent);
 
-        Task LoadAsync(FunctionMetadata functionMetadata);
+        Task<string> LoadAsync(FunctionMetadata functionMetadata);
 
-        Task<object> InvokeAsync(object[] parameters);
+        Task<object> InvokeAsync(Dictionary<string, object> scriptExecutionContext);
     }
 }

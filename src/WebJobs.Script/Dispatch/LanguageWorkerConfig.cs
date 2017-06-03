@@ -18,6 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public IEnumerable<ScriptType> SupportedScriptTypes { get; set; }
 
-        public string ToArgumentString(string requestId) => $"{WorkerPath} ${Arguments} ${WorkerId} ${requestId}";
+        public string ToArgumentString(string requestId) => $"{WorkerPath} {Arguments} {WorkerId} requestId";
     }
 }

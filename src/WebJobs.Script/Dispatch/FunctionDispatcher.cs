@@ -38,6 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
             _server = new GrpcServer();
 
+            // TODO need to start grpc service before any of the workers
+            _server.Start();
+
+            // TODO Add only if there are java script functions
             AddWorkers(new List<LanguageWorkerConfig>()
             {
                 new NodeLanguageWorkerConfig()
@@ -46,16 +50,16 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public Task InitializeAsync(IEnumerable<LanguageWorkerConfig> workers)
         {
-            AddWorkers(workers);
-            _server.Start();
+            // _server.Start();
+             AddWorkers(workers);
 
             // TODO: how to handle async subscriptions? post 'handlefileevent' completed back to event stream?
-            _eventManager.OfType<FileEvent>()
+             _eventManager.OfType<FileEvent>()
                 .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
                 .Subscribe(OnFileEventReceived);
 
-            var workerStartTasks = _workers.Select(worker => worker.StartAsync());
-            return Task.WhenAll(workerStartTasks);
+             var workerStartTasks = _workers.Select(worker => worker.StartAsync());
+             return Task.WhenAll(workerStartTasks);
         }
 
         public void OnFileEventReceived(FileEvent fileEvent)
@@ -64,14 +68,14 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             Task.WhenAll(workerFileChangeTasks).GetAwaiter().GetResult();
         }
 
-        public Task LoadAsync(FunctionMetadata functionMetadata)
+        public Task<string> LoadAsync(FunctionMetadata functionMetadata)
         {
             return GetWorker(functionMetadata).LoadAsync(functionMetadata);
         }
 
-        public Task<object> InvokeAsync(FunctionMetadata functionMetadata, object[] parameters)
+        public Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext)
         {
-            return GetWorker(functionMetadata).InvokeAsync(parameters);
+            return GetWorker(functionMetadata).InvokeAsync(scriptExecutionContext);
         }
 
         public async Task ShutdownAsync()

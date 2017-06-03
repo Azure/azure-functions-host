@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // TODO: timeouts
             subscription = InputStream
                 .Where(msg => msg.RequestId == requestId)
-                .Timeout(timeout ?? TimeSpan.FromSeconds(10))
+                
+                // .Timeout(timeout ?? TimeSpan.FromSeconds(10))
                 .Subscribe(msg =>
                 {
                     TResponse response = msg.Content.Unpack<TResponse>();

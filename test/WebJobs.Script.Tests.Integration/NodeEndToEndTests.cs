@@ -1230,9 +1230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Same(t, result);
             Assert.True(logs.Any(l => l.Contains("FunctionName:Scenarios")));
-            string unixStyleFilePath = $"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, "Scenarios")}";
-            unixStyleFilePath = unixStyleFilePath.Replace('\\', '/');
-            Assert.True(logs.Any(l => l.Contains(unixStyleFilePath)));
+            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, "Scenarios")}")));
         }
 
         [Fact]

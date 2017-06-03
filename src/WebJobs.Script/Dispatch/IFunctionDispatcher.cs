@@ -18,11 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         // assign functions to worker pools based on language type
         // load functions?
-        Task LoadAsync(FunctionMetadata functionMetadata);
+        Task<string> LoadAsync(FunctionMetadata functionMetadata);
 
         // invoke a function
         // could use delay loading for start worker / load fucntion
-        Task<object> InvokeAsync(FunctionMetadata functionMetadata, object[] parameters);
+        Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext);
 
         Task ShutdownAsync();
     }
