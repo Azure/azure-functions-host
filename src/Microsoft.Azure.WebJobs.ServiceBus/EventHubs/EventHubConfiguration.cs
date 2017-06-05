@@ -392,6 +392,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("context");
             }
 
+            // apply at eventProcessorOptions level (maxBatchSize, prefetchCount)
+            context.ApplyConfig(_options, "eventHub");
+
+            // apply at config level (batchCheckpointFrequency)
+            context.ApplyConfig(this, "eventHub");
+
             _defaultStorageString = context.Config.StorageConnectionString;
 
             context

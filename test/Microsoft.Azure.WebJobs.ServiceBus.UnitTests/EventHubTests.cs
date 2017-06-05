@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Config;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
 {
@@ -199,6 +201,37 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         {
             var config = new EventHubConfiguration();
             Assert.Throws<InvalidOperationException>(() => config.BatchCheckpointFrequency = num);
+        }
+
+        [Fact]
+        public void InitializeFromHostMetadata()
+        {
+            var config = new EventHubConfiguration();
+            var context = new ExtensionConfigContext()
+            {
+                Config = new JobHostConfiguration()
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    HostConfigMetadata = new JObject
+#pragma warning restore CS0618 // Type or member is obsolete
+                    {
+                        {
+                            "EventHub", new JObject {
+                                { "MaxBatchSize", 100 },
+                                { "PrefetchCount", 200 },
+                                { "BatchCheckpointFrequency", 5 }
+                            }
+                        }
+                    }
+                }
+            };
+
+            (config as IExtensionConfigProvider).Initialize(context);
+
+            var options = config.GetOptions();
+            Assert.Equal(options.MaxBatchSize, 100);
+            Assert.Equal(options.PrefetchCount, 200);
+            Assert.Equal(config.BatchCheckpointFrequency, 5);
         }
     }
 }
