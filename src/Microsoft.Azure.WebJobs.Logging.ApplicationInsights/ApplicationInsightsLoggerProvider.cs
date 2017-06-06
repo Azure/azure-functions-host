@@ -11,12 +11,10 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
     internal class ApplicationInsightsLoggerProvider : ILoggerProvider
     {
         private readonly TelemetryClient _client;
-        private readonly Func<string, LogLevel, bool> _filter;
-
         private ITelemetryClientFactory _clientFactory;
         private bool _disposed;
 
-        public ApplicationInsightsLoggerProvider(Func<string, LogLevel, bool> filter, ITelemetryClientFactory clientFactory)
+        public ApplicationInsightsLoggerProvider(ITelemetryClientFactory clientFactory)
         {
             if (clientFactory == null)
             {
@@ -25,10 +23,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
             _clientFactory = clientFactory;
             _client = _clientFactory.Create();
-            _filter = filter;
         }
 
-        public ILogger CreateLogger(string categoryName) => new ApplicationInsightsLogger(_client, categoryName, _filter);
+        public ILogger CreateLogger(string categoryName) => new ApplicationInsightsLogger(_client, categoryName);
 
         public void Dispose()
         {

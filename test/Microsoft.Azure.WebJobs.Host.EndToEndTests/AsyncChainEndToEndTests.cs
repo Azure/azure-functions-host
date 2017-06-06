@@ -263,8 +263,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.Equal(4, logger.LogMessages.Count);
 
                 // Make sure the eventCollector was logged to
-                // The aggregator ignores 'start' evetns, so this will be double
-                Assert.Equal(8, eventCollector.LogCount);
+                // The aggregator ignores 'start' events, so this will be double
+                Assert.True(8 == eventCollector.LogEntries.Count, "Actual function invocations:" + Environment.NewLine + string.Join(Environment.NewLine, eventCollector.LogEntries.Select(l => l.FunctionName)));
             }
         }
 
@@ -328,8 +328,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Assert.Null(logger);
 
                 // Make sure the eventCollector was logged to
-                // The aggregator ignores 'start' evetns, so this will be double
-                Assert.Equal(8, eventCollector.LogCount);
+                // The aggregator ignores 'start' events, so this will be double
+                Assert.Equal(8, eventCollector.LogEntries.Count);
             }
         }
 
@@ -940,11 +940,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private class TestFunctionEventCollector : IAsyncCollector<FunctionInstanceLogEntry>
         {
-            public int LogCount = 0;
+            public List<FunctionInstanceLogEntry> LogEntries { get; } = new List<FunctionInstanceLogEntry>();
 
             public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
             {
-                LogCount++;
+                LogEntries.Add(item);
                 return Task.CompletedTask;
             }
 

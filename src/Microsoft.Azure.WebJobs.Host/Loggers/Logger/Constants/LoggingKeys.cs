@@ -119,5 +119,10 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Gets the name of the key used to store the original format of the log message.
         /// </summary>
         public const string OriginalFormat = "{OriginalFormat}";
+
+        /// <summary>
+        /// Gets the name of the key used to store the <see cref="LogLevel"/> of the log message.
+        /// </summary>
+        public const string LogLevel = "LogLevel";
     }
 }

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 .Returns<TelemetryClient>(null);
             mockTelemetryClientFactory.Setup(p => p.Dispose());
 
-            var provider = new ApplicationInsightsLoggerProvider(null, mockTelemetryClientFactory.Object);
+            var provider = new ApplicationInsightsLoggerProvider(mockTelemetryClientFactory.Object);
 
             provider.Dispose();
             provider.Dispose();

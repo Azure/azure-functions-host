@@ -75,6 +75,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
             Assert.Equal(defaultIp, telemetry.Context.Location.Ip);
+            Assert.Equal(LogCategories.Results, telemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LoggingKeys.LogLevel]);
             // TODO: Beef up validation to include properties
         }
 
@@ -100,12 +102,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
             Assert.Equal(defaultIp, requestTelemetry.Context.Location.Ip);
+            Assert.Equal(LogCategories.Results, requestTelemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Error.ToString(), requestTelemetry.Properties[LoggingKeys.LogLevel]);
             // TODO: Beef up validation to include properties
 
             // Exception needs to have associated id
             Assert.Equal(_invocationId.ToString(), exceptionTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, exceptionTelemetry.Context.Operation.Name);
             Assert.Same(fex, exceptionTelemetry.Exception);
+            Assert.Equal(LogCategories.Results, exceptionTelemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Error.ToString(), exceptionTelemetry.Properties[LoggingKeys.LogLevel]);
             // TODO: Beef up validation to include properties
         }
 
@@ -129,16 +135,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             IEnumerable<MetricTelemetry> metrics = _channel.Telemetries.Cast<MetricTelemetry>();
             // turn them into a dictionary so we can easily validate
-            IDictionary<string, double> metricDict = metrics.ToDictionary(m => m.Name, m => m.Value);
+            IDictionary<string, MetricTelemetry> metricDict = metrics.ToDictionary(m => m.Name, m => m);
 
             Assert.Equal(7, metricDict.Count);
-            Assert.Equal(4, metricDict[$"{_functionFullName} {LoggingKeys.Failures}"]);
-            Assert.Equal(116, metricDict[$"{_functionFullName} {LoggingKeys.Successes}"]);
-            Assert.Equal(200, metricDict[$"{_functionFullName} {LoggingKeys.MinDuration}"]);
-            Assert.Equal(2180, metricDict[$"{_functionFullName} {LoggingKeys.MaxDuration}"]);
-            Assert.Equal(340, metricDict[$"{_functionFullName} {LoggingKeys.AverageDuration}"]);
-            Assert.Equal(96.67, metricDict[$"{_functionFullName} {LoggingKeys.SuccessRate}"]);
-            Assert.Equal(120, metricDict[$"{_functionFullName} {LoggingKeys.Count}"]);
+
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.Failures}"], 4, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.Successes}"], 116, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.MinDuration}"], 200, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.MaxDuration}"], 2180, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.AverageDuration}"], 340, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.SuccessRate}"], 96.67, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LoggingKeys.Count}"], 120, LogLevel.Information);
+        }
+
+        private static void ValidateMetric(MetricTelemetry metric, double expectedValue, LogLevel expectedLevel, string expectedCategory = LogCategories.Aggregator)
+        {
+            Assert.Equal(expectedValue, metric.Value);
+            Assert.Equal(2, metric.Properties.Count);
+            Assert.Equal(expectedCategory, metric.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(expectedLevel.ToString(), metric.Properties[LoggingKeys.LogLevel]);
         }
 
         [Fact]
@@ -176,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(new Uri("http://someuri/api/path"), telemetry.Url);
             Assert.Equal("my custom user agent", telemetry.Context.User.UserAgent);
             Assert.Equal("200", telemetry.ResponseCode);
+            Assert.Equal(LogCategories.Results, telemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LoggingKeys.LogLevel]);
             // TODO: Beef up validation to include properties      
         }
 
@@ -198,9 +215,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var scopeProps = CreateScopeDictionary(_invocationId, _functionShortName);
             scopeProps[ApplicationInsightsScopeKeys.HttpRequest] = request;
 
+            Exception fex = new Exception("Boom");
             using (logger.BeginScope(scopeProps))
             {
-                logger.LogFunctionResult(_functionShortName, result, TimeSpan.FromMilliseconds(durationMs), new Exception("Boom"));
+                logger.LogFunctionResult(_functionShortName, result, TimeSpan.FromMilliseconds(durationMs), fex);
             }
 
             // one Exception, one Request
@@ -218,7 +236,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(new Uri("http://someuri/api/path"), requestTelemetry.Url);
             Assert.Equal("my custom user agent", requestTelemetry.Context.User.UserAgent);
             Assert.Equal("500", requestTelemetry.ResponseCode);
+            Assert.Equal(LogCategories.Results, requestTelemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Error.ToString(), requestTelemetry.Properties[LoggingKeys.LogLevel]);
             // TODO: Beef up validation to include properties      
+
+            // Exception needs to have associated id
+            Assert.Equal(_invocationId.ToString(), exceptionTelemetry.Context.Operation.Id);
+            Assert.Equal(_functionShortName, exceptionTelemetry.Context.Operation.Name);
+            Assert.Same(fex, exceptionTelemetry.Exception);
+            Assert.Equal(LogCategories.Results, exceptionTelemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Error.ToString(), exceptionTelemetry.Properties[LoggingKeys.LogLevel]);
+            // TODO: Beef up validation to include properties
         }
 
         [Fact]
@@ -241,16 +269,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(6, _channel.Telemetries.OfType<TraceTelemetry>().Count());
             foreach (var telemetry in _channel.Telemetries.Cast<TraceTelemetry>())
             {
-                SeverityLevel expectedLevel;
+                LogLevel expectedLogLevel;
+                Enum.TryParse(telemetry.Message, out expectedLogLevel);
+                Assert.Equal(expectedLogLevel.ToString(), telemetry.Properties[LoggingKeys.LogLevel]);
+
+                SeverityLevel expectedSeverityLevel;
                 if (telemetry.Message == "Trace" || telemetry.Message == "Debug")
                 {
-                    expectedLevel = SeverityLevel.Verbose;
+                    expectedSeverityLevel = SeverityLevel.Verbose;
                 }
                 else
                 {
-                    Assert.True(Enum.TryParse(telemetry.Message, out expectedLevel));
+                    Assert.True(Enum.TryParse(telemetry.Message, out expectedSeverityLevel));
                 }
-                Assert.Equal(expectedLevel, telemetry.SeverityLevel);
+                Assert.Equal(expectedSeverityLevel, telemetry.SeverityLevel);
 
                 Assert.Equal(LogCategories.Function, telemetry.Properties[LoggingKeys.CategoryName]);
                 Assert.Equal(telemetry.Message, telemetry.Properties[LoggingKeys.CustomPropertyPrefix + LoggingKeys.OriginalFormat]);
@@ -270,6 +302,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(SeverityLevel.Information, telemetry.SeverityLevel);
 
             Assert.Equal(LogCategories.Function, telemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LoggingKeys.LogLevel]);
             Assert.Equal("Using {some} custom {properties}. {Test}.",
                 telemetry.Properties[LoggingKeys.CustomPropertyPrefix + LoggingKeys.OriginalFormat]);
             Assert.Equal("Using 1 custom 2. 3.", telemetry.Message);
@@ -295,6 +328,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(SeverityLevel.Error, telemetry.SeverityLevel);
 
             Assert.Equal(LogCategories.Function, telemetry.Properties[LoggingKeys.CategoryName]);
+            Assert.Equal(LogLevel.Error.ToString(), telemetry.Properties[LoggingKeys.LogLevel]);
             Assert.Equal("Error with customer: {customer}.",
                 telemetry.Properties[LoggingKeys.CustomPropertyPrefix + LoggingKeys.OriginalFormat]);
             Assert.Equal("Error with customer: John Doe.", telemetry.Message);
@@ -426,7 +460,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
         private ILogger CreateLogger(string category)
         {
-            return new ApplicationInsightsLogger(_client, category, null);
+            return new ApplicationInsightsLogger(_client, category);
         }
 
         private static void ValidateScope(IDictionary<string, object> expected)

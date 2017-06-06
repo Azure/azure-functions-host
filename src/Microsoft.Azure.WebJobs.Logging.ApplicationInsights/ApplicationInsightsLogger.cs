@@ -8,7 +8,6 @@ using System.Net.Http;
 using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
@@ -19,23 +18,16 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         private readonly string _categoryName;
         private const string DefaultCategoryName = "Default";
         private const string DateTimeFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK";
-        private Func<string, LogLevel, bool> _filter;
 
-        public ApplicationInsightsLogger(TelemetryClient client, string categoryName, Func<string, LogLevel, bool> filter)
+        public ApplicationInsightsLogger(TelemetryClient client, string categoryName)
         {
             _telemetryClient = client;
             _categoryName = categoryName ?? DefaultCategoryName;
-            _filter = filter;
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
             Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
-            {
-                return;
-            }
-
             string formattedMessage = formatter?.Invoke(state, exception);
 
             IEnumerable<KeyValuePair<string, object>> stateValues = state as IEnumerable<KeyValuePair<string, object>>;
@@ -46,29 +38,38 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 return;
             }
 
-            // Log a function result
-            if (_categoryName == LogCategories.Results)
+            // Add some well-known properties to the scope dictionary so the TelemetryIniitalizer can add them
+            // for all telemetry.
+            using (BeginScope(new Dictionary<string, object>
             {
-                LogFunctionResult(stateValues, exception);
-                return;
-            }
-
-            // Log an aggregate record
-            if (_categoryName == LogCategories.Aggregator)
+                [LoggingKeys.CategoryName] = _categoryName,
+                [LoggingKeys.LogLevel] = (LogLevel?)logLevel
+            }))
             {
-                LogFunctionResultAggregate(stateValues);
-                return;
-            }
+                // Log a function result
+                if (_categoryName == LogCategories.Results)
+                {
+                    LogFunctionResult(stateValues, logLevel, exception);
+                    return;
+                }
 
-            // Log an exception
-            if (exception != null)
-            {
-                LogException(logLevel, stateValues, exception, formattedMessage);
-                return;
-            }
+                // Log an aggregate record
+                if (_categoryName == LogCategories.Aggregator)
+                {
+                    LogFunctionResultAggregate(stateValues);
+                    return;
+                }
 
-            // Otherwise, log a trace
-            LogTrace(logLevel, stateValues, formattedMessage);
+                // Log an exception
+                if (exception != null)
+                {
+                    LogException(logLevel, stateValues, exception, formattedMessage);
+                    return;
+                }
+
+                // Otherwise, log a trace
+                LogTrace(logLevel, stateValues, formattedMessage);
+            }
         }
 
         private void LogException(LogLevel logLevel, IEnumerable<KeyValuePair<string, object>> values, Exception exception, string formattedMessage)
@@ -111,10 +112,8 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
         }
 
-        private void ApplyCustomProperties(ISupportProperties telemetry, IEnumerable<KeyValuePair<string, object>> values)
+        private static void ApplyCustomProperties(ISupportProperties telemetry, IEnumerable<KeyValuePair<string, object>> values)
         {
-            telemetry.Properties.Add(LoggingKeys.CategoryName, _categoryName);
-
             foreach (var property in values)
             {
                 string stringValue = null;
@@ -187,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
         }
 
-        private void LogFunctionResult(IEnumerable<KeyValuePair<string, object>> values, Exception exception)
+        private void LogFunctionResult(IEnumerable<KeyValuePair<string, object>> values, LogLevel logLevel, Exception exception)
         {
             IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
 
@@ -210,8 +209,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             // log associated exception details
             if (exception != null)
             {
-                ExceptionTelemetry exceptionTelemetry = new ExceptionTelemetry(exception);
-                _telemetryClient.TrackException(exceptionTelemetry);
+                LogException(logLevel, values, exception, null);
             }
 
             _telemetryClient.TrackRequest(requestTelemetry);
@@ -289,12 +287,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (_filter == null)
-            {
-                return true;
-            }
-
-            return _filter(_categoryName, logLevel);
+            // Filtering will occur in the Application Insights pipeline. This allows for the QuickPulse telemetry
+            // to always be sent, even if logging actual records is completely disabled.
+            return true;
         }
 
         public IDisposable BeginScope<TState>(TState state)

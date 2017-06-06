@@ -142,6 +142,7 @@
     <Compile Include="Constants\ApplicationInsightsScopeKeys.cs" />
     <Compile Include="DefaultTelemetryClientFactory.cs" />
     <Compile Include="Extensions\DictionaryExtensions.cs" />
+    <Compile Include="FilteringTelemetryProcessor.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="ITelemetryClientFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

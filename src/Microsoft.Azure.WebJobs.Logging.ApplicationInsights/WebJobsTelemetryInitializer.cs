@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
@@ -40,8 +40,24 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 telemetry.Context.Operation.Id = invocationId.ToString();
             }
-
             telemetry.Context.Operation.Name = scopeProps.GetValueOrDefault<string>(ScopeKeys.FunctionName);
+
+            // Apply Category and LogLevel to all telemetry
+            ISupportProperties telemetryProps = telemetry as ISupportProperties;
+            if (telemetryProps != null)
+            {
+                string category = scopeProps.GetValueOrDefault<string>(LoggingKeys.CategoryName);
+                if (category != null)
+                {
+                    telemetryProps.Properties[LoggingKeys.CategoryName] = category;
+                }
+
+                LogLevel? logLevel = scopeProps.GetValueOrDefault<LogLevel?>(LoggingKeys.LogLevel);
+                if (logLevel != null)
+                {
+                    telemetryProps.Properties[LoggingKeys.LogLevel] = logLevel.Value.ToString();
+                }
+            }
         }
 
         private static string GetRoleInstanceName()

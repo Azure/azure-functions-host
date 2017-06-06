@@ -28,8 +28,10 @@ namespace Microsoft.Extensions.Logging
             string instrumentationKey,
             Func<string, LogLevel, bool> filter)
         {
-            ITelemetryClientFactory defaultFactory = new DefaultTelemetryClientFactory(instrumentationKey, new SamplingPercentageEstimatorSettings());
-            return AddApplicationInsights(loggerFactory, defaultFactory, filter);
+            ITelemetryClientFactory defaultFactory = new DefaultTelemetryClientFactory(instrumentationKey,
+                new SamplingPercentageEstimatorSettings(), filter);
+
+            return AddApplicationInsights(loggerFactory, defaultFactory);
         }
 
         /// <summary>
@@ -37,14 +39,10 @@ namespace Microsoft.Extensions.Logging
         /// </summary>
         /// <param name="loggerFactory">The factory.</param>        
         /// <param name="telemetryClientFactory">The factory to use when creating the <see cref="TelemetryClient"/> </param>
-        /// <param name="filter">A filter that returns true if a message with the specified <see cref="LogLevel"/>
-        /// and category should be logged. You can use <see cref="LogCategoryFilter.Filter(string, LogLevel)"/>
-        /// or write a custom filter.</param>
         /// <returns>A <see cref="ILoggerFactory"/> for chaining additional operations.</returns>
         public static ILoggerFactory AddApplicationInsights(
             this ILoggerFactory loggerFactory,
-            ITelemetryClientFactory telemetryClientFactory,
-            Func<string, LogLevel, bool> filter)
+            ITelemetryClientFactory telemetryClientFactory)
         {
             if (loggerFactory == null)
             {
@@ -52,7 +50,7 @@ namespace Microsoft.Extensions.Logging
             }
 
             // Note: LoggerFactory calls Dispose() on all registered providers.
-            loggerFactory.AddProvider(new ApplicationInsightsLoggerProvider(filter, telemetryClientFactory));
+            loggerFactory.AddProvider(new ApplicationInsightsLoggerProvider(telemetryClientFactory));
 
             return loggerFactory;
         }

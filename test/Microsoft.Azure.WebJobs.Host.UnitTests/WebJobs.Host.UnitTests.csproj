@@ -259,6 +259,7 @@
     <Compile Include="ExtensionConfigContextTests.cs" />
     <Compile Include="Loggers\ApplicationInsightsLoggerProviderTests.cs" />
     <Compile Include="Loggers\DefaultTelemetryClientFactoryTests.cs" />
+    <Compile Include="Loggers\FilteringTelemetryProcessorTests.cs" />
     <Compile Include="Loggers\FunctionResultAggregatorConfigurationTests.cs" />
     <Compile Include="JobHostMetadataProviderTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
