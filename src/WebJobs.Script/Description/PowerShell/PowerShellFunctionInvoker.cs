@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
 
-        private string _script;
         private List<string> _moduleFiles;
 
         internal PowerShellFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata,
