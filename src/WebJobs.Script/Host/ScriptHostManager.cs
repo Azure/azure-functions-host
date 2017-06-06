@@ -15,8 +15,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.File;
-using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script

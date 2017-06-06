@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Routing;
@@ -28,12 +30,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
+        private readonly WebScriptHostManager _hostManager;
+        private readonly Mock<IScriptHostFactory> _mockScriptHostFactory;
+        private ScriptHostConfiguration _config;
         private WebScriptHostManagerTests.Fixture _fixture;
 
         public WebScriptHostManagerTests(WebScriptHostManagerTests.Fixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+
+            string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionTestDir);
+            string logDir = Path.Combine(_fixture.TestLogsRoot, Guid.NewGuid().ToString());
+            string secretsDir = Path.Combine(_fixture.TestSecretsRoot, Guid.NewGuid().ToString());
+
+            _config = new ScriptHostConfiguration
+            {
+                RootLogPath = logDir,
+                RootScriptPath = functionTestDir,
+                FileLoggingMode = FileLoggingMode.Always,
+            };
+
+            var secretsRepository = new FileSystemSecretsRepository(_secretsDirectory.Path);
+            SecretManager secretManager = new SecretManager(_settingsManager, secretsRepository, NullTraceWriter.Instance, null);
+            WebHostSettings webHostSettings = new WebHostSettings
+            {
+                SecretsPath = _secretsDirectory.Path
+            };
+
+            var mockEventManager = new Mock<IScriptEventManager>();
+            _mockScriptHostFactory = new Mock<IScriptHostFactory>();
+
+            _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
+                _settingsManager, webHostSettings, _mockScriptHostFactory.Object, new DefaultSecretsRepositoryFactory(), 2, 500);
         }
 
         [Fact]
@@ -142,48 +172,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task MultipleHostRestarts()
         {
-            string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
-            Directory.CreateDirectory(functionTestDir);
-            string logDir = Path.Combine(_fixture.TestLogsRoot, Guid.NewGuid().ToString());
-            string secretsDir = Path.Combine(_fixture.TestSecretsRoot, Guid.NewGuid().ToString());
-
-            ScriptHostConfiguration config = new ScriptHostConfiguration
-            {
-                RootLogPath = logDir,
-                RootScriptPath = functionTestDir,
-                FileLoggingMode = FileLoggingMode.Always,
-            };
-
-            ISecretsRepository repository = new FileSystemSecretsRepository(_secretsDirectory.Path);
-            SecretManager secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null);
-            WebHostSettings webHostSettings = new WebHostSettings();
-            webHostSettings.SecretsPath = _secretsDirectory.Path;
-
-            var mockEventManager = new Mock<IScriptEventManager>();
-            var factoryMock = new Mock<IScriptHostFactory>();
             int count = 0;
-            factoryMock.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, config)).Callback(() =>
+            _mockScriptHostFactory.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config)).Callback(() =>
             {
                 count++;
             }).Throws(new Exception("Kaboom!"));
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
-                _settingsManager, webHostSettings, factoryMock.Object);
-
-            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+            Task runTask = Task.Run(() => _hostManager.RunAndBlock());
 
             await TestHelpers.Await(() =>
             {
                 return count > 3;
             });
 
-            hostManager.Stop();
-            Assert.Equal(ScriptHostState.Default, hostManager.State);
+            _hostManager.Stop();
+            Assert.Equal(ScriptHostState.Default, _hostManager.State);
 
             // regression test: previously on multiple restarts we were recomposing
             // the writer on each restart, resulting in a nested chain of writers
             // increasing on each restart
-            Assert.Equal(typeof(SystemTraceWriter), config.TraceWriter.GetType());
+            Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
+        }
+
+        [Fact]
+        public async Task HandleRequestAsync_HostNotReady_Throws()
+        {
+            Assert.False(_hostManager.CanInvoke());
+
+            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
+            {
+                await _hostManager.HandleRequestAsync(null, new HttpRequestMessage(), CancellationToken.None);
+            });
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.Response.StatusCode);
+            var message = await ex.Response.Content.ReadAsStringAsync();
+            Assert.Equal("Function host is not running.", message);
         }
 
         [Fact]

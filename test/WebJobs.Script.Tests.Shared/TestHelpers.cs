@@ -85,7 +85,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 foreach (var file in directory.GetFiles())
                 {
-                    file.Delete();
+                    try
+                    {
+                        file.Delete();
+                    }
+                    catch
+                    {
+                        // best effort
+                    }
                 }
             }
         }

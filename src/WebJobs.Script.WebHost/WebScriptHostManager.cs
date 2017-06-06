@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -42,6 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ScriptHostConfiguration _config;
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly object _syncLock = new object();
+        private readonly int _hostTimeoutSeconds;
+        private readonly int _hostRunningPollIntervalMilliseconds;
 
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider();
 
@@ -57,13 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IScriptHostFactory scriptHostFactory = null,
-            ISecretsRepositoryFactory secretsRepositoryFactory = null)
+            ISecretsRepositoryFactory secretsRepositoryFactory = null,
+            int hostTimeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds,
+            int hostPollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds)
             : base(config, settingsManager, scriptHostFactory, eventManager)
         {
             _config = config;
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
+            _hostTimeoutSeconds = hostTimeoutSeconds;
+            _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
             var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
@@ -160,10 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            // ensure that the host is ready to process requests
+            await DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
-
-            Dictionary<string, object> arguments = GetFunctionArguments(function, request);
+            var arguments = GetFunctionArguments(function, request);
 
             // Suspend the current synchronization context so we don't pass the ASP.NET
             // context down to the function.
@@ -173,11 +182,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // record details about the request.
                 ILoggerFactory loggerFactory = _config.HostConfig.GetService<ILoggerFactory>();
                 ILogger logger = loggerFactory.CreateLogger(LogCategories.Function);
-                using (logger.BeginScope(
-                    new Dictionary<string, object>()
-                    {
-                        [ScriptConstants.LoggerHttpRequest] = request
-                    }))
+                var scopeState = new Dictionary<string, object>()
+                {
+                    [ScriptConstants.LoggerHttpRequest] = request
+                };
+                using (logger.BeginScope(scopeState))
                 {
                     await Instance.CallAsync(function.Name, arguments, cancellationToken);
                 }
@@ -514,6 +523,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             Stop();
             HostingEnvironment.InitiateShutdown();
+        }
+
+        public async Task DelayUntilHostReady(int timeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds, int pollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (!CanInvoke() &&
+                    State != ScriptHostState.Error &&
+                    (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
+            }
+
+            if (throwOnFailure && !CanInvoke())
+            {
+                var errorResponse = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                {
+                    Content = new StringContent("Function host is not running.")
+                };
+                throw new HttpResponseException(errorResponse);
+            }
         }
     }
 }
