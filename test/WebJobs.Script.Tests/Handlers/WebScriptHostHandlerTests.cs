@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpConfiguration config = new HttpConfiguration();
             config.DependencyResolver = mockResolver.Object;
-            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1, hostRunningPollIntervalMS: 50)
+            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1, hostPollingIntervalMilliseconds: 50)
             {
                 InnerHandler = new TestHandler()
             };
@@ -88,7 +88,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
-            HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
+            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
+            {
+                await _invoker.SendAsync(request, CancellationToken.None);
+            });
+            HttpResponseMessage response = ex.Response;
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         }
 
@@ -109,7 +113,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _managerMock.SetupGet(p => p.LastError).Returns(new Exception());
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
-            HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
+            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
+            {
+                await _invoker.SendAsync(request, CancellationToken.None);
+            });
+            HttpResponseMessage response = ex.Response;
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
             _managerMock.VerifyGet(p => p.State, Times.Exactly(5));
         }

@@ -431,7 +431,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="SamplesEndToEndRestartTests.cs" />
     <Compile Include="SamplesEndToEndTests.cs" />
     <Compile Include="Host\ScriptHostManagerTests.cs" />
     <Compile Include="Host\StandbyModeTests.cs" />

@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
-        private const string MasterKey = "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
+        internal const string MasterKey = "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
 
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;

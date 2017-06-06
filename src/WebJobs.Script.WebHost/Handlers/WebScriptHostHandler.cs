@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -13,19 +12,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
     public class WebScriptHostHandler : DelegatingHandler
     {
-        private readonly TimeSpan _hostTimeoutSeconds;
-        private readonly int _hostRunningPollIntervalMs;
+        public const int HostTimeoutSeconds = 30;
+        public const int HostPollingIntervalMilliseconds = 500;
+
+        private readonly int _hostTimeoutSeconds;
+        private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly HttpConfiguration _config;
 
-        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = 30, int hostRunningPollIntervalMS = 500)
+        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = HostTimeoutSeconds, int hostPollingIntervalMilliseconds = HostPollingIntervalMilliseconds)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
-            _hostRunningPollIntervalMs = hostRunningPollIntervalMS;
-            _hostTimeoutSeconds = new TimeSpan(0, 0, hostTimeoutSeconds);
+            _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
+            _hostTimeoutSeconds = hostTimeoutSeconds;
             _config = config;
         }
 
@@ -55,23 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 // If the host is not running, we'll wait a bit for it to fully
                 // initialize. This might happen if http requests come in while the
                 // host is starting up for the first time, or if it is restarting.
-                TimeSpan timeWaited = TimeSpan.Zero;
-                while (!scriptHostManager.CanInvoke() &&
-                        scriptHostManager.State != ScriptHostState.Error &&
-                        (timeWaited < _hostTimeoutSeconds))
-                {
-                    await Task.Delay(_hostRunningPollIntervalMs);
-                    timeWaited += TimeSpan.FromMilliseconds(_hostRunningPollIntervalMs);
-                }
-
-                // if the host is not ready after our wait time has expired return a 503
-                if (!scriptHostManager.CanInvoke())
-                {
-                    return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
-                    {
-                        Content = new StringContent("Function host is not running.")
-                    };
-                }
+                await scriptHostManager.DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
             }
 
             return await base.SendAsync(request, cancellationToken);
