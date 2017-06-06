@@ -96,8 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         LogLoadedModules();
                     }
 
-                    _script = GetScript(_scriptFilePath);
-                    powerShellInstance.AddScript(_script, true);
+                    if (File.Exists(_scriptFilePath))
+                    {
+                        powerShellInstance.AddScript(_scriptFilePath, false);
+                    }
 
                     PSDataCollection<PSObject> outputCollection = new PSDataCollection<PSObject>();
                     outputCollection.DataAdded += (sender, e) => OutputCollectionDataAdded(sender, e, traceWriter);
@@ -248,17 +250,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return stackTrace;
-        }
-
-        internal static string GetScript(string scriptFilePath)
-        {
-            string script = null;
-            if (File.Exists(scriptFilePath))
-            {
-                script = File.ReadAllText(scriptFilePath);
-            }
-
-            return script;
         }
 
         internal static List<string> GetModuleFilePaths(string rootScriptPath, string functionName)
