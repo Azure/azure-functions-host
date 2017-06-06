@@ -29,14 +29,16 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             Exception exception, Func<TState, Exception, string> formatter)
         {
             string formattedMessage = formatter?.Invoke(state, exception);
-
             IEnumerable<KeyValuePair<string, object>> stateValues = state as IEnumerable<KeyValuePair<string, object>>;
 
-            // We only support lists of key-value pairs. Anything else we'll skip.
-            if (stateValues == null)
+            // If we don't have a message or any key/value pairs, there's nothing to log.
+            if (stateValues == null && string.IsNullOrEmpty(formattedMessage))
             {
                 return;
             }
+
+            // Initialize stateValues so the rest of the methods don't have to worry about null values.
+            stateValues = stateValues ?? new Dictionary<string, object>();
 
             // Add some well-known properties to the scope dictionary so the TelemetryIniitalizer can add them
             // for all telemetry.

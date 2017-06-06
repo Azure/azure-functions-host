@@ -73,12 +73,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     host.Start();
                     callback.Invoke(host);
                     startTaskSource.TrySetResult(null);
+                    int secondsToWait = 5;
 
                     // Act
-                    bool completed = task.WaitUntilCompleted(3 * 1000);
+                    bool completed = task.WaitUntilCompleted(secondsToWait * 1000);
 
                     // Assert
-                    Assert.True(completed);
+                    Assert.True(completed, $"Host did not shut down in {secondsToWait} seconds.");
 
                     // Give a nicer test failure message for faulted tasks.
                     if (task.Status == TaskStatus.Faulted)

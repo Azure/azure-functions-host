@@ -238,7 +238,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal("500", requestTelemetry.ResponseCode);
             Assert.Equal(LogCategories.Results, requestTelemetry.Properties[LoggingKeys.CategoryName]);
             Assert.Equal(LogLevel.Error.ToString(), requestTelemetry.Properties[LoggingKeys.LogLevel]);
-            // TODO: Beef up validation to include properties      
 
             // Exception needs to have associated id
             Assert.Equal(_invocationId.ToString(), exceptionTelemetry.Context.Operation.Id);
@@ -361,6 +360,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             string ip = ApplicationInsightsLogger.GetIpAddress(request);
 
             Assert.Equal("5.6.7.8", ip);
+        }
+
+        [Fact]
+        public void Log_AcceptsStringsAsState()
+        {
+            var logger = CreateLogger(LogCategories.Function);
+            logger.Log(LogLevel.Information, 0, "some string", null, (s, e) => s.ToString());
+
+            var telemetry = _channel.Telemetries.Single() as TraceTelemetry;
+            Assert.Equal("some string", telemetry.Message);
+            Assert.Equal(LogCategories.Function, telemetry.Properties[LoggingKeys.CategoryName]);
         }
 
         [Fact]
