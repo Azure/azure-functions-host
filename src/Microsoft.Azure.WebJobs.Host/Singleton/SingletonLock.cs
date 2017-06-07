@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private readonly string _functionInstanceId;
         private readonly SingletonAttribute _attribute;
         private readonly SingletonManager _singletonManager;
-        private object _lockHandle;
+        private RenewableLockHandle _lockHandle;
 
         public SingletonLock(string id, string functionInstanceId, SingletonAttribute attribute, SingletonManager manager)
         {

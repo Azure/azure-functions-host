@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             mockListener.Setup(p => p.Dispose());
             mockLoggerFactory.Setup(p => p.Dispose());
 
-            var context = new JobHostContext(mockLookup.Object, mockExecutor.Object, mockListener.Object, traceWriter, loggerFactory: mockLoggerFactory.Object);
+            var context = new JobHostContext(mockLookup.Object, mockExecutor.Object, mockListener.Object, traceWriter, null, loggerFactory: mockLoggerFactory.Object);
 
             Assert.Same(traceWriter, context.Trace);
 

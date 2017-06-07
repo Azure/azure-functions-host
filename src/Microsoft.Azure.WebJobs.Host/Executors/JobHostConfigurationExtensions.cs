@@ -33,19 +33,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal static class JobHostConfigurationExtensions
     {
-        // Do full initialization (both static and runtime). 
-        // This can be called multiple times on a config. 
-        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
-            this JobHostConfiguration config,
-            JobHost host,
-            CancellationToken shutdownToken,
-            CancellationToken cancellationToken)
-        {
-            JobHostContext context = await config.CreateJobHostContextAsync(host, shutdownToken, cancellationToken);
-
-            return context;
-        }
-
         // Static initialization. Returns a service provider with some new services initialized. 
         // The new services:
         // - can retrieve static config like binders and converters; but the listeners haven't yet started.
@@ -103,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             services.AddService<TraceWriter>(trace);
 
             // Add built-in extensions 
-            config.AddAttributesFromAssembly(typeof(TableAttribute).Assembly);
+            var metadataProvider = new JobHostMetadataProvider();
+            metadataProvider.AddAttributesFromAssembly(typeof(TableAttribute).Assembly);
 
             var exts = config.GetExtensions();
             bool builtinsAdded = exts.GetExtensions<IExtensionConfigProvider>().OfType<TableExtension>().Any();
@@ -121,9 +109,30 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             };
             InvokeExtensionConfigProviders(context);
 
+            // After this point, all user configuration has been set. 
+
             if (singletonManager == null)
             {
-                singletonManager = new SingletonManager(storageAccountProvider, exceptionHandler, config.Singleton, trace, config.LoggerFactory, hostIdProvider, services.GetService<INameResolver>());
+                var logger = config.LoggerFactory?.CreateLogger(LogCategories.Singleton);
+
+                IDistributedLockManager lockManager = services.GetService<IDistributedLockManager>();
+                if (lockManager == null)
+                {
+                    lockManager = new BlobLeaseDistributedLockManager(
+                        storageAccountProvider,
+                        trace,
+                        logger);
+                    services.AddService<IDistributedLockManager>(lockManager);
+                }
+
+                singletonManager = new SingletonManager(
+                    lockManager,                     
+                    config.Singleton, 
+                    trace,
+                    exceptionHandler,
+                    config.LoggerFactory, 
+                    hostIdProvider, 
+                    services.GetService<INameResolver>());
                 services.AddService<SingletonManager>(singletonManager);
             }
 
@@ -138,6 +147,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, config.LoggerFactory, storageAccountProvider, extensionTypeLocator, blobWrittenWatcherAccessor, extensions);
                 services.AddService<IBindingProvider>(bindingProvider);
             }
+                        
+            var converterManager = (ConverterManager)config.ConverterManager;
+            metadataProvider.Initialize(bindingProvider, converterManager, exts);
+            services.AddService<IJobHostMetadataProvider>(metadataProvider);
 
             return services;
         }
@@ -146,13 +159,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         // This mainly means:
         // - indexing the functions 
         // - spinning up the listeners (so connecting to the services)
-        private static async Task<JobHostContext> CreateJobHostContextAsync(this JobHostConfiguration config, JobHost host, CancellationToken shutdownToken, CancellationToken cancellationToken)
+        public static async Task<JobHostContext> CreateJobHostContextAsync(
+            this JobHostConfiguration config, 
+            ServiceProviderWrapper services, // Results from first phase
+            JobHost host, 
+            CancellationToken shutdownToken, 
+            CancellationToken cancellationToken)
         {
-            // If we already initialized the services, get the previous initialization so that 
-            // we don't double-execute the extension Initialize() methods. 
-            var partialInit = config.TakeOwnershipOfPartialInitialization();
-            var services = partialInit ?? config.CreateStaticServices();
-
             FunctionExecutor functionExecutor = services.GetService<FunctionExecutor>();
             IFunctionIndexProvider functionIndexProvider = services.GetService<IFunctionIndexProvider>();
             ITriggerBindingProvider triggerBindingProvider = services.GetService<ITriggerBindingProvider>();
@@ -364,7 +377,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     startupLogger?.LogInformation(msg);
                 }
 
-                return new JobHostContext(functions, hostCallExecutor, listener, trace, functionEventCollector, loggerFactory);
+                return new JobHostContext(
+                    functions, 
+                    hostCallExecutor, 
+                    listener, 
+                    trace,
+                    functionEventCollector, 
+                    loggerFactory);
             }
         }
 

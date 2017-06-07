@@ -8,6 +8,8 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Configuration options governing the lock functionality of <see cref="SingletonAttribute"/>.
+    /// The configuration needs to cooperate with the SDK's registered <see cref="IDistributedLockManager"/>. 
+    /// For example, this configuration determines the refresh frequently for calls on <see cref="IDistributedLockManager.RenewAsync(IDistributedLock, CancellationToken)"/>. 
     /// </summary>
     public sealed class SingletonConfiguration
     {

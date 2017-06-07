@@ -27,11 +27,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             config.AddExtension(ext);
 
-            IJobHostMetadataProvider metadataProvider = config.CreateMetadataProvider();
+            var host = new TestJobHost<MyProg>(config);
+            IJobHostMetadataProvider metadataProvider = host.CreateMetadataProvider();
             Assert.Equal(1, ext._counter);
 
             // Callable            
-            var host = new TestJobHost<MyProg>(config);
             host.Call("Test");
             Assert.Equal(1, ext._counter);
 
@@ -72,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void AttrBuilder()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var metadataProvider = config.CreateMetadataProvider();
+            var host2 = new JobHost(config);
+            var metadataProvider = host2.CreateMetadataProvider();
 
             // Blob 
             var blobAttr = GetAttr<BlobAttribute>(metadataProvider, new { path = "x" } );
@@ -138,7 +139,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void DefaultTypeForTable()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var metadataProvider = config.CreateMetadataProvider();
+            var host2 = new JobHost(config);
+            var metadataProvider = host2.CreateMetadataProvider();
 
             var t1 = metadataProvider.GetDefaultType(new TableAttribute("table1"), FileAccess.Read, null);
             Assert.Equal(typeof(JArray), t1);
@@ -155,7 +157,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void DefaultTypeForQueue()
         {
             JobHostConfiguration config = TestHelpers.NewConfig();
-            var metadataProvider = config.CreateMetadataProvider();
+            var host2 = new JobHost(config);
+            var metadataProvider = host2.CreateMetadataProvider();
 
             var t1 = metadataProvider.GetDefaultType(new QueueAttribute("q"), FileAccess.Read, typeof(byte[]));
             Assert.Equal(typeof(byte[]), t1);

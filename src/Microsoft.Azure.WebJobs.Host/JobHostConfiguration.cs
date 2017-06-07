@@ -31,11 +31,8 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostBlobsConfiguration _blobsConfiguration = new JobHostBlobsConfiguration();
         private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
-        private readonly JobHostMetadataProvider _metadataProvider;
 
         private string _hostId;
-
-        private ServiceProviderWrapper _partialInitServices;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
@@ -66,8 +63,7 @@ namespace Microsoft.Azure.WebJobs
             Aggregator = new FunctionResultAggregatorConfiguration();
 
             // add our built in services here
-            _metadataProvider = new JobHostMetadataProvider(this);
-            IExtensionRegistry extensions = new DefaultExtensionRegistry(_metadataProvider);
+            IExtensionRegistry extensions = new DefaultExtensionRegistry();
             ITypeLocator typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
             IConverterManager converterManager = new ConverterManager();
             IWebJobsExceptionHandler exceptionHandler = new WebJobsExceptionHandler();
@@ -347,7 +343,7 @@ namespace Microsoft.Azure.WebJobs
             }
 
             object service = null;
-            _services.TryGetValue(serviceType, out service);
+            _services.TryGetValue(serviceType, out service); 
 
             return service;
         }
@@ -403,45 +399,6 @@ namespace Microsoft.Azure.WebJobs
         {
             var exts = this.GetExtensions();
             exts.RegisterExtension<IExtensionConfigProvider>(extension);
-        }
-
-        internal void AddAttributesFromAssembly(Assembly assembly)
-        {
-            _metadataProvider.AddAttributesFromAssembly(assembly);
-        }
-
-        /// <summary>
-        /// Creates a <see cref="IJobHostMetadataProvider"/> for this configuration.
-        /// </summary>
-        /// <returns>The <see cref="IJobHostMetadataProvider"/>.</returns>
-        public IJobHostMetadataProvider CreateMetadataProvider()
-        {
-            var serviceProvider = this.CreateStaticServices();
-            var bindingProvider = serviceProvider.GetService<IBindingProvider>();
-
-            _metadataProvider.Initialize(bindingProvider);
-
-            // Ensure all extensions have been called 
-
-            lock (this)
-            {
-                if (_partialInitServices == null)
-                {
-                    _partialInitServices = serviceProvider;
-                }
-            }
-
-            return _metadataProvider;
-        }
-
-        internal ServiceProviderWrapper TakeOwnershipOfPartialInitialization()
-        {
-            lock (this)
-            {
-                var ctx = this._partialInitServices;
-                this._partialInitServices = null;
-                return ctx;
-            }
         }
     }
 }

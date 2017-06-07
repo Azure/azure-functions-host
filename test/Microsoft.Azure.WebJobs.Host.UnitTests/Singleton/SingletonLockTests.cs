@@ -8,6 +8,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
+    using SingletonLockHandle = BlobLeaseDistributedLockManager.SingletonLockHandle;
+
     public class SingletonLockTests
     {
         private const string TestLockId = "testid";
@@ -32,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             CancellationToken cancellationToken = new CancellationToken();
             SingletonAttribute attribute = new SingletonAttribute();
-            SingletonManager.SingletonLockHandle handle = new SingletonManager.SingletonLockHandle();
+            var handle = new RenewableLockHandle(new SingletonLockHandle(), null);
 
             Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
             mockSingletonManager.Setup(p => p.LockAsync(TestLockId, TestInstanceId, attribute, cancellationToken)).ReturnsAsync(handle);
@@ -52,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         {
             CancellationToken cancellationToken = new CancellationToken();
             SingletonAttribute attribute = new SingletonAttribute();
-            SingletonManager.SingletonLockHandle handle = new SingletonManager.SingletonLockHandle();
+            var handle = new RenewableLockHandle(new SingletonLockHandle(), null);
 
             Mock<SingletonManager> mockSingletonManager = new Mock<SingletonManager>(MockBehavior.Strict);
             mockSingletonManager.Setup(p => p.LockAsync(TestLockId, TestInstanceId, attribute, cancellationToken)).ReturnsAsync(handle);

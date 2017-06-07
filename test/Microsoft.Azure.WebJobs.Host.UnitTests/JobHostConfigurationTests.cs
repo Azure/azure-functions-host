@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Newtonsoft.Json;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Config;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -422,6 +423,61 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 Environment.SetEnvironmentVariable("AzureWebJobsStorage", prevStorage);
                 Environment.SetEnvironmentVariable("AzureWebJobsDashboard", prevDashboard);
+            }
+        }
+
+        [Fact]
+        public void TestServices()
+        {            
+            // Test configuration similar to how ScriptRuntime works.             
+            // - config is created and immediatey passed to a JobHost ctor
+            // - config is then initialized, including adding extensions 
+            // - extensions may register their own services. 
+            JobHostConfiguration config = new JobHostConfiguration();
+            var host = new JobHost(config); 
+
+            var lockManager = config.GetService<IDistributedLockManager>();
+            Assert.Null(lockManager); // Not initialized yet. 
+
+            var nameResolver = new FakeNameResolver();
+            config.AddExtension(new TestExtension()); // this extension will add services. 
+            config.AddService<INameResolver>(nameResolver);
+
+            //  Now succeeds when called on JobHost instead of Config object. 
+            lockManager = host.Services.GetService<IDistributedLockManager>();
+            Assert.NotNull(lockManager);
+            Assert.IsType<TestLockManager>(lockManager); // verify it's our custom type             
+        }
+        
+        // A test extension. This registers a new service in the initialization path. 
+        class TestExtension : IExtensionConfigProvider
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                context.Config.AddService<IDistributedLockManager>(new TestLockManager());
+            }
+        }
+
+        class TestLockManager : IDistributedLockManager
+        {
+            public Task<string> GetLockOwnerAsync(string account, string lockId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task ReleaseLockAsync(IDistributedLock lockHandle, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<bool> RenewAsync(IDistributedLock lockHandle, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<IDistributedLock> TryLockAsync(string account, string lockId, string lockOwnerId, string proposedLeaseId, TimeSpan lockPeriod, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
             }
         }
 

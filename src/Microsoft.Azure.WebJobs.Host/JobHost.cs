@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -35,18 +36,25 @@ namespace Microsoft.Azure.WebJobs
         private readonly WebJobsShutdownWatcher _shutdownWatcher;
         private readonly CancellationTokenSource _stoppingTokenSource;
 
-        private Task<JobHostContext> _contextTask;
-        private bool _contextTaskInitialized;
-        private object _contextTaskLock = new object();
-
         private JobHostContext _context;
         private IListener _listener;
-        private object _contextLock = new object();
+
+        // Null if we haven't yet started runtime initialization.
+        // Points to an incomplete task during initialization. 
+        // Points to a completed task after initialization. 
+        private Task _initializationRunning = null;
+
+        // These are services that are accessible without starting the execution container. 
+        // They include the initial set of JobHostConfiguration services as well as 
+        // additional services created. 
+        private ServiceProviderWrapper _services;
 
         private int _state;
         private Task _stopTask;
-        private object _stopTaskLock = new object();
         private bool _disposed;
+
+        // Common lock to protect fields. 
+        private object _lock = new object();
 
         private ILogger _logger;
 
@@ -146,7 +154,7 @@ namespace Microsoft.Azure.WebJobs
             }
 
             // Multiple threads may call StopAsync concurrently. Both need to return the same task instance.
-            lock (_stopTaskLock)
+            lock (_lock)
             {
                 if (_stopTask == null)
                 {
@@ -336,37 +344,92 @@ namespace Microsoft.Azure.WebJobs
             return function;
         }
 
-        private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
-        {
-            JobHostContext context = await _config.CreateAndLogHostStartedAsync(this, _shutdownTokenSource.Token, cancellationToken);
-
-            lock (_contextLock)
-            {
-                if (_context == null)
-                {
-                    _context = context;
-                    _listener = context.Listener;
-                }
-            }
-
-            _logger = _context.LoggerFactory?.CreateLogger(LogCategories.Startup);
-
-            return _context;
-        }
-
-        private Task EnsureHostStartedAsync(CancellationToken cancellationToken)
-        {
-            return LazyInitializer.EnsureInitialized<Task<JobHostContext>>(ref _contextTask,
-                ref _contextTaskInitialized,
-                ref _contextTaskLock,
-                () => CreateContextAndLogHostStartedAsync(cancellationToken));
-        }
-
         private void ThrowIfDisposed()
         {
             if (_disposed)
             {
                 throw new ObjectDisposedException(null);
+            }
+        }
+
+        // If multiple threads call this, only one should do the init. The rest should wait.
+        // When this task is signalled, _context is initialized. 
+        private Task EnsureHostStartedAsync(CancellationToken cancellationToken)
+        {
+            if (_context != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            TaskCompletionSource<bool> tsc = null;
+
+            lock (_lock)
+            {
+                if (_initializationRunning == null)
+                {
+                    // This thread wins the race and owns initialing. 
+                    tsc = new TaskCompletionSource<bool>();
+                    _initializationRunning = tsc.Task;
+                }
+            }
+
+            if (tsc != null)
+            {
+                // Ignore the return value and use tsc so that all threads are awaiting the same thing. 
+                Task ignore = RuntimeInitAsync(cancellationToken, tsc);
+            }
+
+            return _initializationRunning;
+        }
+
+        // Caller gaurantees this is single-threaded. 
+        // Set initializationTask when complete, many threads can wait on that. 
+        // When complete, the fields should be initialized to allow runtime usage. 
+        private async Task RuntimeInitAsync(CancellationToken cancellationToken, TaskCompletionSource<bool> initializationTask)
+        {
+            try
+            {
+                // Do real initialization 
+                PopulateStaticServices();
+
+                JobHostContext context = await _config.CreateJobHostContextAsync(_services, this, _shutdownTokenSource.Token, cancellationToken);
+
+                _context = context;
+                _listener = context.Listener;
+                _logger = _context.LoggerFactory?.CreateLogger(LogCategories.Startup);
+
+                initializationTask.SetResult(true);
+            }
+            catch (Exception e)
+            {
+                initializationTask.SetException(e);
+            }
+        }
+
+        // Ensure the static services are initialized. 
+        // These are derived from the underlying JobHostConfiguration. 
+        // Caller ensures this is single threaded. 
+        private void PopulateStaticServices()
+        {
+            if (this._services != null)
+            {
+                return; // already Created 
+            }
+
+            var services = this._config.CreateStaticServices();
+
+            _services = services;
+        }
+
+        /// <summary>
+        /// Get set of services. 
+        /// </summary>
+        public IServiceProvider Services
+        {
+            get
+            {
+                PopulateStaticServices();
+                return _services;
             }
         }
     }

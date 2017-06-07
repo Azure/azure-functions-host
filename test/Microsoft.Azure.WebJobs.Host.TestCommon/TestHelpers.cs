@@ -142,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 typeof(IHostIdProvider),
                 typeof(IQueueConfiguration),
                 typeof(IExtensionRegistry),
+                typeof(IDistributedLockManager),
                 typeof(IFunctionIndexProvider) // set to unit test indexing. 
             };
 
@@ -220,6 +221,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
                 return Task.FromResult(account);
             }
+        }
+
+        public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
+        {
+            return host.Services.GetService<IJobHostMetadataProvider>();
         }
     }
 }

@@ -20,22 +20,23 @@ namespace Microsoft.Azure.WebJobs.Host
 
         // Map of simple assembly name to assembly.
         private readonly Dictionary<string, Assembly> _resolvedAssemblies = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
-
-        private readonly JobHostConfiguration _config;
-
+                
         private IBindingProvider _root;
 
-        public JobHostMetadataProvider(JobHostConfiguration config)
+        public JobHostMetadataProvider()
         {
-            _config = config;
         }
 
-        internal void Initialize(IBindingProvider bindingProvider)
+        internal void Initialize(IBindingProvider bindingProvider, ConverterManager converter, IExtensionRegistry extensionRegistry)
         {
+            foreach (var extension in extensionRegistry.GetExtensions<IExtensionConfigProvider>())
+            {
+                this.AddExtension(extension);
+            }
+
             this._root = bindingProvider;
 
-            // Populate assembly resolution from converters.
-            var converter = this._config.GetService<IConverterManager>() as ConverterManager;
+            // Populate assembly resolution from converters.            
             if (converter != null)
             {
                 converter.AddAssemblies((type) => this.AddAssembly(type));

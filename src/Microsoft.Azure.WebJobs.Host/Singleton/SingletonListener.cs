@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly TraceWriter _trace;
         private readonly ILogger _logger;
         private string _lockId;
-        private object _lockHandle;
+        private RenewableLockHandle _lockHandle;
         private bool _isListening;
 
         public SingletonListener(MethodInfo method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener, TraceWriter trace, ILoggerFactory loggerFactory)
