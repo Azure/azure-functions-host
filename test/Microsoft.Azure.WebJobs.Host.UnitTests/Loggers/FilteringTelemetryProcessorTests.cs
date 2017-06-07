@@ -138,11 +138,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
         private class TestTelemetry : ISupportProperties, ITelemetry
         {
-            public DateTimeOffset Timestamp { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public DateTimeOffset Timestamp { get; set; }
 
-            public TelemetryContext Context => throw new NotImplementedException();
+            public TelemetryContext Context { get; } = null;
 
-            public string Sequence { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public string Sequence { get; set; }
 
             public void Sanitize()
             {
@@ -150,7 +150,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             }
 
             public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
-
         }
     }
 }
