@@ -550,9 +550,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 metrics.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
 
                 ITelemetryClientFactory factory = scriptConfig.HostConfig.GetService<ITelemetryClientFactory>() ??
-                    new ScriptTelemetryClientFactory(instrumentationKey, scriptConfig.ApplicationInsightsSamplingSettings);
+                    new ScriptTelemetryClientFactory(instrumentationKey, scriptConfig.ApplicationInsightsSamplingSettings, scriptConfig.LogFilter.Filter);
 
-                scriptConfig.HostConfig.LoggerFactory.AddApplicationInsights(factory, scriptConfig.LogFilter.Filter);
+                scriptConfig.HostConfig.LoggerFactory.AddApplicationInsights(factory);
             }
         }
 
