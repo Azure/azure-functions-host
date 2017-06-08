@@ -11,17 +11,28 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    // wrapper around proc.start & grpc channel with some state management
-    internal interface ILanguageWorkerChannel
+    internal enum ChannelState
     {
+        Stopped,
+        Started,
+        Connected,
+        Faulted
+    }
+
+    // wrapper around proc.start & grpc channel with some state management
+    internal interface ILanguageWorkerChannel : IDisposable
+    {
+        // TODO: use state machine framework like stateless?
+        ChannelState State { get; set; }
+
         Task StartAsync();
 
         Task StopAsync();
 
         Task HandleFileEventAsync(FileSystemEventArgs fileEvent);
 
-        Task<string> LoadAsync(FunctionMetadata functionMetadata);
+        void LoadAsync(FunctionMetadata functionMetadata);
 
-        Task<object> InvokeAsync(Dictionary<string, object> scriptExecutionContext);
+        Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext);
     }
 }

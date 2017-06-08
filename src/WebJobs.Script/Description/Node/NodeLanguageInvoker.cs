@@ -114,10 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             scriptExecutionContext["invocationId"] = context.ExecutionContext.InvocationId.ToString();
             await ProcessInputBindingsAsync(context.Binder, scriptExecutionContext, bindingData);
 
-            // TODO move this to initialization
-            string functionId = await Host.FunctionDispatcher.LoadAsync(Metadata);
-            scriptExecutionContext["functionId"] = functionId;
-
+            // send message to Node RPC worker
+            // TODO: move dispatcher.invoke to FunctionInvokerBase
             object functionResult = await Host.FunctionDispatcher.InvokeAsync(Metadata, scriptExecutionContext);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);

@@ -11,12 +11,11 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 
+using WorkerPool = System.Collections.Generic.ICollection
+    <Microsoft.Azure.WebJobs.Script.Dispatch.ILanguageWorkerChannel>;
+
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-#pragma warning disable SA1200 // Using directives must be placed correctly
-    using WorkerPool = ICollection<ILanguageWorkerChannel>;
-#pragma warning restore SA1200 // Using directives must be placed correctly
-
     internal class FunctionDispatcher : IFunctionDispatcher
     {
         private readonly ScriptHostConfiguration _scriptConfig;
@@ -50,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public Task InitializeAsync(IEnumerable<LanguageWorkerConfig> workers)
         {
-            // _server.Start();
              AddWorkers(workers);
 
             // TODO: how to handle async subscriptions? post 'handlefileevent' completed back to event stream?
@@ -68,14 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             Task.WhenAll(workerFileChangeTasks).GetAwaiter().GetResult();
         }
 
-        public Task<string> LoadAsync(FunctionMetadata functionMetadata)
+        public void Load(FunctionMetadata functionMetadata)
         {
-            return GetWorker(functionMetadata).LoadAsync(functionMetadata);
+            GetWorker(functionMetadata).LoadAsync(functionMetadata);
         }
 
         public Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext)
         {
-            return GetWorker(functionMetadata).InvokeAsync(scriptExecutionContext);
+            return GetWorker(functionMetadata).InvokeAsync(functionMetadata, scriptExecutionContext);
         }
 
         public async Task ShutdownAsync()
@@ -112,6 +110,14 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private ILanguageWorkerChannel SchedulingStrategy(WorkerPool pool)
         {
             return pool.First();
+        }
+
+        public void Dispose()
+        {
+            foreach (var worker in _workers)
+            {
+                worker.Dispose();
+            }
         }
     }
 }

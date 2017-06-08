@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
     // maps from language type -> language worker pool
-    internal interface IFunctionDispatcher
+    internal interface IFunctionDispatcher : IDisposable
     {
         // read worker information from configuration
         // start workers?
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         // assign functions to worker pools based on language type
         // load functions?
-        Task<string> LoadAsync(FunctionMetadata functionMetadata);
+        void Load(FunctionMetadata functionMetadata);
 
         // invoke a function
         // could use delay loading for start worker / load fucntion

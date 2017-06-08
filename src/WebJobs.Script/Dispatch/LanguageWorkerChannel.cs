@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private Process _process;
         private IObservable<ChannelContext> _connections;
         private ChannelContext _context;
+        private ChannelState _state;
+        private IDictionary<FunctionMetadata, Task<FunctionLoadResponse>> _functionLoadState = new Dictionary<FunctionMetadata, Task<FunctionLoadResponse>>();
 
         public LanguageWorkerChannel(ScriptHostConfiguration scriptConfig, LanguageWorkerConfig workerConfig, TraceWriter logger, IObservable<ChannelContext> connections)
         {
@@ -33,11 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _scriptConfig = scriptConfig;
             _logger = logger;
             _connections = connections;
+            _state = ChannelState.Stopped;
         }
 
-        public async Task<object> InvokeAsync(Dictionary<string, object> scriptExecutionContext)
+        public ChannelState State { get => _state; set => _state = value; }
+
+        public async Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext)
         {
             _userTraceWriter = (TraceWriter)scriptExecutionContext["traceWriter"];
+            FunctionLoadResponse loadResponse = await _functionLoadState.GetOrAdd(functionMetadata, metadata => LoadInternalAsync(metadata));
+            scriptExecutionContext.Add("functionId", functionMetadata.FunctionId);
             InvocationRequest invocationRequest = scriptExecutionContext.ToRpcInvocationRequest();
             object result = null;
             InvocationResponse invocationResponse = await _context.SendAsync<InvocationRequest, InvocationResponse>(invocationRequest);
@@ -69,46 +76,51 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             FileChangeEventResponse response = await _context.SendAsync<FileChangeEventRequest, FileChangeEventResponse>(request);
         }
 
-        public async Task<string> LoadAsync(FunctionMetadata functionMetadata)
+        protected Task<FunctionLoadResponse> LoadInternalAsync(FunctionMetadata functionMetadata)
         {
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
                 FunctionId = Guid.NewGuid().ToString(),
                 Metadata = functionMetadata.ToRpcFunctionMetadata()
             };
-            FunctionLoadResponse response = await _context.SendAsync<FunctionLoadRequest, FunctionLoadResponse>(request);
+            functionMetadata.FunctionId = request.FunctionId;
+            return _context.SendAsync<FunctionLoadRequest, FunctionLoadResponse>(request);
+        }
 
-            // TODO handle load response and store loaded FunctionIds
-            return response.FunctionId;
+        public void LoadAsync(FunctionMetadata functionMetadata)
+        {
+            _functionLoadState[functionMetadata] = LoadInternalAsync(functionMetadata);
         }
 
         public async Task StartAsync()
         {
             await StopAsync();
 
+            // TODO: change to guid here & in node worker - or perhaps we don't need req response here?
             string requestId = "requestId";
 
             TaskCompletionSource<bool> connectionSource = new TaskCompletionSource<bool>();
             IDisposable subscription = null;
             subscription = _connections
                 .Where(msg => msg.RequestId == requestId)
-
-                // .Timeout(TimeSpan.FromSeconds(100))
+                .Timeout(TimeSpan.FromSeconds(10))
                 .Subscribe(msg =>
                 {
                     _context = msg;
                     connectionSource.SetResult(true);
                     subscription?.Dispose();
+                    _state = ChannelState.Connected;
                     _context.InputStream.Subscribe(HandleLogs);
                 }, exc =>
                 {
+                    _state = ChannelState.Faulted;
                     connectionSource.SetException(exc);
                     subscription?.Dispose();
                 });
             Utilities.IsTcpEndpointAvailable("127.0.0.1", 50051, _logger);
             Task startWorkerTask = StartWorkerAsync(_workerConfig, requestId);
 
-            await Task.WhenAll(startWorkerTask, connectionSource.Task);
+            await Task.WhenAny(startWorkerTask, connectionSource.Task);
         }
 
         private void HandleLogs(StreamingMessage msg)
@@ -153,52 +165,59 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         internal Task StartWorkerAsync(LanguageWorkerConfig config, string requestId)
         {
             var tcs = new TaskCompletionSource<bool>();
+            _state = ChannelState.Started;
 
-           // try
-           // {
-                // List<string> output = new List<string>();
+            try
+            {
+                List<string> output = new List<string>();
 
-            // var startInfo = new ProcessStartInfo
-            //    {
-            //        FileName = config.ExecutablePath,
-            //        RedirectStandardOutput = true,
-            //        RedirectStandardError = true,
-            //        CreateNoWindow = true,
-            //        UseShellExecute = false,
-            //        ErrorDialog = false,
-            //        WorkingDirectory = _scriptConfig.RootScriptPath,
-            //        Arguments = config.ToArgumentString(requestId)
-            //    };
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = config.ExecutablePath,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    ErrorDialog = false,
+                    WorkingDirectory = _scriptConfig.RootScriptPath,
+                    Arguments = config.ToArgumentString(requestId)
+                };
 
-            // _process = new Process { StartInfo = startInfo };
-            //    _process.ErrorDataReceived += (sender, e) =>
-            //    {
-            //        _logger.Error(e?.Data);
-            //    };
-            //    _process.OutputDataReceived += (sender, e) =>
-            //    {
-            //        _logger.Info(e?.Data);
-            //    };
-            //    _process.EnableRaisingEvents = true;
-            //    _process.Exited += (s, e) =>
-            //    {
-            //        _process.WaitForExit();
-            //        _process.Close();
-            //        tcs.SetResult(true);
-            //    };
+                _process = new Process { StartInfo = startInfo };
+                _process.ErrorDataReceived += (sender, e) =>
+                {
+                    _logger.Error(e?.Data);
+                };
+                _process.OutputDataReceived += (sender, e) =>
+                {
+                    _logger.Info(e?.Data);
+                };
+                _process.EnableRaisingEvents = true;
+                _process.Exited += (s, e) =>
+                {
+                    _process.WaitForExit();
+                    _process.Close();
+                    _state = ChannelState.Stopped;
+                    tcs.SetResult(true);
+                };
 
-            // _process.Start();
+                _process.Start();
 
-            // _process.BeginErrorReadLine();
-            //    _process.BeginOutputReadLine();
-            // }
-            // catch (Exception exc)
-            // {
-            //    _logger.Error("Error starting LanguageWorkerChannel", exc);
-            //    tcs.SetException(exc);
-            // }
-            tcs.SetResult(true);
+                _process.BeginErrorReadLine();
+                _process.BeginOutputReadLine();
+            }
+            catch (Exception exc)
+            {
+                _logger.Error("Error starting LanguageWorkerChannel", exc);
+                _state = ChannelState.Faulted;
+                tcs.SetException(exc);
+            }
             return tcs.Task;
+        }
+
+        public void Dispose()
+        {
+            _process?.Kill();
         }
     }
 }
