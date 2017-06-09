@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             internal IStorageQueue GetQueue(QueueAttribute attrResolved)
             {
-                var account = Task.Run(() => this._accountProvider.GetStorageAccountAsync(attrResolved, CancellationToken.None)).GetAwaiter().GetResult();
+                var account = Task.Run(() => _accountProvider.GetStorageAccountAsync(attrResolved, CancellationToken.None)).GetAwaiter().GetResult();
                 var client = account.CreateQueueClient();
 
                 string queueName = attrResolved.QueueName.ToLowerInvariant();

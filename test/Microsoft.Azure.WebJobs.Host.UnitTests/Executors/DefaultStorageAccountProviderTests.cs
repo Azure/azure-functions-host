@@ -267,6 +267,31 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             Assert.Equal(accountReal, account);
         }
 
+        [Fact]
+        public async Task GetAccountAsync_CachesAccounts()
+        {
+            var services = CreateServices();
+            var accountMock = new Mock<IStorageAccount>();
+            var storageMock = new Mock<IStorageAccount>();
+
+            var csProvider = CreateConnectionStringProvider("account", "cs");
+            var parser = CreateParser(services, "account", "cs", accountMock.Object);
+
+            // strick mock tests that validate does not occur twice
+            Mock<IStorageCredentialsValidator> validatorMock = new Mock<IStorageCredentialsValidator>(MockBehavior.Strict);
+            validatorMock.Setup(v => v.ValidateCredentialsAsync(accountMock.Object, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            validatorMock.Setup(v => v.ValidateCredentialsAsync(storageMock.Object, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
+            DefaultStorageAccountProvider provider = CreateProductUnderTest(services, csProvider, parser, validatorMock.Object);
+            var account = await provider.TryGetAccountAsync("account", CancellationToken.None);
+            var account2 = await provider.TryGetAccountAsync("account", CancellationToken.None);
+
+            Assert.Equal(account, account2);
+            validatorMock.Verify(v => v.ValidateCredentialsAsync(accountMock.Object, It.IsAny<CancellationToken>()), Times.Once());
+        }
+
         private static IConnectionStringProvider CreateConnectionStringProvider(string connectionStringName,
             string connectionString)
         {

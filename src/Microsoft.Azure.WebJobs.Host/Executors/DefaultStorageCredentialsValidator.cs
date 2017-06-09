@@ -17,8 +17,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
-        private readonly HashSet<StorageCredentials> _validatedCredentials = new HashSet<StorageCredentials>();
-
         public async Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
         {
             if (account == null)
@@ -26,16 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("account");
             }
 
-            StorageCredentials credentials = account.Credentials;
-
-            // Avoid double-validating the same account and credentials.
-            if (_validatedCredentials.Contains(credentials))
-            {
-                return;
-            }
-
             await ValidateCredentialsAsyncCore(account, cancellationToken);
-            _validatedCredentials.Add(credentials);
         }
 
         // Test that the credentials are valid and classify the account.Type as one of StorageAccountTypes
@@ -58,9 +47,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             catch (Exception e)
             {
                 var storageException = e as StorageException;
-                if (storageException != null && storageException.RequestInformation != null &&
-                    storageException.RequestInformation.HttpStatusCode == 400 &&
-                    storageException.RequestInformation.ExtendedErrorInformation.ErrorCode == "InvalidQueryParameterValue")
+                if (storageException?.RequestInformation?.HttpStatusCode == 400 &&
+                    storageException?.RequestInformation?.ExtendedErrorInformation?.ErrorCode == "InvalidQueryParameterValue")
                 {
                     // Premium storage accounts do not support the GetServicePropertiesAsync call, and respond with a 400 'InvalidQueryParameterValue'.
                     // If we see this error response classify the account as a premium account
@@ -90,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             catch (StorageException exception)
             {
                 WebException webException = exception.GetBaseException() as WebException;
-                if (webException != null && webException.Status == WebExceptionStatus.NameResolutionFailure)
+                if (webException?.Status == WebExceptionStatus.NameResolutionFailure)
                 {
                     // Blob-only storage accounts do not support services other than Blob.  
                     // If we see a name resolution failure on the queue endpoint classify as a blob-only account
