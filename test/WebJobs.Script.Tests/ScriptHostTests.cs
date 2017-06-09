@@ -1048,7 +1048,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure no App Insights is configured
             var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, null);
+            settingsManager.ApplicationInsightsInstrumentationKey = null;
 
             var metricsLogger = new TestMetricsLogger();
             config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
@@ -1070,7 +1070,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure no App Insights is configured
             var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, "Some_Instrumentation_Key");
+            settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
 
             var metricsLogger = new TestMetricsLogger();
             config.HostConfig.AddService<IMetricsLogger>(metricsLogger);

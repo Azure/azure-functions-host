@@ -390,6 +390,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiHubTestHelper.cs" />
+    <Compile Include="ApplicationInsights\ApplicationInsightsCSharpEndToEndTests.cs" />
+    <Compile Include="ApplicationInsights\ApplicationInsightsEndToEndTestsBase.cs" />
+    <Compile Include="ApplicationInsights\ApplicationInsightsTestFixture.cs" />
+    <Compile Include="ApplicationInsights\TelemetryPayload.cs" />
     <Compile Include="Controllers\ControllerDisabledAuthScenarioTestsFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostSystemKeysScenario.cs" />

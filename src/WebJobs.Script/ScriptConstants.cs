@@ -71,6 +71,5 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
 
         public const int MaximumHostIdLength = 32;
-        public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
     }
 }

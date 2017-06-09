@@ -4,7 +4,7 @@
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
     /// Provides ways to plug into the ScriptHost ILoggerFactory initialization.

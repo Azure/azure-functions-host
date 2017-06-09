@@ -15,6 +15,10 @@ public static void Run(ScenarioInput input, out string blob, TraceWriter trace, 
         trace.Info($"From TraceWriter: {guids[0]}");
         logger.LogInformation($"From ILogger: {guids[1]}");
     }
+    else if (input.Scenario == "appInsights")
+    {
+        logger.LogInformation(input.Value);
+    }
     else
     {
         throw new NotSupportedException($"The scenario '{input.Scenario}' did not match any known scenario.");

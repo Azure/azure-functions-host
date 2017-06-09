@@ -43,7 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string GetSettingFromConfigOrEnvironment(string settingName)
         {
             string configValue = ConfigurationManager.AppSettings[settingName];
-            if (!string.IsNullOrEmpty(configValue))
+
+            // Empty strings are allowed. Null indicates that the setting was not found.
+            if (configValue != null)
             {
                 // config values take precedence over environment values
                 return configValue;

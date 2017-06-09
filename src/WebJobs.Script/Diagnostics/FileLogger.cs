@@ -42,11 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            // We don't support any other type of state.
             IEnumerable<KeyValuePair<string, object>> properties = state as IEnumerable<KeyValuePair<string, object>>;
             string formattedMessage = formatter?.Invoke(state, exception);
 
-            if (string.IsNullOrEmpty(formattedMessage) || properties == null || !IsEnabled(logLevel) || IsFromTraceWriter(properties))
+            // If we have no structured data and no message, there's nothing to log
+            if ((string.IsNullOrEmpty(formattedMessage) && properties == null) ||
+                !IsEnabled(logLevel) || IsFromTraceWriter(properties))
             {
                 return;
             }
@@ -107,7 +108,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private static bool IsFromTraceWriter(IEnumerable<KeyValuePair<string, object>> properties)
         {
-            return properties.Any(kvp => kvp.Key == ScriptConstants.TracePropertyIsUserTraceKey);
+            if (properties == null)
+            {
+                return false;
+            }
+            else
+            {
+                return properties.Any(kvp => string.Equals(kvp.Key, ScriptConstants.TracePropertyIsUserTraceKey, StringComparison.OrdinalIgnoreCase));
+            }
         }
     }
 }

@@ -54,6 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // be checking them
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
+
+            InitializeConfig(config);
+
             Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager);
             Host.Start();
         }
@@ -87,6 +90,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public HttpConfiguration RequestConfiguration { get; }
 
         public IScriptEventManager EventManager { get; }
+
+        protected virtual void InitializeConfig(ScriptHostConfiguration config)
+        {
+        }
 
         public CloudQueue GetNewQueue(string queueName)
         {

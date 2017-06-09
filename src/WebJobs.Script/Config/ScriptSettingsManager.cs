@@ -68,6 +68,32 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        public virtual string ApplicationInsightsInstrumentationKey
+        {
+            get => GetSettingFromCache(EnvironmentSettingNames.AppInsightsInstrumentationKey);
+            set => UpdateSettingInCache(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
+        }
+
+        private string GetSettingFromCache(string settingKey)
+        {
+            if (string.IsNullOrEmpty(settingKey))
+            {
+                throw new ArgumentNullException(nameof(settingKey));
+            }
+
+            return _settingsCache.GetOrAdd(settingKey, (key) => Utility.GetSettingFromConfigOrEnvironment(key));
+        }
+
+        private void UpdateSettingInCache(string settingKey, string settingValue)
+        {
+            if (string.IsNullOrEmpty(settingKey))
+            {
+                throw new ArgumentNullException(nameof(settingKey));
+            }
+
+            _settingsCache.AddOrUpdate(settingKey, settingValue, (a, b) => settingValue);
+        }
+
         public virtual void Reset()
         {
             _settingsCache.Clear();

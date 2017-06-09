@@ -8,7 +8,7 @@ using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Host
+namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
     /// Overrides the default client creation by adding a custom SdkVersion for backend tracking.
