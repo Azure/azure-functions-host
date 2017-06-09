@@ -24,7 +24,6 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -32,7 +31,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -318,22 +316,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
 
-                ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, metricsLogger, () => FileLoggingEnabled);
-
-                // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
-                // for all other logging after startup.
-                _startupLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-                Logger = hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-
-                string message = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
-                TraceWriter.Info(message);
-                _startupLogger?.LogInformation(message);
+                string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
+                TraceWriter.Info(readingFileMessage);
 
                 string json = File.ReadAllText(hostConfigFilePath);
 
-                message = $"Host configuration file read:{Environment.NewLine}{json}";
-                TraceWriter.Info(message);
-                _startupLogger.LogInformation(message);
+                string readFileMessage = $"Host configuration file read:{Environment.NewLine}{json}";
+                TraceWriter.Info(readFileMessage);
 
                 JObject hostConfigObject;
                 try
@@ -342,10 +331,29 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (JsonException ex)
                 {
+                    // If there's a parsing error, set up the logger and write out the previous messages so that they're
+                    // discoverable in Application Insights. There's no filter, but that's okay since we cannot parse host.json to
+                    // determine how to build the filtler.
+                    ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+                    ILogger startupErrorLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                    startupErrorLogger.LogInformation(readingFileMessage);
+                    startupErrorLogger.LogInformation(readFileMessage);
+
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
                 ApplyConfiguration(hostConfigObject, ScriptConfig);
+
+                ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+
+                // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
+                // for all other logging after startup.
+                _startupLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                Logger = hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
+                // Do not log these until after all the configuration is done so the proper filters are applied.
+                _startupLogger.LogInformation(readingFileMessage);
+                _startupLogger.LogInformation(readFileMessage);
 
                 if (string.IsNullOrEmpty(hostConfig.HostId))
                 {
@@ -537,23 +545,17 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig, IFunctionTraceWriterFactory traceWriteFactory,
-            ScriptSettingsManager settingsManager, IMetricsLogger metrics, Func<bool> isFileLoggingEnabled)
+            ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled)
         {
-            // Register a file logger that only logs user logs and only if file logging is enabled
+            // Register a file logger that only logs user logs and only if file logging is enabled.
+            // We don't allow this to be replaced; if you want to disable it, you can use host.json to do so.
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
 
-            // Automatically register App Insights if the key is present
-            string instrumentationKey = settingsManager?.GetSetting(ScriptConstants.AppInsightsInstrumentationKey);
-            if (!string.IsNullOrEmpty(instrumentationKey))
-            {
-                metrics.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
-
-                ITelemetryClientFactory factory = scriptConfig.HostConfig.GetService<ITelemetryClientFactory>() ??
-                    new ScriptTelemetryClientFactory(instrumentationKey, scriptConfig.ApplicationInsightsSamplingSettings, scriptConfig.LogFilter.Filter);
-
-                scriptConfig.HostConfig.LoggerFactory.AddApplicationInsights(factory);
-            }
+            // Allow a way to plug in custom LoggerProviders.
+            ILoggerFactoryBuilder builder = scriptConfig.HostConfig.GetService<ILoggerFactoryBuilder>() ??
+                new DefaultLoggerFactoryBuilder();
+            builder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
         }
 
         private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)

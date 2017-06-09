@@ -946,6 +946,99 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void Initialize_AppliesLoggerConfig()
+        {
+            TestLoggerProvider loggerProvider = null;
+            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
+            loggerFactoryHookMock
+                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
+                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
+                {
+                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
+                    factory.AddProvider(loggerProvider);
+                });
+
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            // Turn off all logging. We shouldn't see any output.
+            string hostJsonContent = @"
+            {
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'None'
+                    }
+                }
+            }";
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath
+            };
+
+            config.HostConfig.AddService<ILoggerFactoryBuilder>(loggerFactoryHookMock.Object);
+
+            config.HostConfig.HostId = ID;
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
+
+            var host = ScriptHost.Create(environment.Object, eventManager.Object, config);
+
+            // We shouldn't have any log messages
+            foreach (var logger in loggerProvider.CreatedLoggers)
+            {
+                Assert.Empty(logger.LogMessages);
+            }
+        }
+
+        [Fact]
+        public void Initialize_LogsHostJson_IfParseError()
+        {
+            TestLoggerProvider loggerProvider = null;
+            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
+            loggerFactoryHookMock
+                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
+                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
+                {
+                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
+                    factory.AddProvider(loggerProvider);
+                });
+
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), @"{<unparseable>}");
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath
+            };
+
+            config.HostConfig.AddService<ILoggerFactoryBuilder>(loggerFactoryHookMock.Object);
+
+            config.HostConfig.HostId = ID;
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
+
+            Assert.Throws<FormatException>(() => ScriptHost.Create(environment.Object, eventManager.Object, config));
+
+            // We should have gotten sone messages.
+            var logger = loggerProvider.CreatedLoggers.Single();
+            Assert.Equal(3, logger.LogMessages.Count);
+            Assert.StartsWith("Reading host configuration file", logger.LogMessages[0].FormattedMessage);
+            Assert.StartsWith("Host configuration file read", logger.LogMessages[1].FormattedMessage);
+            Assert.StartsWith("ScriptHost initialization failed", logger.LogMessages[2].FormattedMessage);
+            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[2].Exception.Message);
+        }
+
+        [Fact]
         public void ConfigureLoggerFactory_Default()
         {
             var config = new ScriptHostConfiguration();
@@ -958,11 +1051,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, null);
 
             var metricsLogger = new TestMetricsLogger();
+            config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, metricsLogger, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
 
             Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
-            Assert.Empty(metricsLogger.LoggedEvents);
+            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+            Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
 
         [Fact]
@@ -978,8 +1073,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             settingsManager.SetSetting(ScriptConstants.AppInsightsInstrumentationKey, "Some_Instrumentation_Key");
 
             var metricsLogger = new TestMetricsLogger();
+            config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, metricsLogger, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
 
             Assert.Equal(2, loggerFactory.Providers.Count);
 
@@ -990,6 +1086,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+            Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
         }
 
         [Fact]
@@ -1268,6 +1365,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public ScriptHost Host { get; private set; }
+        }
+
+        private class TestLoggerProvider : ILoggerProvider
+        {
+            private readonly Func<string, LogLevel, bool> _filter;
+
+            public TestLoggerProvider(Func<string, LogLevel, bool> filter = null)
+            {
+                _filter = filter;
+            }
+
+            public IList<TestLogger> CreatedLoggers { get; } = new List<TestLogger>();
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                var logger = new TestLogger(categoryName, _filter);
+                CreatedLoggers.Add(logger);
+                return logger;
+            }
+
+            public IEnumerable<LogMessage> GetAllLogMessages()
+            {
+                return CreatedLoggers.SelectMany(l => l.LogMessages);
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+
+        private class TestLogger : ILogger
+        {
+            private readonly Func<string, LogLevel, bool> _filter;
+
+            public TestLogger(string category, Func<string, LogLevel, bool> filter = null)
+            {
+                Category = category;
+                _filter = filter;
+            }
+
+            public string Category { get; private set; }
+
+            public IList<LogMessage> LogMessages { get; } = new List<LogMessage>();
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                return null;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return _filter?.Invoke(Category, logLevel) ?? true;
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                if (!IsEnabled(logLevel))
+                {
+                    return;
+                }
+
+                LogMessages.Add(new LogMessage
+                {
+                    Level = logLevel,
+                    EventId = eventId,
+                    State = state as IEnumerable<KeyValuePair<string, object>>,
+                    Exception = exception,
+                    FormattedMessage = formatter(state, exception),
+                    Category = Category
+                });
+            }
+        }
+
+        private class LogMessage
+        {
+            public LogLevel Level { get; set; }
+
+            public EventId EventId { get; set; }
+
+            public IEnumerable<KeyValuePair<string, object>> State { get; set; }
+
+            public Exception Exception { get; set; }
+
+            public string FormattedMessage { get; set; }
+
+            public string Category { get; set; }
         }
 
         private class TestLoggerFactory : ILoggerFactory

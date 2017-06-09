@@ -481,6 +481,8 @@
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
     <Compile Include="Diagnostics\HostPerformanceManager.cs" />
+    <Compile Include="Diagnostics\DefaultLoggerFactoryBuilder.cs" />
+    <Compile Include="Diagnostics\ILoggerFactoryBuilder.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />
     <Compile Include="Diagnostics\InterceptingTraceWriter.cs" />
     <Compile Include="Diagnostics\IFunctionTraceWriterFactory.cs" />
