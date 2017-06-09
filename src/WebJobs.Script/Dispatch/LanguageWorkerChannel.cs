@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 foreach (ParameterBinding outputParameterBinding in invocationResponse.OutputData)
                 {
-                    object objValue = Utilities.ConvertTypedDataToObject(outputParameterBinding.Data);
+                    object objValue = outputParameterBinding.Data.FromRpcTypedDataToObject();
                     if (outputParameterBinding.Name == "$return")
                     {
                         result = objValue;
@@ -96,8 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             await StopAsync();
 
-            // TODO: change to guid here & in node worker - or perhaps we don't need req response here?
-            string requestId = "requestId";
+            string requestId = Guid.NewGuid().ToString();
 
             TaskCompletionSource<bool> connectionSource = new TaskCompletionSource<bool>();
             IDisposable subscription = null;

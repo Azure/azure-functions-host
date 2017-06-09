@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             WorkerPath = Environment.GetEnvironmentVariable("NodeJSWorkerPath");
 
             // TODO set host and port
-            Arguments = "--host 127.0.0.1 --port 50051 --requestId requestId";
+            Arguments = "--host 127.0.0.1 --port 50051";
             SupportedScriptTypes = new List<ScriptType>()
             {
                 ScriptType.Javascript

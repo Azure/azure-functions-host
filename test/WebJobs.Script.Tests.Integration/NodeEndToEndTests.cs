@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var properties = (JObject)blobMetadata["properties"];
             Assert.Equal("application/octet-stream", (string)properties["contentType"]);
-            Assert.Equal("BlockBlob", (string)properties["blobType"]);
+            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
             Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
