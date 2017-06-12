@@ -8,6 +8,7 @@
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
     <summary>Microsoft.Azure.WebJobs.Host.TestCommon is a test library for writing WebJobs in Microsoft Azure.</summary>
     <description>Microsoft.Azure.WebJobs.Host.TestCommon is a test library for writing WebJobs in Microsoft Azure.</description>
+    <releaseNotes>Release Notes: https://github.com/Azure/azure-webjobs-sdk/releases</releaseNotes>
     <language>en-US</language>
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>

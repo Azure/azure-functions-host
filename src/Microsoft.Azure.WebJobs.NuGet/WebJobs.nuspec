@@ -8,6 +8,7 @@
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
     <summary>Microsoft.Azure.WebJobs.Host is a library for writing WebJobs in Microsoft Azure. The host is a container where all the functions in your program can execute. This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host.</summary>
     <description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the WebJobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
+    <releaseNotes>Release Notes: https://github.com/Azure/azure-webjobs-sdk/releases</releaseNotes>
     <language>en-US</language>
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>
