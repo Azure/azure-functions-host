@@ -498,6 +498,8 @@
     <Compile Include="Diagnostics\ConditionalTraceWriterTests.cs" />
     <Compile Include="Diagnostics\InterceptingTraceWriterTests.cs" />
     <Compile Include="Extensions\ScriptBindingContextTests.cs" />
+    <Compile Include="Eventing\StructuredLogEntryEventTests.cs" />
+    <Compile Include="Eventing\StructuredLogEntryTests.cs" />
     <Compile Include="Filters\JwtAuthenticationAttributeTests.cs" />
     <Compile Include="Diagnostics\FastLoggerTests.cs" />
     <Compile Include="Diagnostics\HostPerformanceManagerTests.cs" />

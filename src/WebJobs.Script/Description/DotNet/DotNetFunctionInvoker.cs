@@ -79,8 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, TraceWriter traceWriter)
         {
-            string functionScriptDirectory = Path.GetDirectoryName(functionMetadata.ScriptFile);
-            return new FunctionMetadataResolver(functionScriptDirectory, host.ScriptConfig.BindingProviders,
+            return new FunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders,
                 traceWriter, host.ScriptConfig.HostConfig.LoggerFactory);
         }
 
