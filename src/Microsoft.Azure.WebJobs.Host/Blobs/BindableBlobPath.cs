@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             BindingTemplate containerNameTemplate = BindingTemplate.FromString(parsedPattern.ContainerName);
             BindingTemplate blobNameTemplate = BindingTemplate.FromString(parsedPattern.BlobName);
 
-            if (containerNameTemplate.ParameterNames.Count() > 0 || blobNameTemplate.ParameterNames.Count() > 0)
+            if (containerNameTemplate.HasParameters || blobNameTemplate.HasParameters)
             {
                 return new ParameterizedBlobPath(containerNameTemplate, blobNameTemplate);
             }

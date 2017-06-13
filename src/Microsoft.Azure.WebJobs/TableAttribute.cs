@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -40,6 +41,11 @@ namespace Microsoft.Azure.WebJobs
         private readonly string _partitionKey;
         private readonly string _rowKey;
 
+        // Table Name Rules are summerized in this page https://msdn.microsoft.com/en-us/library/azure/dd179338.aspx
+        // Table names may contain only alphanumeric characters, can not start with a numeric character and must be 
+        // 3 to 63 characters long
+        private const string TableNameRegex = "^[A-Za-z][A-Za-z0-9]{2,62}$";
+
         /// <summary>Initializes a new instance of the <see cref="TableAttribute"/> class.</summary>
         /// <param name="tableName">The name of the table to which to bind.</param>
         public TableAttribute(string tableName)
@@ -70,6 +76,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Gets the name of the table to which to bind.</summary>
         /// <remarks>When binding to a table entity, gets the name of the table containing the entity.</remarks>
         [AutoResolve]
+        [RegularExpression(TableNameRegex)]
         public string TableName
         {
             get { return _tableName; }

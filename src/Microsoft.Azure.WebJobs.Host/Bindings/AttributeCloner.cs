@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     // Func to transform Attribute,BindingData into value for cloned attribute property/constructor arg
     // Attribute is the new cloned attribute - null if constructor arg (new cloned attr not created yet)
     using BindingDataResolver = Func<Attribute, IReadOnlyDictionary<string, object>, object>;
+
+    using Validator = Action<object>;
 
     // Clone an attribute and resolve it.
     // This can be tricky since some read-only properties are set via the constructor.
@@ -88,12 +91,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         // transforms binding data to appropriate resolver (appsetting, autoresolve, or originalValue)
         private BindingDataResolver GetResolver(PropertyInfo propInfo, INameResolver nameResolver, BindingDataContract contract)
         {
+            // Do the attribute lookups once upfront, and then cache them (via func closures) for subsequent runtime usage. 
             object originalValue = propInfo.GetValue(_source);
             AppSettingAttribute appSettingAttr = propInfo.GetCustomAttribute<AppSettingAttribute>();
             AutoResolveAttribute autoResolveAttr = propInfo.GetCustomAttribute<AutoResolveAttribute>();
+            Validator validator = GetValidatorFunc(propInfo, appSettingAttr != null);
 
             if (appSettingAttr == null && autoResolveAttr == null)
             {
+                validator(originalValue);
+
                 // No special attributes, treat as literal. 
                 return (newAttr, bindingData) => originalValue;
             }
@@ -113,37 +120,38 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             // first try to resolve with app setting
             if (appSettingAttr != null)
             {
-                return GetAppSettingResolver(str, appSettingAttr, nameResolver, propInfo);
+                return GetAppSettingResolver(str, appSettingAttr, nameResolver, propInfo, validator);
             }
 
             // Must have an [AutoResolve]
             // try to resolve with auto resolve ({...}, %...%)
-            return GetAutoResolveResolver(str, autoResolveAttr, nameResolver, propInfo, contract);            
+            return GetAutoResolveResolver(str, autoResolveAttr, nameResolver, propInfo, contract, validator);            
         }
 
         // Apply AutoResolve attribute 
-        internal BindingDataResolver GetAutoResolveResolver(string originalValue, AutoResolveAttribute autoResolveAttr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract)
+        internal BindingDataResolver GetAutoResolveResolver(string originalValue, AutoResolveAttribute autoResolveAttr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract, Validator validator)
         {
             if (string.IsNullOrWhiteSpace(originalValue))
             {
                 if (autoResolveAttr.Default != null)
                 {
-                    return GetBuiltinTemplateResolver(autoResolveAttr.Default, nameResolver);
+                    return GetBuiltinTemplateResolver(autoResolveAttr.Default, nameResolver, validator);
                 }
                 else
                 {
+                    validator(originalValue);
                     return (newAttr, bindingData) => originalValue;
                 }
             }
             else
             {
                 _autoResolves[propInfo] = autoResolveAttr;
-                return GetTemplateResolver(originalValue, autoResolveAttr, nameResolver, propInfo, contract);
+                return GetTemplateResolver(originalValue, autoResolveAttr, nameResolver, propInfo, contract, validator);
             }
         }
 
         // Apply AppSetting attribute. 
-        internal static BindingDataResolver GetAppSettingResolver(string originalValue, AppSettingAttribute attr, INameResolver nameResolver, PropertyInfo propInfo)
+        internal static BindingDataResolver GetAppSettingResolver(string originalValue, AppSettingAttribute attr, INameResolver nameResolver, PropertyInfo propInfo, Validator validator)
         {
             string appSettingName = originalValue ?? attr.Default;
             string resolvedValue = string.IsNullOrEmpty(appSettingName) ?
@@ -158,31 +166,84 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 // that value doesn't get written to logs.
                 throw new InvalidOperationException($"Unable to resolve app setting for property '{propInfo.DeclaringType.Name}.{propInfo.Name}'. Make sure the app setting exists and has a valid value.");
             }
+
+            // validate after the %% is substituted. 
+            validator(resolvedValue);
+
             return (newAttr, bindingData) => resolvedValue;
+        }
+
+        // Run validition. This needs to be run at different stages. 
+        // In general, run as early as possible. If there are { } tokens, then we can't run until runtime.
+        // But if there are no { }, we can run statically. 
+        // If there's no [AutoResolve], [AppSettings], then we can run immediately.
+        private static Validator GetValidatorFunc(PropertyInfo propInfo, bool dontLogValues)
+        {
+            // This implicitly caches the attribute lookup once and then shares for each runtime invocation. 
+            var attrs = propInfo.GetCustomAttributes<ValidationAttribute>();
+
+            return (value) =>
+            {
+                foreach (var attr in attrs)
+                {
+                    try
+                    {
+                        attr.Validate(value, propInfo.Name);
+                    }
+                    catch (Exception e)
+                    {
+                        if (dontLogValues)
+                        {
+                            throw new InvalidOperationException($"Validation failed for property '{propInfo.Name}'. {e.Message}");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"Validation failed for property '{propInfo.Name}', value '{value}'. {e.Message}");
+                        }
+                    }
+                }
+            };
         }
 
         // Resolve for AutoResolve.Default templates. 
         // These only have access to the {sys} builtin variable and don't get access to trigger binding data. 
-        internal static BindingDataResolver GetBuiltinTemplateResolver(string originalValue, INameResolver nameResolver)
+        internal static BindingDataResolver GetBuiltinTemplateResolver(string originalValue, INameResolver nameResolver, Validator validator)
         {
             string resolvedValue = nameResolver.ResolveWholeString(originalValue);
 
             var template = BindingTemplate.FromString(resolvedValue);
+            if (!template.HasParameters)
+            {
+                // No { } tokens, bind eagerly up front. 
+                validator(originalValue);
+            }
 
             SystemBindingData.ValidateStaticContract(template);
 
             // For static default contracts, we only have access to the built in binding data. 
-            return (newAttr, bindingData) => template.Bind(SystemBindingData.GetSystemBindingData(bindingData));
+            return (newAttr, bindingData) =>
+            {
+                var newValue = template.Bind(SystemBindingData.GetSystemBindingData(bindingData));
+                validator(newValue);
+                return newValue;
+            };
         }
 
         // AutoResolve
-        internal static BindingDataResolver GetTemplateResolver(string originalValue, AutoResolveAttribute attr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract)
+        internal static BindingDataResolver GetTemplateResolver(string originalValue, AutoResolveAttribute attr, INameResolver nameResolver, PropertyInfo propInfo, BindingDataContract contract, Validator validator)
         {
             string resolvedValue = nameResolver.ResolveWholeString(originalValue);
             var template = BindingTemplate.FromString(resolvedValue);
+
+            if (!template.HasParameters)
+            {
+                // No { } tokens, bind eagerly up front. 
+                validator(resolvedValue);
+            }
+
             IResolutionPolicy policy = GetPolicy(attr.ResolutionPolicyType, propInfo);
             template.ValidateContractCompatibility(contract);
-            return (newAttr, bindingData) => TemplateBind(policy, propInfo, newAttr, template, bindingData);
+            return (newAttr, bindingData) => TemplateBind(policy, propInfo, newAttr, template, bindingData, validator);
         }
 
         // Get a attribute with %% resolved, but not runtime {} resolved.
@@ -288,14 +349,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             return newAttr;
         }
 
-        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, BindingData bindingData)
+        private static string TemplateBind(IResolutionPolicy policy, PropertyInfo prop, Attribute attr, BindingTemplate template, BindingData bindingData, Validator validator)
         {
             if (bindingData == null)
             {
+                // Skip validation if no binding data provided. We can't do the { } substitutions. 
                 return template?.Pattern;
             }
 
-            return policy.TemplateBind(prop, attr, template, bindingData);
+            var newValue = policy.TemplateBind(prop, attr, template, bindingData);
+            validator(newValue);
+            return newValue;
         }
 
         internal static IResolutionPolicy GetPolicy(Type formatterType, PropertyInfo propInfo)

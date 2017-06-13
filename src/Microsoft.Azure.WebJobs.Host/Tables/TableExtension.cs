@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             var binding = context.AddBindingRule<TableAttribute>();
 
-            binding.AddValidator(ValidateAttribute)
+            binding
                 .AddConverter<JObject, ITableEntity>(JObjectToTableEntityConverterFunc)
                 .AddConverter<object, ITableEntity>(typeof(ObjectToITableEntityConverter<>))
                 .AddConverter<IStorageTable, IQueryable<OpenType>>(typeof(TableToIQueryableConverter<>));
@@ -63,15 +63,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 .BindToInput<JObject>(builder);
             binding.BindToInput<JArray>(builder);
             binding.Bind(original);
-        }
-
-        private static void ValidateAttribute(TableAttribute attribute, Type parameterType)
-        {
-            // Queue pre-existing  behavior: if there are { }in the path, then defer validation until runtime. 
-            if (!attribute.TableName.Contains("{"))
-            {
-                TableClient.ValidateAzureTableName(attribute.TableName);
-            }
         }
 
         // Get the storage table from the attribute.

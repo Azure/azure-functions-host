@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 using Microsoft.Azure.WebJobs.Description;
+using System.ComponentModel.DataAnnotations;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -138,6 +139,35 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 throw new NotImplementedException();
             }
+        }
+
+        // Validation with AutoResolve
+        [Binding]
+        public class ValidationWithAutoResolveAttribute : Attribute
+        {
+            [RegularExpression("a+")]
+            [AutoResolve]
+            public string Value { get; set; }
+
+        }
+
+        // Validation with AppSetting
+        [Binding]
+        public class ValidationWithAppSettingAttribute : Attribute
+        {
+            [RegularExpression("a+")]
+            [AppSetting]
+            public string Value { get; set; }
+        }
+
+        // Validation with neither AppSetting nor AutoResolve
+        [Binding]
+        public class ValidationOnlyAttribute : Attribute
+        {
+            // Allow  { } that look like token substitution, but it's not since this isn't AutoResolve
+            [RegularExpression("^.{1,3}$")] 
+            public string Value { get; set; }
+
         }
 
         // Helper to easily generate a fixed binding contract.
@@ -540,6 +570,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Throws<InvalidOperationException>(() => new AttributeCloner<Attr1>(attr, EmptyContract));
         }
 
+        static Action<object> SkipValidation = (_) => { };
+
         [Fact]
         public void TryAutoResolveValue_UnresolvedValue_ThrowsExpectedException()
         {
@@ -552,7 +584,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var attr = prop.GetCustomAttribute<AppSettingAttribute>();
             string resolvedValue = "MySetting";
 
-            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop));
+            var ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<Attr2>.GetAppSettingResolver(resolvedValue, attr, resolver, prop, SkipValidation));
             Assert.Contains("Unable to resolve app setting for property 'Attr2.ResolvedSetting'.", ex.Message);
         }
 
@@ -608,6 +640,155 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => AttributeCloner<AttributeWithResolutionPolicy>.GetPolicy(attr.ResolutionPolicyType, propInfo));
 
             Assert.Equal($"The {nameof(AutoResolveAttribute.ResolutionPolicyType)} on {nameof(AttributeWithResolutionPolicy.PropWithConstructorlessPolicy)} must derive from {typeof(IResolutionPolicy).Name} and have a default constructor.", ex.Message);
+        }
+
+
+        // If there are { } tokens, don't validate until after substitution (runtime) 
+        [Fact]
+        public void Validation_Late()
+        {
+            // with { } , can't determine if it's valid until after resolution. 
+            ValidationWithAutoResolveAttribute attr = new ValidationWithAutoResolveAttribute { Value = "a{name}" };
+
+            // Can't fail yet. 
+            var cloner = new AttributeCloner<ValidationWithAutoResolveAttribute>(attr, GetBindingContract("name"));
+
+            // Valid 
+            {
+                Dictionary<string, object> values = new Dictionary<string, object>()
+                {
+                    { "name", "aa" },  // Ok 
+                };
+                var ctx = GetCtx(values);
+                
+                var attr2 = cloner.ResolveFromBindingData(ctx);
+                Assert.Equal("aaa", attr2.Value);
+            }
+
+            // Invalid 
+            {
+                Dictionary<string, object> values = new Dictionary<string, object>()
+                {
+                    { "name", "b" },  // regex failure 
+                };
+                var ctx = GetCtx(values);
+
+                Assert.Throws<InvalidOperationException>(() =>
+                       cloner.ResolveFromBindingData(ctx));                
+            }
+        }
+        
+        // If there are no { }, we can determine validity immediately. 
+        [Fact]
+        public void Validation_Early_Succeed()
+        {            
+            ValidationWithAutoResolveAttribute attr = new ValidationWithAutoResolveAttribute { Value = "aaa" };
+
+            Dictionary<string, object> values = new Dictionary<string, object>()
+            {
+                { "name", "green" },
+            };
+            var ctx = GetCtx(values);
+
+            var cloner = new AttributeCloner<ValidationWithAutoResolveAttribute>(attr, GetBindingContract("name"));
+            var attr2 = cloner.ResolveFromBindingData(ctx);
+
+            Assert.Equal("aaa", attr2.Value);
+        }
+
+        // If there are no { }, we can determine validity immediately. Fail upfront. 
+        [Fact]
+        public void Validation_Early_Fail()
+        {
+            const string IllegalValue = "green";
+
+            // No { }, so we can determine validity immediately 
+            ValidationWithAutoResolveAttribute attr = new ValidationWithAutoResolveAttribute { Value = IllegalValue };
+                        
+            Dictionary<string, object> values = new Dictionary<string, object>()
+            {
+                { "name", "ignored" }, // ignored since no {name} token in the attr
+            };
+            var ctx = GetCtx(values);
+                        
+            try
+            {
+                new AttributeCloner<ValidationWithAutoResolveAttribute>(attr, GetBindingContract("name"));
+                Assert.False(true, "Validation should have failed");
+            }
+            catch (InvalidOperationException e)
+            {
+                // Since this is [AutoResolve], include the illegal value in the message.
+                Assert.True(e.Message.Contains(IllegalValue));
+            }
+        }
+
+        // With Validation + AppSetting         
+        [Fact]
+        public void Validation_With_AppSetting_Early_Fail()
+        {
+            const string IllegalValue = "bbbb";
+
+            // No { }, so we can determine validity immediately 
+            ValidationWithAppSettingAttribute attr = new ValidationWithAppSettingAttribute { Value = "bbb" };
+                        
+            Dictionary<string, object> values = new Dictionary<string, object>()
+            {
+                { "name", "ignored" }, // ignored since no {name} token in the attr
+            };
+            var ctx = GetCtx(values);
+
+            try
+            {
+                new AttributeCloner<ValidationWithAppSettingAttribute>(attr, GetBindingContract("name"));
+                Assert.False(true, "Validation should have failed");
+            } 
+            catch(InvalidOperationException e)
+            {
+                // Since this is [AppSetting], don't include the illegal value in the message. It could be secret. 
+                Assert.False(e.Message.Contains(IllegalValue));
+            }
+        }
+
+        // No AppSetting/AutoResolve, so validate early 
+        [Theory]
+        [InlineData("{x}", true)] 
+        [InlineData("%x%", true)]
+        [InlineData("{x", true)]
+        [InlineData("illegal", false)]
+        public void Validation_Direct_Early_Fail(string value, bool shouldSucceed)
+        {
+            ValidationOnlyAttribute attr = new ValidationOnlyAttribute { Value = value };
+
+            Dictionary<string, object> values = new Dictionary<string, object>()
+            {
+                { "x", "ignored" }, // ignored since not autoresolve
+            };
+            var ctx = GetCtx(values);
+
+            try
+            {
+                var cloner = new AttributeCloner<ValidationOnlyAttribute>(attr, GetBindingContract("name"));
+
+                if (shouldSucceed)
+                {
+                    // Success
+                    var attrResolved = cloner.ResolveFromBindings(values);
+
+                    // no autoresolve/appsetting, so the final value should be the same as the input value. 
+                    Assert.Equal(value, attrResolved.Value); 
+
+                    return;
+                }
+                Assert.False(true, "Validation should have failed");
+            }
+            catch (InvalidOperationException e)
+            {
+                Assert.False(shouldSucceed);
+
+                // Non-appsetting, so include the value in the message
+                Assert.True(e.Message.Contains(value));
+            }
         }
 
         private static BindingContext GetCtx(IReadOnlyDictionary<string, object> values)

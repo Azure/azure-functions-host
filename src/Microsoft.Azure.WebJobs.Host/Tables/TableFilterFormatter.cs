@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         public static string Format(BindingTemplate template, IReadOnlyDictionary<string, object> bindingData)
         {
-            if (!template.ParameterNames.Any())
+            if (!template.HasParameters)
             {
                 return template.Pattern;
             }

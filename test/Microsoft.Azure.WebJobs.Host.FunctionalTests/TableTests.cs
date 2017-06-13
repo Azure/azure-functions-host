@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void Table_IndexingFails()
         {
             // Verify we catch various indexing failures. 
-            Utility.AssertIndexingError<BadProgramTableName>("Run", "'$$' is not a valid name for an Azure table");
+            Utility.AssertIndexingError<BadProgramTableName>("Run", "Validation failed for property 'TableName', value '$$'");
 
             // Pocos must have a default ctor. 
             Utility.AssertIndexingError<BadProgram4>("Run", "Table entity types must provide a default constructor.");

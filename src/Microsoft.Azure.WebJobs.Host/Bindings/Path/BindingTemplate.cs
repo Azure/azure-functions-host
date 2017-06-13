@@ -66,6 +66,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         }
 
         /// <summary>
+        /// True if this expression has parameters. 
+        /// </summary>
+        public bool HasParameters => ParameterNames.Any();
+
+        /// <summary>
         /// A factory method to parse input template string and construct a binding template instance using
         /// parsed tokens sequence.
         /// </summary>

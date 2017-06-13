@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             if (!IsValidAzureTableName(tableName))
             {
-                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "'{0}' is not a valid name for an Azure table", tableName));
+               throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "'{0}' is not a valid name for an Azure table", tableName));
             }
         }
 

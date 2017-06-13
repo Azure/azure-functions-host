@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             BindingTemplate partitionKeyTemplate = BindingTemplate.FromString(partitionKeyPattern);
             BindingTemplate rowKeyTemplate = BindingTemplate.FromString(rowKeyPattern);
 
-            if (tableNameTemplate.ParameterNames.Count() > 0 ||
-                partitionKeyTemplate.ParameterNames.Count() > 0 ||
-                rowKeyTemplate.ParameterNames.Count() > 0)
+            if (tableNameTemplate.HasParameters ||
+                partitionKeyTemplate.HasParameters ||
+                rowKeyTemplate.HasParameters)
             {
                 return new ParameterizedTableEntityPath(tableNameTemplate, partitionKeyTemplate, rowKeyTemplate);
             }
