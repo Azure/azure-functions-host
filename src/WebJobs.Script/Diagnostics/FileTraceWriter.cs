@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int MaxLogLinesPerFlushInterval = 250;
         private readonly string _logFilePath;
         private readonly string _instanceId;
+        private readonly Func<string, string> _messageFormatter;
 
         private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
@@ -32,10 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
-        public FileTraceWriter(string logFilePath, TraceLevel level) : base(level)
+        public FileTraceWriter(string logFilePath, TraceLevel level, Func<string, string> messageFormatter = null) : base(level)
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
+            _messageFormatter = messageFormatter ?? FormatMessage;
 
             _logDirectory = new DirectoryInfo(logFilePath);
             if (!_logDirectory.Exists)
@@ -209,9 +211,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // add the line to the current buffer batch, which is flushed
             // on a timer
-            line = string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), line.Trim());
+            line = _messageFormatter(line);
+
             _logBuffer.Enqueue(line);
         }
+
+        private string FormatMessage(string message)
+            => string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), message.Trim());
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {

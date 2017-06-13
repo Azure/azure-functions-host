@@ -423,7 +423,6 @@
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\IDotNetCompilation.cs" />
-    <Compile Include="Description\DotNet\DiagnosticExtensions.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilation.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilationService.cs" />
@@ -496,6 +495,7 @@
     <Compile Include="Diagnostics\MetricsLogger.cs" />
     <Compile Include="Diagnostics\HostStartedEvent.cs" />
     <Compile Include="Diagnostics\DictionaryLoggerScope.cs" />
+    <Compile Include="Diagnostics\StructuredLogWriter.cs" />
     <Compile Include="EnvironmentSettingNames.cs" />
     <Compile Include="ErrorCodes.cs" />
     <Compile Include="Eventing\File\FileEvent.cs" />
@@ -504,7 +504,10 @@
     <Compile Include="Eventing\ScriptEvent.cs" />
     <Compile Include="Eventing\IScriptEventManager.cs" />
     <Compile Include="Eventing\ScriptEventManager.cs" />
+    <Compile Include="Eventing\StructuredLogging\StructuredLogEntry.cs" />
+    <Compile Include="Eventing\StructuredLogging\StructuredLogEntryEvent.cs" />
     <Compile Include="Extensions\AssemblyExtensions.cs" />
+    <Compile Include="Extensions\DiagnosticExtensions.cs" />
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="Extensions\FileUtility.cs" />
     <Compile Include="Extensions\FuncExtensions.cs" />
@@ -631,7 +634,9 @@
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Eventing\CodeDiagnostics\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" /> -->
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

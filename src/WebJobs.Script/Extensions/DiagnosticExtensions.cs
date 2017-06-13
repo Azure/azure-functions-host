@@ -4,9 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.CodeAnalysis;
 
-namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal static class DiagnosticExtensions
     {

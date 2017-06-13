@@ -71,10 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (_optimizationLevel == OptimizationLevel.Debug)
             {
-                SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.IsNullOrEmpty(t.FilePath));
+                string scriptFileName = Path.GetFileName(functionMetadata.ScriptFile);
+                SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.Equals(t.FilePath, scriptFileName));
                 var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
                   encoding: UTF8WithNoBOM,
-                  path: Path.GetFileName(functionMetadata.ScriptFile),
+                  path: scriptFileName,
                   options: new CSharpParseOptions(kind: SourceCodeKind.Script));
 
                 compilation = compilation

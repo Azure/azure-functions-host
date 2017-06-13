@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly string _privateAssembliesPath;
         private readonly string _scriptFileDirectory;
+        private readonly string _scriptFilePath;
         private readonly string[] _assemblyExtensions = new[] { ".exe", ".dll" };
         private readonly string _id = Guid.NewGuid().ToString();
         private readonly TraceWriter _traceWriter;
@@ -75,12 +76,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.Extensions.Logging"
             };
 
-        public FunctionMetadataResolver(string scriptFileDirectory, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public FunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
-            _scriptFileDirectory = scriptFileDirectory;
+            _scriptFileDirectory = Path.GetDirectoryName(scriptFilePath);
+            _scriptFilePath = scriptFilePath;
             _traceWriter = traceWriter;
-            _packageAssemblyResolver = new PackageAssemblyResolver(scriptFileDirectory);
-            _privateAssembliesPath = GetBinDirectory(scriptFileDirectory);
+            _packageAssemblyResolver = new PackageAssemblyResolver(_scriptFileDirectory);
+            _privateAssembliesPath = GetBinDirectory(_scriptFileDirectory);
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
             _loggerFactory = loggerFactory;
@@ -91,10 +93,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _externalReferences.Clear();
 
             return ScriptOptions.Default
-                    .WithMetadataResolver(this)
-                    .WithReferences(GetCompilationReferences())
-                    .WithImports(DefaultNamespaceImports)
-                    .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, _scriptFileDirectory));
+                .WithFilePath(Path.GetFileName(_scriptFilePath))
+                .WithMetadataResolver(this)
+                .WithReferences(GetCompilationReferences())
+                .WithImports(DefaultNamespaceImports)
+                .WithSourceResolver(new SourceFileResolver(ImmutableArray<string>.Empty, _scriptFileDirectory));
         }
 
         /// <summary>

@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostFactory _scriptHostFactory;
         private readonly IScriptHostEnvironment _environment;
         private readonly IDisposable _fileEventSubscription;
+        private readonly StructuredLogWriter _structuredLogWriter;
         private ScriptHost _currentInstance;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance.
@@ -72,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostFactory = scriptHostFactory;
 
             EventManager = eventManager ?? new ScriptEventManager();
+
+            _structuredLogWriter = new StructuredLogWriter(eventManager, config.RootLogPath);
         }
 
         protected IScriptEventManager EventManager { get; }
@@ -376,6 +379,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _stopEvent.Dispose();
                 _restartDelayTokenSource?.Dispose();
                 _fileEventSubscription?.Dispose();
+                _structuredLogWriter.Dispose();
                 _restartHostEvent.Dispose();
 
                 _disposed = true;
