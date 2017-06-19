@@ -43,10 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             context.Dispose();
 
             mockListener.Verify(p => p.Dispose(), Times.Once);
-
-            // we're temporarily removing the disposal call until this issue is resolved:
-            // https://github.com/Azure/azure-webjobs-sdk-script/issues/1537
-            mockLoggerFactory.Verify(p => p.Dispose(), Times.Never);
+            mockLoggerFactory.Verify(p => p.Dispose(), Times.Once);
         }
     }
 }
