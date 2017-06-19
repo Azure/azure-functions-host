@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
+        public const string AzureFunctionsProxyHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
+        public const string ProxyMetadataFileName = "proxy.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 

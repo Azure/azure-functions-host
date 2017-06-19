@@ -11,6 +11,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net.Http;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -18,6 +19,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
+using Microsoft.Azure.AppService.AdvancedRouting.Gateway.Client;
+using Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -61,6 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
+
+        private IProxyClient _proxyClient;
+        private ILogger _proxyLogger;
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -236,6 +242,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (arguments.ContainsKey(ScriptConstants.AzureFunctionsProxyHttpRequestKey))
+            {
+                using (_proxyLogger.BeginScope(new Dictionary<string, object>
+                {
+                    [ScopeKeys.FunctionName] = method
+                }))
+                {
+                    IFuncExecutor myFunc = new FunctionExecutor(ScriptConfig.HostConfig, this);
+
+                    await _proxyClient.CallAsync(arguments, myFunc, _proxyLogger);
+                }
+
+                return;
+            }
+
             // TODO: Validate inputs
             // TODO: Cache this lookup result
             method = method.ToLowerInvariant();
@@ -870,6 +891,76 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
+        public Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null)
+        {
+            var proxies = new Collection<FunctionMetadata>();
+            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+            Dictionary<string, string> proxyJsons = new Dictionary<string, string>();
+
+            foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
+            {
+                string proxyName = null;
+
+                try
+                {
+                    // read the proxy config
+                    string proxyConfigPath = Path.Combine(scriptDir, ScriptConstants.ProxyMetadataFileName);
+                    if (!File.Exists(proxyConfigPath))
+                    {
+                        // not a proxy directory
+                        continue;
+                    }
+
+                    proxyName = Path.GetFileName(scriptDir);
+
+                    ValidateFunctionName(proxyName);
+
+                    string json = File.ReadAllText(proxyConfigPath);
+
+                    proxyJsons.Add(proxyName, json);
+                }
+                catch (Exception ex)
+                {
+                    // log any unhandled exceptions and continue
+                    AddFunctionError(functionErrors, proxyName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                }
+            }
+
+            ILoggerFactory loggerFactory = ScriptConfig.HostConfig.LoggerFactory;
+            ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
+
+            _proxyClient = ProxyClientFactory.Create(proxyJsons, proxyStartupLogger);
+            var routes = _proxyClient.GetProxyData();
+
+            // TODO: proper location
+            _proxyLogger = loggerFactory.CreateLogger("Host.Proxies.Runtime");
+
+            foreach (var route in routes.Routes)
+            {
+                string functionName = null;
+
+                try
+                {
+                    var proxyMetadata = new ProxyMetadata();
+
+                    proxyMetadata.Name = route.Id.ToString();
+                    proxyMetadata.ScriptType = ScriptType.Proxy;
+
+                    proxyMetadata.Method = route.Method;
+                    proxyMetadata.UrlTemplate = route.UrlTemplate;
+
+                    proxies.Add(proxyMetadata);
+                }
+                catch (Exception ex)
+                {
+                    // log any unhandled exceptions and continue
+                    AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                }
+            }
+
+            return proxies;
+        }
+
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, ILogger logger, string scriptDirectory,
         ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
@@ -1035,6 +1126,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private Collection<FunctionDescriptor> GetFunctionDescriptors()
         {
             var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptConfig, FunctionErrors, _settingsManager);
+
+            // TODO: temp
+            foreach (var proxy in proxies)
+            {
+                functions.Add(proxy);
+            }
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
@@ -1044,8 +1142,9 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
 #if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
 #endif
+                    new ProxyFunctionDescriptorProvider(this, ScriptConfig)
                 };
 
             return GetFunctionDescriptors(functions, descriptorProviders);
@@ -1088,13 +1187,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
         {
-            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-            if (httpTrigger != null)
+            // TODO: InputBindings for triggers
+            if (function.InputBindings != null)
             {
-                ValidateHttpFunction(function.Name, httpTrigger);
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null)
+                {
+                    ValidateHttpFunction(function.Name, httpTrigger);
 
-                // prevent duplicate/conflicting routes
-                foreach (var pair in httpFunctions)
+                    // prevent duplicate/conflicting routes
+                    foreach (var pair in httpFunctions)
                 {
                     if (HttpRoutesConflict(httpTrigger, pair.Value))
                     {
@@ -1102,7 +1204,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
-                httpFunctions.Add(function.Name, httpTrigger);
+                    httpFunctions.Add(function.Name, httpTrigger);
+                }
             }
         }
 
@@ -1455,8 +1558,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
             string fileName = Path.GetFileName(e.Name);
             if (isWatchedDirectory ||
-                ((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+                (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                 string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
                 bool shutdown = false;

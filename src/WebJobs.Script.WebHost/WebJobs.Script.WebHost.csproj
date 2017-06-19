@@ -171,6 +171,27 @@
       <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.7.2-alpha\lib\net45\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Gateway.Client">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Gateway.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Proxy.Api.Common">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Api.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Common">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Contracts">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Contracts.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Proxy.Log">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Log.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Proxy.Runtime">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.AppService.AdvancedRouting.Tools">
+      <HintPath>D:\onegit\AAPT\Antares\Gibraltar\src\Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway.Client\objd\amd64\Microsoft.Azure.AppService.AdvancedRouting.Tools.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Azure.Documents.Client, Version=1.11.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.1.11.4\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
       <Private>True</Private>
