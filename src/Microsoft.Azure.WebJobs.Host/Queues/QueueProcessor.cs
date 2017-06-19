@@ -110,11 +110,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <returns></returns>
         public virtual async Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
         {
-            // These values may change if the message is inserted into another queue. We'll store them here and make sure
-            // the message always has the original values before we pass it to a customer-facing method.
-            string id = message.Id;
-            string popReceipt = message.PopReceipt;
-
             if (result.Succeeded)
             {
                 await DeleteMessageAsync(message, cancellationToken);
@@ -123,6 +118,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             {
                 if (message.DequeueCount >= MaxDequeueCount)
                 {
+                    // These values may change if the message is inserted into another queue. We'll store them here and make sure
+                    // the message always has the original values before we pass it to a customer-facing method.
+                    string id = message.Id;
+                    string popReceipt = message.PopReceipt;
+
                     await CopyMessageToPoisonQueueAsync(message, _poisonQueue, cancellationToken);
 
                     // TEMP: Re-evaluate these property updates when we update Storage SDK: https://github.com/Azure/azure-webjobs-sdk/issues/1144

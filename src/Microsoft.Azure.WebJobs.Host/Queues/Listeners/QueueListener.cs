@@ -100,6 +100,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum, maximumInterval);
         }
 
+        // for testing
+        internal TimeSpan MinimumVisibilityRenewalInterval { get; set; } = TimeSpan.FromMinutes(1);
+
         public void Cancel()
         {
             ThrowIfDisposed();
@@ -244,11 +247,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         internal async Task ProcessMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
-            // These values may change if the message is inserted into another queue. We'll store them here and make sure
-            // the message always has the original values before we pass it to a customer-facing method.
-            string id = message.Id;
-            string popReceipt = message.PopReceipt;
-
             try
             {
                 if (!await _queueProcessor.BeginProcessingMessageAsync(message.SdkObject, cancellationToken))
@@ -265,9 +263,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
                     await timer.StopAsync(cancellationToken);
                 }
-
-                // TEMP: Re-evaluate these property updates when we update Storage SDK: https://github.com/Azure/azure-webjobs-sdk/issues/1144
-                message.SdkObject.UpdateChangedProperties(id, popReceipt);
 
                 await _queueProcessor.CompleteProcessingMessageAsync(message.SdkObject, result, cancellationToken);
             }
@@ -291,14 +286,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _sharedWatcher.Notify(e.PoisonQueue.Name);
         }
 
-        private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
+        private ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
             IStorageQueueMessage message, TimeSpan visibilityTimeout,
             IWebJobsExceptionHandler exceptionHandler)
         {
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
 
-            IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, TimeSpan.FromMinutes(1));
+            IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, MinimumVisibilityRenewalInterval);
             ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout, speedupStrategy);
             return new TaskSeriesTimer(command, exceptionHandler, Task.Delay(normalUpdateInterval));
         }

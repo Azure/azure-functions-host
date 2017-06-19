@@ -4,12 +4,10 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -33,51 +31,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
         public async Task UpdatedQueueMessage_RetainsOriginalProperties()
         {
             TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-            CloudQueue queue = Fixture.Queue;
-            CloudQueue poisonQueue = Fixture.PoisonQueue;
+            CloudQueue queue = Fixture.CreateNewQueue();
+            CloudQueue poisonQueue = Fixture.CreateNewQueue();
+
             JobHostQueuesConfiguration queuesConfig = new JobHostQueuesConfiguration { MaxDequeueCount = 2 };
+
             StorageQueue storageQueue = new StorageQueue(new StorageQueueClient(Fixture.QueueClient), queue);
             StorageQueue storagePoisonQueue = new StorageQueue(new StorageQueueClient(Fixture.QueueClient), poisonQueue);
             Mock<ITriggerExecutor<IStorageQueueMessage>> mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
-
-            Mock<IWebJobsExceptionHandler> mockExceptionDispatcher = new Mock<IWebJobsExceptionHandler>(MockBehavior.Strict);
-            mockExceptionDispatcher
-                .Setup(m => m.OnUnhandledExceptionAsync(It.IsAny<ExceptionDispatchInfo>()))
-                .Callback<ExceptionDispatchInfo>(e =>
-                {
-                    throw e.SourceException;
-                });
-
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, null, queuesConfig, poisonQueue: poisonQueue);
-            Mock<QueueProcessor> mockProcessor = new Mock<QueueProcessor>(MockBehavior.Strict, context);
-            mockProcessor.CallBase = false;
 
             string messageContent = Guid.NewGuid().ToString();
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
             await queue.AddMessageAsync(message, CancellationToken.None);
             CloudQueueMessage messageFromCloud = await queue.GetMessageAsync();
 
-            TestQueueProcessor processor = new TestQueueProcessor(context);
-            processor.Original = messageFromCloud;
-
-            QueueListener listener = new QueueListener(storageQueue, storagePoisonQueue, mockTriggerExecutor.Object, mockExceptionDispatcher.Object, trace,
-                null, null, queuesConfig, processor);
-
-            // Set up a function that will put the message in another queue.
-            mockTriggerExecutor
-                .Setup(m => m.ExecuteAsync(It.Is<IStorageQueueMessage>(msg => msg.DequeueCount == 1), CancellationToken.None))
-                .Callback<IStorageQueueMessage, CancellationToken>((msg, t) =>
-                {
-                    poisonQueue.AddMessage(msg.SdkObject);
-                })
-                .ReturnsAsync(new FunctionResult(false));
+            QueueListener listener = new QueueListener(storageQueue, storagePoisonQueue, mockTriggerExecutor.Object, new WebJobsExceptionHandler(), trace,
+                null, null, queuesConfig);
 
             mockTriggerExecutor
-                .Setup(m => m.ExecuteAsync(It.Is<IStorageQueueMessage>(msg => msg.DequeueCount == 2), CancellationToken.None))
-                .Callback<IStorageQueueMessage, CancellationToken>((msg, t) =>
-                {
-                    poisonQueue.AddMessage(msg.SdkObject);
-                })
+                .Setup(m => m.ExecuteAsync(It.IsAny<IStorageQueueMessage>(), CancellationToken.None))
                 .ReturnsAsync(new FunctionResult(false));
 
             await listener.ProcessMessageAsync(new StorageQueueMessage(messageFromCloud), TimeSpan.FromMinutes(10), CancellationToken.None);
@@ -86,99 +58,59 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
             messageFromCloud = await queue.GetMessageAsync();
             Assert.Equal(2, messageFromCloud.DequeueCount);
 
-            processor.Original = messageFromCloud;
-
             await listener.ProcessMessageAsync(new StorageQueueMessage(messageFromCloud), TimeSpan.FromMinutes(10), CancellationToken.None);
+
+            // Make sure the message was processed and deleted.
+            await queue.FetchAttributesAsync();
+            Assert.Equal(0, queue.ApproximateMessageCount);
+
+            // The Listener has inserted a message to the poison queue.
+            await poisonQueue.FetchAttributesAsync();
+            Assert.Equal(1, poisonQueue.ApproximateMessageCount);
+
+            mockTriggerExecutor.Verify(m => m.ExecuteAsync(It.IsAny<IStorageQueueMessage>(), CancellationToken.None), Times.Exactly(2));
         }
 
-        private class TestQueueProcessor : QueueProcessor
+        [Fact]
+        public async Task RenewedQueueMessage_DeletesCorrectly()
         {
-            private CloudQueue _queue;
-            private CloudQueue _poisonQueue;
-            private CloudQueueMessage _original;
+            TraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+            CloudQueue queue = Fixture.CreateNewQueue();
 
-            // We want to change the content at every step and make sure it flows.
-            private string _lastContentString;
-            private byte[] _lastContentBytes;
+            StorageQueue storageQueue = new StorageQueue(new StorageQueueClient(Fixture.QueueClient), queue);
+            Mock<ITriggerExecutor<IStorageQueueMessage>> mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
 
-            public TestQueueProcessor(QueueProcessorFactoryContext context)
-                : base(context)
-            {
-                _queue = context.Queue;
-                _poisonQueue = context.PoisonQueue;
-            }
+            string messageContent = Guid.NewGuid().ToString();
+            CloudQueueMessage message = new CloudQueueMessage(messageContent);
+            await queue.AddMessageAsync(message, CancellationToken.None);
+            CloudQueueMessage messageFromCloud = await queue.GetMessageAsync();
 
-            public CloudQueueMessage Original
-            {
-                get { return _original; }
-                set
+            QueueListener listener = new QueueListener(storageQueue, null, mockTriggerExecutor.Object, new WebJobsExceptionHandler(), trace,
+                null, null, new JobHostQueuesConfiguration());
+            listener.MinimumVisibilityRenewalInterval = TimeSpan.FromSeconds(1);
+
+            // Set up a function that sleeps to allow renewal
+            mockTriggerExecutor
+                .Setup(m => m.ExecuteAsync(It.Is<IStorageQueueMessage>(msg => msg.DequeueCount == 1), CancellationToken.None))
+                .ReturnsAsync(() =>
                 {
-                    _original = value;
-                    _lastContentString = _original.AsString;
-                    _lastContentBytes = _original.AsBytes;
-                }
-            }
+                    Thread.Sleep(4000);
+                    return new FunctionResult(true);
+                });
 
-            public override async Task<bool> BeginProcessingMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
-            {
-                ValidateMessage(_original, message);
-                UpdateMessage(message);
+            var previousNextVisibleTime = messageFromCloud.NextVisibleTime;
+            var previousPopReceipt = messageFromCloud.PopReceipt;
 
-                return await base.BeginProcessingMessageAsync(message, cancellationToken);
-            }
+            // Renewal should happen at 2 seconds
+            await listener.ProcessMessageAsync(new StorageQueueMessage(messageFromCloud), TimeSpan.FromSeconds(4), CancellationToken.None);
 
-            public override async Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
-            {
-                ValidateMessage(_original, message);
-                UpdateMessage(message);
+            // Check to make sure the renewal occurred.
+            Assert.NotEqual(messageFromCloud.NextVisibleTime, previousNextVisibleTime);
+            Assert.NotEqual(messageFromCloud.PopReceipt, previousPopReceipt);
 
-                await base.CompleteProcessingMessageAsync(message, result, cancellationToken);
-            }
-
-            protected override async Task DeleteMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
-            {
-                ValidateMessage(_original, message);
-                UpdateMessage(message);
-
-                await base.DeleteMessageAsync(message, cancellationToken);
-            }
-
-            protected override async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CloudQueue poisonQueue, CancellationToken cancellationToken)
-            {
-                ValidateMessage(_original, message);
-                UpdateMessage(message);
-
-                await base.CopyMessageToPoisonQueueAsync(message, poisonQueue, cancellationToken);
-            }
-
-            protected override async Task ReleaseMessageAsync(CloudQueueMessage message, FunctionResult result, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
-            {
-                ValidateMessage(_original, message);
-                UpdateMessage(message);
-
-                await base.ReleaseMessageAsync(message, result, visibilityTimeout, cancellationToken);
-            }
-
-            private void UpdateMessage(CloudQueueMessage message)
-            {
-                // We want to make sure that changes to the message flow through to the 
-                // other virtual methods.
-                _lastContentString = Guid.NewGuid().ToString();
-                message.SetMessageContent(_lastContentString);
-                _lastContentBytes = message.AsBytes;
-            }
-
-            private void ValidateMessage(CloudQueueMessage original, CloudQueueMessage cloned)
-            {
-                Assert.Equal(_lastContentBytes, cloned.AsBytes);
-                Assert.Equal(_lastContentString, cloned.AsString);
-                Assert.Equal(original.DequeueCount, cloned.DequeueCount);
-                Assert.Equal(original.ExpirationTime, cloned.ExpirationTime);
-                Assert.Equal(original.Id, cloned.Id);
-                Assert.Equal(original.InsertionTime, cloned.InsertionTime);
-                Assert.Equal(original.NextVisibleTime, cloned.NextVisibleTime);
-                Assert.Equal(original.PopReceipt, cloned.PopReceipt);
-            }
+            // Make sure the message was processed and deleted.
+            await queue.FetchAttributesAsync();
+            Assert.Equal(0, queue.ApproximateMessageCount);
         }
 
         public class TestFixture : IDisposable
@@ -221,6 +153,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Queues
             {
                 get;
                 private set;
+            }
+
+            public CloudQueue CreateNewQueue()
+            {
+                string queueName = string.Format("{0}-{1}", TestQueuePrefix, Guid.NewGuid());
+                var queue = QueueClient.GetQueueReference(queueName);
+                queue.CreateIfNotExistsAsync(CancellationToken.None).Wait();
+                return queue;
             }
 
             public void Dispose()
