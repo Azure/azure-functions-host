@@ -489,6 +489,8 @@
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="Diagnostics\ExceptionFormatter.cs" />
     <Compile Include="Executors\CompositeFunctionEventCollector.cs" />
+    <Compile Include="Executors\FunctionInstanceFactoryContext.cs" />
+    <Compile Include="Executors\FunctionInstanceFactoryContextOfT.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
     <Compile Include="Extensions\CloudQueueMessageExtensions.cs" />
     <Compile Include="Extensions\IJobHostMetadataProvider.cs" />

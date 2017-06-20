@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
@@ -22,18 +23,56 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             _descriptor = descriptor;
         }
 
-        public IFunctionInstance Create(TTriggerValue value, Guid? parentId)
+        public IFunctionInstance Create(FunctionInstanceFactoryContext<TTriggerValue> context)
         {
-            IBindingSource bindingSource = new TriggerBindingSource<TTriggerValue>(_binding, value);
-            return new FunctionInstance(Guid.NewGuid(), parentId, ExecutionReason.AutomaticTrigger, bindingSource,
-                _invoker, _descriptor);
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            IBindingSource bindingSource = new TriggerBindingSource<TTriggerValue>(_binding, context.TriggerValue);
+            var invoker = CreateInvoker(context);
+
+            return new FunctionInstance(Guid.NewGuid(), context.ParentId, ExecutionReason.AutomaticTrigger, bindingSource, invoker, _descriptor);
         }
 
-        public IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason,
-            IDictionary<string, object> parameters)
+        public IFunctionInstance Create(FunctionInstanceFactoryContext context)
         {
-            IBindingSource bindingSource = new BindingSource(_binding, parameters);
-            return new FunctionInstance(id, parentId, reason, bindingSource, _invoker, _descriptor);
+            IBindingSource bindingSource = new BindingSource(_binding, context.Parameters);
+            var invoker = CreateInvoker(context);
+
+            return new FunctionInstance(context.Id, context.ParentId, context.ExecutionReason, bindingSource, invoker, _descriptor);
+        }
+
+        private IFunctionInvoker CreateInvoker(FunctionInstanceFactoryContext context)
+        {
+            if (context.InvokeHandler != null)
+            {
+                return new InvokeWrapper(_invoker, context.InvokeHandler);
+            }
+            else
+            {
+                return _invoker;
+            }
+        }
+
+        private class InvokeWrapper : IFunctionInvoker
+        {
+            private readonly IFunctionInvoker _inner;
+            private readonly Func<Func<Task>, Task> _handler;
+
+            public InvokeWrapper(IFunctionInvoker inner, Func<Func<Task>, Task> handler)
+            {
+                _inner = inner;
+                _handler = handler;
+            }
+            public IReadOnlyList<string> ParameterNames => _inner.ParameterNames;
+
+            public Task InvokeAsync(object[] arguments)
+            {
+                Func<Task> inner = () => _inner.InvokeAsync(arguments);
+                return _handler(inner);
+            }
         }
     }
 }

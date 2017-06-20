@@ -21,10 +21,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _descriptor = descriptor;
         }
 
-        public IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason, IDictionary<string, object> parameters)
+        public IFunctionInstance Create(FunctionInstanceFactoryContext context)
         {
-            IBindingSource bindingSource = new BindingSource(_binding, parameters);
-            return new FunctionInstance(id, parentId, reason, bindingSource, _invoker, _descriptor);
+            IBindingSource bindingSource = new BindingSource(_binding, context.Parameters);
+            return new FunctionInstance(context.Id, context.ParentId, context.ExecutionReason, bindingSource, _invoker, _descriptor);
         }
     }
 }

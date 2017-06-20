@@ -313,7 +313,14 @@ namespace Microsoft.Azure.WebJobs
 
         private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func, IDictionary<string, object> parameters)
         {
-            return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
+            var context = new FunctionInstanceFactoryContext
+            {
+                Id = Guid.NewGuid(),
+                ParentId = null,
+                ExecutionReason = ExecutionReason.HostCall,
+                Parameters = parameters
+            };
+            return func.InstanceFactory.Create(context);
         }
 
         private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)

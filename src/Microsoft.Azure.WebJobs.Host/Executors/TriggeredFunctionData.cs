@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -19,5 +20,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// The trigger value for a specific triggered function invocation.
         /// </summary>
         public object TriggerValue { get; set; }
+
+        /// <summary>
+        /// Optional handler function for processing the invocation.
+        /// </summary>
+        public Func<Func<Task>, Task> InvokeHandler { get; set; }
     }
 }

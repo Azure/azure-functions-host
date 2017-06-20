@@ -108,7 +108,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
             }
 
-            return function.InstanceFactory.Create(message.Id, message.ParentId, message.Reason, objectParameters);
+            var context = new FunctionInstanceFactoryContext
+            {
+                Id = message.Id,
+                ParentId = message.ParentId,
+                ExecutionReason = message.Reason,
+                Parameters = objectParameters
+            };
+
+            return function.InstanceFactory.Create(context);
         }
 
         private async Task ProcessCallAndOverrideMessage(CallAndOverrideMessage message, CancellationToken cancellationToken)
