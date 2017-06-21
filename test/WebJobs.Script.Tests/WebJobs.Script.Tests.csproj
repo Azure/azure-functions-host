@@ -537,7 +537,6 @@
     </Compile>
     <Compile Include="ScriptHostTests.cs" />
     <Compile Include="ScriptSettingsManagerTests.cs" />
-    <Compile Include="Security\SecretsRepositoryTests.cs" />
     <Compile Include="Security\ScriptSecretSerializerTests.cs" />
     <Compile Include="Security\DataProtectionKeyValueConverterTests.cs" />
     <Compile Include="Security\ScriptSecretSerializerV0Tests.cs" />

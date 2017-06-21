@@ -15,7 +15,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using WebJobs.Script.Tests;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Security
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SecretsRepositoryTests : IClassFixture<SecretsRepositoryTests.Fixture>
     {
