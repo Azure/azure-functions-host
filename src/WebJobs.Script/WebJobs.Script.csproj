@@ -415,6 +415,7 @@
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
+    <Compile Include="Description\Compilation\CompilationServiceException.cs" />
     <Compile Include="Description\Compilation\ICompilation.cs" />
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />

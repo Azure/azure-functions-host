@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Action _restorePackages;
         private Action<MethodInfo, object[], object[], object> _resultProcessor;
         private string[] _watchedFileTypes;
+        private int _compilerErrorCount;
 
         internal DotNetFunctionInvoker(ScriptHost host,
             FunctionMetadata functionMetadata,
@@ -141,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // Reset cached function
             _functionLoader.Reset();
+            _compilerErrorCount = 0;
             TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
 
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
@@ -187,6 +189,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
                 TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User);
+                throw;
+            }
+            catch (CompilationServiceException exc)
+            {
+                const string message = "Compilation service error";
+                TraceWriter.Error(message, exc, _compilationService.GetType().Name);
+                Logger?.LogError(message);
+
+                // Compiler errors are often sporadic, so we'll attempt to reset the loader here to avoid
+                // caching the compiler error and leaving the function hopelessly broken
+                if (++_compilerErrorCount < 3)
+                {
+                    _functionLoader.Reset();
+
+                    const string resetMessage = "Function loader reset. Failed compilation result will not be cached.";
+                    TraceWriter.Info(resetMessage);
+                    Logger?.LogError(resetMessage);
+                }
                 throw;
             }
         }
@@ -304,6 +324,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                     ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
                     TraceCompilationDiagnostics(bindingDiagnostics);
+
+                    _compilerErrorCount = 0;
 
                     // Set our function entry point signature
                     _functionSignature = functionSignature;
