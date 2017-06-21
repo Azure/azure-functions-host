@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", Justification = "By design")]
     public static class ScaleUtils
     {
+        public const string Purpose = "ScaleManager";
+
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", Justification = "By design")]
         public static bool WorkerEquals(IWorkerInfo src, IWorkerInfo dst)
         {
@@ -87,14 +89,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         public static string GetToken(DateTime expiredUtc)
         {
             var bytes = BitConverter.GetBytes(expiredUtc.Ticks);
-            var encrypted = MachineKey.Protect(bytes);
+            var encrypted = MachineKey.Protect(bytes, Purpose);
             return Convert.ToBase64String(encrypted);
         }
 
         public static void ValidateToken(string token)
         {
             var encrypted = Convert.FromBase64String(token);
-            var bytes = MachineKey.Unprotect(encrypted);
+            var bytes = MachineKey.Unprotect(encrypted, Purpose);
             var ticks = BitConverter.ToInt64(bytes, 0);
             var expiredUtc = new DateTime(ticks, DateTimeKind.Utc);
 
