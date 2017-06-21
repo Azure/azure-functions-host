@@ -91,8 +91,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Assembly Emit(CancellationToken cancellationToken)
         {
-            using (var assemblyStream = new MemoryStream())
+            try
             {
+                using (var assemblyStream = new MemoryStream())
                 using (var pdbStream = new MemoryStream())
                 {
                     var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
@@ -113,6 +114,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                     return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
                 }
+            }
+            catch (Exception exc) when (!(exc is CompilationErrorException))
+            {
+                throw new CompilationServiceException($"C# compilation service error: {exc.Message}", exc);
             }
         }
 

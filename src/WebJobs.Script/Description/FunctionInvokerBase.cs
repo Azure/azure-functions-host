@@ -233,9 +233,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected void TraceOnPrimaryHost(string message, TraceLevel level)
+        protected void TraceOnPrimaryHost(string message, TraceLevel level, string source = null,  Exception exception = null)
         {
-            TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
+            var traceEvent = new TraceEvent(level, message, source, exception);
+            foreach (var item in PrimaryHostTraceProperties)
+            {
+                traceEvent.Properties.Add(item);
+            }
+
+            TraceWriter.Trace(traceEvent);
         }
 
         protected void PopulateExecutionContext(ExecutionContext context)

@@ -192,6 +192,66 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, diagnostics.Count());
         }
 
+        [Fact]
+        public async Task CompilerError_IsRetried_UpToLimit()
+        {
+            // Create the invoker dependencies and setup the appropriate method to throw the exception
+            RunDependencies dependencies = CreateDependencies();
+
+            // Set the host to primary
+            dependencies.Host.SetupGet(h => h.IsPrimary).Returns(true);
+
+            var metadata = new FunctionMetadata
+            {
+                ScriptFile = "run.csx",
+                FunctionDirectory = "c:\\somedir",
+                Name = Guid.NewGuid().ToString(),
+                ScriptType = ScriptType.CSharp
+            };
+
+            metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+
+            var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+
+            var dotNetCompilation = new Mock<IDotNetCompilation>();
+            var dotnetCompilationService = new Mock<ICompilationService<IDotNetCompilation>>();
+            dotnetCompilationService.SetupSequence(s => s.GetFunctionCompilationAsync(It.IsAny<FunctionMetadata>()))
+            .ThrowsAsync(new CompilationServiceException("1"))
+            .ThrowsAsync(new CompilationServiceException("2"))
+            .ThrowsAsync(new CompilationServiceException("3"))
+            .ThrowsAsync(new CompilationServiceException("4")); // This should not be reached
+
+            var compilationFactory = new Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>>();
+            compilationFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>())).Returns(dotnetCompilationService.Object);
+
+            var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                compilationFactory.Object, new Mock<IFunctionMetadataResolver>().Object);
+
+            var arguments = new object[]
+            {
+                new ExecutionContext()
+                {
+                    FunctionDirectory = "c:\\test",
+                    FunctionName = "test",
+                    InvocationId = Guid.NewGuid()
+                }
+            };
+
+            for (int i = 1; i <= 10; i++)
+            {
+                var expectedAttempt = Math.Min(i, 3);
+                CompilationServiceException exception = await Assert.ThrowsAsync<CompilationServiceException>(() => invoker.Invoke(arguments));
+                Assert.Equal(expectedAttempt.ToString(), exception.Message);
+            }
+
+            var compilerErrorTraces = dependencies.TraceWriter.Traces
+                .Where(t => string.Equals(t.Message, "Function loader reset. Failed compilation result will not be cached."));
+
+            // 3 attempts total, make sure we've logged the 2 retries.
+            Assert.Equal(2, compilerErrorTraces.Count());
+        }
+
         [Theory]
         [InlineData(false, true, true)]
         [InlineData(false, false, false)]
