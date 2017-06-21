@@ -1,9 +1,90 @@
+version: '{build}'
+pull_requests:
+  do_not_increment_build_number: true
+branches:
+  only:
+  - dev
+  - master
+  - next
+image: Visual Studio 2015
+configuration: Release
+platform: x86
+clone_folder: c:\projects\azure-webjobs-sdk
+environment:
+  IncludeBuildNumberInVersion: 1
+install:
+- ps: >-
+    $isPr = Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER
+
+
+    if (-not $isPr) {
+        $ctx = New-AzureStorageContext $env:FILES_ACCOUNT_NAME $env:FILES_ACCOUNT_KEY
+        $queue = Get-AzureStorageQueue "jenkins" -Context $ctx
+
+        $messageBody = "$env:APPVEYOR_BUILD_VERSION;$env:APPVEYOR_REPO_COMMIT;$env:IncludeBuildNumberInVersion"
+        $message = New-Object -TypeName Microsoft.WindowsAzure.Storage.Queue.CloudQueueMessage -ArgumentList $messageBody
+        $queue.CloudQueue.AddMessage($message)
+
+        "jenkins signed build:   https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/' build #appveyor $env:APPVEYOR_BUILD_VERSION"
+        "artifacts azure files:  https://$env:FILES_ACCOUNT_NAME.file.core.windows.net/jenkins/builds/$env:APPVEYOR_BUILD_VERSION"
+        "signed build onenote:   https://microsoft.sharepoint.com/teams/AzureWebjobs/_layouts/OneNote.aspx?id=%2Fteams%2FAzureWebjobs%2FSiteAssets%2FAzureWebjobs%20Notebook&wd=target%28Signed%20Sdk%20Build.one%7C0C569AE2-E052-428D-B3C1-8421ED9B1CF8%2F%29"
+    }
 build_script:
-  - msbuild WebJobs.proj /t:BuildTestBinaries /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:OutputPath=%APPVEYOR_BUILD_FOLDER%\bin
-
+- cmd: msbuild "WebJobs.proj" /t:BuildTestBinaries /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Configuration=Release;Platform=AnyCPU;OutputPath=%APPVEYOR_BUILD_FOLDER%\bin
 test_script:
-  - vstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.FunctionalTests.dll bin/Microsoft.Azure.WebJobs.ServiceBus.UnitTests.dll bin/Dashboard.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.EndToEndTests.dll
+- cmd: "vstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.UnitTests.dll bin/Microsoft.Azure.WebJobs.Host.FunctionalTests.dll bin/Microsoft.Azure.WebJobs.ServiceBus.UnitTests.dll bin/Dashboard.UnitTests.dll \n\nvstest.console /logger:Appveyor /TestAdapterPath:bin bin/Microsoft.Azure.WebJobs.Host.EndToEndTests.dll"
+artifacts:
+- path: bin\Binaries\*.*
+  name: Binaries
+on_finish:
+- ps: >-
+    $isPr = Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER
 
-# if you need to rdp into build machine to investigate
-# on_finish:
-#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+    if (-not $isPr) {
+        Disable-NetFirewallRule -DisplayName 'File and Printer Sharing (SMB-Out)'
+        net use J: \\$env:FILES_ACCOUNT_NAME.file.core.windows.net\jenkins /u:AZURE\$env:FILES_ACCOUNT_NAME $env:FILES_ACCOUNT_KEY
+        $timeout = new-timespan -Minutes 2
+        $sw = [diagnostics.stopwatch]::StartNew();
+        $polling = $true;
+        while ($sw.elapsed -lt $timeout -and $polling) {
+            "Polling..."
+            if (test-path "J:/builds/$env:APPVEYOR_BUILD_VERSION/done.txt") {
+                "Jenkins artifacts found"
+                $polling = $false;
+            }
+            Start-Sleep -Seconds 5
+        }
+
+        if ($polling) {
+            "No jenkins artifacts found, investigate job at https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/"
+            exit(1);
+        }
+
+        $success = $true;
+        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION/Packages" | % {
+            Push-AppveyorArtifact $_.FullName
+        }
+
+        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION/SiteExtensions" | % {
+            Push-AppveyorArtifact $_.FullName
+        }
+
+        Get-ChildItem "J:/builds/$env:APPVEYOR_BUILD_VERSION" | % {
+            if (-not $_.PSIsContainer -and $_.Name -ne "done.txt") {
+                Push-AppveyorArtifact $_.FullName
+                $success = $false;
+                if ($_.Extension -eq ".err") {
+                    Get-Content $_.FullName | % { Write-Output $_ }
+                }
+            }
+        }
+
+        "jenkins signed build:   https://zenkins.redmond.corp.microsoft.com/view/Functions/job/Functions_webjobs_sdk/' build #'appveyor $env:APPVEYOR_BUILD_VERSION'"
+        "artifacts azure files:  https://$env:FILES_ACCOUNT_NAME.file.core.windows.net/jenkins/builds/$env:APPVEYOR_BUILD_VERSION"
+        "signed build onenote:   https://microsoft.sharepoint.com/teams/AzureWebjobs/_layouts/OneNote.aspx?id=%2Fteams%2FAzureWebjobs%2FSiteAssets%2FAzureWebjobs%20Notebook&wd=target%28Signed%20Sdk%20Build.one%7C0C569AE2-E052-428D-B3C1-8421ED9B1CF8%2F%29"
+
+        if (-not $success) {
+        exit(1)
+        }
+    }
