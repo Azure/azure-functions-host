@@ -409,6 +409,7 @@
     <Compile Include="BashEndToEndTests.cs" />
     <Compile Include="BlobLeaseManagerTests.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Host\SecretsRepositoryTests.cs" />
     <Compile Include="Host\WebScriptHostManagerTimeoutTests.cs" />
     <Compile Include="NodeContentTests.cs" />
     <Compile Include="Controllers\ControllerScenarioTestFixture.cs" />
