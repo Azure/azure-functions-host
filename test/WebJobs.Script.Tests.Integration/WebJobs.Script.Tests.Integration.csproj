@@ -407,7 +407,7 @@
     <Compile Include="Controllers\Keys\PutHostSystemKeyScenario.cs" />
     <Compile Include="FakeTabularConnectorAdapter.cs" />
     <Compile Include="BashEndToEndTests.cs" />
-    <Compile Include="BlobLeaseManagerTests.cs" />
+    <Compile Include="PrimaryHostCoordinatorTests.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Host\SecretsRepositoryTests.cs" />
     <Compile Include="Host\WebScriptHostManagerTimeoutTests.cs" />

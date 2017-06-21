@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             JObject hostMetadata = new JObject();
             var provider = new GeneralScriptBindingProvider(config, hostMetadata, traceWriter);
-            provider.CompleteInitialization();
+            var metadataProvider = new JobHost(config).CreateMetadataProvider();
+            provider.CompleteInitialization(metadataProvider);
 
             JObject bindingMetadata = new JObject
             {

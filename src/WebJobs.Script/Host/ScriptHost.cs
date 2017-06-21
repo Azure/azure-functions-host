@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Action _shutdown;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private ImmutableArray<string> _directorySnapshot;
-        private BlobLeaseManager _blobLeaseManager;
+        private PrimaryHostCoordinator _blobLeaseManager;
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
@@ -380,16 +380,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
 
                 var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-                Task<BlobLeaseManager> blobManagerCreation = null;
                 if (storageString == null)
                 {
                     // Disable core storage
                     hostConfig.StorageConnectionString = null;
-                    blobManagerCreation = Task.FromResult<BlobLeaseManager>(null);
-                }
-                else
-                {
-                    blobManagerCreation = BlobLeaseManager.CreateAsync(storageString, TimeSpan.FromSeconds(15), hostConfig.HostId, InstanceId, TraceWriter, hostConfig.LoggerFactory);
                 }
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger);
@@ -446,9 +440,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 LoadCustomExtensions();
 
+                // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
+                if (storageString != null)
+                {
+                    var lockManager = ScriptConfig.HostConfig.GetService<IDistributedLockManager>();
+                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostConfig.HostId, InstanceId, TraceWriter, hostConfig.LoggerFactory);
+                }
+
                 // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
                 // and subscribe for change notifications.
-                _blobLeaseManager = blobManagerCreation.GetAwaiter().GetResult();
                 if (_blobLeaseManager != null)
                 {
                     _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
@@ -518,7 +518,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // There's a single script binding instance that services all extensions.
             // give that script binding the metadata for all loaded extensions so it can dispatch to them.
             var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
-            generalProvider.CompleteInitialization();
+            var metadataProvider = this.CreateMetadataProvider();
+            generalProvider.CompleteInitialization(metadataProvider);
         }
 
         private void LoadExtensions(Assembly assembly, string locationHint)
