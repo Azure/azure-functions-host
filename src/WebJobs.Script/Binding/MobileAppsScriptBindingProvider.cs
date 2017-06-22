@@ -1,13 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+// TODO: FACAVAL - Re-enable this when migrated
+#if false
+
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.WindowsAzure.MobileServices;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -92,3 +94,4 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
     }
 }
+#endif

@@ -1,2 +1,0 @@
-input=$(<$input)
-echo $input

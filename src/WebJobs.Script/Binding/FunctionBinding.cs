@@ -48,13 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     string type = function.Type.ToLowerInvariant();
                     switch (type)
                     {
-                        case "http":
-                            if (fileAccess != FileAccess.Write)
-                            {
-                                throw new InvalidOperationException("Http binding can only be used for output.");
-                            }
-                            bindings.Add(new HttpBinding(config, function, FileAccess.Write));
-                            break;
+                        // TODO: FACAVAL
+                        //case "http":
+                        //    if (fileAccess != FileAccess.Write)
+                        //    {
+                        //        throw new InvalidOperationException("Http binding can only be used for output.");
+                        //    }
+                        //    bindings.Add(new HttpBinding(config, function, FileAccess.Write));
+                        //    break;
                         default:
                             FunctionBinding binding = null;
                             if (TryParseFunctionBinding(config, function.Raw, out binding))

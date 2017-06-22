@@ -31,11 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string GetPrivateBinPath()
         {
             string binPath = null;
-            if (AppDomain.CurrentDomain.SetupInformation.PrivateBinPath != null)
-            {
-                binPath = AppDomain.CurrentDomain.SetupInformation.PrivateBinPath
-                    .Split(';').FirstOrDefault();
-            }
+
+
+            // TODO: FACAVAL AppContext.BaseDirectory is equivalent to AppDomain.CurrentDomain.BaseDirectory
+            // Explore whether an alternative is needed and what they would be.
+            //if (AppDomain.CurrentDomain.SetupInformation.PrivateBinPath != null)
+            //{
+            //    binPath = AppDomain.CurrentDomain.SetupInformation.PrivateBinPath
+            //        .Split(';').FirstOrDefault();
+            //}
 
             return binPath ?? AppDomain.CurrentDomain.BaseDirectory;
         }

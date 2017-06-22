@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+// TODO: FACAVAL - Re-enable this when migrated
+#if false
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,11 +12,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -359,3 +359,4 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
     }
 }
+#endif

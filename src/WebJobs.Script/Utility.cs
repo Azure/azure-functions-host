@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -26,6 +27,18 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string DynamicSku = "Dynamic";
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
+        private static Lazy<IConfigurationRoot> _configuration = new Lazy<IConfigurationRoot>(BuildConfiguration);
+
+        private static IConfigurationRoot Configuration => _configuration.Value;
+
+        private static IConfigurationRoot BuildConfiguration()
+        {
+            var configurationBuilder = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .AddJsonFile("appsettings.json", optional: true);
+
+            return configurationBuilder.Build();
+        }
 
         /// <summary>
         /// Gets a value indicating whether the JobHost is running in a Dynamic
@@ -42,16 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string GetSettingFromConfigOrEnvironment(string settingName)
         {
-            string configValue = ConfigurationManager.AppSettings[settingName];
-
-            // Empty strings are allowed. Null indicates that the setting was not found.
-            if (configValue != null)
+            if (string.IsNullOrEmpty(settingName))
             {
-                // config values take precedence over environment values
-                return configValue;
+                return null;
             }
 
-            return Environment.GetEnvironmentVariable(settingName) ?? configValue;
+            return Configuration[settingName];
         }
 
         /// <summary>
@@ -352,17 +361,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
-        internal static LogLevel ToLogLevel(TraceLevel traceLevel)
+        internal static LogLevel ToLogLevel(System.Diagnostics.TraceLevel traceLevel)
         {
             switch (traceLevel)
             {
-                case TraceLevel.Verbose:
+                case System.Diagnostics.TraceLevel.Verbose:
                     return LogLevel.Trace;
-                case TraceLevel.Info:
+                case System.Diagnostics.TraceLevel.Info:
                     return LogLevel.Information;
-                case TraceLevel.Warning:
+                case System.Diagnostics.TraceLevel.Warning:
                     return LogLevel.Warning;
-                case TraceLevel.Error:
+                case System.Diagnostics.TraceLevel.Error:
                     return LogLevel.Error;
                 default:
                     return LogLevel.None;

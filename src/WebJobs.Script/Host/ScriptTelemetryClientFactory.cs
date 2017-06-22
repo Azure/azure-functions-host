@@ -4,7 +4,6 @@
 using System;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 
@@ -15,8 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     internal class ScriptTelemetryClientFactory : DefaultTelemetryClientFactory
     {
-        public ScriptTelemetryClientFactory(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings, Func<string, LogLevel, bool> filter)
-            : base(instrumentationKey, samplingSettings, filter)
+        public ScriptTelemetryClientFactory(string instrumentationKey, Func<string, LogLevel, bool> filter)
+            : base(instrumentationKey, filter)
         {
         }
 

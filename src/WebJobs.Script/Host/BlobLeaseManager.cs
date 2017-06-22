@@ -258,10 +258,25 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (HasLease)
                 {
-                    _lockBlob.ReleaseLease(new AccessCondition { LeaseId = LeaseId });
-                    string message = $"Host instance '{_instanceId}' released lock lease.";
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _lockBlob.ReleaseLeaseAsync(new AccessCondition { LeaseId = LeaseId })
+                        .ContinueWith(t =>
+                        {
+                            string message = $"Host instance '{_instanceId}' released lock lease.";
+                            if (t.IsFaulted)
+                            {
+                                message = "Error releasing lease";
+                                t.Exception.Handle(e =>
+                                {
+                                    _traceWriter.Error(e.Message, ex: e);
+                                    _logger?.LogError(e, e.Message);
+
+                                    return true;
+                                });
+                            }
+                            
+                            _traceWriter.Verbose(message);
+                            _logger?.LogDebug(message);
+                        });
                 }
             }
             catch (Exception)

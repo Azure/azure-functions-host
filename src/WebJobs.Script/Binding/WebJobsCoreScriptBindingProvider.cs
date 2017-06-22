@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -38,16 +37,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             // apply http configuration configuration
-            configSection = (JObject)Metadata["http"];
-            HttpExtensionConfiguration httpConfig = null;
-            if (configSection != null)
-            {
-                httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
-            }
-            httpConfig = httpConfig ?? new HttpExtensionConfiguration();
+            // TODO: Re-enable when migrated
+            //configSection = (JObject)Metadata["http"];
+            //HttpExtensionConfiguration httpConfig = null;
+            //if (configSection != null)
+            //{
+            //    httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
+            //}
+            //httpConfig = httpConfig ?? new HttpExtensionConfiguration();
 
             Config.UseScriptExtensions();
-            Config.UseHttp(httpConfig);
+
+            // TODO: Re-enable when migrated
+            //Config.UseHttp(httpConfig);
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -61,46 +63,48 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
-                binding = new HttpScriptBinding(context);
+                // TODO: FACAVAL
+                //binding = new HttpScriptBinding(context);
             }
 
             return binding != null;
         }
+        
+        // TODO: FACAVAL
+        //private class HttpScriptBinding : ScriptBinding
+        //{
+        //    public HttpScriptBinding(ScriptBindingContext context) : base(context)
+        //    {
+        //    }
 
-        private class HttpScriptBinding : ScriptBinding
-        {
-            public HttpScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
+        //    public override Type DefaultType
+        //    {
+        //        get
+        //        {
+        //            return typeof(HttpRequestMessage);
+        //        }
+        //    }
 
-            public override Type DefaultType
-            {
-                get
-                {
-                    return typeof(HttpRequestMessage);
-                }
-            }
+        //    public override Collection<Attribute> GetAttributes()
+        //    {
+        //        var authLevel = Context.GetMetadataEnumValue<AuthorizationLevel>("authLevel", AuthorizationLevel.Function);
 
-            public override Collection<Attribute> GetAttributes()
-            {
-                var authLevel = Context.GetMetadataEnumValue<AuthorizationLevel>("authLevel", AuthorizationLevel.Function);
+        //        JArray methodArray = Context.GetMetadataValue<JArray>("methods");
+        //        string[] methods = null;
+        //        if (methodArray != null)
+        //        {
+        //            methods = methodArray.Select(p => p.Value<string>()).ToArray();
+        //        }
 
-                JArray methodArray = Context.GetMetadataValue<JArray>("methods");
-                string[] methods = null;
-                if (methodArray != null)
-                {
-                    methods = methodArray.Select(p => p.Value<string>()).ToArray();
-                }
+        //        var attribute = new HttpTriggerAttribute(authLevel, methods)
+        //        {
+        //            Route = Context.GetMetadataValue<string>("route"),
+        //            WebHookType = Context.GetMetadataValue<string>("webHookType")
+        //        };
 
-                var attribute = new HttpTriggerAttribute(authLevel, methods)
-                {
-                    Route = Context.GetMetadataValue<string>("route"),
-                    WebHookType = Context.GetMetadataValue<string>("webHookType")
-                };
-
-                return new Collection<Attribute> { attribute };
-            }
-        }
+        //        return new Collection<Attribute> { attribute };
+        //    }
+        //}
 
         private class BlobScriptBinding : ScriptBinding
         {

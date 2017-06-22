@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static readonly string[] DefaultAssemblyReferences =
            {
+                "netstandard",
                 "System",
                 "System.Core",
                 "System.Configuration",
@@ -50,14 +51,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
-                typeof(System.Web.Http.ApiController).Assembly.Location, /*System.Web.Http*/
-                typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
+                // TODO: FACAVAL ??
+                // typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
             };
 
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
-                new DirectSharedAssemblyProvider(typeof(ServiceBusAttribute).Assembly), /* Microsoft.Azure.WebJobs.ServiceBus */
+                // TODO: FACAVAL
+                //new DirectSharedAssemblyProvider(typeof(ServiceBusAttribute).Assembly), /* Microsoft.Azure.WebJobs.ServiceBus */
                 new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
                 new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
             };

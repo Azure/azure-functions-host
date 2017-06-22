@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, Guid.NewGuid().ToString());
             var assemblyFileName = Path.Combine(scriptPath, assemblyName + ".dll");
-            var pdbName = Path.ChangeExtension(assemblyFileName, PlatformHelper.IsMono ? "dll.mdb" : "pdb");
+            var pdbName = Path.ChangeExtension(assemblyFileName, PlatformHelper.IsWindows ? "pdb" : "dll.mdb");
 
             try
             {
@@ -138,7 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     otherFlags.Add("--tailcalls-");
                 }
 
-                if (PlatformHelper.IsMono)
+
+                // TODO: FACAVAL verify if this still applies to core
+                if (!PlatformHelper.IsWindows)
                 {
                     var monoDir = Path.GetDirectoryName(typeof(string).Assembly.Location);
                     var facadesDir = Path.Combine(monoDir, "Facades");
@@ -156,9 +158,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // Get the #load closure
                 FSharpChecker checker = FSharpChecker.Create(null, null, null, msbuildEnabled: FSharpOption<bool>.Some(false));
-                var loadFileOptionsAsync = checker.GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
+                var loadFileOptionsAsync = checker.GetProjectOptionsFromScript(
+                    filename: functionMetadata.ScriptFile,
+                    source: scriptSource,
+                    loadedTimeStamp: null,
+                    otherFlags: null,
+                    useFsiAuxLib: null,
+                    assumeDotNetFramework: null,
+                    extraProjectInfo: null);
+
                 var loadFileOptions = FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
-                foreach (var loadedFileName in loadFileOptions.ProjectFileNames)
+                foreach (var loadedFileName in loadFileOptions.Item1.ProjectFileNames)
                 {
                     if (Path.GetFileName(loadedFileName) != Path.GetFileName(functionMetadata.ScriptFile))
                     {

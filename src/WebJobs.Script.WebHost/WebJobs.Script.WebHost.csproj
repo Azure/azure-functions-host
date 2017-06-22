@@ -606,12 +606,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
-      <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
-      <Name>WebJobs.Script</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
       <Link>CustomDictionary.xml</Link>
       <SubType>Designer</SubType>

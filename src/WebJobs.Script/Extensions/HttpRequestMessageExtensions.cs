@@ -5,27 +5,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class HttpRequestMessageExtensions
     {
-        public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
-        {
-            return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);
-        }
+        // TODO: FACAVAL
+        //public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
+        //{
+        //    return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);
+        //}
 
         public static string GetRequestId(this HttpRequestMessage request)
         {
             return request.GetRequestPropertyOrDefault<string>(ScriptConstants.AzureFunctionsRequestIdKey);
         }
 
-        public static void SetAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel authorizationLevel)
-        {
-            request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey] = authorizationLevel;
-        }
+        // TODO: FACAVAL
+        //public static void SetAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel authorizationLevel)
+        //{
+        //    request.Properties[ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey] = authorizationLevel;
+        //}
 
         public static void SetProperty(this HttpRequestMessage request, string propertyName, object value)
         {
@@ -63,12 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="level">The level to check.</param>
         /// <returns>True if the request is authrized at the specified level,
         /// false otherwise.</returns>
-        public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel level)
-        {
-            var authorizationLevel = request.GetAuthorizationLevel();
+        // TODO: FACAVAL
+        //public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel level)
+        //{
+        //    var authorizationLevel = request.GetAuthorizationLevel();
 
-            return authorizationLevel >= level || request.IsAuthDisabled();
-        }
+        //    return authorizationLevel >= level || request.IsAuthDisabled();
+        //}
 
         public static string GetHeaderValueOrDefault(this HttpRequestMessage request, string headerName)
         {
@@ -90,14 +92,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return default(TValue);
         }
 
-        public static IDictionary<string, string> GetQueryParameterDictionary(this HttpRequestMessage request)
-        {
-            var keyValuePairs = request.GetQueryNameValuePairs();
+        // TODO: FACAVAL
+        //public static IDictionary<string, string> GetQueryParameterDictionary(this HttpRequestMessage request)
+        //{
+        //    var keyValuePairs = request.GetQueryNameValuePairs();
 
-            // last one wins for any duplicate query parameters
-            return keyValuePairs.GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(p => p.Key, s => s.Last().Value, StringComparer.OrdinalIgnoreCase);
-        }
+        //    // last one wins for any duplicate query parameters
+        //    return keyValuePairs.GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+        //        .ToDictionary(p => p.Key, s => s.Last().Value, StringComparer.OrdinalIgnoreCase);
+        //}
 
         public static IDictionary<string, string> GetRawHeaders(this HttpRequestMessage request)
         {
