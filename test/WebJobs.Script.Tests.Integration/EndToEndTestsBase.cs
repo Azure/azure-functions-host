@@ -9,15 +9,12 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.ApiHub;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.ServiceBus.Messaging;
-using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -96,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected async Task TableOutputTest()
         {
             CloudTable table = Fixture.TableClient.GetTableReference("testoutput");
-            Fixture.DeleteEntities(table);
+            await Fixture.DeleteEntities(table);
 
             JObject item = new JObject()
             {
@@ -117,7 +114,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // read the entities and verify schema
             TableQuery tableQuery = new TableQuery();
-            var entities = table.ExecuteQuery(tableQuery).ToArray();
+
+            var results = await table.ExecuteQuerySegmentedAsync(tableQuery, null);
+            var entities = results.ToArray();
             Assert.Equal(3, entities.Length);
 
             foreach (var entity in entities)
@@ -207,11 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
             TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id));
-            Assert.Equal(TraceLevel.Info, traceEvent.Level);
+            Assert.Equal(System.Diagnostics.TraceLevel.Info, traceEvent.Level);
 
             string trace = traceEvent.Message;
-            Assert.True(trace.Contains("script processed queue message"));
-            Assert.True(trace.Replace(" ", string.Empty).Contains(messageContent.Replace(" ", string.Empty)));
+            Assert.Contains("script processed queue message", trace);
+            Assert.Contains(messageContent.Replace(" ", string.Empty), trace.Replace(" ", string.Empty));
         }
 
         protected async Task TwilioReferenceInvokeSucceedsImpl(bool isDotNet)
@@ -234,239 +233,278 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        // TODO: FACAVAL
         protected async Task DocumentDBTest()
         {
-            // DocumentDB tests need the following environment vars:
-            // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
-            string id = Guid.NewGuid().ToString();
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input",  id }
-            };
-            await Fixture.Host.CallAsync("DocumentDBOut", arguments);
+            //    // DocumentDB tests need the following environment vars:
+            //    // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+            //    string id = Guid.NewGuid().ToString();
+            //    Dictionary<string, object> arguments = new Dictionary<string, object>
+            //    {
+            //        { "input",  id }
+            //    };
+            //    await Fixture.Host.CallAsync("DocumentDBOut", arguments);
 
-            Document doc = await WaitForDocumentAsync(id);
+            //    Document doc = await WaitForDocumentAsync(id);
 
-            Assert.Equal(doc.Id, id);
+            //    Assert.Equal(doc.Id, id);
 
-            // Now add that Id to a Queue, in an object to test binding
-            var queue = Fixture.GetNewQueue("documentdb-input");
-            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            //    // Now add that Id to a Queue, in an object to test binding
+            //    var queue = Fixture.GetNewQueue("documentdb-input");
+            //    string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
+            //    await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
-            // And wait for the text to be updated
-            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
+            //    // And wait for the text to be updated
+            //    Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
 
-            Assert.Equal(updatedDoc.Id, doc.Id);
-            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
+            //    Assert.Equal(updatedDoc.Id, doc.Id);
+            //    Assert.NotEqual(doc.ETag, updatedDoc.ETag);
         }
 
         protected async Task ServiceBusQueueTriggerToBlobTestImpl()
         {
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("completed");
-            await resultBlob.DeleteIfExistsAsync();
+            //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("completed");
+            //    await resultBlob.DeleteIfExistsAsync();
 
-            string id = Guid.NewGuid().ToString();
-            JObject message = new JObject
-            {
-                { "count", 0 },
-                { "id", id }
-            };
+            //    string id = Guid.NewGuid().ToString();
+            //    JObject message = new JObject
+            //    {
+            //        { "count", 0 },
+            //        { "id", id }
+            //    };
 
-            using (Stream stream = new MemoryStream())
-            using (TextWriter writer = new StreamWriter(stream))
-            {
-                writer.Write(message.ToString());
-                writer.Flush();
-                stream.Position = 0;
+            //    using (Stream stream = new MemoryStream())
+            //    using (TextWriter writer = new StreamWriter(stream))
+            //    {
+            //        writer.Write(message.ToString());
+            //        writer.Flush();
+            //        stream.Position = 0;
 
-                await Fixture.ServiceBusQueueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
-            }
+            //        await Fixture.ServiceBusQueueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            //    }
 
-            // now wait for function to be invoked
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
+            //    // now wait for function to be invoked
+            //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
 
-            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+            //    Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
+
+        //protected async Task CosmosDBTriggerToBlobTestImpl()
+        //{
+        //    // DocumentDB tests need the following environment vars:
+        //    // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+
+        //    // Waiting for the Processor to adquire leases
+        //    await Task.Delay(10000);
+
+        //    await Fixture.InitializeDocumentClient();
+        //    bool collectionsCreated = await Fixture.CreateDocumentCollections();
+        //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+        //    await resultBlob.DeleteIfExistsAsync();
+
+        //    string id = Guid.NewGuid().ToString();
+
+        //    Document documentToTest = new Document()
+        //    {
+        //        Id = id
+        //    };
+
+        //    await Fixture.DocumentClient.CreateDocumentAsync(UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection"), documentToTest);
+
+        //    // wait for logs to flush
+        //    await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+
+        //    // now wait for function to be invoked
+        //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
+
+        //    if (collectionsCreated)
+        //    {
+        //        // cleanup collections
+        //        await Fixture.DeleteDocumentCollections();
+        //    }
+
+        //    Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        //}
 
         protected async Task NotificationHubTest(string functionName)
         {
-            // NotificationHub tests need the following environment vars:
-            // "AzureWebJobsNotificationHubsConnectionString" -- the connection string for NotificationHubs
-            // "AzureWebJobsNotificationHubName"  -- NotificationHubName
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input",  "Hello" }
-            };
+            //    // NotificationHub tests need the following environment vars:
+            //    // "AzureWebJobsNotificationHubsConnectionString" -- the connection string for NotificationHubs
+            //    // "AzureWebJobsNotificationHubName"  -- NotificationHubName
+            //    Dictionary<string, object> arguments = new Dictionary<string, object>
+            //    {
+            //        { "input",  "Hello" }
+            //    };
 
-            try
-            {
-                // Only verifying the call succeeds. It is not possible to verify
-                // actual push notificaiton is delivered as they are sent only to
-                // client applications that registered with NotificationHubs
-                await Fixture.Host.CallAsync(functionName, arguments);
-            }
-            catch (Exception ex)
-            {
-                // Node: Check innerException, CSharp: check innerExcpetion.innerException
-                if ((ex.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException)) ||
-                    (ex.InnerException != null & ex.InnerException.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException)))
-                {
-                    // Expected if using NH without any registrations
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            //    try
+            //    {
+            //        // Only verifying the call succeeds. It is not possible to verify
+            //        // actual push notificaiton is delivered as they are sent only to
+            //        // client applications that registered with NotificationHubs
+            //        await Fixture.Host.CallAsync(functionName, arguments);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        // Node: Check innerException, CSharp: check innerExcpetion.innerException
+            //        if ((ex.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException)) ||
+            //            (ex.InnerException != null & ex.InnerException.InnerException != null && VerifyNotificationHubExceptionMessage(ex.InnerException.InnerException)))
+            //        {
+            //            // Expected if using NH without any registrations
+            //        }
+            //        else
+            //        {
+            //            throw;
+            //        }
         }
 
         protected async Task MobileTablesTest(bool isDotNet = false)
         {
-            // MobileApps needs the following environment vars:
-            // "AzureWebJobsMobileAppUri" - the URI to the mobile app
+            //    // MobileApps needs the following environment vars:
+            //    // "AzureWebJobsMobileAppUri" - the URI to the mobile app
 
-            // The Mobile App needs an anonymous 'Item' table
+            //    // The Mobile App needs an anonymous 'Item' table
 
-            // First manually create an item.
-            string id = Guid.NewGuid().ToString();
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input", id }
-            };
-            await Fixture.Host.CallAsync("MobileTableOut", arguments);
-            var item = await WaitForMobileTableRecordAsync("Item", id);
+            //    // First manually create an item.
+            //    string id = Guid.NewGuid().ToString();
+            //    Dictionary<string, object> arguments = new Dictionary<string, object>
+            //    {
+            //        { "input", id }
+            //    };
+            //    await Fixture.Host.CallAsync("MobileTableOut", arguments);
+            //    var item = await WaitForMobileTableRecordAsync("Item", id);
 
-            Assert.Equal(item["id"], id);
+            //    Assert.Equal(item["id"], id);
 
-            string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
-            await Fixture.MobileTablesQueue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            //    string messageContent = string.Format("{{ \"recordId\": \"{0}\" }}", id);
+            //    await Fixture.MobileTablesQueue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
-            // Only .NET fully supports updating from input bindings. Others will
-            // create a new item with -success appended to the id.
-            // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
-            var idToCheck = id + (isDotNet ? string.Empty : "-success");
-            var textToCheck = isDotNet ? "This was updated!" : null;
-            await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
+            //    // Only .NET fully supports updating from input bindings. Others will
+            //    // create a new item with -success appended to the id.
+            //    // https://github.com/Azure/azure-webjobs-sdk-script/issues/49
+            //    var idToCheck = id + (isDotNet ? string.Empty : "-success");
+            //    var textToCheck = isDotNet ? "This was updated!" : null;
+            //    await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         }
 
         protected async Task ApiHubTest()
         {
-            // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.
-            // The format should be: Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}
-            // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
-            string apiHubConnectionString = SettingsManager.GetSetting("AzureWebJobsDropBox");
+            //    // ApiHub for dropbox is enabled if the AzureWebJobsDropBox environment variable is set.
+            //    // The format should be: Endpoint={endpoint};Scheme={scheme};AccessToken={accesstoken}
+            //    // or to use the local file system the format should be: UseLocalFileSystem=true;Path={path}
+            //    string apiHubConnectionString = SettingsManager.GetSetting("AzureWebJobsDropBox");
 
-            if (string.IsNullOrEmpty(apiHubConnectionString))
-            {
-                throw new ApplicationException("Missing AzureWebJobsDropBox environment variable.");
-            }
+            //    if (string.IsNullOrEmpty(apiHubConnectionString))
+            //    {
+            //        throw new ApplicationException("Missing AzureWebJobsDropBox environment variable.");
+            //    }
 
-            string testBlob = "teste2e";
-            string apiHubFile = "teste2e/test.txt";
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testBlob);
-            resultBlob.DeleteIfExists();
+            //    string testBlob = "teste2e";
+            //    string apiHubFile = "teste2e/test.txt";
+            //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(testBlob);
+            //    resultBlob.DeleteIfExists();
 
-            var root = ItemFactory.Parse(apiHubConnectionString);
-            if (await root.FileExistsAsync(apiHubFile))
-            {
-                var file = root.GetFileReference(apiHubFile);
-                await file.DeleteAsync();
-            }
+            //    var root = ItemFactory.Parse(apiHubConnectionString);
+            //    if (await root.FileExistsAsync(apiHubFile))
+            //    {
+            //        var file = root.GetFileReference(apiHubFile);
+            //        await file.DeleteAsync();
+            //    }
 
-            // Test both writing and reading from ApiHubFile.
-            // First, manually invoke a function that has an output binding to write to Dropbox.
-            string testData = Guid.NewGuid().ToString();
+            //    // Test both writing and reading from ApiHubFile.
+            //    // First, manually invoke a function that has an output binding to write to Dropbox.
+            //    string testData = Guid.NewGuid().ToString();
 
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input", testData },
-            };
-            await Fixture.Host.CallAsync("ApiHubFileSender", arguments);
+            //    Dictionary<string, object> arguments = new Dictionary<string, object>
+            //    {
+            //        { "input", testData },
+            //    };
+            //    await Fixture.Host.CallAsync("ApiHubFileSender", arguments);
 
-            // Second, there's an ApiHubFile trigger which will write a blob.
-            // Once the blob is written, we know both sender & listener are working.
-            // TODO: removing the BOM character from result.
-            string result = (await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob)).Remove(0, 1);
+            //    // Second, there's an ApiHubFile trigger which will write a blob.
+            //    // Once the blob is written, we know both sender & listener are working.
+            //    // TODO: removing the BOM character from result.
+            //    string result = (await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob)).Remove(0, 1);
 
-            Assert.Equal(testData, result);
+            //    Assert.Equal(testData, result);
         }
 
         protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
         {
-            // We know the tests are using the default INameResolver and this setting.
-            var mobileAppUri = _nameResolver.Resolve("AzureWebJobs_TestMobileUri");
-            var client = new MobileServiceClient(new Uri(mobileAppUri));
-            JToken item = null;
-            var table = client.GetTable(tableName);
-            await TestHelpers.Await(() =>
-            {
-                bool result = false;
-                try
-                {
-                    item = Task.Run(() => table.LookupAsync(itemId)).Result;
-                    if (textToMatch != null)
-                    {
-                        result = item["Text"].ToString() == textToMatch;
-                    }
-                    else
-                    {
-                        result = true;
-                    }
-                }
-                catch (AggregateException aggEx)
-                {
-                    var ex = (MobileServiceInvalidOperationException)aggEx.InnerException;
-                    if (ex.Response.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        throw;
-                    }
-                }
+            //    // We know the tests are using the default INameResolver and this setting.
+            //    var mobileAppUri = _nameResolver.Resolve("AzureWebJobs_TestMobileUri");
+            //    var client = new MobileServiceClient(new Uri(mobileAppUri));
+            //    JToken item = null;
+            //    var table = client.GetTable(tableName);
+            //    await TestHelpers.Await(() =>
+            //    {
+            //        bool result = false;
+            //        try
+            //        {
+            //            item = Task.Run(() => table.LookupAsync(itemId)).Result;
+            //            if (textToMatch != null)
+            //            {
+            //                result = item["Text"].ToString() == textToMatch;
+            //            }
+            //            else
+            //            {
+            //                result = true;
+            //            }
+            //        }
+            //        catch (AggregateException aggEx)
+            //        {
+            //            var ex = (MobileServiceInvalidOperationException)aggEx.InnerException;
+            //            if (ex.Response.StatusCode != HttpStatusCode.NotFound)
+            //            {
+            //                throw;
+            //            }
+            //        }
 
-                return result;
-            });
+            //        return result;
+            //    });
 
-            return item;
+            //    return item;
+
+            return null;
         }
 
-        protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)
-        {
-            var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
+        //protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)
+        //{
+        //    var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
-            // We know the tests are using the default INameResolver and the default setting.
-            var connectionString = _nameResolver.Resolve("AzureWebJobsDocumentDBConnectionString");
-            var builder = new DbConnectionStringBuilder();
-            builder.ConnectionString = connectionString;
-            var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-            var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
+        //    // We know the tests are using the default INameResolver and the default setting.
+        //    var connectionString = _nameResolver.Resolve("AzureWebJobsDocumentDBConnectionString");
+        //    var builder = new DbConnectionStringBuilder();
+        //    builder.ConnectionString = connectionString;
+        //    var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
+        //    var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
 
-            Document doc = null;
-            await TestHelpers.Await(() =>
-            {
-                bool result = false;
-                try
-                {
-                    var response = Task.Run(() => client.ReadDocumentAsync(docUri)).Result;
-                    doc = response.Resource;
+        //    Document doc = null;
+        //    await TestHelpers.Await(() =>
+        //    {
+        //        bool result = false;
+        //        try
+        //        {
+        //            var response = Task.Run(() => client.ReadDocumentAsync(docUri)).Result;
+        //            doc = response.Resource;
 
-                    if (textToMatch != null)
-                    {
-                        result = doc.GetPropertyValue<string>("text") == textToMatch;
-                    }
-                    else
-                    {
-                        result = true;
-                    }
-                }
-                catch (Exception)
-                {
-                }
+        //            if (textToMatch != null)
+        //            {
+        //                result = doc.GetPropertyValue<string>("text") == textToMatch;
+        //            }
+        //            else
+        //            {
+        //                result = true;
+        //            }
+        //        }
+        //        catch (Exception)
+        //        {
+        //        }
 
-                return result;
-            });
+        //        return result;
+        //    });
 
-            return doc;
-        }
+        //    return doc;
+        //}
 
         protected static bool VerifyNotificationHubExceptionMessage(Exception exception)
         {

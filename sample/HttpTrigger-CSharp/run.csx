@@ -1,27 +1,12 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+public static IActionResult Run(string req,TraceWriter log)
 {
-    var queryParams = req.GetQueryNameValuePairs()
-        .ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+    return new OkObjectResult(new Test { Name = "blah" });
+}
 
-    log.Info(string.Format("C# HTTP trigger function processed a request. {0}", req.RequestUri));
-
-    HttpResponseMessage res = null;
-    if (queryParams.TryGetValue("name", out string name))
-    {
-        res = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("Hello " + name)
-        };
-    }
-    else
-    {
-        res = new HttpResponseMessage(HttpStatusCode.BadRequest)
-        {
-            Content = new StringContent("Please pass a name on the query string")
-        };
-    }
-
-    return Task.FromResult(res);
+public class Test
+{
+    public string Name { get; set; }
 }

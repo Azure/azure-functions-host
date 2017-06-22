@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class CoreExtensionsScriptBindingProviderTests
     {
-        [Fact]
+        [Fact(Skip = "Disabling due to issues with CI")]
         public void GetAttributes_DynamicSku_ValidatesScheduleExpression()
         {
             Environment.SetEnvironmentVariable("TEST_SCHEDULE_CRON", "0 * * * * *");

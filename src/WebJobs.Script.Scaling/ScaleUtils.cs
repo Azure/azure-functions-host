@@ -7,7 +7,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web.Security;
 
 namespace Microsoft.Azure.WebJobs.Script.Scaling
 {
@@ -89,14 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         public static string GetToken(DateTime expiredUtc)
         {
             var bytes = BitConverter.GetBytes(expiredUtc.Ticks);
-            var encrypted = MachineKey.Protect(bytes, Purpose);
+
+            // TODO: FACAVAL: Get machine key (use same approach as data protection)
+            // var encrypted = MachineKey.Protect(bytes, Purpose);
+            var encrypted = new byte[0];
             return Convert.ToBase64String(encrypted);
         }
 
         public static void ValidateToken(string token)
         {
             var encrypted = Convert.FromBase64String(token);
-            var bytes = MachineKey.Unprotect(encrypted, Purpose);
+
+            // TODO: FACAVAL: Get machine key (use same approach as data protection)
+            // var bytes = MachineKey.Unprotect(encrypted, Purpose);
+            var bytes = new byte[0];
             var ticks = BitConverter.ToInt64(bytes, 0);
             var expiredUtc = new DateTime(ticks, DateTimeKind.Utc);
 

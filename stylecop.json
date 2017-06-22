@@ -15,7 +15,7 @@
       "documentInternalElements": false,
       "documentExposedElements": false,
       "documentPrivateElements": false,
-      "documentPrivateFields": false,
+      "documentPrivateFields": false
     },
     "orderingRules": {
       "usingDirectivesPlacement": "outsideNamespace"

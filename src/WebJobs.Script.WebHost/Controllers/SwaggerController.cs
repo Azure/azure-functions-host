@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if SWAGGER
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -77,3 +79,4 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
     }
 }
+#endif

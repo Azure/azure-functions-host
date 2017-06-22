@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             Assert.Contains("home-stamp:2", workerDisplayString);
         }
 
-        [Theory, MemberData("GetAndValidateTokenData")]
+        [Theory(Skip = "Pending machine key fix"), MemberData(nameof(GetAndValidateTokenData))]
         public void GetAndValidateTokenTests(DateTime expiredUtc, bool expected)
         {
             var token = ScaleUtils.GetToken(expiredUtc);
