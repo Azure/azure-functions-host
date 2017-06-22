@@ -2,7 +2,7 @@
 
 using PrimaryDependency;
 
-public static void Run(HttpRequestMessage req, TraceWriter log)
+public static void Run(HttpRequest req, TraceWriter log)
 {
-    req.Properties["DependencyOutput"] = new Primary().GetValue();
+    req.HttpContext.Items["DependencyOutput"] = new Primary().GetValue();
 }

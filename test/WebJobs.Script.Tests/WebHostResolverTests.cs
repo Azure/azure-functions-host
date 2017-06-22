@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -27,14 +28,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var settingsManager = new ScriptSettingsManager();
                 var secretManagerFactoryMock = new Mock<ISecretManagerFactory>();
                 var eventManagerMock = new Mock<IScriptEventManager>();
-                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object);
-
+                var routerMock = new Mock<IWebJobsRouter>();
                 var settings = new WebHostSettings
                 {
                     ScriptPath = @"c:\some\path",
                     LogPath = @"c:\log\path",
                     SecretsPath = @"c:\secrets\path"
                 };
+
+                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object, settings, routerMock.Object);
 
                 ScriptHostConfiguration configuration = resolver.GetScriptHostConfiguration(settings);
 

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if HTTP_BINDING
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,13 +18,15 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
-    public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
+    public class AuthorizationLevelAttribute : ActionFilterAttribute, IAsyncAuthorizationFilter
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
+        private readonly ISecretManager _secretManager;
 
-        public AuthorizationLevelAttribute(AuthorizationLevel level)
+        public AuthorizationLevelAttribute(AuthorizationLevel level, ISecretManager secretManager)
         {
             Level = level;
+            _secretManager = secretManager;
         }
 
         public AuthorizationLevelAttribute(AuthorizationLevel level, string keyName)
@@ -43,12 +46,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
         public async override Task OnAuthorizationAsync(HttpActionContext actionContext, CancellationToken cancellationToken)
         {
-            if (actionContext == null)
-            {
-                throw new ArgumentNullException("actionContext");
-            }
+            // TODO: FACAVAL 
+            //if (context == null)
+            //{
+            //    throw new ArgumentNullException(nameof(context));
+            //}
 
-            AuthorizationLevel requestAuthorizationLevel = actionContext.Request.GetAuthorizationLevel();
+            //AuthorizationLevel requestAuthorizationLevel = context.HttpContext.Request.GetAuthorizationLevel();
 
             // If the request has not yet been authenticated, authenticate it
             var request = actionContext.Request;
@@ -162,3 +166,4 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         }
     }
 }
+#endif

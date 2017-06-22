@@ -4,49 +4,53 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
-using System.Web.Http;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    [JwtAuthentication]
-    [AuthorizationLevel(AuthorizationLevel.Admin)]
-    public class KeysController : ApiController
+    [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+    public class KeysController : Controller
     {
         private const string MasterKeyName = "_master";
 
         private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
 
-        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
-            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSecretManagement}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
         }
 
         [HttpGet]
         [Route("admin/functions/{name}/keys")]
-        public async Task<IHttpActionResult> Get(string name)
+        public async Task<IActionResult> Get(string name)
         {
             IDictionary<string, string> functionKeys = await GetFunctionKeys(name);
+
+            if (functionKeys == null)
+            {
+                return NotFound();
+            }
+
             return GetKeysResult(functionKeys);
         }
 
         [HttpGet]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}")]
-        public async Task<IHttpActionResult> Get()
+        public async Task<IActionResult> Get()
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
 
@@ -56,10 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/functions/{functionName}/keys/{name}")]
-        public async Task<IHttpActionResult> Get(string functionName, string name)
+        public async Task<IActionResult> Get(string functionName, string name)
         {
             IDictionary<string, string> functionKeys = await GetFunctionKeys(functionName);
-            if (functionKeys.TryGetValue(name, out string keyValue))
+            if (functionKeys != null && functionKeys.TryGetValue(name, out string keyValue))
             {
                 var keyResponse = ApiModelUtility.CreateApiModel(new { name = name, value = keyValue }, Request);
                 return Ok(keyResponse);
@@ -70,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{name}")]
-        public async Task<IHttpActionResult> GetHostKey(string name)
+        public async Task<IActionResult> GetHostKey(string name)
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
 
@@ -90,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (!_scriptHostManager.Instance.IsFunction(functionName))
             {
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+                return null;
             }
 
             return await _secretManager.GetFunctionSecretsAsync(functionName);
@@ -98,31 +102,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Post(string name, string keyName) => AddOrUpdateSecretAsync(keyName, null, name, ScriptSecretsType.Function);
+        public Task<IActionResult> Post(string name, string keyName) => AddOrUpdateSecretAsync(keyName, null, name, ScriptSecretsType.Function);
 
         [HttpPost]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
-        public Task<IHttpActionResult> Post(string keyName) => AddOrUpdateSecretAsync(keyName, null, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+        public Task<IActionResult> Post(string keyName) => AddOrUpdateSecretAsync(keyName, null, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpPut]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
+        public Task<IActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
 
         [HttpPut]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
-        public Task<IHttpActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+        public Task<IActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpDelete]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IHttpActionResult> Delete(string name, string keyName) => DeleteFunctionSecretAsync(keyName, name, ScriptSecretsType.Function);
+        public Task<IActionResult> Delete(string name, string keyName) => DeleteFunctionSecretAsync(keyName, name, ScriptSecretsType.Function);
 
         [HttpDelete]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
-        public Task<IHttpActionResult> Delete(string keyName) => DeleteFunctionSecretAsync(keyName, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+        public Task<IActionResult> Delete(string keyName) => DeleteFunctionSecretAsync(keyName, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         private string GetHostKeyScopeForRequest()
         {
-            string keyScope = ControllerContext.RouteData.Values.GetValueOrDefault<string>("keys");
+            string keyScope = ControllerContext.RouteData.Values.GetValueOrDefault("keys")?.ToString();
 
             if (string.Equals(keyScope, "keys", StringComparison.OrdinalIgnoreCase))
             {
@@ -132,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return keyScope;
         }
 
-        private IHttpActionResult GetKeysResult(IDictionary<string, string> keys)
+        private IActionResult GetKeysResult(IDictionary<string, string> keys)
         {
             keys = keys ?? EmptyKeys.Value;
             var keysContent = new
@@ -145,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(keyResponse);
         }
 
-        private async Task<IHttpActionResult> PutKeyAsync(string keyName, Key key, string keyScope, ScriptSecretsType secretsType)
+        private async Task<IActionResult> PutKeyAsync(string keyName, Key key, string keyScope, ScriptSecretsType secretsType)
         {
             if (key?.Value == null)
             {
@@ -155,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return await AddOrUpdateSecretAsync(keyName, key.Value, keyScope, secretsType);
         }
 
-        private async Task<IHttpActionResult> AddOrUpdateSecretAsync(string keyName, string value, string keyScope, ScriptSecretsType secretsType)
+        private async Task<IActionResult> AddOrUpdateSecretAsync(string keyName, string value, string keyScope, ScriptSecretsType secretsType)
         {
             if (secretsType == ScriptSecretsType.Function && keyScope != null && !_scriptHostManager.Instance.IsFunction(keyScope))
             {
@@ -172,9 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
             }
 
-            string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result);
-            _traceWriter.Verbose(message);
-            _logger?.LogDebug(message);
+            _logger?.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result));
 
             switch (operationResult.Result)
             {
@@ -191,9 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 case OperationResult.NotFound:
                     return NotFound();
                 case OperationResult.Conflict:
-                    return Conflict();
+                    return StatusCode(StatusCodes.Status409Conflict);
                 default:
-                    return InternalServerError();
+                    return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -223,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return null;
         }
 
-        private async Task<IHttpActionResult> DeleteFunctionSecretAsync(string keyName, string keyScope, ScriptSecretsType secretsType)
+        private async Task<IActionResult> DeleteFunctionSecretAsync(string keyName, string keyScope, ScriptSecretsType secretsType)
         {
             if (keyName == null || keyName.StartsWith("_"))
             {
@@ -238,11 +240,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound();
             }
 
-            string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted");
-            _traceWriter.VerboseFormat(message);
-            _logger?.LogDebug(message);
+            _logger?.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted"));
 
-            return StatusCode(HttpStatusCode.NoContent);
+            return StatusCode(StatusCodes.Status204NoContent);
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if WEBROUTING // this will need to be updated to work with the new routing model
+
 using System.Collections.Generic;
 using System.Web.Http.Routing;
 using System.Web.Http.Routing.Constraints;
@@ -50,3 +52,4 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
     }
 }
+#endif

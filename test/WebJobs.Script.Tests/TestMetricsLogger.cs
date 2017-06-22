@@ -1,9 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-
+#if METRICS_EVENTS
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -64,3 +63,4 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
     }
 }
+#endif

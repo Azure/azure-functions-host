@@ -1,28 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.14
+VisualStudioVersion = 15.0.26724.1
 MinimumVisualStudioVersion = 15.0.0.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{FF9C0818-30D3-437A-A62D-7A61CA44F459}"
 	ProjectSection(SolutionItems) = preProject
 		sample\host.json = sample\host.json
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Packages.csproj", "{34AB8F63-18DE-4E0D-B21C-15E33B091634}"
-	ProjectSection(ProjectDependencies) = postProject
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094} = {1DC670CD-F42F-4D8F-97BD-0E1AA8221094}
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F} = {63C9B2F4-F122-4ACC-968F-9B8F0880A72F}
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Host", "src\WebJobs.Script.Host\WebJobs.Script.Host.csproj", "{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger", "BlobTrigger", "{46A0C17F-80F3-4621-B12D-918D5DADA039}"
 	ProjectSection(SolutionItems) = preProject
@@ -84,12 +70,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resizer", "Resizer", "{5C45
 		sample\ResizeImage\Resizer\Resizer.exe = sample\ResizeImage\Resizer\Resizer.exe
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{446135EF-3B07-417B-80FF-06099AA81DFF}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\packages.config = .nuget\packages.config
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServiceBusQueueTrigger", "ServiceBusQueueTrigger", "{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E}"
 	ProjectSection(SolutionItems) = preProject
 		sample\ServiceBusQueueTrigger\function.json = sample\ServiceBusQueueTrigger\function.json
@@ -101,8 +81,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger"
 		sample\HttpTrigger\function.json = sample\HttpTrigger\function.json
 		sample\HttpTrigger\index.js = sample\HttpTrigger\index.js
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.WebHost", "src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Batch", "HttpTrigger-Batch", "{A7F93CF8-01D8-483E-A04C-A46026DEA1E6}"
 	ProjectSection(SolutionItems) = preProject
@@ -186,12 +164,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-CSharp", "Docume
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-CSharp\function.json = sample\DocumentDB-CSharp\function.json
 		sample\DocumentDB-CSharp\run.csx = sample\DocumentDB-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CosmosDBTrigger-CSharp", "CosmosDBTrigger-CSharp", "{BEDE4C1D-B523-47F8-ADB6-0DAD5F0341A7}"
-	ProjectSection(SolutionItems) = preProject
-		sample\CosmosDBTrigger-CSharp\function.json = sample\CosmosDBTrigger-CSharp\function.json
-		sample\CosmosDBTrigger-CSharp\run.csx = sample\CosmosDBTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-FSharp", "DocumentDB-FSharp", "{437EB182-8CB9-42BD-9019-E5F6E69D1DB4}"
@@ -418,10 +390,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp-Dyna
 		sample\WebHook-Generic-CSharp-Dynamic\run.csx = sample\WebHook-Generic-CSharp-Dynamic\run.csx
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Integration", "test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj", "{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}"
-EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{67174433-2838-460C-9880-419476D02994}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A}"
@@ -449,62 +417,83 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "H
 		sample\HttpTrigger-TypeScript\index.ts = sample\HttpTrigger-TypeScript\index.ts
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling", "src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj", "{292A9038-5807-4095-B37F-9A77170D7402}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Extensibility", "src\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj", "{03FD181C-E3F0-4F15-ACB2-94237F7D2616}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling.Tests", "test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj", "{8088DC08-4BB1-442D-8CD4-571FC9330D54}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{BCFBE330-871A-44BE-9016-83845231230F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Host", "src\WebJobs.Script.Host\WebJobs.Script.Host.csproj", "{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Scaling", "src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj", "{EDDEF4E8-1619-459B-A33C-153FB429D2A5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.WebHost", "src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "{D5162088-C119-4A06-896D-E65983CAEDFD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{6D78685E-D299-4803-9923-12143F0CA41F}"
+	ProjectSection(SolutionItems) = preProject
+		build\common.props = build\common.props
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Scaling.Tests", "test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj", "{137FB7AA-B192-4766-B86A-C813D94B1995}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Extensibility.Tests", "test\WebJobs.Extensibility.Tests\WebJobs.Extensibility.Tests.csproj", "{ECE4F9A4-7684-4834-92C4-F71252DC55E5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Integration", "test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj", "{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{38c609d3-b126-43b0-b9d8-6d62faee2abc}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}.Release|Any CPU.Build.0 = Release|Any CPU
-		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588}.Release|Any CPU.Build.0 = Release|Any CPU
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{292A9038-5807-4095-B37F-9A77170D7402}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{292A9038-5807-4095-B37F-9A77170D7402}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{292A9038-5807-4095-B37F-9A77170D7402}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{292A9038-5807-4095-B37F-9A77170D7402}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03FD181C-E3F0-4F15-ACB2-94237F7D2616}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03FD181C-E3F0-4F15-ACB2-94237F7D2616}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03FD181C-E3F0-4F15-ACB2-94237F7D2616}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03FD181C-E3F0-4F15-ACB2-94237F7D2616}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCFBE330-871A-44BE-9016-83845231230F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCFBE330-871A-44BE-9016-83845231230F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCFBE330-871A-44BE-9016-83845231230F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCFBE330-871A-44BE-9016-83845231230F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDDEF4E8-1619-459B-A33C-153FB429D2A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDDEF4E8-1619-459B-A33C-153FB429D2A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDDEF4E8-1619-459B-A33C-153FB429D2A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDDEF4E8-1619-459B-A33C-153FB429D2A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D5162088-C119-4A06-896D-E65983CAEDFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5162088-C119-4A06-896D-E65983CAEDFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5162088-C119-4A06-896D-E65983CAEDFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5162088-C119-4A06-896D-E65983CAEDFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{137FB7AA-B192-4766-B86A-C813D94B1995}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{137FB7AA-B192-4766-B86A-C813D94B1995}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{137FB7AA-B192-4766-B86A-C813D94B1995}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{137FB7AA-B192-4766-B86A-C813D94B1995}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECE4F9A4-7684-4834-92C4-F71252DC55E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECE4F9A4-7684-4834-92C4-F71252DC55E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECE4F9A4-7684-4834-92C4-F71252DC55E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECE4F9A4-7684-4834-92C4-F71252DC55E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{1DC670CD-F42F-4D8F-97BD-0E1AA8221094} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
-		{38C609D3-B126-43B0-B9D8-6D62FAEE2ABC} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
-		{F5FAB5A1-A816-441B-86BF-CA3CAE2F7588} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{46A0C17F-80F3-4621-B12D-918D5DADA039} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BBC61846-A33D-4D82-9749-D381D176EE67} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8706290C-D46A-4D44-AD4C-5F51FA928D1A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -517,7 +506,6 @@ Global
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{7091449A-ADE8-47FE-985C-E9FADCCC49C4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{63C9B2F4-F122-4ACC-968F-9B8F0880A72F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{A7F93CF8-01D8-483E-A04C-A46026DEA1E6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{08F97FA9-3D24-4C3D-AE6B-18C5132549AB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -532,7 +520,6 @@ Global
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{BEDE4C1D-B523-47F8-ADB6-0DAD5F0341A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -570,14 +557,23 @@ Global
 		{EF36E33B-646C-4EF4-B0E2-517E14F6DC38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{98DBDE0D-364C-4865-9A4A-B17410D771F6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{2F6EF597-6586-4F59-BBB6-BA7146FEFD27} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{35A2025D-F68A-4B57-83A2-ED4EB9C3894D} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
-		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 		{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A} = {67174433-2838-460C-9880-419476D02994}
 		{EB76E1C8-C823-4707-BD83-20304425EFC4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{7D50E081-A161-4E83-A6D4-F8529E518613} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6} = {7D50E081-A161-4E83-A6D4-F8529E518613}
 		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{292A9038-5807-4095-B37F-9A77170D7402} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
-		{8088DC08-4BB1-442D-8CD4-571FC9330D54} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{03FD181C-E3F0-4F15-ACB2-94237F7D2616} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{BCFBE330-871A-44BE-9016-83845231230F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{EDDEF4E8-1619-459B-A33C-153FB429D2A5} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{D5162088-C119-4A06-896D-E65983CAEDFD} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{137FB7AA-B192-4766-B86A-C813D94B1995} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{ECE4F9A4-7684-4834-92C4-F71252DC55E5} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7B26C6F0-AAC3-44F3-BBD8-4D0700DF37FB}
 	EndGlobalSection
 EndGlobal

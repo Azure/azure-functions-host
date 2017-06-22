@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resultBlob = outputContainer.GetBlockBlobReference(Fixture.TestBlobName);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
-            string resultContents = resultBlob.DownloadText();
+            string resultContents = await resultBlob.DownloadTextAsync();
             Assert.Equal(Fixture.TestBlobTriggerContents + "_" + Fixture.TestBlobContents, resultContents.Trim());
         }
 
@@ -91,10 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public string TestBlobTriggerName { get; private set; }
 
-            protected override void CreateTestStorageEntities()
+            protected override async Task CreateTestStorageEntities()
             {
                 // This will ensure the input container is created.
-                base.CreateTestStorageEntities();
+                await base.CreateTestStorageEntities();
 
                 TestBlobTriggerContents = "My Test Blob Trigger";
                 TestBlobContents = "My Test Blob";
@@ -104,10 +104,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // write the test blob before the host starts, so it gets picked
                 // up relatively quickly by the blob trigger test
                 CloudBlockBlob inputBlobTrigger = TestInputContainer.GetBlockBlobReference(TestBlobTriggerName);
-                inputBlobTrigger.UploadText(TestBlobTriggerContents);
+                await inputBlobTrigger.UploadTextAsync(TestBlobTriggerContents);
 
                 CloudBlockBlob inputBlob = TestInputContainer.GetBlockBlobReference(TestBlobName);
-                inputBlob.UploadText(TestBlobContents);
+                await inputBlob.UploadTextAsync(TestBlobContents);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-
+// TODO: FACAVAL
+#if HTTP
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -432,3 +433,4 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
     }
 }
+#endif

@@ -48,21 +48,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class UtilityTests
     {
-        [Fact]
+        [Fact(Skip = "Direct depedency on SendGrid. Remove dependency or re-enable once this is pulled back in")]
         public void TryMatchAssembly_ReturnsExpectedResult()
         {
-            Assembly assembly = null;
-            bool result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.Extensions.SendGrid", typeof(SendGridAttribute), out assembly);
-            Assert.True(result);
-            Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
+            //Assembly assembly = null;
+            //bool result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.Extensions.SendGrid", typeof(SendGridAttribute), out assembly);
+            //Assert.True(result);
+            //Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
 
-            result = Utility.TryMatchAssembly("MICROSOFT.AZURE.WEBJOBS.EXTENSIONS.SENDGRID", typeof(SendGridAttribute), out assembly);
-            Assert.True(result);
-            Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
+            //result = Utility.TryMatchAssembly("MICROSOFT.AZURE.WEBJOBS.EXTENSIONS.SENDGRID", typeof(SendGridAttribute), out assembly);
+            //Assert.True(result);
+            //Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
 
-            result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.FooBar", typeof(SendGridAttribute), out assembly);
-            Assert.False(result);
-            Assert.Null(assembly);
+            //result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.FooBar", typeof(SendGridAttribute), out assembly);
+            //Assert.False(result);
+            //Assert.Null(assembly);
         }
 
         [Fact]
@@ -338,13 +338,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IsSelfHost = true,
                 RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
             };
+
             var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
 
             string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
+
+            // This suffix is a stable hash code derived from the "RootScriptPath" string passed in the configuration.
+            // We're using the literal here as we want this test to fail if this compuation ever returns something different.
+            string suffix = "473716271";
+
             string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
-            Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
+            Assert.Equal($"{sanitizedMachineName}-{suffix}", hostId);
         }
     }
 }

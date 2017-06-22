@@ -63,7 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                 }
                 Host.Dispose();
-                ServiceBusQueueClient.Close();
+
+                // TODO: FACAVAL
+                // ServiceBusQueueClient.Close();
             }
         }
     }
