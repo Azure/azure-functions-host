@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -156,12 +157,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
                 }
 
-                // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequestMessage,
+                // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequest,
                 // add it as a system parameter so it is accessible later in the pipeline.
                 if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 &&
-                    !descriptors.Any(p => p.Type == typeof(HttpRequestMessage)))
+                    !descriptors.Any(p => p.Type == typeof(HttpRequest)))
                 {
-                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequestMessage)));
+                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequest)));
                 }
 
                 if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))

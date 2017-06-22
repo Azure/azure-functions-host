@@ -1,3 +1,17 @@
 {
-    "id": "function-tests-csharp"
+  "id": "function-tests-csharp",
+  "functions": [
+    "AssembliesFromSharedLocation",
+    "FunctionExecutionContext",
+    "HttpTrigger-Dynamic",
+    "HttpTriggerToBlob",
+    "LoadScriptReference",
+    "ManualTrigger",
+    "MultipleOutputs",
+    "QueueTriggerToBlob",
+    "Scenarios",
+    "TimeoutStopHost",
+    "TimeoutSync",
+    "TimeoutToken"
+  ] 
 }

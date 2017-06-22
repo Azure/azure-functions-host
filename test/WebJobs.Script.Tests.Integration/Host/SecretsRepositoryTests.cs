@@ -33,21 +33,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void FileSystemRepo_Constructor_CreatesSecretPathIfNotExists()
+        public async Task FileSystemRepo_Constructor_CreatesSecretPathIfNotExists()
         {
-            Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.FileSystem);
+            await Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.FileSystem);
         }
 
         [Fact]
-        public void BlobStorageRepo_Constructor_CreatesSecretPathIfNotExists()
+        public async Task BlobStorageRepo_Constructor_CreatesSecretPathIfNotExists()
         {
-            Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.BlobStorage);
+            await Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.BlobStorage);
         }
 
-        private void Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType)
+        private async Task Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType)
         {
             string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            _fixture.TestInitialize(repositoryType, path);
+            await _fixture.TestInitialize(repositoryType, path);
             try
             {
                 bool preConstDirExists = Directory.Exists(path);
@@ -86,11 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                _fixture.TestInitialize(repositoryType, directory.Path);
+                await _fixture.TestInitialize(repositoryType, directory.Path);
                 string testContent = "test";
                 string testFunctionName = secretsType == ScriptSecretsType.Host ? "host" : "testfunction";
 
-                _fixture.WriteSecret(testFunctionName, testContent);
+                await _fixture.WriteSecret(testFunctionName, testContent);
 
                 var target = _fixture.GetNewSecretRepository();
 
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                _fixture.TestInitialize(repositoryType, directory.Path);
+                await _fixture.TestInitialize(repositoryType, directory.Path);
                 string testContent = "test";
                 string testFunctionName = secretsType == ScriptSecretsType.Host ? null : "TestFunction";
 
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     Assert.True(_fixture.MarkerFileExists(testFunctionName ?? "host"));
                 }
-                Assert.Equal(testContent, _fixture.GetSecretText(testFunctionName ?? "host"));
+                Assert.Equal(testContent, await _fixture.GetSecretText(testFunctionName ?? "host"));
             }
         }
 
@@ -153,17 +153,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                _fixture.TestInitialize(repositoryType, directory.Path);
+                await _fixture.TestInitialize(repositoryType, directory.Path);
 
                 string testFunctionName = "TestFunction";
                 ScriptSecretsType secretsType = ScriptSecretsType.Function;
                 string initialSecretText = "TextOne";
                 string updatedSecretText = "TextTwo";
 
-                _fixture.WriteSecret(testFunctionName, initialSecretText);
+                await _fixture.WriteSecret(testFunctionName, initialSecretText);
                 var target = _fixture.GetNewSecretRepository();
                 string preTextResult = await target.ReadAsync(secretsType, testFunctionName);
-                _fixture.WriteSecret(testFunctionName, updatedSecretText);
+                await _fixture.WriteSecret(testFunctionName, updatedSecretText);
                 string postTextResult = await target.ReadAsync(secretsType, testFunctionName);
 
                 Assert.Equal(initialSecretText, preTextResult);
@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                _fixture.TestInitialize(SecretsRepositoryType.FileSystem, directory.Path);
+                await _fixture.TestInitialize(SecretsRepositoryType.FileSystem, directory.Path);
                 Func<int, string> getFilePath = i => Path.Combine(directory.Path, $"{i}.json");
 
                 var sequence = Enumerable.Range(0, 10);
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public SecretsRepositoryType RepositoryType { get; private set; }
 
-            public void TestInitialize(SecretsRepositoryType repositoryType, string secretsDirectory, string testSiteName = null)
+            public async Task TestInitialize(SecretsRepositoryType repositoryType, string secretsDirectory, string testSiteName = null)
             {
                 RepositoryType = repositoryType;
                 SecretsDirectory = secretsDirectory;
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     TestSiteName = testSiteName;
                 }
 
-                ClearAllBlobSecrets();
+                await ClearAllBlobSecrets();
                 ClearAllFileSecrets();
             }
 
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 try
                 {
                     // delete blob files
-                    ClearAllBlobSecrets();
+                    ClearAllBlobSecrets().ContinueWith(t => { });
                     ClearAllFileSecrets();
                 }
                 catch
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return secretFilePath;
             }
 
-            public void WriteSecret(string functionNameOrHost, string fileText)
+            public async Task WriteSecret(string functionNameOrHost, string fileText)
             {
                 switch (RepositoryType)
                 {
@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         WriteSecretsToFile(functionNameOrHost, fileText);
                         break;
                     case SecretsRepositoryType.BlobStorage:
-                        WriteSecretsBlobAndUpdateSentinelFile(functionNameOrHost, fileText);
+                        await WriteSecretsBlobAndUpdateSentinelFile(functionNameOrHost, fileText);
                         break;
                     default:
                         break;
@@ -285,12 +285,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(SecretsFileOrSentinelPath(functionNameOrHost), fileText);
             }
 
-            private void WriteSecretsBlobAndUpdateSentinelFile(string functionNameOrHost, string fileText, bool createSentinelFile = true)
+            private async Task WriteSecretsBlobAndUpdateSentinelFile(string functionNameOrHost, string fileText, bool createSentinelFile = true)
             {
                 string blobPath = RelativeBlobPath(functionNameOrHost);
                 CloudBlockBlob secretBlob = BlobContainer.GetBlockBlobReference(blobPath);
 
-                using (StreamWriter writer = new StreamWriter(secretBlob.OpenWrite()))
+                using (StreamWriter writer = new StreamWriter(await secretBlob.OpenWriteAsync()))
                 {
                     writer.Write(fileText);
                 }
@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            public string GetSecretText(string functionNameOrHost)
+            public async Task<string> GetSecretText(string functionNameOrHost)
             {
                 string secretText = null;
                 switch (RepositoryType)
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         secretText = File.ReadAllText(SecretsFileOrSentinelPath(functionNameOrHost));
                         break;
                     case SecretsRepositoryType.BlobStorage:
-                        secretText = GetSecretBlobText(functionNameOrHost);
+                        secretText = await GetSecretBlobText(functionNameOrHost);
                         break;
                     default:
                         break;
@@ -318,13 +318,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return secretText;
             }
 
-            private string GetSecretBlobText(string functionNameOrHost)
+            private async Task<string> GetSecretBlobText(string functionNameOrHost)
             {
                 string blobText = null;
                 string blobPath = RelativeBlobPath(functionNameOrHost);
-                if (BlobContainer.GetBlockBlobReference(blobPath).Exists())
+                if (await BlobContainer.GetBlockBlobReference(blobPath).ExistsAsync())
                 {
-                    blobText = BlobContainer.GetBlockBlobReference(blobPath).DownloadText();
+                    blobText = await BlobContainer.GetBlockBlobReference(blobPath).DownloadTextAsync();
                 }
                 return blobText;
             }
@@ -346,13 +346,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            private void ClearAllBlobSecrets()
+            private async Task ClearAllBlobSecrets()
             {
-                BlobContainer.CreateIfNotExists();
-                var blobs = BlobContainer.ListBlobs(prefix: TestSiteName.ToLowerInvariant(), useFlatBlobListing: true);
-                foreach (IListBlobItem blob in blobs)
+                await BlobContainer.CreateIfNotExistsAsync();
+                var blobs = await BlobContainer.ListBlobsSegmentedAsync(prefix: TestSiteName.ToLowerInvariant(), useFlatBlobListing: true,
+                    blobListingDetails: BlobListingDetails.None, maxResults: 100, currentToken: null, options: null, operationContext: null);
+                foreach (IListBlobItem blob in blobs.Results)
                 {
-                    BlobContainer.GetBlockBlobReference(((CloudBlockBlob)blob).Name).DeleteIfExists();
+                    await BlobContainer.GetBlockBlobReference(((CloudBlockBlob)blob).Name).DeleteIfExistsAsync();
                 }
             }
         }

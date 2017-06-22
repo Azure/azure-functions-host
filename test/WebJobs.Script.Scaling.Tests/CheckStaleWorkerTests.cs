@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("CheckStaleData")]
+        [Theory, MemberData(nameof(CheckStaleData))]
         public async Task CheckStaleTests(IEnumerable<MockWorkerInfo> workers)
         {
             var activityId = Guid.NewGuid().ToString();
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        public static IEnumerable<object> CheckStaleData
+        public static IEnumerable<object[]> CheckStaleData
         {
             get
             {

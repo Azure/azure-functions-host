@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<assemblies defaultPublicKeyToken="31bf3856ad364e35">
-  <!-- Production assemblies -->
-  <assembly name="Microsoft.Azure.WebJobs.Script"/>
-  <assembly name="WebJobs.Script.Host"/>
-
-  <!-- Unit test assemblies -->
-  <assembly name="WebJobs.Script.Tests"/>
-</assemblies>

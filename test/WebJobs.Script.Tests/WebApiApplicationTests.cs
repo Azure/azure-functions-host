@@ -10,18 +10,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WebApiApplicationTests
     {
-        [Theory]
-        [InlineData(@"c:\somedirectory", @"c:\testpath", @"c:\somedirectory;c:\testpath")]
-        [InlineData(@"c:\somedirectory", "", @"c:\somedirectory")]
-        [InlineData(@"c:\somedirectory", null, @"c:\somedirectory")]
-        [InlineData("", @"c:\testpath", @"c:\testpath")]
-        [InlineData(null, @"c:\testpath", @"c:\testpath")]
-        public void GetShadowCopyPath_ReturnsExpectedPath(string currentShadowCopy, string scriptPath, string expected)
-        {
-            string updatedPath = WebApiApplication.GetShadowCopyPath(currentShadowCopy, scriptPath);
-            string expectedPath = string.Join(";", new[] { currentShadowCopy, scriptPath }.Where(s => !string.IsNullOrEmpty(s)));
+        // TODO: FACAVAL: Need to figure out what we'll be doing (if anything) to re-enable shadow copy.
+        //[Theory]
+        //[InlineData(@"c:\somedirectory", @"c:\testpath", @"c:\somedirectory;c:\testpath")]
+        //[InlineData(@"c:\somedirectory", "", @"c:\somedirectory")]
+        //[InlineData(@"c:\somedirectory", null, @"c:\somedirectory")]
+        //[InlineData("", @"c:\testpath", @"c:\testpath")]
+        //[InlineData(null, @"c:\testpath", @"c:\testpath")]
+        //public void GetShadowCopyPath_ReturnsExpectedPath(string currentShadowCopy, string scriptPath, string expected)
+        //{
+        //    string updatedPath = WebApiApplication.GetShadowCopyPath(currentShadowCopy, scriptPath);
+        //    string expectedPath = string.Join(";", new[] { currentShadowCopy, scriptPath }.Where(s => !string.IsNullOrEmpty(s)));
 
-            Assert.Equal(expectedPath, updatedPath);
-        }
+        //    Assert.Equal(expectedPath, updatedPath);
+        //}
     }
 }

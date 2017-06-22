@@ -111,22 +111,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &lt;!DOCTYPE html&gt;
-        ///&lt;html&gt;
-        ///&lt;head&gt;
-        ///    &lt;title&gt;Your Azure Function App is up and running.&lt;/title&gt;
-        ///    &lt;style type=&quot;text/css&quot;&gt;
-        ///        @font-face {
-        ///            font-family: &apos;SegoeLight&apos;;
-        ///            src: url(//:) format(&apos;no404&apos;), url(data:font/woff;charset=utf-8;base64,d09GRgABAAAAAFbcABAAAAAAjewAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAABbAAAABsAAAAcWqtaPUdERUYAAAGIAAAAHQAAACABGAADT1MvMgAAAagAAABYAAAAYGrqcLZjbWFwAAACAAAAAaIAAAIKczqUA2N2dCAAAAOkAAAATAAAAEwOEAwRZnBnbQAAA/AAAAGxAAACZQ+0L6dnYXNwAAAFpAAAAAwAAAAMAA [rest of string was truncated]&quot;;.
-        /// </summary>
-        internal static string Homepage {
-            get {
-                return ResourceManager.GetString("Homepage", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
         ///    &quot;properties&quot;: {

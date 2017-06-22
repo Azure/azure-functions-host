@@ -25,10 +25,10 @@ namespace Microsoft.Azure.WebJobs.Extensibility.Tests
             ScriptBindingContext context = new ScriptBindingContext(metadata);
 
             Assert.Same(metadata, context.Metadata);
-            Assert.Equal(context.Name, "TestFunc");
-            Assert.Equal(context.Access, FileAccess.ReadWrite);
-            Assert.Equal(context.Type, "queueTrigger");
-            Assert.Equal(context.DataType, "string");
+            Assert.Equal("TestFunc", context.Name);
+            Assert.Equal(FileAccess.ReadWrite, context.Access);
+            Assert.Equal("queueTrigger", context.Type);
+            Assert.Equal("string", context.DataType);
         }
 
         [Fact]

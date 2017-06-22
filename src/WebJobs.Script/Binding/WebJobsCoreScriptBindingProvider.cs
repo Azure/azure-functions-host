@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override void Initialize()
         {
             // Apply Blobs configuration
+            // TODO: FACAVAL - Follow up on TEMP comment below
             Config.Blobs.CentralizedPoisonQueue = true;   // TEMP : In the next release we'll remove this and accept the core SDK default
             var configSection = (JObject)Metadata["blobs"];
             JToken value = null;
@@ -78,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 get
                 {
-                    return typeof(HttpRequestMessage);
+                    return typeof(HttpRequest);
                 }
             }
 

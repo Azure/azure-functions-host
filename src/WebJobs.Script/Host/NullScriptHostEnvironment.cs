@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class NullScriptHostEnvironment : IScriptHostEnvironment
+    public class NullScriptHostEnvironment : IScriptHostEnvironment
     {
         public void RestartHost()
         {

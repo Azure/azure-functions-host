@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// Gets or sets the log level.
         /// </summary>
         [JsonConverter(typeof(StringEnumConverter))]
-        public TraceLevel Level { get; set; }
+        public System.Diagnostics.TraceLevel Level { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the function the log entry is for.

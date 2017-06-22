@@ -9,14 +9,17 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Http;
-using System.Web.Http.Controllers;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -25,36 +28,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// Controller responsible for handling all administrative requests, for
     /// example enqueueing function invocations, etc.
     /// </summary>
-    [JwtAuthentication]
-    [AuthorizationLevel(AuthorizationLevel.Admin)]
-    public class AdminController : ApiController
+    public class AdminController : Controller
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
-            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceHostAdmin}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
         }
 
         [HttpPost]
         [Route("admin/functions/{name}")]
-        public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
+        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             if (invocation == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                return BadRequest();
             }
 
             FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
             if (function == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return BadRequest();
             }
 
             ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
@@ -64,12 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             };
             Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
 
-            return new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Accepted();
         }
 
         [HttpGet]
         [Route("admin/functions/{name}/status")]
-        public FunctionStatus GetFunctionStatus(string name)
+        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        public IActionResult GetFunctionStatus(string name)
         {
             FunctionStatus status = new FunctionStatus();
             Collection<string> functionErrors = null;
@@ -86,158 +87,137 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
-                    throw new HttpResponseException(HttpStatusCode.NotFound);
+                    return NotFound();
                 }
             }
 
-            return status;
+            return Ok(status);
         }
 
         [HttpGet]
         [Route("admin/host/status")]
-        [AllowAnonymous]
-        public IHttpActionResult GetHostStatus()
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        public IActionResult GetHostStatus()
         {
-            var authorizationLevel = Request.GetAuthorizationLevel();
-            if (Request.IsAuthDisabled() ||
-                authorizationLevel == AuthorizationLevel.Admin ||
-                Request.IsAntaresInternalRequest())
+            var status = new HostStatus
             {
-                var status = new HostStatus
+                State = _scriptHostManager.State.ToString(),
+                Version = ScriptHost.Version,
+                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
+            };
+
+            var lastError = _scriptHostManager.LastError;
+            if (lastError != null)
+            {
+                status.Errors = new Collection<string>();
+                status.Errors.Add(Utility.FlattenException(lastError));
+            }
+
+            var parameters = Request.Query;
+            if (parameters.TryGetValue(ScriptConstants.CheckLoadQueryParameterName, out StringValues value) && value == "1")
+            {
+                status.Load = new LoadStatus
                 {
-                    State = _scriptHostManager.State.ToString(),
-                    Version = ScriptHost.Version,
-                    Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
+                    IsHigh = _scriptHostManager.PerformanceManager.IsUnderHighLoad()
                 };
-
-                var lastError = _scriptHostManager.LastError;
-                if (lastError != null)
-                {
-                    status.Errors = new Collection<string>();
-                    status.Errors.Add(Utility.FlattenException(lastError));
-                }
-
-                var parameters = Request.GetQueryParameterDictionary();
-                string value = null;
-                if (parameters.TryGetValue(ScriptConstants.CheckLoadQueryParameterName, out value) && value == "1")
-                {
-                    status.Load = new LoadStatus
-                    {
-                        IsHigh = _scriptHostManager.PerformanceManager.IsUnderHighLoad()
-                    };
-                }
-
-                string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
-                _traceWriter.Info(message);
-                _logger?.LogInformation(message);
-
-                return Ok(status);
             }
-            else
-            {
-                return Unauthorized();
-            }
+
+            string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
+            _logger?.LogInformation(message);
+
+            return Ok(status);
         }
 
         [HttpPost]
         [Route("admin/host/ping")]
         [AllowAnonymous]
-        public IHttpActionResult Ping()
+        public IActionResult Ping()
         {
             return Ok();
         }
 
         [HttpPost]
         [Route("admin/host/log")]
-        [AllowAnonymous]
-        public IHttpActionResult Log(IEnumerable<HostLogEntry> logEntries)
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        public IActionResult Log(IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
             {
                 return BadRequest("An array of log entry objects is expected.");
             }
-
-            var authorizationLevel = Request.GetAuthorizationLevel();
-            if (Request.IsAuthDisabled() ||
-                authorizationLevel == AuthorizationLevel.Admin ||
-                Request.IsAntaresInternalRequest())
+            foreach (var logEntry in logEntries)
             {
-                foreach (var logEntry in logEntries)
+                var traceEvent = new TraceEvent(logEntry.Level, logEntry.Message, logEntry.Source);
+                if (!string.IsNullOrEmpty(logEntry.FunctionName))
                 {
-                    var traceEvent = new TraceEvent(logEntry.Level, logEntry.Message, logEntry.Source);
-                    if (!string.IsNullOrEmpty(logEntry.FunctionName))
-                    {
-                        traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, logEntry.FunctionName);
-                    }
-                    _traceWriter.Trace(traceEvent);
-
-                    var logLevel = Utility.ToLogLevel(traceEvent.Level);
-                    var logData = new Dictionary<string, object>
-                    {
-                        ["Source"] = logEntry.Source,
-                        ["FunctionName"] = logEntry.FunctionName
-                    };
-                    _logger.Log(logLevel, 0, logData, null, (s, e) => logEntry.Message);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, logEntry.FunctionName);
                 }
 
-                return Ok();
+                var logLevel = Utility.ToLogLevel(traceEvent.Level);
+                var logData = new Dictionary<string, object>
+                {
+                    ["Source"] = logEntry.Source,
+                    ["FunctionName"] = logEntry.FunctionName
+                };
+                _logger.Log(logLevel, 0, logData, null, (s, e) => logEntry.Message);
             }
-            else
-            {
-                return Unauthorized();
-            }
+
+            return Ok();
         }
 
         [HttpPost]
         [Route("admin/host/debug")]
-        public HttpResponseMessage LaunchDebugger()
+        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        public IActionResult LaunchDebugger()
         {
             if (_webHostSettings.IsSelfHost)
             {
                 // If debugger is already running, this will be a no-op returning true.
                 if (Debugger.Launch())
                 {
-                    return new HttpResponseMessage(HttpStatusCode.OK);
+                    return Ok();
                 }
                 else
                 {
-                    return new HttpResponseMessage(HttpStatusCode.Conflict);
+                    return StatusCode(StatusCodes.Status409Conflict);
                 }
             }
-            return new HttpResponseMessage(HttpStatusCode.NotImplemented);
+
+            return StatusCode(StatusCodes.Status501NotImplemented);
         }
 
-        public override Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
+        public override void OnActionExecuting(ActionExecutingContext context)
         {
             // For all admin api requests, we'll update the ScriptHost debug timeout
             // For now, we'll enable debug mode on ANY admin requests. Since the Portal interacts through
             // the admin API this is sufficient for identifying when the Portal is connected.
             _scriptHostManager.Instance?.NotifyDebug();
 
-            return base.ExecuteAsync(controllerContext, cancellationToken);
+            base.OnActionExecuting(context);
         }
 
-        [Route("admin/extensions/{name}/{*extra}")]
-        [HttpGet]
-        [HttpPost]
-        [AllowAnonymous]
-        public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
-        {
-            var provider = _scriptHostManager.BindingWebHookProvider;
+        // TODO: FACAVAL
+        //[Route("admin/extensions/{name}/{*extra}")]
+        //[HttpGet]
+        //[HttpPost]
+        //[AllowAnonymous]
+        //public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
+        //{
+        //    var provider = _scriptHostManager.BindingWebHookProvider;
 
-            var handler = provider.GetHandlerOrNull(name);
-            if (handler != null)
-            {
-                string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
-                if (!this.Request.HasAuthorizationLevel(AuthorizationLevel.System, keyName))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
-                }
+        //    var handler = provider.GetHandlerOrNull(name);
+        //    if (handler != null)
+        //    {
+        //        string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
+        //        if (!this.Request.HasAuthorizationLevel(AuthorizationLevel.System, keyName))
+        //        {
+        //            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        //        }
 
-                return await handler.ConvertAsync(this.Request, token);
-            }
+        //        return await handler.ConvertAsync(this.Request, token);
+        //    }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
+        //    return new HttpResponseMessage(HttpStatusCode.NotFound);
+        //}
     }
 }

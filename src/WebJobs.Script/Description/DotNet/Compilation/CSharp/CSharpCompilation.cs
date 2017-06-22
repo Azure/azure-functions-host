@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
                     var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
-                    var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsMono ? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb);
+                    var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsWindows ? DebugInformationFormat.Pdb : DebugInformationFormat.PortablePdb);
                     var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
 
                     diagnostics = diagnostics.AddRange(emitResult.Diagnostics);

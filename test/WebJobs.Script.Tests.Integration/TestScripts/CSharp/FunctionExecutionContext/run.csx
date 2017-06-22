@@ -1,11 +1,8 @@
-﻿using System.Net;
+﻿using Microsoft.AspNetCore.Mvc;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req, ExecutionContext context)
+public static IActionResult Run(HttpRequest req, ExecutionContext context)
 {
-    req.Properties["ContextValue"] = context;
+    req.HttpContext.Items["ContextValue"] = context;
 
-    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new StringContent(string.Empty)
-    });
+    return new OkObjectResult(string.Empty);
 }

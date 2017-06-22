@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
     [Collection("Azure Test Collection")]
     public class AppServiceScaleHandlerTests
     {
-        [Theory, MemberData("PingWorkerData")]
+        [Theory, MemberData(nameof(PingWorkerData))]
         public async Task PingWorkerTests(HttpStatusCode statusCode, string reasonPhrase, bool expected, HttpRequestException expectedException)
         {
             var activityId = Guid.NewGuid().ToString();
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("AddWorkerData")]
+        [Theory, MemberData(nameof(AddWorkerData))]
         public async Task AddWorkerTests(HttpStatusCode statusCode, string reasonPhrase, string expected, HttpRequestException expectedException)
         {
             var activityId = Guid.NewGuid().ToString();
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("RemoveWorkerData")]
+        [Theory, MemberData(nameof(RemoveWorkerData))]
         public async Task RemoveWorkerTests(HttpStatusCode statusCode, Exception expectedException)
         {
             var activityId = Guid.NewGuid().ToString();

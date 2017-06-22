@@ -34,55 +34,129 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await QueueTriggerToBlobTest();
         }
 
-        [Fact]
-        public async Task ServiceBusQueueTriggerToBlobTest()
-        {
-            await ServiceBusQueueTriggerToBlobTestImpl();
-        }
+        // TODO: FACAVAL
+        //[Fact]
+        //public async Task ServiceBusQueueTriggerToBlobTest()
+        //{
+        //    await ServiceBusQueueTriggerToBlobTestImpl();
+        //}
 
-        [Fact]
-        public async Task TwilioReferenceInvokeSucceeds()
-        {
-            await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
-        }
+        //[Fact]
+        //public async Task TwilioReferenceInvokeSucceeds()
+        //{
+        //    await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
+        //}
 
-        [Fact]
-        public async Task DocumentDB()
-        {
-            await DocumentDBTest();
-        }
+        //[Fact]
+        //public async Task DocumentDB()
+        //{
+        //    await DocumentDBTest();
+        //}
 
-        [Fact]
-        public async Task NotificationHub()
-        {
-            await NotificationHubTest("NotificationHubOut");
-        }
+        //[Fact]
+        //public async Task NotificationHub()
+        //{
+        //    await NotificationHubTest("NotificationHubOut");
+        //}
 
-        [Fact]
-        public async Task NotificationHub_Out_Notification()
-        {
-            await NotificationHubTest("NotificationHubOutNotification");
-        }
+        //[Fact]
+        //public async Task NotificationHub_Out_Notification()
+        //{
+        //    await NotificationHubTest("NotificationHubOutNotification");
+        //}
 
-        [Fact]
-        public async Task NotificationHubNative()
-        {
-            await NotificationHubTest("NotificationHubNative");
-        }
+        //[Fact]
+        //public async Task NotificationHubNative()
+        //{
+        //    await NotificationHubTest("NotificationHubNative");
+        //}
 
-        [Fact]
-        public async Task MobileTablesTable()
-        {
-            var id = Guid.NewGuid().ToString();
-            Dictionary<string, object> arguments = new Dictionary<string, object>()
-            {
-                { "input",  id }
-            };
+        //[Fact]
+        //public async Task MobileTablesTable()
+        //{
+        //    var id = Guid.NewGuid().ToString();
+        //    Dictionary<string, object> arguments = new Dictionary<string, object>()
+        //    {
+        //        { "input",  id }
+        //    };
 
-            await Fixture.Host.CallAsync("MobileTableTable", arguments);
+        //    await Fixture.Host.CallAsync("MobileTableTable", arguments);
 
-            await WaitForMobileTableRecordAsync("Item", id);
-        }
+        //    await WaitForMobileTableRecordAsync("Item", id);
+        //}
+
+        //[Fact]
+        //public async Task ApiHub()
+        //{
+        //    await ApiHubTest();
+        //}
+
+        //[Fact]
+        //public async Task ApiHubTableClientBindingTest()
+        //{
+        //    var textArgValue = ApiHubTestHelper.NewRandomString();
+
+        //    // Ensure the test entity exists.
+        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
+
+        //    // Test table client binding.
+        //    await Fixture.Host.CallAsync("ApiHubTableClient",
+        //        new Dictionary<string, object>()
+        //        {
+        //            { ApiHubTestHelper.TextArg, textArgValue }
+        //        });
+
+        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
+        //        textArgValue, ApiHubTestHelper.EntityId1);
+        //}
+
+        //[Fact]
+        //public async Task ApiHubTableBindingTest()
+        //{
+        //    var textArgValue = ApiHubTestHelper.NewRandomString();
+
+        //    // Ensure the test entity exists.
+        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
+
+        //    // Test table binding.
+        //    TestInput input = new TestInput
+        //    {
+        //        Id = ApiHubTestHelper.EntityId2,
+        //        Value = textArgValue
+        //    };
+        //    await Fixture.Host.CallAsync("ApiHubTable",
+        //        new Dictionary<string, object>()
+        //        {
+        //            { "input", JsonConvert.SerializeObject(input) }
+        //        });
+
+        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
+        //        textArgValue, ApiHubTestHelper.EntityId2);
+        //}
+
+        //[Fact]
+        //public async Task ApiHubTableEntityBindingTest()
+        //{
+        //    var textArgValue = ApiHubTestHelper.NewRandomString();
+
+        //    // Ensure the test entity exists.
+        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
+
+        //    // Test table entity binding.
+        //    TestInput input = new TestInput
+        //    {
+        //        Id = ApiHubTestHelper.EntityId3,
+        //        Value = textArgValue
+        //    };
+        //    await Fixture.Host.CallAsync("ApiHubTableEntity",
+        //        new Dictionary<string, object>()
+        //        {
+        //            { "input", JsonConvert.SerializeObject(input) }
+        //        });
+
+        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
+        //        textArgValue, ApiHubTestHelper.EntityId3);
+        //}
 
         [Fact]
         public async Task ScriptReference_LoadsScript()
@@ -102,79 +176,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task FileLogging_Succeeds()
         {
             await FileLogging_SucceedsTest();
-        }
-
-        [Fact]
-        public async Task ApiHub()
-        {
-            await ApiHubTest();
-        }
-
-        [Fact]
-        public async Task ApiHubTableClientBindingTest()
-        {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
-
-            // Ensure the test entity exists.
-            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
-
-            // Test table client binding.
-            await Fixture.Host.CallAsync("ApiHubTableClient",
-                new Dictionary<string, object>()
-                {
-                    { ApiHubTestHelper.TextArg, textArgValue }
-                });
-
-            await ApiHubTestHelper.AssertTextUpdatedAsync(
-                textArgValue, ApiHubTestHelper.EntityId1);
-        }
-
-        [Fact]
-        public async Task ApiHubTableBindingTest()
-        {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
-
-            // Ensure the test entity exists.
-            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
-
-            // Test table binding.
-            TestInput input = new TestInput
-            {
-                Id = ApiHubTestHelper.EntityId2,
-                Value = textArgValue
-            };
-            await Fixture.Host.CallAsync("ApiHubTable",
-                new Dictionary<string, object>()
-                {
-                    { "input", JsonConvert.SerializeObject(input) }
-                });
-
-            await ApiHubTestHelper.AssertTextUpdatedAsync(
-                textArgValue, ApiHubTestHelper.EntityId2);
-        }
-
-        [Fact]
-        public async Task ApiHubTableEntityBindingTest()
-        {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
-
-            // Ensure the test entity exists.
-            await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
-
-            // Test table entity binding.
-            TestInput input = new TestInput
-            {
-                Id = ApiHubTestHelper.EntityId3,
-                Value = textArgValue
-            };
-            await Fixture.Host.CallAsync("ApiHubTableEntity",
-                new Dictionary<string, object>()
-                {
-                    { "input", JsonConvert.SerializeObject(input) }
-                });
-
-            await ApiHubTestHelper.AssertTextUpdatedAsync(
-                textArgValue, ApiHubTestHelper.EntityId3);
         }
 
         [Fact]
@@ -209,9 +210,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
             var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
-            if (container.Exists())
+            if (await container.ExistsAsync())
             {
-                foreach (CloudBlockBlob blob in container.ListBlobs())
+                var listResult = await container.ListBlobsSegmentedAsync(null);
+                foreach (CloudBlockBlob blob in listResult.Results)
                 {
                     await blob.DeleteAsync();
                 }
@@ -233,11 +235,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Fixture.Host.CallAsync("Scenarios", arguments);
             }
 
-            var blobs = container.ListBlobs().Cast<CloudBlockBlob>().ToArray();
+            var segment = await container.ListBlobsSegmentedAsync(null);
+
+            var blobs = segment.Results.Cast<CloudBlockBlob>().ToArray();
             Assert.Equal(3, blobs.Length);
             foreach (var blob in blobs)
             {
-                string content = blob.DownloadText();
+                string content = await blob.DownloadTextAsync();
                 int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
