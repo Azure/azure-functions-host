@@ -3,7 +3,8 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Net.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             });
         }
 
-        public static Link CreateLink(HttpRequestMessage request, Uri resourceUri, string relation)
+        public static Link CreateLink(HttpRequest request, Uri resourceUri, string relation)
         {
             if (resourceUri == null)
             {
@@ -54,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             };
         }
 
-        public static ApiModel CreateApiModel(object model, HttpRequestMessage request, string relativeResourcePath = "", bool addSelfLink = true)
+        public static ApiModel CreateApiModel(object model, HttpRequest request, string relativeResourcePath = "", bool addSelfLink = true)
         {
             var apiModel = new ApiModel();
 
@@ -71,13 +72,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return apiModel;
         }
 
-        internal static string GetBaseUri(HttpRequestMessage request, string suffix = "")
+        internal static string GetBaseUri(HttpRequest request, string suffix = "")
         {
             if (!string.IsNullOrEmpty(suffix) && suffix[0] != '/')
             {
                 suffix = "/" + suffix;
             }
-            return request.RequestUri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.Unescaped);
+
+            var uri = new Uri(request.GetDisplayUrl());
+            return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.Unescaped);
         }
     }
 }

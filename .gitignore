@@ -2,6 +2,8 @@ bin
 obj
 csx
 .vs
+.vscode
+.DS_Store
 edge
 Publish
 

@@ -1,38 +1,64 @@
-version: 1.0.{build}
+version: 2.0.{build}
 pull_requests:
   do_not_increment_build_number: true
 branches:
   only:
   - dev
   - master
-  - fsharp
-  - next
   - core
-max_jobs: 1
 image: Visual Studio 2017
-clone_folder: c:\projects\azure-webjobs-sdk-script
-init:
-- ps: $env:Path = "c:\tools\php;c:\python35;C:\Program Files (x86)\Microsoft SDKs\F#\4.0\Framework\v4.0;" + $env:Path;
+clone_folder: c:\azure-webjobs-sdk-script
 install:
 - ps: >-
+    # Download .NET Core 2.0 Preview 2 SDK and add to PATH
+
+    $urlCurrent = "https://download.microsoft.com/download/F/A/A/FAAE9280-F410-458E-8819-279C5A68EDCF/dotnet-sdk-2.0.0-preview2-006497-win-x64.zip"
+
+    $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "true"
+
+    $env:DOTNET_CLI_TELEMETRY_OPTOUT = "true"
+
+    $env:DOTNET_INSTALL_DIR = "$pwd\.dotnetsdk"
+
+    mkdir $env:DOTNET_INSTALL_DIR -Force | Out-Null
+
+    $tempFileCurrent = [System.IO.Path]::GetTempFileName()
+
+    (New-Object System.Net.WebClient).DownloadFile($urlCurrent, $tempFileCurrent)
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($tempFileCurrent, $env:DOTNET_INSTALL_DIR)
+
+    $env:Path = "$env:DOTNET_INSTALL_DIR;$env:Path"
+
+    $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
+
     mkdir c:\tools\php | out-null
 
     Invoke-WebRequest https://azfunc.blob.core.windows.net/public/php-7.1.3-Win32-VC14-x86.zip -OutFile c:\tools\php\php.zip
 
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-
     [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
 
-    Install-Product node 6.11.2 x86
+    Install-Product node 6.5.0 x86
+cache: '%USERPROFILE%\.nuget\packages'
 build_script:
-- cmd: msbuild "WebJobs.Script.proj" /target:EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild /verbosity:normal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Buildnumber=%APPVEYOR_BUILD_NUMBER%;Configuration=Release
+- ps: >
+    dotnet --version
+
+    dotnet build .\WebJobs.Script.sln -v q
+
+    dotnet pack src\WebJobs.Script\WebJobs.Script.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+
+    dotnet pack src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
 test_script:
-- cmd: runappveyortests.cmd
+- ps: >-
+    dotnet test .\test\WebJobs.Extensibility.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+
+    dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+
+    dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+
+    # Skipping integration tests for initial build
+    # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
 artifacts:
-  - path: bin\Packages\*.zip
-    name: Runtime
-  - path: bin\Packages\*.nupkg
-    name: NuGet
-hosts:
-  api.nuget.org: 93.184.221.200
-  dist.nuget.org: 93.184.221.200
+- path: buildoutput\*.nupkg
+  name: Binaries

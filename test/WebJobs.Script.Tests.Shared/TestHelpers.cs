@@ -33,10 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
+        public static Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
+        {
+            return Await(() => Task.FromResult(condition()), timeout, pollingInterval, throwWhenDebugging);
+        }
+
+        public static async Task Await(Func<Task<bool>> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
         {
             DateTime start = DateTime.Now;
-            while (!condition())
+            while (!await condition())
             {
                 await Task.Delay(pollingInterval);
 
@@ -62,9 +67,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task WaitForBlobAsync(CloudBlockBlob blob)
         {
-            await TestHelpers.Await(() =>
+            await TestHelpers.Await(async () =>
             {
-                return blob.Exists();
+                return await blob.ExistsAsync();
             });
         }
 
@@ -144,14 +149,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         // Deleting and recreating a container can result in a 409 as the container name is not
         // immediately available. Instead, use this helper to clear a container.
-        public static void ClearContainer(CloudBlobContainer container)
+        public static async Task ClearContainer(CloudBlobContainer container)
         {
-            foreach (IListBlobItem blobItem in container.ListBlobs())
+            BlobResultSegment blobs = await container.ListBlobsSegmentedAsync(null);
+
+            foreach (IListBlobItem blobItem in blobs.Results)
             {
                 CloudBlockBlob blockBlob = blobItem as CloudBlockBlob;
                 if (blockBlob != null)
                 {
-                    container.GetBlobReference(blockBlob.Name).DeleteIfExists();
+                    await container.GetBlobReference(blockBlob.Name).DeleteIfExistsAsync();
                 }
             }
         }

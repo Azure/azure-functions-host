@@ -17,8 +17,6 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
-using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -260,7 +258,10 @@ namespace Microsoft.Azure.WebJobs.Script
             string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
             FileUtility.EnsureDirectoryExists(hostLogPath);
             string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
-            this.LastDebugNotify = File.GetLastWriteTime(debugSentinelFileName);
+
+            LastDebugNotify = File.Exists(debugSentinelFileName)
+                ? File.GetLastWriteTimeUtc(debugSentinelFileName)
+                : DateTime.MinValue;
 
             FunctionTraceWriterFactory = new FunctionTraceWriterFactory(ScriptConfig);
 
@@ -302,12 +303,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
-                var traceMonitor = new TraceMonitor()
-                    .Filter(p => { return true; })
-                    .Subscribe(HandleHostError);
-                hostConfig.Tracing.Tracers.Add(traceMonitor);
+                // TODO: FACAVAL
+                //var traceMonitor = new TraceMonitor()
+                //    .Filter(p => { return true; })
+                //    .Subscribe(HandleHostError);
+                //hostConfig.Tracing.Tracers.Add(traceMonitor);
 
-                TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
+                System.Diagnostics.TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
                     // Host file logging is only done conditionally
@@ -673,6 +675,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // whenever we're restarting the host, we want to let the Node
             // invoker know so it can clear the require cache, etc.
             await NodeFunctionInvoker.OnHostRestartAsync();
+#else
+            await Task.CompletedTask;
 #endif
         }
 
@@ -779,7 +783,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // binding providers defined in this assembly
                 typeof(WebJobsCoreScriptBindingProvider),
 
+                // TODO: FACAVAL
+                // typeof(ServiceBusScriptBindingProvider),
+
                 // binding providers defined in known extension assemblies
+                // TODO: FACAVAL - These will be re-enabled as we migrate the extensions
                 typeof(CoreExtensionsScriptBindingProvider),
             };
 
@@ -1044,7 +1052,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionConfig, scriptDirectory, fileSystem);
             }
-            catch (ConfigurationErrorsException exc)
+            catch (ScriptConfigurationException exc)
             {
                 error = exc.Message;
                 return false;
@@ -1059,24 +1067,26 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // A route is in conflict if the route matches any other existing
         // route and there is intersection in the http methods of the two functions
-        internal static bool HttpRoutesConflict(HttpTriggerAttribute httpTrigger, HttpTriggerAttribute otherHttpTrigger)
-        {
-            if (string.Compare(httpTrigger.Route.Trim('/'), otherHttpTrigger.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
-            {
-                // routes differ, so no conflict
-                return false;
-            }
-
-            if (httpTrigger.Methods == null || httpTrigger.Methods.Length == 0 ||
-                otherHttpTrigger.Methods == null || otherHttpTrigger.Methods.Length == 0)
-            {
-                // if either methods collection is null or empty that means
-                // "all methods", which will intersect with any method collection
-                return true;
-            }
-
-            return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
-        }
+        //
+        // TODO: FACAVAL
+        // internal static bool HttpRoutesConflict(HttpTriggerAttribute httpTrigger, HttpTriggerAttribute otherHttpTrigger)
+        // {
+        //     if (string.Compare(httpTrigger.Route.Trim('/'), otherHttpTrigger.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
+        //     {
+        //         // routes differ, so no conflict
+        //         return false;
+        //     }
+        //
+        //     if (httpTrigger.Methods == null || httpTrigger.Methods.Length == 0 ||
+        //         otherHttpTrigger.Methods == null || otherHttpTrigger.Methods.Length == 0)
+        //     {
+        //         // if either methods collection is null or empty that means
+        //         // "all methods", which will intersect with any method collection
+        //         return true;
+        //     }
+        //
+        //     return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
+        // }
 
         internal static void ValidateFunctionName(string functionName)
         {
@@ -1104,7 +1114,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string scriptPath = fileSystem.Path.Combine(scriptDirectory, scriptFile);
                 if (!fileSystem.File.Exists(scriptPath))
                 {
-                    throw new ConfigurationErrorsException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
+                    throw new ScriptConfigurationException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
                 }
 
                 functionPrimary = scriptPath;
@@ -1117,7 +1127,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (functionFiles.Length == 0)
                 {
-                    throw new ConfigurationErrorsException("No function script files present.");
+                    throw new ScriptConfigurationException("No function script files present.");
                 }
 
                 if (functionFiles.Length == 1)
@@ -1137,7 +1147,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (string.IsNullOrEmpty(functionPrimary))
             {
-                throw new ConfigurationErrorsException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                throw new ScriptConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
                     "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
             }
 
@@ -1212,7 +1222,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
             foreach (FunctionMetadata metadata in functions)
             {
@@ -1227,7 +1236,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    ValidateFunction(descriptor, httpFunctions);
+                    // TODO: FACAVAL
+                    // ValidateFunction(descriptor, httpFunctions);
 
                     if (descriptor != null)
                     {
@@ -1246,45 +1256,43 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
-        {
-            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-            if (httpTrigger != null)
-            {
-                ValidateHttpFunction(function.Name, httpTrigger);
-
-                if (function.Metadata != null && !function.Metadata.IsProxy)
-                {
-                    // prevent duplicate/conflicting routes for functions
-                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
-                    foreach (var pair in httpFunctions)
-                    {
-                        if (HttpRoutesConflict(httpTrigger, pair.Value))
-                        {
-                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
-                        }
-                    }
-                }
-
-                httpFunctions.Add(function.Name, httpTrigger);
-            }
-        }
-
-        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
-        {
-            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
-            {
-                // if no explicit route is provided, default to the function name
-                httpTrigger.Route = functionName;
-            }
-
-            // disallow custom routes in our own reserved route space
-            string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
-            if (httpRoute.StartsWith("admin"))
-            {
-                throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
-            }
-        }
+        // TODO:FACAVAL
+        // internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
+        // {
+        //     var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+        //     if (httpTrigger != null)
+        //     {
+        //         ValidateHttpFunction(function.Name, httpTrigger);
+        //
+        //         // prevent duplicate/conflicting routes
+        //         foreach (var pair in httpFunctions)
+        //         {
+        //             if (HttpRoutesConflict(httpTrigger, pair.Value))
+        //             {
+        //                 throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+        //             }
+        //         }
+        //
+        //         httpFunctions.Add(function.Name, httpTrigger);
+        //     }
+        // }
+        //
+        //  TODO: FACAVAL
+        // internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
+        // {
+        //     if (string.IsNullOrWhiteSpace(httpTrigger.Route))
+        //     {
+        //         // if no explicit route is provided, default to the function name
+        //         httpTrigger.Route = functionName;
+        //     }
+        //
+        //     // disallow custom routes in our own reserved route space
+        //     string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
+        //     if (httpRoute.StartsWith("admin"))
+        //     {
+        //         throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
+        //     }
+        // }
 
         internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
         {
@@ -1368,8 +1376,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (configSection.TryGetValue("consoleLevel", out value))
                 {
-                    TraceLevel consoleLevel;
-                    if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
+                    System.Diagnostics.TraceLevel consoleLevel;
+                    if (Enum.TryParse<System.Diagnostics.TraceLevel>((string)value, true, out consoleLevel))
                     {
                         hostConfig.Tracing.ConsoleLevel = consoleLevel;
                     }
@@ -1472,6 +1480,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
         {
+            // TODO: SamplingPercentageEstimatorSettings is not currently available.
+            // Working with the team/brettsam to find an alternative
+            // There's also an internal out-of-band option if needed.
+#if false
             scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
             JObject configSection = (JObject)configJson["applicationInsights"];
             JToken value;
@@ -1502,6 +1514,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
             }
+#endif
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

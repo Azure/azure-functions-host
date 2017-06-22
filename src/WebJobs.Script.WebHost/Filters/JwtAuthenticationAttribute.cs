@@ -1,14 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if WEB_AUTH
 using System;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Http.Filters;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.Web.DataProtection;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.IdentityModel.Tokens;
 using static Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -17,7 +17,7 @@ using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true)]
-    public sealed class JwtAuthenticationAttribute : Attribute, IAuthenticationFilter
+    public sealed class JwtAuthenticationAttribute : Attribute, IActionFilter
     {
         public bool AllowMultiple => false;
 
@@ -49,6 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             return Task.CompletedTask;
         }
 
-        public Task ChallengeAsync(HttpAuthenticationChallengeContext context, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
+#endif

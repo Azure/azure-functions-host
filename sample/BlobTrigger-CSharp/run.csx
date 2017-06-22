@@ -2,10 +2,10 @@
 
 using Microsoft.WindowsAzure.Storage.Blob;
 
-public static void Run(CloudBlockBlob blob, CloudBlockBlob output, TraceWriter log)
+public static async Task Run(CloudBlockBlob blob, CloudBlockBlob output, TraceWriter log)
 {
-    string content = blob.DownloadText();
+    string content = await blob.DownloadTextAsync();
     log.Info($"C# Blob trigger function processed a blob. Blob={content}");
 
-    output.UploadText(content);
+    await output.UploadTextAsync(content);
 }

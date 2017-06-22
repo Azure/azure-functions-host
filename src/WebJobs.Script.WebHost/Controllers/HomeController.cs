@@ -2,15 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
-using System.Net.Http;
+using System.IO;
 using System.Text;
-using System.Web.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    public class HomeController : ApiController
+    public class HomeController : Controller
     {
         public static bool IsHomepageDisabled
         {
@@ -21,14 +21,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
-        public HttpResponseMessage Get()
+        public IActionResult Get()
         {
-            return IsHomepageDisabled
-                ? new HttpResponseMessage(HttpStatusCode.NoContent)
-                : new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(Resources.Homepage, Encoding.UTF8, "text/html")
-                };
+            if (IsHomepageDisabled)
+            {
+                return NoContent();
+            }
+
+            return Content(GetHomepage(), "text/html", Encoding.UTF8);
+        }
+
+        private string GetHomepage()
+        {
+            var assembly = typeof(HomeController).Assembly;
+            using (Stream resource = assembly.GetManifestResourceStream(assembly.GetName().Name + ".Home.html"))
+            using (var reader = new StreamReader(resource))
+            {
+                return reader.ReadToEnd();
+            }
         }
     }
 }

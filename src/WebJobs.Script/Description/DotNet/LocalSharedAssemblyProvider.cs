@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Regex _nameRegex;
 
         /// <summary>
-        /// Initializes an instance of the <see cref="LocalSharedAssemblyProvider"/>.
+        /// Initializes a new instance of the <see cref="LocalSharedAssemblyProvider"/> class.
         /// </summary>
         /// <param name="assemblyNamePattern">The assembly name pattern to validate against.
         /// Only names matching the pattern will be resolved by this provider</param>
@@ -31,12 +31,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string GetPrivateBinPath()
         {
             string binPath = null;
-            if (AppDomain.CurrentDomain.SetupInformation.PrivateBinPath != null)
-            {
-                binPath = AppDomain.CurrentDomain.SetupInformation.PrivateBinPath
-                    .Split(';').FirstOrDefault();
-            }
 
+#if !NETSTANDARD2_0
+            // TODO: FACAVAL AppContext.BaseDirectory is equivalent to AppDomain.CurrentDomain.BaseDirectory
+            // Explore whether an alternative is needed and what they would be.
+            // if (AppDomain.CurrentDomain.SetupInformation.PrivateBinPath != null)
+            // {
+            //      binPath = AppDomain.CurrentDomain.SetupInformation.PrivateBinPath
+            //              .Split(';').FirstOrDefault();
+            // }
+#endif
             return binPath ?? AppDomain.CurrentDomain.BaseDirectory;
         }
 

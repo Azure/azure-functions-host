@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\build\common.props" />
+  <PropertyGroup>
+    <PackageId>Microsoft.Azure.WebJobs.Script.Extensibility</PackageId>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.Extensibility</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.Extensibility</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta1-10957" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
+  </ItemGroup>
+
+</Project>
