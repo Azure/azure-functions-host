@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -23,8 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _settingsManager = ScriptSettingsManager.Instance;
             var eventManagerMock = new Mock<IScriptEventManager>();
+            var routerMock = new Mock<IWebJobsRouter>();
 
-            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object);
+            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false),
+                eventManagerMock.Object, WebHostSettings.CreateDefault(_settingsManager), routerMock.Object);
         }
 
         [Fact]
@@ -33,20 +36,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (new TestEnvironment())
             {
                 // initially false
-                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
+                Assert.False(WebScriptHostManager.InStandbyMode);
             }
 
             using (new TestEnvironment())
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
+                Assert.True(WebScriptHostManager.InStandbyMode);
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
+                Assert.False(WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
+                Assert.False(WebScriptHostManager.InStandbyMode);
             }
         }
 
@@ -62,17 +65,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestGetter(_webHostResolver.GetSecretManager);
         }
 
-        [Fact]
-        public void GetSwaggerDocumentManager_ReturnsExpectedValue()
-        {
-            TestGetter(_webHostResolver.GetSwaggerDocumentManager);
-        }
+        // TODO: FACAVAL - Still needed?
+        //[Fact]
+        //public void GetSwaggerDocumentManager_ReturnsExpectedValue()
+        //{
+        //    TestGetter(_webHostResolver.GetSwaggerDocumentManager);
+        //}
 
-        [Fact]
-        public void GetWebHookReceiverManager_ReturnsExpectedValue()
-        {
-            TestGetter(_webHostResolver.GetWebHookReceiverManager);
-        }
+        //[Fact]
+        //public void GetWebHookReceiverManager_ReturnsExpectedValue()
+        //{
+        //    TestGetter(_webHostResolver.GetWebHookReceiverManager);
+        //}
 
         [Fact]
         public void GetPerformanceManager_ReturnsExpectedValue()
@@ -122,13 +126,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Warmup_Succeeds()
+        public void Warmup_Succeeds()
         {
             using (new TestEnvironment())
             {
                 var settings = GetWebHostSettings();
                 var eventManagerMock = new Mock<IScriptEventManager>();
-                await WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
+                WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
 
                 var hostLogPath = Path.Combine(settings.LogPath, @"host");
                 var hostLogFile = Directory.GetFiles(hostLogPath).First();

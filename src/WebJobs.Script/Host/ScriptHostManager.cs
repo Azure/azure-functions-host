@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public class ScriptHostManager : IScriptHostEnvironment, IDisposable
     {
+        public const int HostCheckTimeoutSeconds = 30;
+        public const int HostCheckPollingIntervalMilliseconds = 500;
+
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
         private readonly IScriptHostEnvironment _environment;
@@ -396,6 +399,21 @@ namespace Microsoft.Azure.WebJobs.Script
             Stop();
 
             Process.GetCurrentProcess().Close();
+        }
+
+        public async Task<bool> DelayUntilHostReady(int timeoutSeconds = HostCheckTimeoutSeconds, int pollingIntervalMilliseconds = HostCheckPollingIntervalMilliseconds)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (!CanInvoke() && State != ScriptHostState.Error && (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
+            }
+
+            return CanInvoke();
         }
     }
 }

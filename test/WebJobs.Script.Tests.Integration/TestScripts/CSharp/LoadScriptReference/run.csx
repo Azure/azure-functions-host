@@ -1,14 +1,12 @@
 ﻿#load "Class.csx"
 
 using System.Net;
+using Microsoft.AspNetCore.Mvc;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req)
+public static IActionResult Run(HttpRequest req)
 {
     string response = new Test().Response;
-    req.Properties["LoadedScriptResponse"] = response;
+    req.HttpContext.Items["LoadedScriptResponse"] = response;
 
-    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new StringContent(response)
-    });
+    return new OkObjectResult(response);
 }

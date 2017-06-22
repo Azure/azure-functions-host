@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -78,7 +79,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             };
 
             var mockEventManager = new Mock<IScriptEventManager>();
-            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, ScriptSettingsManager.Instance, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
+            var mockRouter = new Mock<IWebJobsRouter>();
+            var manager = new WebScriptHostManager(
+                config,
+                new TestSecretManagerFactory(),
+                mockEventManager.Object,
+                ScriptSettingsManager.Instance,
+                new WebHostSettings { SecretsPath = _secretsDirectory.Path },
+                mockRouter.Object);
+
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
 

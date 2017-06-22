@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string FunctionName = "TestFunction";
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
-        [Fact]
+        [Fact(Skip = "PowerShell not currently supported")]
         public void GenerateHttpTriggerFunction()
         {
             BindingMetadata trigger = BindingMetadata.Create(new JObject
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(attribute);
         }
 
-        [Fact]
+        [Fact(Skip = "PowerShell not currently supported")]
         public void GenerateQueueTriggerFunction()
         {
             string inputBindingName = "inputData";

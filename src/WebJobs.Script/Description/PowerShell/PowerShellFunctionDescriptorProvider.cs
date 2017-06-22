@@ -33,7 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new PowerShellFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings);
+            throw new NotSupportedException();
+
+            // TODO: FACAVAL
+            // return new PowerShellFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings);
         }
 
         protected internal override void ValidateBinding(BindingMetadata bindingMetadata)

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if POWERSHELL
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -182,3 +183,4 @@ at <ScriptBlock>, <No file>: line 3", _fixture.TestFunctionName);
         }
     }
 }
+#endif

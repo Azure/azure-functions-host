@@ -14,8 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -39,10 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             BlobClient = storageAccount.CreateCloudBlobClient();
             TableClient = storageAccount.CreateCloudTableClient();
 
-            CreateTestStorageEntities();
+            CreateTestStorageEntities().Wait();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
-            ApiHubTestHelper.SetDefaultConnectionFactory();
+            // ApiHubTestHelper.SetDefaultConnectionFactory();
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
@@ -52,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             RequestConfiguration = new HttpConfiguration();
-            RequestConfiguration.Formatters.Add(new PlaintextMediaTypeFormatter());
 
             EventManager = new ScriptEventManager();
             ScriptHostEnvironmentMock = new Mock<IScriptHostEnvironment>();
@@ -85,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudBlobClient BlobClient { get; private set; }
 
-        public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
+        // public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
         public NamespaceManager NamespaceManager { get; private set; }
 
@@ -109,40 +106,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        public CloudQueue GetNewQueue(string queueName)
+        public async Task<CloudQueue> GetNewQueue(string queueName)
         {
             var queue = QueueClient.GetQueueReference(string.Format("{0}-{1}", queueName, FixtureId));
-            queue.CreateIfNotExists();
-            queue.Clear();
+            await queue.CreateIfNotExistsAsync();
+            await queue.ClearAsync();
             return queue;
         }
 
-        protected virtual void CreateTestStorageEntities()
+        protected virtual async Task CreateTestStorageEntities()
         {
             TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", FixtureId));
-            TestQueue.CreateIfNotExists();
-            TestQueue.Clear();
+            await TestQueue.CreateIfNotExistsAsync();
+            await TestQueue.ClearAsync();
 
             // This queue name should really be suffixed by -fsharp, -csharp, -node etc.
             MobileTablesQueue = QueueClient.GetQueueReference("mobiletables-input");
-            MobileTablesQueue.CreateIfNotExists(); // do not clear this queue since it is currently shared between fixtures
+            await MobileTablesQueue.CreateIfNotExistsAsync(); // do not clear this queue since it is currently shared between fixtures
 
             TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", FixtureId));
-            TestInputContainer.CreateIfNotExists();
+            await TestInputContainer.CreateIfNotExistsAsync();
 
             // Processing a large number of blobs on startup can take a while,
             // so let's start with an empty container.
-            TestHelpers.ClearContainer(TestInputContainer);
+            await TestHelpers.ClearContainer(TestInputContainer);
 
             TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
-            TestOutputContainer.CreateIfNotExists();
-            TestHelpers.ClearContainer(TestOutputContainer);
+            await TestOutputContainer.CreateIfNotExistsAsync();
+            await TestHelpers.ClearContainer(TestOutputContainer);
 
             TestTable = TableClient.GetTableReference("test");
-            TestTable.CreateIfNotExists();
+            await TestTable.CreateIfNotExistsAsync();
 
-            DeleteEntities(TestTable, "AAA");
-            DeleteEntities(TestTable, "BBB");
+            await DeleteEntities(TestTable, "AAA");
+            await DeleteEntities(TestTable, "BBB");
 
             var batch = new TableBatchOperation();
             batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 });
@@ -150,22 +147,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 1 });
             batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "004", Region = "West", Name = "Test Entity 4", Status = 1 });
             batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "005", Region = "East", Name = "Test Entity 5", Status = 0 });
-            TestTable.ExecuteBatch(batch);
+            await TestTable.ExecuteBatchAsync(batch);
 
             batch = new TableBatchOperation();
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "001", Region = "South", Name = "Test Entity 1", Status = 0 });
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 });
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
-            TestTable.ExecuteBatch(batch);
+            await TestTable.ExecuteBatchAsync(batch);
 
             string serviceBusQueueName = string.Format("test-input-{0}", FixtureId);
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            NamespaceManager.DeleteQueue(serviceBusQueueName);
-            NamespaceManager.CreateQueue(serviceBusQueueName);
+            // TODO: FACAVAL - SB Support
+            //var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
+            //namespaceManager.DeleteQueue(serviceBusQueueName);
+            //namespaceManager.CreateQueue(serviceBusQueueName);
+
+            //ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
 
         public virtual void Dispose()
@@ -222,9 +221,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
         }
 
-        public void DeleteEntities(CloudTable table, string partition = null)
+        public async Task DeleteEntities(CloudTable table, string partition = null)
         {
-            if (!table.Exists())
+            if (!await table.ExistsAsync())
             {
                 return;
             }
@@ -235,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 query.FilterString = string.Format("PartitionKey eq '{0}'", partition);
             }
 
-            var entities = table.ExecuteQuery(query);
+            var entities = await table.ExecuteQuerySegmentedAsync(query, null);
 
             if (entities.Any())
             {
@@ -244,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     batch.Delete(entity);
                 }
-                table.ExecuteBatch(batch);
+                await table.ExecuteBatchAsync(batch);
             }
         }
 

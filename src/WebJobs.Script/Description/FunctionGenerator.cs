@@ -32,10 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             AssemblyName assemblyName = new AssemblyName(functionAssemblyName);
-            AssemblyBuilder assemblyBuilder =
-                AppDomain.CurrentDomain.DefineDynamicAssembly(
-                    assemblyName,
-                    AssemblyBuilderAccess.Run);
+            AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
 
             ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
 
@@ -179,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 il.Emit(OpCodes.Ret);
             }
 
-            Type t = tb.CreateType();
+            Type t = tb.CreateTypeInfo().AsType();
 
             return t;
         }

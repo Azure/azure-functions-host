@@ -9,7 +9,6 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
@@ -174,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             private string _channelUrl;
 
             public TestTelemetryClientFactory(string channelUrl, string instrumentationKey, Func<string, LogLevel, bool> filter)
-                : base(instrumentationKey, null, filter)
+                : base(instrumentationKey, filter)
             {
                 _channelUrl = channelUrl;
             }
@@ -186,7 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 // DeveloperMode prevents buffering so items are sent immediately.
                 channel.DeveloperMode = true;
-                ((ServerTelemetryChannel)channel).MaxTelemetryBufferDelay = TimeSpan.FromSeconds(1);
 
                 return channel;
             }

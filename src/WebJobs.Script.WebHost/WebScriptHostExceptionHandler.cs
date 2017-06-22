@@ -4,10 +4,8 @@
 using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
-using System.Web.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -17,12 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebScriptHostExceptionHandler(ScriptHostManager manager)
         {
-            if (manager == null)
-            {
-                throw new ArgumentNullException(nameof(manager));
-            }
-
-            _manager = manager;
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
 
         public void Initialize(JobHost host)
@@ -50,20 +43,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // We can't wait on this as it may cause a deadlock if the timeout was fired
             // by a Listener that cannot stop until it has completed.
-#pragma warning disable 4014
-            _manager.StopAsync();
-#pragma warning restore 4014
+            Task ignoreTask = _manager.StopAsync();
 
             // Give the manager and all running tasks some time to shut down gracefully.
             await Task.Delay(timeoutGracePeriod);
 
-            HostingEnvironment.InitiateShutdown();
+            // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
+            // HostingEnvironment.InitiateShutdown();
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
         {
             LogErrorAndFlush("An unhandled exception has occurred. Host is shutting down.", exceptionInfo.SourceException);
-            HostingEnvironment.InitiateShutdown();
+
+            // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
             return Task.CompletedTask;
         }
 
@@ -71,8 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _manager.Instance.TraceWriter.Error(message, exception);
             _manager.Instance.TraceWriter.Flush();
-
-            _manager.Instance.Logger?.LogError(0, exception, message);
         }
     }
 }

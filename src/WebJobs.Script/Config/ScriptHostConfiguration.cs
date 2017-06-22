@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -22,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
             LogFilter = new LogCategoryFilter();
-            RootExtensionsPath = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
+            RootExtensionsPath = Utility.GetSettingFromConfigOrEnvironment(EnvironmentSettingNames.AzureWebJobsExtensionsPath);
         }
 
         /// <summary>
@@ -115,7 +114,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
         /// Insights client-side sampling. If null, client-side sampling is disabled.
         /// </summary>
-        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
+        // TODO: FACAVAL
+        // Need AI support to re-enable this
+        // public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.

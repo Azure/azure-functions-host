@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -142,13 +144,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (input != null)
             {
                 // perform any required input conversions
-                HttpRequestMessage request = input as HttpRequestMessage;
+                var request = input as HttpRequest;
                 if (request != null)
                 {
                     // TODO: Handle other content types? (E.g. byte[])
-                    if (request.Content != null && request.Content.Headers.ContentLength > 0)
+                    if (request.Body != null && request.Headers.ContentLength != null && request.Headers.ContentLength > 0)
                     {
-                        return ((HttpRequestMessage)input).Content.ReadAsStringAsync().Result;
+                        using (var reader = new StreamReader(request.Body))
+                        {
+                            return reader.ReadToEnd();
+                        }
                     }
                 }
             }
@@ -165,35 +170,33 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 environmentVariables[outputBinding.Metadata.Name] = Path.Combine(functionInstanceOutputPath, outputBinding.Metadata.Name);
             }
 
-            var request = input as HttpRequestMessage;
+            var request = input as HttpRequest;
             if (request != null)
             {
+
                 InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
             }
         }
 
-        internal static void InitializeHttpRequestEnvironmentVariables(Dictionary<string, string> environmentVariables, HttpRequestMessage request)
+        internal static void InitializeHttpRequestEnvironmentVariables(Dictionary<string, string> environmentVariables, HttpRequest request)
         {
-            environmentVariables["REQ_ORIGINAL_URL"] = request.RequestUri.ToString();
+            environmentVariables["REQ_ORIGINAL_URL"] = request.GetDisplayUrl();
             environmentVariables["REQ_METHOD"] = request.Method.ToString();
-            environmentVariables["REQ_QUERY"] = request.RequestUri.Query;
+            environmentVariables["REQ_QUERY"] = request.QueryString.ToString();
 
-            var queryParams = request.GetQueryParameterDictionary();
-            foreach (var queryParam in queryParams)
+            foreach (var queryParam in request.Query)
             {
                 string varName = string.Format(CultureInfo.InvariantCulture, "REQ_QUERY_{0}", queryParam.Key.ToUpperInvariant());
-                environmentVariables[varName] = queryParam.Value;
+                environmentVariables[varName] = queryParam.Value.Last().ToString();
             }
 
-            var headers = request.GetRawHeaders();
-            foreach (var header in headers)
+            foreach (var header in request.Headers)
             {
                 string varName = string.Format(CultureInfo.InvariantCulture, "REQ_HEADERS_{0}", header.Key.ToUpperInvariant());
-                environmentVariables[varName] = header.Value;
+                environmentVariables[varName] = header.Value.Last().ToString();
             }
 
-            object value = null;
-            if (request.Properties.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out value))
+            if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object value))
             {
                 Dictionary<string, object> routeBindingData = (Dictionary<string, object>)value;
                 foreach (var pair in routeBindingData)
